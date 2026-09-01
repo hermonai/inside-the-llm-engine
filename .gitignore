@@ -1,0 +1,10 @@
+.DS_Store
+target/
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+*.gguf
+*.safetensors
+benchmark-results/local/
