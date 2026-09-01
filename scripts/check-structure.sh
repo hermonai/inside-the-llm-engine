@@ -25,11 +25,30 @@ docs/STATUS.md
 docs/LABS.md
 research/README.md
 research/hermon/README.md
+research/part-01/README.md
+research/part-01/chapter-01-the-missing-half-of-ai.md
 diagrams/README.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then
         echo "missing or empty required file: $file" >&2
+        exit 1
+    fi
+done
+
+for file in \
+    manuscript/part-01/chapter-01-the-missing-half-of-ai.md \
+    code/mini-engine/Cargo.toml \
+    code/mini-engine/crates/engine0/Cargo.toml \
+    code/reference/engine-0-oracle.md \
+    labs/lab-01-generate-one-token-manually.md \
+    diagrams/runtime/request-to-token.txt \
+    diagrams/runtime/model-vs-engine.txt \
+    diagrams/runtime/inference-stack.txt \
+    diagrams/runtime/token-byte-owner.txt
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 1 artifact: $file" >&2
         exit 1
     fi
 done
@@ -82,4 +101,10 @@ if grep -R -n '```mermaid' README.md BOOK.md docs manuscript research diagrams; 
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 complete chapter specifications"
+chapter_one_words=$(wc -w < manuscript/part-01/chapter-01-the-missing-half-of-ai.md)
+if [ "$chapter_one_words" -lt 5000 ] || [ "$chapter_one_words" -gt 9000 ]; then
+    echo "Chapter 1 must contain 5,000-9,000 words, found $chapter_one_words" >&2
+    exit 1
+fi
+
+echo "structure check passed: 15 parts, 94 specifications, Chapter 1 artifacts present"

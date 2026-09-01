@@ -100,9 +100,13 @@ paths. Never push unless the user explicitly authorizes it.
 
 ## Current state and next task
 
-Phase 0 repository architecture is established; manuscript chapters and the
-teaching engine remain unwritten. The authoritative current state and next
-recommended task are in `docs/STATUS.md`. At bootstrap, the next task is Phase
-1 research and specification refinement for Chapter 1, followed by ENGINE-0
-implementation planning. Do not start Chapter 1 if Phase 0 consistency checks
-are failing.
+Phase 0 repository architecture is established. Phase 1 is in progress:
+Chapter 1, ENGINE-0, Lab 1, four canonical diagrams, and the current Hermon
+request-path refresh are complete. The authoritative state and next task are in
+`docs/STATUS.md`.
+
+The next bounded task is Chapter 2 — From Text to Tokens. Keep it strictly to
+UTF-8 bytes, Unicode boundaries, tokenizer families, special tokens, chat
+templates, streaming decode boundaries, model-specific tokenizer semantics,
+and a real tokenizer contract/oracle for the mini-engine. Do not begin the
+Chapter 3 numerical ENGINE-1 model in that task.

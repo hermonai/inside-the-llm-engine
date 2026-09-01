@@ -1,0 +1,31 @@
+name: book-and-engine
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check repository structure
+        run: scripts/check-structure.sh
+      - name: Check relative Markdown links
+        run: python3 scripts/check-links.py
+      - name: Check canonical diagram width
+        run: >-
+          awk 'length($0) > 100 { print FILENAME ":" FNR ": line exceeds 100 columns"; bad=1 }
+          END { exit bad }' diagrams/**/*.txt
+      - name: Check Rust formatting
+        working-directory: code/mini-engine
+        run: cargo fmt --all -- --check
+      - name: Check and test ENGINE-0
+        working-directory: code/mini-engine
+        run: |
+          cargo check --workspace --all-targets
+          cargo test --workspace
+          cargo clippy --workspace --all-targets -- -D warnings
