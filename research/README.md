@@ -25,3 +25,8 @@ Claims requiring verification
 methodology and small raw results; `terminology/` resolves naming conflicts.
 Follow `docs/SOURCE_POLICY.md` and never copy a research inference into the
 manuscript as CURRENT behavior without verification.
+
+Active chapter research:
+
+- [Part I](part-01/README.md), beginning with
+  [Chapter 1 — The Missing Half of AI](part-01/chapter-01-the-missing-half-of-ai.md).

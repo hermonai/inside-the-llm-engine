@@ -169,3 +169,40 @@ publication rather than quoting an old status line.
 3. Audit provider support by source and hardware before Part VIII measurements.
 4. Revisit MoE runtime integration status immediately before Part X.
 5. Compare canonical docs with source again before every Part XIII chapter.
+
+## Chapter 1 refresh — 2026-09-02
+
+The remote and local `main` branch still resolve to `472a44c`; the initial
+inventory therefore remains pinned without a commit change. Chapter 1 retraced
+the concrete OpenAI-compatible local request path rather than relying on this
+summary:
+
+```text
+hermon-api::chat_completions_openai
+  -> ProviderRouter::resolve
+  -> resolve_local_gguf + hermon_engine::is_linked
+  -> engine_route::stream_with_options
+  -> Dispatcher::stream_with_options
+  -> BatchedRuntime::stream_with_options            [CURRENT default]
+  -> BatchedWorker admission / shared llama_batch
+  -> Piece* -> Done(metrics) | EngineError
+```
+
+Verified boundaries:
+
+- the in-process local path requires an engine-linked build and a resolvable
+  local GGUF; the inspected OpenAI handler otherwise uses its Ollama path;
+- runtime mode is chosen when `Dispatcher` is constructed and defaults to
+  `batched`; `paged` remains explicit PREVIEW and real GGUF execution has a
+  second `HERMON_PAGED_GGUF=1` gate;
+- the batched worker alone mutates its llama.cpp context and active request
+  state; bounded per-request channels carry UTF-8 pieces and terminal/error
+  events;
+- successful runtime streams have exactly one `Done`; error streams have no
+  `Done`; batched snapshot metrics do not imply equivalent pool/paged metrics.
+
+Three caveats were preserved in the Chapter 1 research note: the stale pool-era
+opening comment in `dispatch.rs`, the OpenAI SSE adapter's generic stop close
+after a logged engine error, and stop-sequence wording in architecture prose
+that is broader than the inspected in-process call signature. See
+[`research/part-01/chapter-01-the-missing-half-of-ai.md`](../part-01/chapter-01-the-missing-half-of-ai.md).
