@@ -1,0 +1,28 @@
+MODEL ARTIFACT, RUNNING MODEL, AND ENGINE
+
+Legend: ==> bulk/immutable data   --> control   [X] mutable/owned state
+
+       persistent storage                    process / device memory
+  +--------------------------+            +---------------------------+
+  | (MODEL ARTIFACT)         | == load ==> | (RUNNING MODEL)           |
+  | configuration            |            | validated model semantics |
+  | tokenizer data           |            | resident weight bytes     |
+  | serialized weights       |            | execution resources       |
+  +--------------------------+            +-------------+-------------+
+                                                        |
+                                                        | candidates/logits
+                                                        v
+  +--------------------------------------------------------------------+
+  | INFERENCE ENGINE                                                   |
+  |                                                                    |
+  |  resolve --> admit --> schedule --> model step --> select --> stop  |
+  |                 |                                      |           |
+  |                 v                                      v           |
+  |       [request state / timing]              [ordered output stream] |
+  |                 |                                      |           |
+  |                 +------------ release <----------------+           |
+  +--------------------------------------------------------------------+
+
+The artifact is inert. The running model can perform model work. The engine
+owns request progress, ordering, resource policy, and terminal behavior around
+that work.

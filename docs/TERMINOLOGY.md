@@ -26,8 +26,10 @@ entry before a chapter reaches TECH-REVIEW.
   general page-sharing prefix cache.
 - **MHA**, **GQA**, and **MQA** describe query-to-KV-head geometry. Do not use
   them interchangeably.
-- A **provider** implements an execution capability for hardware; a **kernel**
-  is a bounded computation. Neither term implies GPU execution.
+- A **provider** exposes a selectable inference capability or placement, while
+  a **backend** implements model operations on a hardware/runtime substrate and
+  a **kernel** is one bounded computation. Projects may use these names
+  differently; qualify external usage. None of the terms implies GPU execution.
 - An **oracle** is an independent correctness reference; a **differential
   test** compares implementations under controlled inputs and tolerances.
 - **Residency** says where bytes currently live; **ownership** says who controls

@@ -12,6 +12,11 @@ hardware. The reader progressively builds `mini-engine`: first a token
 generator, then a real model runner, and finally a production-shaped inference
 runtime.
 
+[Chapter 1 — The Missing Half of AI](manuscript/part-01/chapter-01-the-missing-half-of-ai.md)
+and its standard-library-only [ENGINE-0](code/mini-engine/README.md) are now
+complete. They establish the request-to-terminal lifecycle before Chapter 2
+opens the tokenizer boundary.
+
 ```text
                          INSIDE THE LLM ENGINE
 
@@ -153,6 +158,7 @@ manuscript/   chapter prose, organized by part
 code/         reference examples, mini-engine, and experiments
 diagrams/     reusable plain-text architecture artifacts
 research/     evidence logs and source inventories
+labs/         CHECK / BUILD / BREAK / EXTEND engineering exercises
 docs/         constitution, outline, policies, workflow, roadmap, and status
 scripts/      repository checks and reproducibility helpers
 ```
@@ -164,9 +170,10 @@ Contributors and AI agents should also read [AGENTS.md](AGENTS.md),
 
 ## Status
 
-Phase 0 establishes the repository and editorial architecture. The outline and
-research inventory exist; the manuscript and teaching implementation have not
-started. See [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
+Phase 0 established the repository and editorial architecture. Phase 1 is in
+progress: Chapter 1, ENGINE-0, Lab 1, and their source-verified research and
+diagrams are complete; Chapter 2 is planned. See
+[docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license
 

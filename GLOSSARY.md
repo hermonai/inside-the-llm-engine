@@ -20,6 +20,15 @@ amortizes general allocation and can make ownership auditable. First introduced:
 Chapter 37. Related: workspace, block pool. Common confusion: arena allocation
 does not make memory bounds or lifetime errors impossible.
 
+### Artifact / model artifact
+
+**Short:** Persistent serialized data from which a model can be loaded.
+**Precise:** Configuration, tokenizer data, tensor metadata, and weight bytes
+whose format and revision must be interpreted and validated before execution.
+First introduced: Chapter 1. Related: running model, GGUF, weights. Common
+confusion: an artifact is inert representation, not a process that can answer a
+request.
+
 ### Batch / continuous batching
 
 **Short:** A batch is work executed together; continuous batching rebuilds that
@@ -28,6 +37,16 @@ work at iteration boundaries as requests arrive and finish.
 multiple logical sequences. First introduced: Chapters 25–26. Related: sequence,
 prefill, decode, scheduler. Common confusion: continuous batching is not the
 same as waiting to fill a static request batch.
+
+### Backend
+
+**Short:** An implementation of model operations for a hardware/runtime
+substrate.
+**Precise:** A backend supplies supported operations, shapes, dtypes, placement,
+workspace, execution, synchronization, errors, and fallback behavior for CPU,
+Metal, CUDA, or another substrate. First introduced: Chapter 1; formalized
+Chapter 45. Related: provider, kernel. Common confusion: compiling a backend
+does not prove that a request selected it or that it is faster for a shape.
 
 ### Block table
 
@@ -46,6 +65,24 @@ state, sequence identifiers, device resources, and sampler-related state. First
 introduced: Chapter 20. Related: sequence, KV cache. Common confusion: context
 window (a token limit) and execution context (a state owner) are different.
 
+### Concurrency
+
+**Short:** The number of requests simultaneously admitted or active.
+**Precise:** A workload property that affects queueing, memory, scheduling, and
+throughput but need not equal one physical execution batch's size. First
+introduced: Chapter 1. Related: request, batch, throughput. Common confusion:
+concurrency does not prove parallel hardware execution at every instant.
+
+### Control plane / data plane
+
+**Short:** The control plane decides and coordinates; the data plane moves and
+transforms inference data.
+**Precise:** Validation, routing, admission, scheduling, stopping, and accounting
+are control work, while loading weights, executing model operations, moving
+state, and emitting bytes are data work. First introduced: Chapter 1. Related:
+inference engine, provider, backend. Common confusion: these roles need not be
+separate processes or machines.
+
 ### Copy-on-write (COW)
 
 **Short:** Share storage for reads, but copy it before a writer mutates shared
@@ -61,8 +98,9 @@ not need copying merely because they are shared.
 generated token positions.
 **Precise:** Decode usually presents few query tokens per sequence while reading
 an increasing history of KV state; its arithmetic intensity and scheduling
-shape differ from prefill. First introduced: Chapter 4, formalized Chapter 20.
-Common confusion: token decoding into text bytes is a separate tokenizer task.
+shape differ from prefill. First introduced: Chapter 1 as a preview; formalized
+Chapter 20. Common confusion: token decoding into text bytes is a separate
+tokenizer task.
 
 ### Differential test
 
@@ -121,6 +159,33 @@ storage, dtype, and batching layout vary by execution plan. First introduced:
 Chapter 3. Related: embedding, logits. Common confusion: it is not the same as
 KV state or recurrent state.
 
+### Inference engine
+
+**Short:** The system that advances generation requests to observable terminal
+outcomes using a running model.
+**Precise:** It owns or coordinates model resolution, admission, request state,
+execution, selection, stopping, streaming, failure, accounting, and resource
+release. First introduced: Chapter 1. Related: inference runtime, server,
+running model. Common confusion: the engine is not identical to model weights,
+a forward function, a hardware backend, or an HTTP server.
+
+### Inference runtime
+
+**Short:** Stateful machinery that advances one or more inference requests.
+**Precise:** A runtime owns active request progress and execution resources;
+this book uses *engine* for the wider request-to-outcome responsibility, while
+external projects may use the terms differently. First introduced: Chapter 1.
+Related: inference engine, request, state. Common confusion: a language runtime
+and an inference runtime are different uses of “runtime.”
+
+### Inter-token latency (ITL)
+
+**Short:** Elapsed time between consecutive observable output events or tokens.
+**Precise:** A distribution over named emission boundaries whose token/piece
+unit, aggregation, concurrency, and workload must be disclosed. First
+introduced: Chapter 1. Related: latency, TTFT, throughput. Common confusion: ITL
+does not include the initial wait for the first token.
+
 ### Kernel
 
 **Short:** A bounded numerical or data-movement operation.
@@ -128,6 +193,14 @@ KV state or recurrent state.
 provider constraints, error behavior, and correctness contract. First
 introduced: Chapter 35. Related: provider, ABI. Common confusion: kernels can
 run on scalar CPU, SIMD CPU, or accelerators.
+
+### Latency
+
+**Short:** Elapsed time between two named lifecycle events.
+**Precise:** A measurement such as arrival-to-admission, queue delay, TTFT, ITL,
+or request completion, reported with endpoints, workload, concurrency, and
+distribution. First introduced: Chapter 1. Related: TTFT, ITL, throughput.
+Common confusion: an unlabeled “latency” number is not self-defining.
 
 ### KV cache / KV block
 
@@ -184,8 +257,9 @@ attention semantics. First introduced: Chapters 29 and 34. Common confusion:
 **Short:** The workload phase that processes prompt positions and creates
 reusable state.
 **Precise:** Prefill often has many query tokens and matrix-matrix-friendly
-work, unlike one-step decode. First introduced: Chapter 20. Common confusion:
-prefill is not only tokenization or model loading.
+work, unlike one-step decode. First introduced: Chapter 1 as a preview;
+formalized Chapter 20. Common confusion: prefill is not only tokenization or
+model loading.
 
 ### Prefix cache / radix tree
 
@@ -197,11 +271,12 @@ insufficient if tokenization/model/configuration differs.
 
 ### Provider
 
-**Short:** A hardware/runtime implementation of an execution capability.
-**Precise:** A provider advertises supported shapes/dtypes, placement and
-workspace rules, fallback behavior, and conformance tests. First introduced:
-Chapter 45. Common confusion: a compiled GPU backend need not be selected or
-faster for a particular shape.
+**Short:** A selectable inference capability or destination.
+**Precise:** A provider exposes routing/placement identity, model availability,
+credentials or locality where relevant, and a capability that may be realized
+by one or more hardware backends. First introduced: Chapter 1; hardware-provider
+contracts formalized Chapter 45. Common confusion: a provider route and the
+backend selected beneath it are not the same decision.
 
 ### Quantization
 
@@ -218,6 +293,23 @@ Common confusion: “4-bit” does not fully identify a format or quality level.
 without adding a learned vector to the hidden state. First introduced: Chapter
 9. Common confusion: implementation details such as dimension ordering and
 scaling are part of model support.
+
+### Request / inference request
+
+**Short:** One bounded generation intent and its mutable lifecycle state.
+**Precise:** It joins input/configuration with admission, generation history,
+selection and stopping state, cancellation, timings, output ordering, and a
+terminal outcome. First introduced: Chapter 1; state machine formalized Chapter
+24. Related: sequence, stream, terminal. Common confusion: a request is not the
+same as a conversation, sequence slot, or physical batch.
+
+### Running model
+
+**Short:** A loaded model ready to perform model work.
+**Precise:** Validated model semantics plus resident or addressable weights and
+execution resources, normally shared read-only across requests. First
+introduced: Chapter 1. Related: artifact, inference engine, backend. Common
+confusion: a running model still does not own the full request lifecycle.
 
 ### Sampler
 
@@ -250,6 +342,52 @@ model.
 first mismatch under the target distribution while rolling back rejected state.
 First introduced: Chapter 51. Common confusion: it reduces target steps only
 when acceptance compensates for verification overhead.
+
+### State
+
+**Short:** Information whose current value affects future execution.
+**Precise:** In inference this includes immutable model configuration and
+weights plus mutable request history, positions, cached intermediates, sampler,
+stopping, timing, and resource ownership; qualify which state and owner are
+meant. First introduced: Chapter 1. Related: request, context, ownership. Common
+confusion: “state” is not one undifferentiated buffer.
+
+### Stream
+
+**Short:** An ordered sequence of progress events ending in a defined terminal
+outcome.
+**Precise:** The engine-to-consumer contract for token or text-piece events,
+ordering, backpressure/error behavior, and completion/cancellation/failure.
+First introduced: Chapter 1; production semantics formalized Chapter 69.
+Related: token, terminal, request. Common confusion: channel close alone does
+not identify why generation ended.
+
+### Terminal outcome
+
+**Short:** The single final result of a request: completed, cancelled, or
+failed.
+**Precise:** An exactly-once lifecycle transition after which no progress event
+may be emitted and owned request resources become releasable; successful
+completion also records a stop reason. First introduced: Chapter 1. Related:
+stream, stop reason, cancellation. Common confusion: stopping because of a
+token limit is completion, while error and cancellation are distinct.
+
+### Throughput
+
+**Short:** Completed work per unit time.
+**Precise:** Requests or tokens divided by elapsed time for a defined workload,
+population, concurrency, and accounting boundary. First introduced: Chapter 1.
+Related: latency, concurrency, fairness. Common confusion: aggregate throughput
+is not the inverse of one request's latency.
+
+### Time to first token (TTFT)
+
+**Short:** Time from a disclosed request boundary to the first observable
+output token or piece.
+**Precise:** Commonly admission/arrival to first emission, including the named
+queue, preparation, model, selection, and emission spans chosen by the
+measurement. First introduced: Chapter 1. Related: latency, ITL. Common
+confusion: TTFT endpoints differ across tools and must be stated.
 
 ### Token / tokenizer
 

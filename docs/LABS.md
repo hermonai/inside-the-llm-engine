@@ -5,7 +5,7 @@ expected artifact, oracle, failure injection, measurement (if any), and cleanup.
 
 | Lab | Primary chapter | Build | Break / prove |
 | --- | ---: | --- | --- |
-| 1. Generate one token manually | 4 | Compute logits and sample one token | Match a hand-computable oracle; alter seed/logit order |
+| [1. Generate one token manually](../labs/lab-01-generate-one-token-manually.md) | 1 / 4 | Predict ENGINE-0's candidate selection; revisit with logits | Match a hand-computable oracle; inject cancellation/failure and alter score order |
 | 2. Implement naive attention | 10 | Dense causal scalar attention | Expose mask and stability failures |
 | 3. Decode with and without KV | 21 | Add per-layer KV reuse | Greedy logits agree across both paths |
 | 4. Parse a GGUF tensor directory | 15 | Bounds-checked metadata/tensor index | Reject truncation, overflow, and invalid alignment |
