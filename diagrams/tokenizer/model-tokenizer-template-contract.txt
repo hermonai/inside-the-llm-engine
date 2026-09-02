@@ -1,0 +1,14 @@
+MODEL INPUT CONTRACT
+
+                 +---------------- model identity ----------------+
+                 |                                                |
+                 v                                                v
+        (tokenizer + revision) <-> (special IDs) <-> (chat template)
+                 |                                  |
+                 +------------ exact IDs -----------+
+                                      |
+                                      v
+                              running model weights
+
+Legend: parentheses are immutable configuration. Any one-component swap fails.
+

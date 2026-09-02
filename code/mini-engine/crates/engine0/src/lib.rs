@@ -1,39 +1,65 @@
 #![forbid(unsafe_code)]
 
-//! ENGINE-0: a deterministic request-to-token lifecycle.
+//! ENGINE-0 after Chapter 2: a deterministic tokenized request lifecycle.
 //!
-//! This crate deliberately contains no tokenizer, neural network, model-file
-//! parser, network server, or hardware backend. Its fake model returns small,
-//! hand-computable candidate sets so Chapter 1 can isolate runtime ownership,
-//! streaming, stopping, cancellation, failure, and timing boundaries.
+//! The tokenizer, special-token, chat-template, byte-decoding, and UTF-8
+//! streaming boundaries are real. `DemoModel` remains a fake candidate source;
+//! its integer scores are not logits and no neural computation occurs here.
+
+pub mod chat;
+pub mod tokenizer;
+pub mod utf8;
 
 use std::fmt;
 use std::time::{Duration, Instant};
 
-/// Stable identity for one submitted generation request.
+use tokenizer::{TokenId, Tokenizer, TOKEN_BLUE, TOKEN_EOS, TOKEN_GREEN};
+use utf8::Utf8StreamDecoder;
+
 pub type RequestId = u64;
 
-/// The smallest generation request ENGINE-0 accepts.
+/// A generation request after text has crossed the tokenizer boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Request {
     pub id: RequestId,
-    pub prompt: String,
+    pub input_tokens: Vec<TokenId>,
+    pub input_bytes: usize,
     pub max_new_tokens: usize,
 }
 
 impl Request {
-    pub fn new(id: RequestId, prompt: impl Into<String>, max_new_tokens: usize) -> Self {
+    pub fn from_text(
+        id: RequestId,
+        input: &[u8],
+        max_new_tokens: usize,
+        tokenizer: &impl Tokenizer,
+    ) -> Result<Self, tokenizer::TokenizerError> {
+        Ok(Self {
+            id,
+            input_tokens: tokenizer.encode(input)?,
+            input_bytes: input.len(),
+            max_new_tokens,
+        })
+    }
+
+    pub fn from_token_ids(
+        id: RequestId,
+        input_tokens: Vec<TokenId>,
+        input_bytes: usize,
+        max_new_tokens: usize,
+    ) -> Self {
         Self {
             id,
-            prompt: prompt.into(),
+            input_tokens,
+            input_bytes,
             max_new_tokens,
         }
     }
 
     fn validate(&self) -> Result<(), GenerationError> {
-        if self.prompt.trim().is_empty() {
+        if self.input_tokens.is_empty() {
             return Err(GenerationError::InvalidRequest(
-                "prompt must contain non-whitespace text".to_string(),
+                "input must encode to at least one token".to_string(),
             ));
         }
         if self.max_new_tokens == 0 {
@@ -45,53 +71,47 @@ impl Request {
     }
 }
 
-/// Whether a token is ordinary output or the model's end marker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     Text,
     EndOfSequence,
 }
 
-/// One vocabulary identity plus its teaching text representation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token {
-    pub id: u32,
-    pub text: String,
+    pub id: TokenId,
     pub kind: TokenKind,
 }
 
 impl Token {
-    pub fn text(id: u32, text: impl Into<String>) -> Self {
+    pub const fn text(id: TokenId) -> Self {
         Self {
             id,
-            text: text.into(),
             kind: TokenKind::Text,
         }
     }
 
-    pub fn end(id: u32) -> Self {
+    pub const fn end(id: TokenId) -> Self {
         Self {
             id,
-            text: "<eos>".to_string(),
             kind: TokenKind::EndOfSequence,
         }
     }
 }
 
 /// A fake, scored model candidate. The score is not a real neural logit.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Candidate {
     pub token: Token,
     pub score: i32,
 }
 
 impl Candidate {
-    pub fn new(token: Token, score: i32) -> Self {
+    pub const fn new(token: Token, score: i32) -> Self {
         Self { token, score }
     }
 }
 
-/// Mutable state owned by the runtime for one active request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenerationState {
     generated: Vec<Token>,
@@ -113,7 +133,7 @@ impl GenerationState {
     }
 }
 
-/// Replace this fake source with a tokenizer/model in later milestones.
+/// Chapter 3 replaces this fake source with genuine numerical inference.
 pub trait Model {
     fn candidates(
         &self,
@@ -122,12 +142,10 @@ pub trait Model {
     ) -> Result<Vec<Candidate>, ModelError>;
 }
 
-/// Chooses one token from a model's candidate set.
 pub trait Selector {
     fn select(&self, candidates: &[Candidate]) -> Result<Token, GenerationError>;
 }
 
-/// Deterministic highest-score selection with stable first-candidate tie-break.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct GreedySelector;
 
@@ -139,11 +157,11 @@ impl Selector for GreedySelector {
                 best = candidate;
             }
         }
-        Ok(best.token.clone())
+        Ok(best.token)
     }
 }
 
-/// The small deterministic source used by the executable and Lab 1.
+/// The deterministic fake source from Chapter 1, now bound to real token IDs.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DemoModel {
     fail_at_step: Option<usize>,
@@ -172,14 +190,14 @@ impl Model for DemoModel {
 
         if state.step() == 0 {
             Ok(vec![
-                Candidate::new(Token::text(1, "blue"), 9),
-                Candidate::new(Token::text(2, "green"), 4),
-                Candidate::new(Token::end(0), 1),
+                Candidate::new(Token::text(TOKEN_BLUE), 9),
+                Candidate::new(Token::text(TOKEN_GREEN), 4),
+                Candidate::new(Token::end(TOKEN_EOS), 1),
             ])
         } else {
             Ok(vec![
-                Candidate::new(Token::end(0), 10),
-                Candidate::new(Token::text(1, "blue"), 1),
+                Candidate::new(Token::end(TOKEN_EOS), 10),
+                Candidate::new(Token::text(TOKEN_BLUE), 1),
             ])
         }
     }
@@ -210,6 +228,8 @@ impl std::error::Error for ModelError {}
 pub enum GenerationError {
     InvalidRequest(String),
     Model(String),
+    Tokenizer(String),
+    Utf8Stream(String),
     NoCandidates,
     AlreadyTerminal,
 }
@@ -219,6 +239,8 @@ impl fmt::Display for GenerationError {
         match self {
             Self::InvalidRequest(message) => write!(f, "invalid request: {message}"),
             Self::Model(message) => write!(f, "model error: {message}"),
+            Self::Tokenizer(message) => write!(f, "tokenizer error: {message}"),
+            Self::Utf8Stream(message) => write!(f, "UTF-8 stream error: {message}"),
             Self::NoCandidates => f.write_str("model returned no candidates"),
             Self::AlreadyTerminal => f.write_str("request already has a terminal outcome"),
         }
@@ -251,7 +273,7 @@ impl fmt::Display for TerminalOutcome {
     }
 }
 
-/// Ordered events visible to a consumer of generated output.
+/// Token identities and valid text pieces are separate ordered events.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StreamEvent {
     Token {
@@ -259,14 +281,17 @@ pub enum StreamEvent {
         index: usize,
         token: Token,
     },
+    Text {
+        request_id: RequestId,
+        through_token_index: usize,
+        text: String,
+    },
     Terminal {
         request_id: RequestId,
         outcome: TerminalOutcome,
     },
 }
 
-/// An infallible sink keeps ENGINE-0 focused on lifecycle semantics.
-/// Sink failures and network backpressure arrive in later milestones.
 pub trait TokenSink {
     fn send(&mut self, event: StreamEvent);
 }
@@ -282,7 +307,6 @@ impl TokenSink for RecordingSink {
     }
 }
 
-/// Determines whether an admitted request should stop as cancelled.
 pub trait Cancellation {
     fn is_cancelled(&self, state: &GenerationState) -> bool;
 }
@@ -307,11 +331,35 @@ impl Cancellation for CancelAtStep {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TraceKind {
+    InputEncoded {
+        bytes: usize,
+        token_count: usize,
+    },
     Admitted,
     ExecutionStarted,
-    ModelInvoked { step: usize },
-    TokenSelected { step: usize, token_id: u32 },
-    TokenEmitted { index: usize, token_id: u32 },
+    ModelInvoked {
+        step: usize,
+    },
+    TokenSelected {
+        step: usize,
+        token_id: TokenId,
+    },
+    TokenEmitted {
+        index: usize,
+        token_id: TokenId,
+    },
+    TokenDecoded {
+        index: usize,
+        token_id: TokenId,
+        bytes: usize,
+    },
+    Utf8Buffered {
+        pending_bytes: usize,
+    },
+    TextEmitted {
+        through_token_index: usize,
+        bytes: usize,
+    },
     Terminal(TerminalOutcome),
 }
 
@@ -344,13 +392,12 @@ impl TraceSink for RecordingTrace {
     }
 }
 
-/// Named lifecycle points measured from entry to `Runtime::generate`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LifecycleTimings {
     pub admitted_at: Option<Duration>,
     pub execution_started_at: Option<Duration>,
     pub first_token_ready_at: Option<Duration>,
-    pub first_token_emitted_at: Option<Duration>,
+    pub first_text_emitted_at: Option<Duration>,
     pub terminal_at: Duration,
 }
 
@@ -360,15 +407,19 @@ impl LifecycleTimings {
     }
 
     pub fn time_to_first_token(&self) -> Option<Duration> {
+        Some(self.first_token_ready_at?.saturating_sub(self.admitted_at?))
+    }
+
+    pub fn time_to_first_text(&self) -> Option<Duration> {
         Some(
-            self.first_token_emitted_at?
+            self.first_text_emitted_at?
                 .saturating_sub(self.admitted_at?),
         )
     }
 
-    pub fn ready_to_emit_delay(&self) -> Option<Duration> {
+    pub fn token_ready_to_text_delay(&self) -> Option<Duration> {
         Some(
-            self.first_token_emitted_at?
+            self.first_text_emitted_at?
                 .saturating_sub(self.first_token_ready_at?),
         )
     }
@@ -382,20 +433,25 @@ pub struct GenerationResult {
     pub timings: LifecycleTimings,
 }
 
-/// Owns the model/selector policy and advances one request synchronously.
 #[derive(Debug, Clone)]
-pub struct Runtime<M, S> {
+pub struct Runtime<M, S, T> {
     model: M,
     selector: S,
+    tokenizer: T,
 }
 
-impl<M, S> Runtime<M, S>
+impl<M, S, T> Runtime<M, S, T>
 where
     M: Model,
     S: Selector,
+    T: Tokenizer,
 {
-    pub fn new(model: M, selector: S) -> Self {
-        Self { model, selector }
+    pub fn new(model: M, selector: S, tokenizer: T) -> Self {
+        Self {
+            model,
+            selector,
+            tokenizer,
+        }
     }
 
     pub fn generate(
@@ -408,11 +464,16 @@ where
         let started = Instant::now();
         let mut lifecycle = Lifecycle::new(request.id, started, sink, trace);
         let mut state = GenerationState::new();
+        let mut decoder = Utf8StreamDecoder::new();
 
         if let Err(error) = request.validate() {
             return lifecycle.result(state, TerminalOutcome::Failed(error));
         }
 
+        lifecycle.trace(TraceKind::InputEncoded {
+            bytes: request.input_bytes,
+            token_count: request.input_tokens.len(),
+        });
         lifecycle.trace(TraceKind::Admitted);
         lifecycle.admitted_at = Some(started.elapsed());
         lifecycle.trace(TraceKind::ExecutionStarted);
@@ -423,7 +484,7 @@ where
                 break TerminalOutcome::Cancelled;
             }
             if state.step() >= request.max_new_tokens {
-                break TerminalOutcome::Completed(StopReason::MaxTokens);
+                break completed_or_utf8_error(StopReason::MaxTokens, &decoder);
             }
 
             lifecycle.trace(TraceKind::ModelInvoked { step: state.step() });
@@ -441,18 +502,49 @@ where
             });
 
             if selected.kind == TokenKind::EndOfSequence {
-                break TerminalOutcome::Completed(StopReason::EndOfSequence);
+                break completed_or_utf8_error(StopReason::EndOfSequence, &decoder);
             }
 
             if lifecycle.first_token_ready_at.is_none() {
                 lifecycle.first_token_ready_at = Some(started.elapsed());
             }
             let index = state.generated.len();
-            state.generated.push(selected.clone());
+            state.generated.push(selected);
             lifecycle.emit_token(index, selected);
+
+            let bytes = match self.tokenizer.decode_token(selected.id) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    break TerminalOutcome::Failed(GenerationError::Tokenizer(error.to_string()))
+                }
+            };
+            lifecycle.trace(TraceKind::TokenDecoded {
+                index,
+                token_id: selected.id,
+                bytes: bytes.len(),
+            });
+            let text = match decoder.push(bytes) {
+                Ok(text) => text,
+                Err(error) => {
+                    break TerminalOutcome::Failed(GenerationError::Utf8Stream(error.to_string()))
+                }
+            };
+            lifecycle.trace(TraceKind::Utf8Buffered {
+                pending_bytes: decoder.pending_bytes().len(),
+            });
+            if let Some(text) = text {
+                lifecycle.emit_text(index, text);
+            }
         };
 
         lifecycle.result(state, outcome)
+    }
+}
+
+fn completed_or_utf8_error(reason: StopReason, decoder: &Utf8StreamDecoder) -> TerminalOutcome {
+    match decoder.finish() {
+        Ok(()) => TerminalOutcome::Completed(reason),
+        Err(error) => TerminalOutcome::Failed(GenerationError::Utf8Stream(error.to_string())),
     }
 }
 
@@ -465,7 +557,7 @@ struct Lifecycle<'a> {
     admitted_at: Option<Duration>,
     execution_started_at: Option<Duration>,
     first_token_ready_at: Option<Duration>,
-    first_token_emitted_at: Option<Duration>,
+    first_text_emitted_at: Option<Duration>,
 }
 
 impl<'a> Lifecycle<'a> {
@@ -484,7 +576,7 @@ impl<'a> Lifecycle<'a> {
             admitted_at: None,
             execution_started_at: None,
             first_token_ready_at: None,
-            first_token_emitted_at: None,
+            first_text_emitted_at: None,
         }
     }
 
@@ -503,16 +595,34 @@ impl<'a> Lifecycle<'a> {
         if self.terminal {
             return;
         }
-        let token_id = token.id;
         self.sink.send(StreamEvent::Token {
             request_id: self.request_id,
             index,
             token,
         });
-        if self.first_token_emitted_at.is_none() {
-            self.first_token_emitted_at = Some(self.started.elapsed());
+        self.trace(TraceKind::TokenEmitted {
+            index,
+            token_id: token.id,
+        });
+    }
+
+    fn emit_text(&mut self, through_token_index: usize, text: String) {
+        if self.terminal || text.is_empty() {
+            return;
         }
-        self.trace(TraceKind::TokenEmitted { index, token_id });
+        let bytes = text.len();
+        self.sink.send(StreamEvent::Text {
+            request_id: self.request_id,
+            through_token_index,
+            text,
+        });
+        if self.first_text_emitted_at.is_none() {
+            self.first_text_emitted_at = Some(self.started.elapsed());
+        }
+        self.trace(TraceKind::TextEmitted {
+            through_token_index,
+            bytes,
+        });
     }
 
     fn finish(&mut self, outcome: TerminalOutcome) -> Result<Duration, GenerationError> {
@@ -544,7 +654,7 @@ impl<'a> Lifecycle<'a> {
                 admitted_at: self.admitted_at,
                 execution_started_at: self.execution_started_at,
                 first_token_ready_at: self.first_token_ready_at,
-                first_token_emitted_at: self.first_token_emitted_at,
+                first_text_emitted_at: self.first_text_emitted_at,
                 terminal_at,
             },
         }
@@ -572,7 +682,7 @@ mod lifecycle_tests {
     }
 
     #[test]
-    fn token_and_trace_emission_are_blocked_after_terminal() {
+    fn token_text_and_trace_emission_are_blocked_after_terminal() {
         let started = Instant::now();
         let mut sink = RecordingSink::default();
         let mut trace = RecordingTrace::default();
@@ -580,7 +690,8 @@ mod lifecycle_tests {
         lifecycle
             .finish(TerminalOutcome::Cancelled)
             .expect("first terminal");
-        lifecycle.emit_token(0, Token::text(1, "forbidden"));
+        lifecycle.emit_token(0, Token::text(TOKEN_BLUE));
+        lifecycle.emit_text(0, "forbidden".to_string());
         lifecycle.trace(TraceKind::ExecutionStarted);
 
         assert_eq!(sink.events.len(), 1);

@@ -1,0 +1,15 @@
+ENGINE-0 CHAPTER 2 OWNERSHIP
+
+caller bytes -> tokenizer -> [Request.input_tokens] -> fake model -> selected ID
+                                   |                                  |
+                              runtime owns                      runtime appends
+                                   |                                  v
+                                   +------------------------> [generated IDs]
+                                                                      |
+                                          tokenizer bytes <-----------+
+                                                  |
+                                                  v
+                                            [UTF-8 buffer] -> text sink
+
+Legend: [state] is mutable per request; tokenizer/model configuration is shared.
+

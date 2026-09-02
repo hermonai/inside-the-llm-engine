@@ -1,5 +1,7 @@
 use std::process::ExitCode;
 
+use engine0::tokenizer::{TinyBpeTokenizer, TokenId, Tokenizer};
+use engine0::utf8::Utf8StreamDecoder;
 use engine0::{
     CancelAtStep, DemoModel, GreedySelector, NeverCancel, Request, Runtime, StreamEvent,
     TerminalOutcome, TokenSink, TraceEvent, TraceSink,
@@ -12,10 +14,15 @@ impl TokenSink for ConsoleSink {
         match event {
             StreamEvent::Token { index, token, .. } => {
                 println!(
-                    "stream token[{index}] id={} text={:?}",
-                    token.id, token.text
+                    "stream token[{index}] id={} kind={:?}",
+                    token.id, token.kind
                 );
             }
+            StreamEvent::Text {
+                through_token_index,
+                text,
+                ..
+            } => println!("stream text[through={through_token_index}] {text:?}"),
             StreamEvent::Terminal { outcome, .. } => println!("stream terminal {outcome}"),
         }
     }
@@ -41,7 +48,7 @@ impl TraceSink for SilentTrace {
 }
 
 #[derive(Debug)]
-struct Options {
+struct GenerateOptions {
     prompt: String,
     max_tokens: usize,
     cancel_at: Option<usize>,
@@ -50,11 +57,11 @@ struct Options {
 }
 
 fn usage() -> &'static str {
-    "usage: engine0 [--trace] [--max-tokens N] [--cancel-at STEP] [--fail-at STEP] PROMPT"
+    "usage:\n  engine0 [--trace] [--max-tokens N] [--cancel-at STEP] [--fail-at STEP] PROMPT\n  engine0 tokenize TEXT\n  engine0 decode TOKEN_ID..."
 }
 
-fn parse_options() -> Result<Options, String> {
-    let mut args = std::env::args().skip(1);
+fn parse_generate(args: Vec<String>) -> Result<GenerateOptions, String> {
+    let mut args = args.into_iter();
     let mut prompt_parts = Vec::new();
     let mut max_tokens = 8usize;
     let mut cancel_at = None;
@@ -96,7 +103,7 @@ fn parse_options() -> Result<Options, String> {
         return Err(usage().to_string());
     }
 
-    Ok(Options {
+    Ok(GenerateOptions {
         prompt: prompt_parts.join(" "),
         max_tokens,
         cancel_at,
@@ -105,21 +112,66 @@ fn parse_options() -> Result<Options, String> {
     })
 }
 
-fn main() -> ExitCode {
-    let options = match parse_options() {
-        Ok(options) => options,
-        Err(message) => {
-            eprintln!("{message}");
-            return ExitCode::from(2);
-        }
-    };
+fn tokenize(args: &[String]) -> Result<(), String> {
+    if args.is_empty() {
+        return Err("tokenize requires text".to_string());
+    }
+    let text = args.join(" ");
+    let tokenizer = TinyBpeTokenizer::teaching();
+    let ids = tokenizer
+        .encode(text.as_bytes())
+        .map_err(|error| error.to_string())?;
+    println!(
+        "tokenizer={}@{} bytes={} scalars={} tokens={}",
+        tokenizer.identity().name,
+        tokenizer.identity().revision,
+        text.len(),
+        text.chars().count(),
+        ids.len()
+    );
+    for (index, id) in ids.iter().copied().enumerate() {
+        let bytes = tokenizer
+            .decode_token(id)
+            .map_err(|error| error.to_string())?;
+        println!("token[{index}] id={id} bytes={bytes:02x?}");
+    }
+    Ok(())
+}
 
+fn decode(args: &[String]) -> Result<(), String> {
+    if args.is_empty() {
+        return Err("decode requires one or more numeric token IDs".to_string());
+    }
+    let tokenizer = TinyBpeTokenizer::teaching();
+    let mut decoder = Utf8StreamDecoder::new();
+    for (index, value) in args.iter().enumerate() {
+        let id = TokenId(
+            value
+                .parse()
+                .map_err(|_| format!("invalid token id: {value}"))?,
+        );
+        let bytes = tokenizer
+            .decode_token(id)
+            .map_err(|error| error.to_string())?;
+        println!("token[{index}] id={id} bytes={bytes:02x?}");
+        if let Some(text) = decoder.push(bytes).map_err(|error| error.to_string())? {
+            println!("text[through={index}] {text:?}");
+        } else {
+            println!("buffered={} bytes", decoder.pending_bytes().len());
+        }
+    }
+    decoder.finish().map_err(|error| error.to_string())
+}
+
+fn generate(options: GenerateOptions) -> Result<TerminalOutcome, String> {
+    let tokenizer = TinyBpeTokenizer::teaching();
+    let request = Request::from_text(1, options.prompt.as_bytes(), options.max_tokens, &tokenizer)
+        .map_err(|error| error.to_string())?;
     let model = options
         .fail_at
         .map(DemoModel::failing_at)
         .unwrap_or_default();
-    let runtime = Runtime::new(model, GreedySelector);
-    let request = Request::new(1, options.prompt, options.max_tokens);
+    let runtime = Runtime::new(model, GreedySelector, tokenizer);
     let mut sink = ConsoleSink;
     let mut console_trace = ConsoleTrace;
     let mut silent_trace = SilentTrace;
@@ -136,15 +188,30 @@ fn main() -> ExitCode {
     };
 
     println!(
-        "timing queue={:?} ttft={:?} ready_to_emit={:?} total={:?}",
+        "timing queue={:?} ttft={:?} first_text={:?} token_to_text={:?} total={:?}",
         result.timings.queue_delay(),
         result.timings.time_to_first_token(),
-        result.timings.ready_to_emit_delay(),
+        result.timings.time_to_first_text(),
+        result.timings.token_ready_to_text_delay(),
         result.timings.terminal_at,
     );
+    Ok(result.outcome)
+}
 
-    match result.outcome {
-        TerminalOutcome::Failed(_) => ExitCode::from(1),
-        TerminalOutcome::Completed(_) | TerminalOutcome::Cancelled => ExitCode::SUCCESS,
+fn main() -> ExitCode {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let result = match args.first().map(String::as_str) {
+        Some("tokenize") => tokenize(&args[1..]).map(|_| None),
+        Some("decode") => decode(&args[1..]).map(|_| None),
+        _ => parse_generate(args).and_then(generate).map(Some),
+    };
+
+    match result {
+        Ok(Some(TerminalOutcome::Failed(_))) => ExitCode::from(1),
+        Ok(_) => ExitCode::SUCCESS,
+        Err(message) => {
+            eprintln!("{message}");
+            ExitCode::from(2)
+        }
     }
 }

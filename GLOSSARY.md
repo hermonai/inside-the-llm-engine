@@ -389,13 +389,131 @@ queue, preparation, model, selection, and emission spans chosen by the
 measurement. First introduced: Chapter 1. Related: latency, ITL. Common
 confusion: TTFT endpoints differ across tools and must be stated.
 
-### Token / tokenizer
+### Token / token ID
 
-**Short:** A token is a vocabulary identifier; a tokenizer maps text/bytes to
-identifiers and back.
-**Precise:** Tokenization includes normalization, pre-tokenization, model rules,
-special tokens, and byte decoding whose exact behavior is part of model
-semantics. First introduced: Chapter 2. Common confusion: tokens are not words.
+**Short:** A token is one identity in a particular model vocabulary; a token ID
+is its numeric representation.
+**Precise:** Its ordinary piece may correspond to a word, subword, punctuation,
+whitespace, one or more bytes, or an incomplete UTF-8 fragment; control tokens
+may have no ordinary text bytes. First introduced: Chapter 2. Related:
+vocabulary, tokenizer, special token. Common confusion: a token is not
+necessarily a word, character, Unicode scalar value, byte, or streamed piece.
+
+### BOS / EOS / PAD / UNK
+
+**Short:** Common special-token roles for sequence beginning, sequence ending,
+padding, and unknown input.
+**Precise:** Their IDs, insertion/removal rules, and relationship to stopping
+are model-specific; UNK represents information the ordinary encoder could not
+preserve. First introduced: Chapter 2. Related: special token, byte fallback.
+Common confusion: PAD is not automatically EOS, and byte fallback does not make
+the configured UNK identity disappear.
+
+### BPE / merge rule
+
+**Short:** Byte-pair encoding segments input by applying a learned, ranked set
+of adjacent-symbol merges.
+**Precise:** Inference encoding begins from configured base symbols and
+deterministically applies fixed pair/rank rules until none remains; training,
+pre-tokenization, byte mapping, and normalization are separate parts of the
+artifact. First introduced: Chapter 2. Related: tokenizer, vocabulary. Common
+confusion: BPE encoding does not learn new merges from a user's prompt.
+
+### Byte / byte fallback
+
+**Short:** A byte is an eight-bit storage unit; byte fallback represents input
+outside ordinary pieces with byte-token identities.
+**Precise:** A complete 256-byte fallback alphabet can cover arbitrary bytes at
+the vocabulary stage, but earlier normalization may already have changed the
+input and decoded bytes may still be malformed UTF-8. First introduced: Chapter
+2. Related: UTF-8, UNK. Common confusion: byte fallback does not imply one token
+per byte after merges or unconditional surface-text round trip.
+
+### Chat template
+
+**Short:** The model-specific serialization from structured messages to model
+input.
+**Precise:** It orders role/content data and inserts separators, turn endings,
+and optional generation prefixes under the tokenizer's special-token contract.
+First introduced: Chapter 2. Related: special token, model contract. Common
+confusion: a plausible `role: content` flattening is not interchangeable with
+the template used during training.
+
+### Decode buffer
+
+**Short:** Per-request bytes retained until complete valid output text exists.
+**Precise:** Token pieces append to a UTF-8 framing buffer; complete valid
+prefixes may emit while a valid incomplete suffix remains bounded to at most
+three bytes. First introduced: Chapter 2. Related: decoding, UTF-8, stream.
+Common confusion: one generated token need not create one text event.
+
+### Encoding / decoding
+
+**Short:** Encoding maps input bytes/text to token IDs; decoding maps IDs to
+configured byte pieces and reconstructed output.
+**Precise:** The transforms include the tokenizer's normalization,
+pre-tokenization, vocabulary model, post-processing, and decoder rules; exact
+round trip is conditional on those semantics. First introduced: Chapter 2.
+Related: tokenizer, normalization. Common confusion: model workload phase
+*decode* and tokenizer ID-to-byte decoding are different uses of the word.
+
+### Normalization
+
+**Short:** A configured transform applied before token segmentation.
+**Precise:** It may apply a Unicode normalization form, case or accent changes,
+whitespace rules, dummy prefixes, or other mappings, some of which are
+irreversible at the original-byte surface. First introduced: Chapter 2.
+Related: Unicode scalar value, tokenizer. Common confusion: Unicode does not
+require every tokenizer to normalize input automatically.
+
+### SentencePiece / Unigram tokenizer
+
+**Short:** SentencePiece is a tokenizer toolkit/model format; Unigram is one
+segmentation model it can store.
+**Precise:** SentencePiece supports BPE, Unigram, word, and character model
+types plus embedded normalization and special-symbol configuration. A Unigram
+model scores candidate pieces and searches segmentations rather than applying a
+ranked BPE merge list. First introduced: Chapter 2. Related: BPE, vocabulary.
+Common confusion: *SentencePiece* and *Unigram* are not synonyms.
+
+### Special token
+
+**Short:** A vocabulary identity with model/control semantics rather than
+ordinary user-text semantics.
+**Precise:** BOS/EOS/PAD/UNK, role, separator, and end-of-turn identities must
+be inserted or parsed only through an authorized model-specific surface. First
+introduced: Chapter 2. Related: chat template, token ID. Common confusion: a
+diagnostic marker spelling in ordinary user text is not itself authority to
+insert the control identity.
+
+### Tokenizer
+
+**Short:** The configured mapping between input text/bytes and model vocabulary
+identifiers.
+**Precise:** Tokenizer identity includes normalization, pre-tokenization,
+vocabulary/model rules, byte/unknown behavior, special-token semantics,
+post-processing, and decode rules bound to a model revision. First introduced:
+Chapter 2. Related: vocabulary, model artifact, chat template. Common confusion:
+the algorithm name alone does not identify the tokenizer.
+
+### Unicode scalar value / UTF-8
+
+**Short:** A Unicode scalar value is a Unicode code point excluding surrogates;
+UTF-8 encodes each scalar as one to four bytes.
+**Precise:** Grapheme, scalar, byte, and token boundaries are independent;
+ill-formed byte sequences cannot be interpreted as Unicode characters. First
+introduced: Chapter 2. Related: byte, decode buffer. Common confusion: a
+user-perceived character may contain several scalar values, and one token piece
+may contain only part of one scalar's UTF-8 bytes.
+
+### Vocabulary
+
+**Short:** The finite model-specific catalog that gives token IDs meaning.
+**Precise:** It contains ordinary pieces and possibly control, unknown, byte,
+unused, or other entries, together with configuration used to select IDs. First
+introduced: Chapter 2. Related: token ID, tokenizer, embedding. Common
+confusion: equal numeric IDs or visible pieces in two vocabularies are not
+interchangeable.
 
 ### Workspace
 

@@ -27,11 +27,38 @@ research/README.md
 research/hermon/README.md
 research/part-01/README.md
 research/part-01/chapter-01-the-missing-half-of-ai.md
+research/part-01/chapter-02-from-text-to-tokens.md
+research/part-01/tokenizer-comparison.md
 diagrams/README.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then
         echo "missing or empty required file: $file" >&2
+        exit 1
+    fi
+done
+
+for file in \
+    manuscript/part-01/chapter-02-from-text-to-tokens.md \
+    code/reference/chapter-02-tokenizer-oracles.md \
+    code/experiments/tokenizer-comparison/compare.py \
+    code/experiments/tokenizer-comparison/README.md \
+    code/mini-engine/fixtures/tokenizer/tiny-bpe.txt \
+    code/mini-engine/fixtures/tokenizer/utf8-stream.txt \
+    code/mini-engine/fixtures/tokenizer/chat-template.txt \
+    labs/lab-02-tokenize-by-hand.md \
+    labs/lab-03-stream-utf8-across-tokens.md \
+    labs/lab-04-use-the-wrong-chat-template.md \
+    diagrams/tokenizer/text-unicode-bytes-tokens.txt \
+    diagrams/tokenizer/bpe-merge-process.txt \
+    diagrams/tokenizer/chat-template-pipeline.txt \
+    diagrams/tokenizer/token-to-byte-stream.txt \
+    diagrams/tokenizer/utf8-partial-token-boundary.txt \
+    diagrams/tokenizer/model-tokenizer-template-contract.txt \
+    diagrams/tokenizer/engine0-token-ownership.txt
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 2 artifact: $file" >&2
         exit 1
     fi
 done
@@ -107,4 +134,10 @@ if [ "$chapter_one_words" -lt 5000 ] || [ "$chapter_one_words" -gt 9000 ]; then
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 specifications, Chapter 1 artifacts present"
+chapter_two_words=$(wc -w < manuscript/part-01/chapter-02-from-text-to-tokens.md)
+if [ "$chapter_two_words" -lt 6000 ] || [ "$chapter_two_words" -gt 10000 ]; then
+    echo "Chapter 2 must contain 6,000-10,000 words, found $chapter_two_words" >&2
+    exit 1
+fi
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-2 artifacts present"

@@ -101,12 +101,13 @@ paths. Never push unless the user explicitly authorizes it.
 ## Current state and next task
 
 Phase 0 repository architecture is established. Phase 1 is in progress:
-Chapter 1, ENGINE-0, Lab 1, four canonical diagrams, and the current Hermon
-request-path refresh are complete. The authoritative state and next task are in
-`docs/STATUS.md`.
+Chapters 1–2, tokenized ENGINE-0, Labs 1–4, eleven canonical diagrams, and the
+current Hermon request/tokenizer refresh are complete. The authoritative state
+and next task are in `docs/STATUS.md`.
 
-The next bounded task is Chapter 2 — From Text to Tokens. Keep it strictly to
-UTF-8 bytes, Unicode boundaries, tokenizer families, special tokens, chat
-templates, streaming decode boundaries, model-specific tokenizer semantics,
-and a real tokenizer contract/oracle for the mini-engine. Do not begin the
-Chapter 3 numerical ENGINE-1 model in that task.
+The next bounded task is Chapter 3 — The Smallest Possible Language Model.
+Replace the fake candidate table itself with a genuine embedding/hidden/output
+projection/logit path and an independent hand-computable oracle. Preserve the
+tokenizer and request lifecycle established by Chapters 1–2. Do not hide the
+fake score table behind ENGINE-1, and do not begin Chapter 4 sampling or the
+complete autoregressive loop.

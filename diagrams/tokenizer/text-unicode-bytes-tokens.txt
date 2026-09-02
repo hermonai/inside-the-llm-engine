@@ -1,0 +1,9 @@
+TEXT, UNICODE, BYTES, AND TOKENS
+
+visible text       Unicode scalars       UTF-8 bytes           token IDs
+"世🚀"         ->  U+4E16 U+1F680   ->  E4 B8 96 F0 9F 9A 80 -> [x, y, z]
+                     2 scalars                7 bytes            model-specific
+
+Legend: -> deterministic transform under one configured tokenizer.
+None of the four columns defines the boundaries in another column.
+

@@ -10,12 +10,12 @@ Last updated: 2026-09-02.
 | Book constitution and policies | COMPLETE | Core editorial/source/code/math/style/benchmark contracts created |
 | Master outline | OUTLINED | 15 parts, 94 chapter authoring specifications; review again before each phase |
 | Public README and BOOK | COMPLETE | Launch-facing overview and table of contents agree |
-| Glossary and terminology | IN PROGRESS | Chapter 1 system/lifecycle terms added; expand with each chapter |
-| Hermon reconnaissance | COMPLETE | Initial map and Chapter 1 request path verified at `hermon` commit `472a44c` |
+| Glossary and terminology | IN PROGRESS | Chapters 1–2 system, token, Unicode, template, and streaming terms added; expand with each chapter |
+| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–2 request/tokenizer paths verified at `hermon` commit `472a44c` |
 | Manuscript part indexes | COMPLETE | 15 part contracts plus appendices scaffolded |
 | Diagram system | COMPLETE | Policy and area indexes created; canonical diagrams begin with chapters |
 | Research system | COMPLETE | Inventories and note templates established |
-| Code project | COMPLETE | ENGINE-0 dependency-free Rust lifecycle builds and passes 11 tests; later milestones remain planned |
+| Code project | COMPLETE | Tokenized ENGINE-0 is dependency-free Rust and passes 37 tests; numerical ENGINE-1 remains planned |
 | Initial CI | COMPLETE | Structure, links, diagrams, Rust format/check/test/Clippy workflow added |
 | License | PLANNED | Maintainers must choose prose and code licensing; no license inferred from Hermon |
 
@@ -26,17 +26,18 @@ tracked separately below.
 
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
-| Part I (Ch. 1–4) | IN PROGRESS | Chapter 1 complete; Chapters 2–4 remain |
+| Part I (Ch. 1–4) | IN PROGRESS | Chapters 1–2 complete; Chapters 3–4 remain |
 | Chapter 1 — The Missing Half of AI | COMPLETE | 6,874-word reviewed chapter, primary-source research, four canonical diagrams |
-| ENGINE-0 | COMPLETE | Dependency-free Rust request/model/runtime/stream lifecycle; format/check/test/Clippy pass |
+| Chapter 2 — From Text to Tokens | COMPLETE | 7,306-word reviewed chapter, primary-source research, seven canonical diagrams, two-tokenizer comparison |
+| ENGINE-0 | COMPLETE | Dependency-free tokenized request/runtime/stream lifecycle; byte oracle, BPE, chat/template contract, strict UTF-8 framing; 37 tests and full Rust gate pass |
 | Lab 1 — Generate One Token Manually | COMPLETE | Independent candidate oracle plus CHECK/BUILD/BREAK/EXTEND exercise |
-| Chapter 2 — From Text to Tokens | PLANNED | Strict tokenizer boundary scope; no Chapter 3 numerical model yet |
+| Labs 2–4 — Tokenization / UTF-8 / chat template | COMPLETE | Hand BPE, split-byte streaming, malformed terminal policy, and wrong-template experiments |
 
 ## Curriculum status
 
 | Scope | Status | Milestone |
 | --- | --- | --- |
-| Part I (Ch. 1–4) | IN PROGRESS | ENGINE-0 complete; ENGINE-1 follows Chapters 2–3 |
+| Part I (Ch. 1–4) | IN PROGRESS | Tokenized ENGINE-0 complete; ENGINE-1 begins in Chapter 3 |
 | Part II (Ch. 5–13) | PLANNED | ENGINE-2 |
 | Part III (Ch. 14–18) | PLANNED | ENGINE-3 |
 | Part IV (Ch. 19–22) | PLANNED | ENGINE-4 |
@@ -63,9 +64,11 @@ tracked separately below.
 
 ## Next recommended task
 
-Execute only Chapter 2 — From Text to Tokens. Research UTF-8 bytes, Unicode,
-BPE/SentencePiece-style tokenizer models, special tokens, chat templates,
-streaming decode boundaries, and model-specific tokenizer semantics from
-primary sources. Specify and implement a real tokenizer contract plus
-independent byte/token oracles behind ENGINE-0's existing lifecycle. Do not
-start Chapter 3 or replace the fake candidate model with numerical ENGINE-1.
+Execute only Chapter 3 — The Smallest Possible Language Model. Replace the fake
+ENGINE-0 candidate table itself with genuine numerical ENGINE-1 inference:
+token ID -> embedding lookup -> hidden vector -> output projection -> one logit
+per vocabulary item. Separate immutable learned parameters from runtime
+activations, make every shape explicit, reject invalid IDs/shapes, and verify
+the result with an independent hand-computable oracle. Do not preserve the fake
+integer score table behind a wrapper, and do not begin Chapter 4 sampling or the
+autoregressive loop.

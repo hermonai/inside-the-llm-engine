@@ -1,0 +1,9 @@
+ONE UTF-8 SCALAR ACROSS TWO TOKEN BOUNDARIES
+
+token x bytes: E4 B8        [pending E4 B8]        text: (nothing)
+token y bytes:       96  -> [pending E4 B8 96] -> validate -> text: "世"
+                                                      |
+                                                      `-> [pending empty]
+
+Legend: brackets denote request-owned mutable bytes. UTF-8 boundaries win.
+

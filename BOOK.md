@@ -8,7 +8,7 @@ each chapter lives in [docs/OUTLINE.md](docs/OUTLINE.md).
 ### Part I — What Actually Happens When an LLM Answers?
 
 1. [The Missing Half of AI](manuscript/part-01/chapter-01-the-missing-half-of-ai.md)
-2. From Text to Tokens
+2. [From Text to Tokens](manuscript/part-01/chapter-02-from-text-to-tokens.md)
 3. The Smallest Possible Language Model
 4. Logits, Sampling, and the Autoregressive Loop
 

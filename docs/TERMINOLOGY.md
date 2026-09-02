@@ -13,6 +13,18 @@ entry before a chapter reaches TECH-REVIEW.
 
 - A **token** is a model vocabulary identifier; it is not necessarily a word,
   character, or byte.
+- A **Unicode scalar value**, a UTF-8 **byte**, a vocabulary **token ID**, and a
+  streamed text **piece** are distinct units. Name the one being counted.
+- **Encoding/decoding** can mean tokenizer IDs-to-bytes work; **decode** also
+  names the later model workload phase. Qualify the tokenizer operation when
+  both meanings appear nearby.
+- **SentencePiece** names a toolkit/model format that can contain BPE or
+  Unigram semantics; do not use it as a synonym for either algorithm.
+- **Special-token insertion** is an explicit trusted operation. Marker-looking
+  ordinary text does not become a control identity unless a model-specific
+  parsing surface deliberately authorizes that behavior.
+- A **chat template** is model-input serialization bound to a tokenizer/model
+  revision, not merely presentation formatting.
 - **Prefill** evaluates prompt positions and creates reusable per-position
   state; **decode** advances active sequences with newly generated positions.
 - A **sequence** is one logical token history. A **physical token batch** is the

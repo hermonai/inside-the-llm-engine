@@ -10,3 +10,6 @@ Define a legend when more than one arrow/state convention appears. Recommended:
 state, `(X)` immutable data. Show ownership, mutation, concurrency boundaries,
 residency, and terminal/failure paths. Keep lines at a reviewable width and test
 in a monospaced view. Diagrams are technical artifacts, not decoration.
+
+Chapter 2's text/token/UTF-8 and chat-contract diagrams are indexed under
+[`tokenizer/`](tokenizer/README.md).

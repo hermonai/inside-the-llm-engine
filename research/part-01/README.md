@@ -7,7 +7,7 @@ from the current implementation choices of named projects.
 | Chapter | Research status | Note |
 | --- | --- | --- |
 | 1. The Missing Half of AI | COMPLETE | [System boundary, lifecycle, and ENGINE-0 evidence](chapter-01-the-missing-half-of-ai.md) |
-| 2. From Text to Tokens | PLANNED | Tokenizer semantics and byte/token round trips |
+| 2. From Text to Tokens | COMPLETE | [Tokenizer semantics, Hermon source trace, and byte/token contracts](chapter-02-from-text-to-tokens.md) |
 | 3. The Smallest Possible Language Model | PLANNED | Tiny numerical model and independent logits oracle |
 | 4. Logits, Sampling, and the Autoregressive Loop | PLANNED | Selection, stopping, and repeated generation |
 

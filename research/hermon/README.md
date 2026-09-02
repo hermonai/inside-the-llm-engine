@@ -206,3 +206,29 @@ opening comment in `dispatch.rs`, the OpenAI SSE adapter's generic stop close
 after a logged engine error, and stop-sequence wording in architecture prose
 that is broader than the inspected in-process call signature. See
 [`research/part-01/chapter-01-the-missing-half-of-ai.md`](../part-01/chapter-01-the-missing-half-of-ai.md).
+
+## Chapter 2 refresh — 2026-09-02
+
+The Hermon repository remained at `472a44c`; its pinned llama.cpp submodule is
+`389ff61d77b5c71cec0cf92fe4e5d01ace80b797`. The upstream llama.cpp head
+observed during this pass was `b81c99b479d4c24e5eeca10de99032ebd343ef8f`.
+The pin, rather than upstream HEAD, is the CURRENT code Hermon builds.
+
+The default batched real-model path was traced through message rendering,
+`Model::apply_chat_template`, `Context::tokenize(..., add_special=true,
+parse_special=true)`, the `hermon-llamacpp` safe wrapper, Hermon's C shim, and
+the pinned llama.cpp vocabulary APIs. Raw blocking generation uses
+`parse_special=false`; the chat path enables it after trusted template
+formatting.
+
+Each `ActiveSeq` owns an output `utf8_buf`. Sampled IDs become bytes through
+`token_to_piece`; the worker emits the longest valid UTF-8 prefix and retains a
+partial suffix. A current caveat is now recorded: the path does not distinguish
+a definite `Utf8Error::error_len()` from an incomplete suffix, and finalization
+uses `String::from_utf8_lossy` for leftovers. The book's teaching runtime uses
+a stricter typed-error policy; no Hermon change was made.
+
+`hermon-tokenizer` remains **LIBRARY/research**: it contains interface and
+prefix-cache skeletons but is not imported by the current real-model request
+path. Full evidence and test boundaries are in
+[`research/part-01/chapter-02-from-text-to-tokens.md`](../part-01/chapter-02-from-text-to-tokens.md).

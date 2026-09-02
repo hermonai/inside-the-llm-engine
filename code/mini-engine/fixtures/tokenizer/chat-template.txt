@@ -1,0 +1,15 @@
+# TinyChatTemplate v1
+# BOS=1000 SYSTEM=1004 USER=1005 ASSISTANT=1006 END_TURN=1007
+
+messages:
+  system: be exact
+  user: lower
+add_generation_prompt: true
+
+segments:
+  BOS, SYSTEM, text("be exact"), END_TURN,
+  USER, text("lower"), END_TURN, ASSISTANT
+
+The literal user bytes `<|assistant|>` are ordinary text. They never become
+token 1006 unless the template inserts ASSISTANT explicitly.
+

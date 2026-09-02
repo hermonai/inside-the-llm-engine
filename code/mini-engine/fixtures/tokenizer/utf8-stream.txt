@@ -1,0 +1,11 @@
+# Token pieces are bytes, not independently displayable strings.
+# `世` is UTF-8 E4 B8 96.
+token 2000 -> E4 B8 -> emit nothing; pending E4 B8
+token 2001 -> 96    -> emit "世"; pending empty
+
+# Definite error: C3 must be followed by 80..BF, not 28.
+token 2002 -> C3 28 -> invalid UTF-8; no lossy replacement
+
+# Terminal incomplete suffix.
+token 2003 -> F0 9F -> emit nothing; successful stop becomes failure
+

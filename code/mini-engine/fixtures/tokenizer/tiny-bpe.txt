@@ -1,0 +1,19 @@
+# Chapter 2 tiny BPE hand fixture
+# Columns: rank left right result_id result_bytes
+0  l    o    256  lo
+1  256  w    257  low
+2  e    r    258  er
+3  257  258  259  lower
+4  b    l    260  bl
+5  260  u    261  blu
+6  261  e    262  blue
+7  g    r    263  gr
+8  263  e    264  gre
+9  264  e    265  gree
+10 265  n    266  green
+
+# Oracle encodings
+lower -> [259]
+lolo  -> [256, 256]
+xyz   -> [120, 121, 122]
+

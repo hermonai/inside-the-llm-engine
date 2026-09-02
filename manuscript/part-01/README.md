@@ -11,6 +11,6 @@ model, logits, sampling, and the autoregressive loop.
 | Chapter | Status | Artifact |
 | --- | --- | --- |
 | 1. The Missing Half of AI | COMPLETE | [Chapter](chapter-01-the-missing-half-of-ai.md), [ENGINE-0](../../code/mini-engine/README.md), [Lab 1](../../labs/lab-01-generate-one-token-manually.md) |
-| 2. From Text to Tokens | PLANNED | Tokenizer contract and byte/token oracles |
+| 2. From Text to Tokens | COMPLETE | [Chapter](chapter-02-from-text-to-tokens.md), [tokenized ENGINE-0](../../code/mini-engine/README.md), [Labs 2–4](../../docs/LABS.md) |
 | 3. The Smallest Possible Language Model | PLANNED | ENGINE-1 numerical model |
 | 4. Logits, Sampling, and the Autoregressive Loop | PLANNED | Complete generation loop |
