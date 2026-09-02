@@ -1,6 +1,7 @@
 use engine0::tokenizer::{
-    ByteTokenizer, MergeRule, SpecialToken, TinyBpeTokenizer, TokenId, Tokenizer, TokenizerError,
-    TOKEN_ASSISTANT, TOKEN_LO, TOKEN_LOWER,
+    ByteTokenizer, MergeRule, SpecialToken, TinyBpeTokenizer, TinyLmTokenizer, TokenId, Tokenizer,
+    TokenizerError, TINY_LM_EOS, TINY_LM_I, TINY_LM_LIKE, TINY_LM_RUST, TOKEN_ASSISTANT, TOKEN_LO,
+    TOKEN_LOWER,
 };
 
 fn round_trip(tokenizer: &impl Tokenizer, input: &[u8]) {
@@ -115,4 +116,33 @@ fn malformed_merge_tables_return_errors() {
         TinyBpeTokenizer::try_new(special_collision),
         Err(TokenizerError::InvalidMergeTable(_))
     ));
+}
+
+#[test]
+fn engine1_vocabulary_round_trips_supported_text() {
+    let tokenizer = TinyLmTokenizer;
+    let ids = tokenizer.encode(b"I like Rust").unwrap();
+    assert_eq!(ids, vec![TINY_LM_I, TINY_LM_LIKE, TINY_LM_RUST]);
+    assert_eq!(tokenizer.decode(&ids).unwrap(), b"I like Rust");
+    assert_eq!(tokenizer.vocabulary_size(), 4);
+}
+
+#[test]
+fn engine1_tokenizer_rejects_out_of_vocabulary_text() {
+    assert!(matches!(
+        TinyLmTokenizer.encode(b"I dislike Rust"),
+        Err(TokenizerError::UnsupportedInput { .. })
+    ));
+}
+
+#[test]
+fn engine1_eos_is_special_and_has_no_text_bytes() {
+    assert_eq!(
+        TinyLmTokenizer.special_id(SpecialToken::Eos),
+        Some(TINY_LM_EOS)
+    );
+    assert_eq!(
+        TinyLmTokenizer.decode_token(TINY_LM_EOS),
+        Err(TokenizerError::SpecialTokenHasNoOrdinaryBytes(TINY_LM_EOS))
+    );
 }

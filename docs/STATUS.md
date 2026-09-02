@@ -10,12 +10,12 @@ Last updated: 2026-09-02.
 | Book constitution and policies | COMPLETE | Core editorial/source/code/math/style/benchmark contracts created |
 | Master outline | OUTLINED | 15 parts, 94 chapter authoring specifications; review again before each phase |
 | Public README and BOOK | COMPLETE | Launch-facing overview and table of contents agree |
-| Glossary and terminology | IN PROGRESS | Chapters 1–2 system, token, Unicode, template, and streaming terms added; expand with each chapter |
-| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–2 request/tokenizer paths verified at `hermon` commit `472a44c` |
+| Glossary and terminology | IN PROGRESS | Chapters 1–3 system, token, numerical model, tensor, and streaming terms added; expand with each chapter |
+| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–3 request/tokenizer/logit paths verified at `hermon` commit `472a44c` |
 | Manuscript part indexes | COMPLETE | 15 part contracts plus appendices scaffolded |
 | Diagram system | COMPLETE | Policy and area indexes created; canonical diagrams begin with chapters |
 | Research system | COMPLETE | Inventories and note templates established |
-| Code project | COMPLETE | Tokenized ENGINE-0 is dependency-free Rust and passes 37 tests; numerical ENGINE-1 remains planned |
+| Code project | COMPLETE | Dependency-free ENGINE-1 replaces fake candidates with embedding/projection logits; 61 tests pass |
 | Initial CI | COMPLETE | Structure, links, diagrams, Rust format/check/test/Clippy workflow added |
 | License | PLANNED | Maintainers must choose prose and code licensing; no license inferred from Hermon |
 
@@ -26,18 +26,21 @@ tracked separately below.
 
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
-| Part I (Ch. 1–4) | IN PROGRESS | Chapters 1–2 complete; Chapters 3–4 remain |
+| Part I (Ch. 1–4) | IN PROGRESS | Chapters 1–3 complete; Chapter 4 remains |
 | Chapter 1 — The Missing Half of AI | COMPLETE | 6,874-word reviewed chapter, primary-source research, four canonical diagrams |
 | Chapter 2 — From Text to Tokens | COMPLETE | 7,306-word reviewed chapter, primary-source research, seven canonical diagrams, two-tokenizer comparison |
+| Chapter 3 — The Smallest Possible Language Model | COMPLETE | 6,508-word reviewed chapter, primary-source research, seven canonical diagrams, full-vector Python oracle |
 | ENGINE-0 | COMPLETE | Dependency-free tokenized request/runtime/stream lifecycle; byte oracle, BPE, chat/template contract, strict UTF-8 framing; 37 tests and full Rust gate pass |
+| ENGINE-1 | COMPLETE | Immutable `f32` embedding `[V,D]`, projection `[V,D]`, bias `[V]`, typed finite logits, shape/vocabulary validation, independent oracle; current suite 61 tests |
 | Lab 1 — Generate One Token Manually | COMPLETE | Independent candidate oracle plus CHECK/BUILD/BREAK/EXTEND exercise |
 | Labs 2–4 — Tokenization / UTF-8 / chat template | COMPLETE | Hand BPE, split-byte streaming, malformed terminal policy, and wrong-template experiments |
+| Labs 5–8 — Numerical forward / causality / context / shape | COMPLETE | Full hand logits, one-weight intervention, same-last-token proof, and typed malformed-shape failures |
 
 ## Curriculum status
 
 | Scope | Status | Milestone |
 | --- | --- | --- |
-| Part I (Ch. 1–4) | IN PROGRESS | Tokenized ENGINE-0 complete; ENGINE-1 begins in Chapter 3 |
+| Part I (Ch. 1–4) | IN PROGRESS | ENGINE-0/1 and Chapters 1–3 complete; sampling/autoregressive Chapter 4 next |
 | Part II (Ch. 5–13) | PLANNED | ENGINE-2 |
 | Part III (Ch. 14–18) | PLANNED | ENGINE-3 |
 | Part IV (Ch. 19–22) | PLANNED | ENGINE-4 |
@@ -64,11 +67,9 @@ tracked separately below.
 
 ## Next recommended task
 
-Execute only Chapter 3 — The Smallest Possible Language Model. Replace the fake
-ENGINE-0 candidate table itself with genuine numerical ENGINE-1 inference:
-token ID -> embedding lookup -> hidden vector -> output projection -> one logit
-per vocabulary item. Separate immutable learned parameters from runtime
-activations, make every shape explicit, reject invalid IDs/shapes, and verify
-the result with an independent hand-computable oracle. Do not preserve the fake
-integer score table behind a wrapper, and do not begin Chapter 4 sampling or the
-autoregressive loop.
+Execute only Chapter 4 — Logits, Sampling, and the Autoregressive Loop. Begin
+with ENGINE-1's typed finite logits and derive numerically stable softmax,
+temperature, greedy and categorical sampling, seeds, top-k/top-p, and token
+feedback. Preserve the separation among model semantics, logits processors,
+sampler policy, history mutation, EOS/token budgets, streaming, and the single
+terminal owner. Do not begin Part II's Transformer implementation.

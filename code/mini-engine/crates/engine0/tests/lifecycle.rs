@@ -1,22 +1,30 @@
+use engine0::chat::ModelContract;
+use engine0::model::{ForwardPass, Logits, Model, ModelError, TinyLanguageModel};
 use engine0::tokenizer::{
-    TinyBpeTokenizer, TokenId, Tokenizer, TokenizerError, TokenizerIdentity, TOKEN_BLUE, TOKEN_EOS,
+    SpecialToken, TinyLmTokenizer, TokenId, Tokenizer, TokenizerError, TokenizerIdentity,
+    TINY_LM_EOS, TINY_LM_LIKE, TINY_LM_RUST,
 };
 use engine0::{
-    CancelAtStep, Candidate, DemoModel, GenerationError, GenerationState, GreedySelector, Model,
-    ModelError, NeverCancel, RecordingSink, RecordingTrace, Request, Runtime, StopReason,
-    StreamEvent, TerminalOutcome, Token, TraceKind,
+    CancelAtStep, GenerationError, GreedySelector, NeverCancel, RecordingSink, RecordingTrace,
+    Request, Runtime, StopReason, StreamEvent, TerminalOutcome, Token, TraceKind,
 };
 
 fn request(id: u64, text: &[u8], max: usize) -> Request {
-    Request::from_text(id, text, max, &TinyBpeTokenizer::teaching()).expect("teaching encode")
+    Request::from_text(id, text, max, &TinyLmTokenizer).expect("ENGINE-1 fixture encode")
 }
 
-fn run_demo(request: Request) -> (engine0::GenerationResult, RecordingSink, RecordingTrace) {
-    let runtime = Runtime::new(
-        DemoModel::default(),
+fn runtime<M: Model>(model: M) -> Runtime<M, GreedySelector, TinyLmTokenizer> {
+    Runtime::try_new(
+        model,
         GreedySelector,
-        TinyBpeTokenizer::teaching(),
-    );
+        TinyLmTokenizer,
+        &ModelContract::engine1(),
+    )
+    .expect("matching ENGINE-1 contract")
+}
+
+fn run_fixture(request: Request) -> (engine0::GenerationResult, RecordingSink, RecordingTrace) {
+    let runtime = runtime(TinyLanguageModel::chapter3_fixture());
     let mut sink = RecordingSink::default();
     let mut trace = RecordingTrace::default();
     let result = runtime.generate(request, &NeverCancel, &mut sink, &mut trace);
@@ -30,32 +38,39 @@ fn terminal_count(events: &[StreamEvent]) -> usize {
         .count()
 }
 
-#[test]
-fn hand_computable_oracle_selects_blue_then_eos() {
-    let (result, sink, _) = run_demo(request(1, b"What color?", 8));
+fn close_vector(actual: &[f32], expected: &[f32]) -> bool {
+    actual.len() == expected.len()
+        && actual
+            .iter()
+            .zip(expected)
+            .all(|(a, e)| (a - e).abs() <= 1e-6 + 1e-6 * e.abs())
+}
 
-    assert_eq!(result.tokens, vec![Token::text(TOKEN_BLUE)]);
+#[test]
+fn numerical_model_selects_rust_then_eos() {
+    let (result, sink, _) = run_fixture(request(1, b"I like", 8));
+    assert_eq!(result.tokens, vec![Token::text(TINY_LM_RUST)]);
     assert_eq!(
         result.outcome,
         TerminalOutcome::Completed(StopReason::EndOfSequence)
     );
     assert!(sink.events.iter().any(|event| matches!(
         event,
-        StreamEvent::Text { text, .. } if text == "blue"
+        StreamEvent::Text { text, .. } if text == " Rust"
     )));
     assert_eq!(terminal_count(&sink.events), 1);
 }
 
 #[test]
-fn trace_exposes_encode_token_decode_buffer_and_text_stages() {
-    let (_, _, trace) = run_demo(request(2, b"order", 8));
+fn trace_exposes_embedding_logits_selection_and_text_stages() {
+    let (_, _, trace) = run_fixture(request(2, b"I like", 8));
     let kinds: Vec<&TraceKind> = trace.events.iter().map(|event| &event.kind).collect();
 
     assert!(matches!(
         kinds[0],
         TraceKind::InputEncoded {
-            bytes: 5,
-            token_count: 4
+            bytes: 6,
+            token_count: 2
         }
     ));
     assert!(matches!(kinds[1], TraceKind::Admitted));
@@ -63,16 +78,22 @@ fn trace_exposes_encode_token_decode_buffer_and_text_stages() {
     assert!(matches!(kinds[3], TraceKind::ModelInvoked { step: 0 }));
     assert!(matches!(
         kinds[4],
-        TraceKind::TokenSelected { token_id, .. } if *token_id == TOKEN_BLUE
+        TraceKind::EmbeddingReady { input_token, shape: [3], values }
+            if *input_token == TINY_LM_LIKE && values == &[1.0, -0.5, 2.0]
     ));
-    assert!(matches!(kinds[5], TraceKind::TokenEmitted { .. }));
-    assert!(matches!(kinds[6], TraceKind::TokenDecoded { bytes: 4, .. }));
     assert!(matches!(
-        kinds[7],
-        TraceKind::Utf8Buffered { pending_bytes: 0 }
+        kinds[5],
+        TraceKind::LogitsReady { shape: [4], values }
+            if close_vector(values, &[-0.7, 0.1, 0.4, 2.2])
     ));
-    assert!(matches!(kinds[8], TraceKind::TextEmitted { bytes: 4, .. }));
-    assert!(matches!(kinds[9], TraceKind::ModelInvoked { step: 1 }));
+    assert!(matches!(
+        kinds[6],
+        TraceKind::TokenSelected { token_id, .. } if *token_id == TINY_LM_RUST
+    ));
+    assert!(matches!(kinds[7], TraceKind::TokenEmitted { .. }));
+    assert!(matches!(kinds[8], TraceKind::TokenDecoded { bytes: 5, .. }));
+    assert!(matches!(kinds[10], TraceKind::TextEmitted { bytes: 5, .. }));
+    assert!(matches!(kinds[11], TraceKind::ModelInvoked { step: 1 }));
     assert!(matches!(
         kinds.last(),
         Some(TraceKind::Terminal(TerminalOutcome::Completed(
@@ -81,34 +102,38 @@ fn trace_exposes_encode_token_decode_buffer_and_text_stages() {
     ));
 }
 
-struct NeverEndingModel;
+struct ConstantModel {
+    logits: [f32; 4],
+}
 
-impl Model for NeverEndingModel {
-    fn candidates(
-        &self,
-        _request: &Request,
-        _state: &GenerationState,
-    ) -> Result<Vec<Candidate>, ModelError> {
-        Ok(vec![Candidate::new(Token::text(TOKEN_BLUE), 1)])
+impl Model for ConstantModel {
+    fn vocabulary_size(&self) -> usize {
+        4
+    }
+
+    fn forward(&self, input: &[TokenId]) -> Result<ForwardPass, ModelError> {
+        let input_token = *input.last().ok_or(ModelError::EmptyInput)?;
+        let model =
+            TinyLanguageModel::try_new(4, 1, vec![1.0; 4], self.logits.to_vec(), vec![0.0; 4])?;
+        let mut pass = model.forward(&[TokenId(0)])?;
+        pass.input_token = input_token;
+        Ok(pass)
     }
 }
 
 #[test]
 fn max_token_stop_is_explicit_and_terminal_is_exactly_once() {
-    let runtime = Runtime::new(
-        NeverEndingModel,
-        GreedySelector,
-        TinyBpeTokenizer::teaching(),
-    );
+    let runtime = runtime(ConstantModel {
+        logits: [-1.0, -1.0, -1.0, 2.0],
+    });
     let mut sink = RecordingSink::default();
     let mut trace = RecordingTrace::default();
     let result = runtime.generate(
-        request(3, b"bounded", 2),
+        request(3, b"I like", 2),
         &NeverCancel,
         &mut sink,
         &mut trace,
     );
-
     assert_eq!(result.tokens.len(), 2);
     assert_eq!(
         result.outcome,
@@ -119,20 +144,17 @@ fn max_token_stop_is_explicit_and_terminal_is_exactly_once() {
 
 #[test]
 fn cancellation_emits_no_later_token_and_one_terminal() {
-    let runtime = Runtime::new(
-        NeverEndingModel,
-        GreedySelector,
-        TinyBpeTokenizer::teaching(),
-    );
+    let runtime = runtime(ConstantModel {
+        logits: [-1.0, -1.0, -1.0, 2.0],
+    });
     let mut sink = RecordingSink::default();
     let mut trace = RecordingTrace::default();
     let result = runtime.generate(
-        request(4, b"cancel me", 8),
+        request(4, b"I like", 8),
         &CancelAtStep(1),
         &mut sink,
         &mut trace,
     );
-
     assert_eq!(result.tokens.len(), 1);
     assert_eq!(result.outcome, TerminalOutcome::Cancelled);
     assert_eq!(terminal_count(&sink.events), 1);
@@ -140,8 +162,7 @@ fn cancellation_emits_no_later_token_and_one_terminal() {
 
 #[test]
 fn empty_encoded_input_fails_without_admission_or_token() {
-    let (result, sink, trace) = run_demo(request(5, b"", 8));
-
+    let (result, sink, trace) = run_fixture(request(5, b"", 8));
     assert!(matches!(
         result.outcome,
         TerminalOutcome::Failed(GenerationError::InvalidRequest(_))
@@ -151,27 +172,63 @@ fn empty_encoded_input_fails_without_admission_or_token() {
     assert_eq!(trace.events.len(), 1);
 }
 
-#[test]
-fn whitespace_is_real_input_not_a_blank_string_error() {
-    let (result, _, _) = run_demo(request(6, b" \t\n", 8));
-    assert_eq!(
-        result.outcome,
-        TerminalOutcome::Completed(StopReason::EndOfSequence)
-    );
+struct FailingModel;
+
+impl Model for FailingModel {
+    fn vocabulary_size(&self) -> usize {
+        4
+    }
+
+    fn forward(&self, _input: &[TokenId]) -> Result<ForwardPass, ModelError> {
+        Err(ModelError::InjectedFailure("test failure".to_string()))
+    }
 }
 
 #[test]
-fn model_failure_after_a_token_cannot_also_complete() {
-    let runtime = Runtime::new(
-        DemoModel::failing_at(1),
-        GreedySelector,
-        TinyBpeTokenizer::teaching(),
-    );
+fn model_failure_cannot_also_complete() {
+    let runtime = runtime(FailingModel);
     let mut sink = RecordingSink::default();
     let mut trace = RecordingTrace::default();
-    let result = runtime.generate(request(7, b"fail", 8), &NeverCancel, &mut sink, &mut trace);
+    let result = runtime.generate(
+        request(6, b"I like", 8),
+        &NeverCancel,
+        &mut sink,
+        &mut trace,
+    );
+    assert!(matches!(
+        result.outcome,
+        TerminalOutcome::Failed(GenerationError::Model(_))
+    ));
+    assert_eq!(terminal_count(&sink.events), 1);
+}
 
-    assert_eq!(result.tokens, vec![Token::text(TOKEN_BLUE)]);
+struct WrongLogitCountModel;
+
+impl Model for WrongLogitCountModel {
+    fn vocabulary_size(&self) -> usize {
+        4
+    }
+
+    fn forward(&self, input: &[TokenId]) -> Result<ForwardPass, ModelError> {
+        Ok(ForwardPass {
+            input_token: *input.last().ok_or(ModelError::EmptyInput)?,
+            hidden: vec![0.0],
+            logits: Logits::try_from_values(vec![0.0; 3])?,
+        })
+    }
+}
+
+#[test]
+fn runtime_rejects_wrong_logit_vector_length() {
+    let runtime = runtime(WrongLogitCountModel);
+    let mut sink = RecordingSink::default();
+    let mut trace = RecordingTrace::default();
+    let result = runtime.generate(
+        request(61, b"I like", 8),
+        &NeverCancel,
+        &mut sink,
+        &mut trace,
+    );
     assert!(matches!(
         result.outcome,
         TerminalOutcome::Failed(GenerationError::Model(_))
@@ -180,40 +237,15 @@ fn model_failure_after_a_token_cannot_also_complete() {
 }
 
 #[test]
-fn empty_candidate_set_fails_explicitly() {
-    struct EmptyModel;
-    impl Model for EmptyModel {
-        fn candidates(
-            &self,
-            _request: &Request,
-            _state: &GenerationState,
-        ) -> Result<Vec<Candidate>, ModelError> {
-            Ok(Vec::new())
-        }
-    }
-
-    let runtime = Runtime::new(EmptyModel, GreedySelector, TinyBpeTokenizer::teaching());
-    let mut sink = RecordingSink::default();
-    let mut trace = RecordingTrace::default();
-    let result = runtime.generate(request(8, b"empty", 8), &NeverCancel, &mut sink, &mut trace);
-
-    assert_eq!(
-        result.outcome,
-        TerminalOutcome::Failed(GenerationError::NoCandidates)
-    );
-    assert_eq!(terminal_count(&sink.events), 1);
-}
-
-#[test]
 fn repeated_runs_have_identical_semantic_streams() {
-    let (_, first, _) = run_demo(request(9, b"repeat", 8));
-    let (_, second, _) = run_demo(request(9, b"repeat", 8));
+    let (_, first, _) = run_fixture(request(7, b"I like", 8));
+    let (_, second, _) = run_fixture(request(7, b"I like", 8));
     assert_eq!(first.events, second.events);
 }
 
 #[test]
 fn terminal_event_is_always_last() {
-    let (_, sink, _) = run_demo(request(10, b"terminal", 8));
+    let (_, sink, _) = run_fixture(request(8, b"I like", 8));
     let terminal_index = sink
         .events
         .iter()
@@ -225,6 +257,7 @@ fn terminal_event_is_always_last() {
 #[derive(Clone)]
 struct PieceTokenizer {
     pieces: Vec<(TokenId, Vec<u8>)>,
+    eos: TokenId,
 }
 
 impl Tokenizer for PieceTokenizer {
@@ -233,6 +266,10 @@ impl Tokenizer for PieceTokenizer {
             name: "test-pieces",
             revision: "v1",
         }
+    }
+
+    fn vocabulary_size(&self) -> usize {
+        4
     }
 
     fn encode(&self, input: &[u8]) -> Result<Vec<TokenId>, TokenizerError> {
@@ -247,85 +284,44 @@ impl Tokenizer for PieceTokenizer {
             .ok_or(TokenizerError::InvalidTokenId(id))
     }
 
-    fn special_id(&self, _token: engine0::tokenizer::SpecialToken) -> Option<TokenId> {
-        None
+    fn special_id(&self, token: SpecialToken) -> Option<TokenId> {
+        (token == SpecialToken::Eos).then_some(self.eos)
     }
 }
 
-struct SequenceModel {
-    tokens: Vec<Token>,
-}
-
-impl Model for SequenceModel {
-    fn candidates(
-        &self,
-        _request: &Request,
-        state: &GenerationState,
-    ) -> Result<Vec<Candidate>, ModelError> {
-        Ok(vec![Candidate::new(self.tokens[state.step()], 1)])
+fn piece_contract() -> ModelContract {
+    ModelContract {
+        model: "piece-test-model",
+        tokenizer: "test-pieces",
+        tokenizer_revision: "v1",
+        chat_template: "none",
+        vocabulary_size: 4,
     }
-}
-
-#[test]
-fn two_token_byte_fragments_emit_one_valid_scalar() {
-    let first = TokenId(2000);
-    let second = TokenId(2001);
-    let tokenizer = PieceTokenizer {
-        pieces: vec![(first, vec![0xe4, 0xb8]), (second, vec![0x96])],
-    };
-    let model = SequenceModel {
-        tokens: vec![
-            Token::text(first),
-            Token::text(second),
-            Token::end(TOKEN_EOS),
-        ],
-    };
-    let runtime = Runtime::new(model, GreedySelector, tokenizer);
-    let mut sink = RecordingSink::default();
-    let mut trace = RecordingTrace::default();
-    let result = runtime.generate(
-        Request::from_token_ids(11, vec![TokenId(1)], 1, 8),
-        &NeverCancel,
-        &mut sink,
-        &mut trace,
-    );
-
-    let texts: Vec<&str> = sink
-        .events
-        .iter()
-        .filter_map(|event| match event {
-            StreamEvent::Text { text, .. } => Some(text.as_str()),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(texts, vec!["世"]);
-    assert_eq!(
-        result.outcome,
-        TerminalOutcome::Completed(StopReason::EndOfSequence)
-    );
 }
 
 #[test]
 fn incomplete_utf8_at_successful_stop_becomes_failed_terminal() {
-    let partial = TokenId(2000);
-    let runtime = Runtime::new(
-        SequenceModel {
-            tokens: vec![Token::text(partial), Token::end(TOKEN_EOS)],
+    let partial = TokenId(1);
+    let runtime = Runtime::try_new(
+        ConstantModel {
+            logits: [-1.0, 2.0, -1.0, -1.0],
         },
         GreedySelector,
         PieceTokenizer {
             pieces: vec![(partial, vec![0xf0, 0x9f])],
+            eos: TINY_LM_EOS,
         },
-    );
+        &piece_contract(),
+    )
+    .unwrap();
     let mut sink = RecordingSink::default();
     let mut trace = RecordingTrace::default();
     let result = runtime.generate(
-        Request::from_token_ids(12, vec![TokenId(1)], 1, 8),
+        Request::from_token_ids(9, vec![TINY_LM_LIKE], 1, 1),
         &NeverCancel,
         &mut sink,
         &mut trace,
     );
-
     assert!(matches!(
         result.outcome,
         TerminalOutcome::Failed(GenerationError::Utf8Stream(_))
@@ -334,56 +330,40 @@ fn incomplete_utf8_at_successful_stop_becomes_failed_terminal() {
 }
 
 #[test]
-fn malformed_output_bytes_fail_without_lossy_replacement() {
-    let invalid = TokenId(2000);
-    let runtime = Runtime::new(
-        SequenceModel {
-            tokens: vec![Token::text(invalid)],
-        },
+fn tokenizer_model_vocabulary_mismatch_is_rejected_before_execution() {
+    let model = TinyLanguageModel::try_new(3, 1, vec![0.0; 3], vec![0.0; 3], vec![0.0; 3]).unwrap();
+    let result = Runtime::try_new(
+        model,
         GreedySelector,
-        PieceTokenizer {
-            pieces: vec![(invalid, vec![0xc3, 0x28])],
-        },
+        TinyLmTokenizer,
+        &ModelContract::engine1(),
     );
-    let mut sink = RecordingSink::default();
-    let mut trace = RecordingTrace::default();
-    let result = runtime.generate(
-        Request::from_token_ids(13, vec![TokenId(1)], 1, 8),
-        &NeverCancel,
-        &mut sink,
-        &mut trace,
-    );
-
     assert!(matches!(
-        result.outcome,
-        TerminalOutcome::Failed(GenerationError::Utf8Stream(_))
+        result,
+        Err(engine0::chat::ContractError::VocabularyMismatch { .. })
     ));
-    assert!(!sink.events.iter().any(|event| matches!(
-        event,
-        StreamEvent::Text { text, .. } if text.contains('\u{fffd}')
-    )));
 }
 
 #[test]
-fn unknown_generated_id_is_a_typed_tokenizer_failure() {
-    let unknown = TokenId(9999);
-    let runtime = Runtime::new(
-        SequenceModel {
-            tokens: vec![Token::text(unknown)],
-        },
-        GreedySelector,
-        TinyBpeTokenizer::teaching(),
-    );
+fn eos_is_terminal_and_never_decoded_as_text() {
+    let runtime = runtime(ConstantModel {
+        logits: [2.0, -1.0, -1.0, -1.0],
+    });
     let mut sink = RecordingSink::default();
     let mut trace = RecordingTrace::default();
     let result = runtime.generate(
-        request(14, b"unknown", 8),
+        request(10, b"I like", 8),
         &NeverCancel,
         &mut sink,
         &mut trace,
     );
-    assert!(matches!(
+    assert!(result.tokens.is_empty());
+    assert_eq!(
         result.outcome,
-        TerminalOutcome::Failed(GenerationError::Tokenizer(_))
-    ));
+        TerminalOutcome::Completed(StopReason::EndOfSequence)
+    );
+    assert!(!sink
+        .events
+        .iter()
+        .any(|event| matches!(event, StreamEvent::Text { .. })));
 }

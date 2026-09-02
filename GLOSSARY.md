@@ -114,7 +114,7 @@ a function with itself under another flag may not be independent.
 
 **Short:** A vector representation selected for a token identifier.
 **Precise:** A row of learned model weights with shape `[hidden_dim]`, forming
-the initial hidden state for a token position. First introduced: Chapter 7.
+the initial hidden state for a token position. First introduced: Chapter 3.
 Related: token, hidden state. Common confusion: an embedding is not a token's
 human-language definition.
 
@@ -240,7 +240,7 @@ it changes storage and reduction organization, not attention semantics.
 **Short:** An independent, clarity-first correctness reference.
 **Precise:** A scalar or trusted implementation designed to reveal defects in a
 more optimized path and paired with explicit tolerances. First introduced:
-Chapter 60. Related: differential test. Common confusion: the production path
+Chapter 3; formalized Chapter 60. Related: differential test. Common confusion: the production path
 cannot validate itself merely by being deterministic.
 
 ### Paged attention / paged KV
@@ -514,6 +514,101 @@ unused, or other entries, together with configuration used to select IDs. First
 introduced: Chapter 2. Related: token ID, tokenizer, embedding. Common
 confusion: equal numeric IDs or visible pieces in two vocabularies are not
 interchangeable.
+
+### Activation
+
+**Short:** Numerical data produced while executing a model for a particular
+input. **Precise:** A typed, shaped intermediate or output such as ENGINE-1's
+hidden vector or logits, with a lifetime distinct from immutable parameters.
+First introduced: Chapter 3. Related: parameter, hidden state, logits. Common
+confusion: activations are not model weights merely because both use floating-
+point storage.
+
+### Argmax
+
+**Short:** The index of the largest value in a collection. **Precise:** A
+deterministic selection rule with an explicit tie policy; in ENGINE-1 it
+consumes logits outside `Model::forward`. First introduced: Chapter 3. Related:
+logit, sampler. Common confusion: argmax does not normalize scores or assign
+probability one to its result.
+
+### Bias
+
+**Short:** An additive learned parameter in an affine operation. **Precise:**
+ENGINE-1's `b:[V]` initializes one accumulator per output token in
+`z = W h + b`. First introduced: Chapter 3. Related: output projection,
+parameter. Common confusion: an operation with nonzero bias is affine even
+though ML libraries often call it a linear layer.
+
+### Dot product
+
+**Short:** A sum of pairwise products between equal-length vectors. **Precise:**
+For vectors of length `D`, ENGINE-1 computes `sum_j W[i,j]h[j]` as the score
+contribution for one vocabulary row. First introduced: Chapter 3. Related:
+matrix, projection. Common confusion: equal shape and a declared accumulation
+order still do not specify a physical storage layout.
+
+### Dtype
+
+**Short:** The element type used to store or compute numerical values.
+**Precise:** A dtype determines representation and precision; storage and
+accumulation dtypes may differ. ENGINE-1 uses contiguous `f32` for both. First
+introduced: Chapter 3. Related: tensor, quantization. Common confusion: shape
+does not imply dtype.
+
+### Forward pass
+
+**Short:** One execution of model semantics on supplied input. **Precise:** In
+ENGINE-1, a forward pass selects `E[x]` and computes `W h + b`, producing
+request-local hidden and logit activations without mutating parameters. First
+introduced: Chapter 3. Related: model, activation. Common confusion: a forward
+pass is not by itself token sampling or a complete generation loop.
+
+### Matrix / vector
+
+**Short:** A matrix is a two-dimensional numerical array; a vector is a
+one-dimensional numerical array. **Precise:** Their logical shapes define valid
+index relationships, while dtype, layout, and owner define physical execution.
+First introduced: Chapter 3. Related: tensor, dot product. Common confusion:
+matrix notation alone does not specify row-major bytes.
+
+### Output projection
+
+**Short:** The model operation that produces one score per vocabulary token.
+**Precise:** ENGINE-1 uses `W:[V,D]`, `h:[D]`, and `b:[V]` to produce logits
+`z:[V]`. First introduced: Chapter 3. Related: logits, bias. Common confusion:
+the projection scores candidates; it does not select one.
+
+### Parameter / weight
+
+**Short:** Persistent numerical data that defines model behavior. **Precise:**
+ENGINE-1's embedding, projection weights, and bias are validated at model
+construction and read immutably during inference. First introduced: Chapter 3.
+Related: activation, model artifact. Common confusion: parameters do not
+normally change during an inference forward pass.
+
+### Row-major layout
+
+**Short:** Matrix rows occupy contiguous physical storage. **Precise:** For a
+`[V,D]` ENGINE-1 matrix, logical element `(i,j)` has flat offset `i*D+j`.
+First introduced: Chapter 3. Related: layout, matrix, tensor. Common confusion:
+logical shape does not force row-major layout.
+
+### Shape
+
+**Short:** The ordered sizes of a tensor's logical dimensions. **Precise:** A
+shape constrains indexing and compatible operations; ENGINE-1 rejects parameter
+counts that do not match `[V,D]` and `[V]`. First introduced: Chapter 3.
+Related: tensor, dimension. Common confusion: shape is an executable contract,
+not merely documentation.
+
+### Tensor
+
+**Short:** Numerical data interpreted with shape, dtype, layout, and ownership.
+**Precise:** A tensor contract also names location, lifetime, and valid access;
+Chapter 3 uses only contiguous row-major CPU `f32` arrays. First introduced:
+Chapter 3; formalized Chapter 5. Related: shape, dtype, layout. Common
+confusion: a raw `Vec<f32>` does not by itself say which tensor it represents.
 
 ### Workspace
 

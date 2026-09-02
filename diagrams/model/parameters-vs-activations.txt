@@ -1,0 +1,21 @@
+PARAMETERS, ACTIVATIONS, AND OWNERS
+
+                         MODEL LIFETIME
+              immutable parameters shared by requests
+        +-----------------------------------------------+
+        | E [V,D]        W [V,D]          b [V]         |
+        +-----------------------+-----------------------+
+                                |
+                   +------------+------------+
+                   |                         |
+                   v                         v
+        Request A / forward A      Request B / forward B
+        +--------------------+     +--------------------+
+        | input x_A          |     | input x_B          |
+        | [hidden h_A]       |     | [hidden h_B]       |
+        | [logits z_A]       |     | [logits z_B]       |
+        +--------------------+     +--------------------+
+
+Legend: (none) immutable model data    [X] request-owned mutable activation
+
+Requests may share parameters; they must not share mutable activations.

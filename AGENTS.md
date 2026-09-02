@@ -101,13 +101,14 @@ paths. Never push unless the user explicitly authorizes it.
 ## Current state and next task
 
 Phase 0 repository architecture is established. Phase 1 is in progress:
-Chapters 1–2, tokenized ENGINE-0, Labs 1–4, eleven canonical diagrams, and the
-current Hermon request/tokenizer refresh are complete. The authoritative state
+Chapters 1–3, ENGINE-0/1, Labs 1–8, eighteen canonical diagrams, and the
+current Hermon token-to-logits refresh are complete. The authoritative state
 and next task are in `docs/STATUS.md`.
 
-The next bounded task is Chapter 3 — The Smallest Possible Language Model.
-Replace the fake candidate table itself with a genuine embedding/hidden/output
-projection/logit path and an independent hand-computable oracle. Preserve the
-tokenizer and request lifecycle established by Chapters 1–2. Do not hide the
-fake score table behind ENGINE-1, and do not begin Chapter 4 sampling or the
-complete autoregressive loop.
+The next bounded task is Chapter 4 — Logits, Sampling, and the Autoregressive
+Loop. Begin from ENGINE-1's typed finite logit vector and keep model semantics,
+logits processing, selection policy, token-history mutation, stopping, and
+terminal ownership separate. Derive numerically stable softmax, greedy and
+categorical selection, temperature, seeds, top-k/top-p, EOS/token budgets, and
+deterministic reproduction from first principles. Do not begin Part II's
+Transformer implementation.

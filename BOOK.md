@@ -9,7 +9,7 @@ each chapter lives in [docs/OUTLINE.md](docs/OUTLINE.md).
 
 1. [The Missing Half of AI](manuscript/part-01/chapter-01-the-missing-half-of-ai.md)
 2. [From Text to Tokens](manuscript/part-01/chapter-02-from-text-to-tokens.md)
-3. The Smallest Possible Language Model
+3. [The Smallest Possible Language Model](manuscript/part-01/chapter-03-the-smallest-possible-language-model.md)
 4. Logits, Sampling, and the Autoregressive Loop
 
 Milestone: ENGINE-0 / ENGINE-1.

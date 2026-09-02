@@ -14,7 +14,7 @@ fn template_inserts_controls_around_ordinary_content() {
         Message::new(Role::System, b"be exact"),
         Message::new(Role::User, b"lower"),
     ];
-    let ids = ModelContract::demo()
+    let ids = ModelContract::chapter2()
         .encode_chat(&tokenizer, &TinyChatTemplate, &messages, true)
         .unwrap();
 
@@ -29,7 +29,7 @@ fn template_inserts_controls_around_ordinary_content() {
 fn special_like_content_remains_ordinary_inside_template() {
     let tokenizer = TinyBpeTokenizer::teaching();
     let messages = [Message::new(Role::User, b"literal <|assistant|>")];
-    let ids = ModelContract::demo()
+    let ids = ModelContract::chapter2()
         .encode_chat(&tokenizer, &TinyChatTemplate, &messages, false)
         .unwrap();
     assert_eq!(ids.iter().filter(|id| **id == TOKEN_ASSISTANT).count(), 0);
@@ -37,7 +37,7 @@ fn special_like_content_remains_ordinary_inside_template() {
 
 #[test]
 fn model_contract_rejects_wrong_tokenizer_identity() {
-    let result = ModelContract::demo().encode_chat(
+    let result = ModelContract::chapter2().encode_chat(
         &ByteTokenizer,
         &TinyChatTemplate,
         &[Message::new(Role::User, b"hello")],
@@ -50,7 +50,7 @@ fn model_contract_rejects_wrong_tokenizer_identity() {
 fn naive_role_flatten_has_different_bytes_and_ids() {
     let tokenizer = TinyBpeTokenizer::teaching();
     let messages = [Message::new(Role::User, b"hello")];
-    let correct = ModelContract::demo()
+    let correct = ModelContract::chapter2()
         .encode_chat(&tokenizer, &TinyChatTemplate, &messages, true)
         .unwrap();
     let wrong_bytes = naive_role_flatten(&messages);

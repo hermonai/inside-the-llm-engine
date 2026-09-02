@@ -12,10 +12,10 @@ hardware. The reader progressively builds `mini-engine`: first a token
 generator, then a real model runner, and finally a production-shaped inference
 runtime.
 
-[Chapters 1–2](manuscript/part-01/README.md) and the standard-library-only
-[ENGINE-0](code/mini-engine/README.md) are now complete. They establish the
-request-to-terminal lifecycle, tokenizer/chat contract, and byte-safe output
-stream before Chapter 3 introduces genuine numerical inference.
+[Chapters 1–3](manuscript/part-01/README.md) and the standard-library-only
+[ENGINE-1](code/mini-engine/README.md) are now complete. They establish the
+request-to-terminal lifecycle, tokenizer/chat contract, byte-safe output
+stream, and the first real token-ID-to-logits numerical path. Chapter 4 is next.
 
 ```text
                          INSIDE THE LLM ENGINE
@@ -28,10 +28,10 @@ stream before Chapter 3 introduces genuine numerical inference.
        +-------------+                                 | packed / quant |
               |                                        +--------+-------+
               v                                                 ||
-       +-------------+       request state                       ||
-       | API / STREAM| ----------------------------------+       ||
-       +------+------+                                   |       ||
-              |                                          v       \/
+       +-------------+       request state                      ||
+       | API / STREAM| ----------------------------------+      ||
+       +------+------+                                   |      ||
+              |                                          v      \/
               |                                  +----------------------+
               +--------------------------------> | REQUEST RUNTIME      |
                                                  | admission / scheduler|
@@ -171,8 +171,8 @@ Contributors and AI agents should also read [AGENTS.md](AGENTS.md),
 ## Status
 
 Phase 0 established the repository and editorial architecture. Phase 1 is in
-progress: Chapters 1–2, tokenized ENGINE-0, Labs 1–4, and their source-verified
-research and diagrams are complete; Chapter 3 is next. See
+progress: Chapters 1–3, ENGINE-0/1, Labs 1–8, and their source-verified
+research, oracles, and diagrams are complete; Chapter 4 is next. See
 [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license

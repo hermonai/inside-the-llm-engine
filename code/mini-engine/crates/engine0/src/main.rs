@@ -1,10 +1,12 @@
 use std::process::ExitCode;
 
-use engine0::tokenizer::{TinyBpeTokenizer, TokenId, Tokenizer};
+use engine0::chat::ModelContract;
+use engine0::model::{ForwardPass, Model, ModelError, TinyLanguageModel};
+use engine0::tokenizer::{TinyBpeTokenizer, TinyLmTokenizer, TokenId, Tokenizer};
 use engine0::utf8::Utf8StreamDecoder;
 use engine0::{
-    CancelAtStep, DemoModel, GreedySelector, NeverCancel, Request, Runtime, StreamEvent,
-    TerminalOutcome, TokenSink, TraceEvent, TraceSink,
+    CancelAtStep, GreedySelector, NeverCancel, Request, Runtime, StreamEvent, TerminalOutcome,
+    TokenSink, TraceEvent, TraceSink,
 };
 
 struct ConsoleSink;
@@ -39,6 +41,10 @@ impl TraceSink for ConsoleTrace {
             event.kind
         );
     }
+
+    fn record_tensor_values(&self) -> bool {
+        true
+    }
 }
 
 struct SilentTrace;
@@ -57,7 +63,7 @@ struct GenerateOptions {
 }
 
 fn usage() -> &'static str {
-    "usage:\n  engine0 [--trace] [--max-tokens N] [--cancel-at STEP] [--fail-at STEP] PROMPT\n  engine0 tokenize TEXT\n  engine0 decode TOKEN_ID..."
+    "usage:\n  engine0 [--trace] [--max-tokens N] [--cancel-at STEP] [--fail-at STEP] 'I like'\n  engine0 tokenize TEXT\n  engine0 decode TOKEN_ID..."
 }
 
 fn parse_generate(args: Vec<String>) -> Result<GenerateOptions, String> {
@@ -164,14 +170,17 @@ fn decode(args: &[String]) -> Result<(), String> {
 }
 
 fn generate(options: GenerateOptions) -> Result<TerminalOutcome, String> {
-    let tokenizer = TinyBpeTokenizer::teaching();
+    let tokenizer = TinyLmTokenizer;
     let request = Request::from_text(1, options.prompt.as_bytes(), options.max_tokens, &tokenizer)
         .map_err(|error| error.to_string())?;
-    let model = options
-        .fail_at
-        .map(DemoModel::failing_at)
-        .unwrap_or_default();
-    let runtime = Runtime::new(model, GreedySelector, tokenizer);
+    let model = FailureInjector {
+        inner: TinyLanguageModel::chapter3_fixture(),
+        fail_at_history_len: options
+            .fail_at
+            .map(|step| request.input_tokens.len() + step),
+    };
+    let runtime = Runtime::try_new(model, GreedySelector, tokenizer, &ModelContract::engine1())
+        .map_err(|error| error.to_string())?;
     let mut sink = ConsoleSink;
     let mut console_trace = ConsoleTrace;
     let mut silent_trace = SilentTrace;
@@ -196,6 +205,27 @@ fn generate(options: GenerateOptions) -> Result<TerminalOutcome, String> {
         result.timings.terminal_at,
     );
     Ok(result.outcome)
+}
+
+struct FailureInjector<M> {
+    inner: M,
+    fail_at_history_len: Option<usize>,
+}
+
+impl<M: Model> Model for FailureInjector<M> {
+    fn vocabulary_size(&self) -> usize {
+        self.inner.vocabulary_size()
+    }
+
+    fn forward(&self, input: &[TokenId]) -> Result<ForwardPass, ModelError> {
+        if self.fail_at_history_len == Some(input.len()) {
+            return Err(ModelError::InjectedFailure(format!(
+                "injected model failure at history length {}",
+                input.len()
+            )));
+        }
+        self.inner.forward(input)
+    }
 }
 
 fn main() -> ExitCode {

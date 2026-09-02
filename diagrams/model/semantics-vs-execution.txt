@@ -1,0 +1,12 @@
+MODEL SEMANTICS VERSUS EXECUTION
+
+                 MODEL SEMANTICS
+TokenId x --> embedding h = E[x] --> projection z = W h + b --> logits
+=======================================================================
+                EXECUTION IMPLEMENTATION
+ENGINE-1: row offset --> copy D f32 values --> nested scalar Rust loops
+
+Later:     CPU SIMD       Metal       CUDA       other native kernels
+
+The implementation may change how bytes and arithmetic move. It must preserve
+the same shapes, row convention, parameter values, and numerical contract.

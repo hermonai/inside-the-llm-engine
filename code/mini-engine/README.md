@@ -1,45 +1,54 @@
 # mini-engine
 
-This Rust workspace advances from ENGINE-0 through ENGINE-10. The current
-milestone remains **ENGINE-0**, evolved through Chapter 2: request lifecycle and
-text/token/byte boundaries are executable, while the candidate model is still
-deliberately fake.
+This dependency-free Rust workspace advances from ENGINE-0 through ENGINE-10.
+The current milestone is **ENGINE-1**: the Chapter 2 text/token/byte boundary
+now feeds a genuine numerical language model.
 
-ENGINE-0 now establishes:
+ENGINE-1 establishes:
 
-- `TokenId` and a byte-oriented, fallible `Tokenizer` contract;
-- an independent one-byte/one-ID oracle;
-- a deterministic teaching BPE with all-byte fallback and fixed ranked merges;
-- ordinary encoding separated from explicit special-token insertion;
-- typed chat messages, `TinyChatTemplate`, and a model/tokenizer/template
-  identity contract;
-- token IDs in `Request` and runtime-owned generated identity history;
-- token events separated from valid UTF-8 text events;
-- a strict per-request UTF-8 framer for partial, malformed, and incomplete
-  token-byte pieces;
-- the Chapter 1 completed/cancelled/failed terminal invariant and named trace
-  points, now including encode/decode/buffer stages.
+- `TokenId` and byte-oriented, fallible `Tokenizer` contracts;
+- Chapter 2's independent byte oracle, teaching BPE, explicit special tokens,
+  typed chat template, model contract, and strict UTF-8 stream framing;
+- a model-bound four-token vocabulary: `<eos>`, `I`, `like`, and `Rust`;
+- immutable row-major `f32` embedding `[V,D]`, projection `[V,D]`, and bias
+  `[V]` parameters;
+- a typed `Model::forward(&[TokenId]) -> ForwardPass` boundary;
+- visible scalar `h = E[x]` and `z = W h + b` execution;
+- typed finite `Logits` kept separate from temporary deterministic argmax;
+- construction-time shape, parameter-count, finite-value, and
+  tokenizer/model vocabulary validation;
+- request-local hidden/logit activations and model-shared immutable weights;
+- the completed/cancelled/failed exactly-once terminal invariant and trace
+  points for embedding and logits.
 
-It intentionally has no embeddings, learned parameters, hidden vectors,
-projection, logits, Transformer, GGUF reader, production server, accelerator,
-or scheduler. `DemoModel` still returns a hand-computable candidate table whose
-integer scores are not logits. Chapter 3 replaces that model rather than
-wrapping it.
+The Chapter 3 fixture uses `V=4`, `D=3`, 28 parameters, and 112 bytes of `f32`
+payload. Input `like` produces the independently verified vector
+`[-0.7, 0.1, 0.4, 2.2]`. The old fake candidate table is not part of the
+current source path; Git history preserves the ENGINE-0 milestone.
 
 ```sh
 cd code/mini-engine
+cargo run -p engine0 -- --trace 'I like'
 cargo run -p engine0 -- tokenize lower
 cargo run -p engine0 -- decode 259
-cargo run -p engine0 -- --trace 'What color is the sky?'
 cargo test --workspace
 ```
 
-The Chapter 2 fixtures live under [`fixtures/tokenizer`](fixtures/tokenizer/).
-Independent oracles are
-[`engine-0-oracle.md`](../reference/engine-0-oracle.md) and
-[`chapter-02-tokenizer-oracles.md`](../reference/chapter-02-tokenizer-oracles.md).
-Guided work is in [Labs 1–4](../../docs/LABS.md).
+The generic `tokenize` and `decode` inspection commands continue to use the
+Chapter 2 teaching BPE. The default generation path uses the paired ENGINE-1
+four-token tokenizer, so its accepted prompt domain is intentionally tiny.
 
-The workspace has no external Rust dependencies. The real-tokenizer comparison
-was run in a temporary Python environment and is recorded as text under
-[`research/part-01/tokenizer-comparison.md`](../../research/part-01/tokenizer-comparison.md).
+Independent references:
+
+- [`chapter03_oracle.py`](../reference/python/chapter03_oracle.py) implements
+  the equations separately in plain Python;
+- [`chapter-02-tokenizer-oracles.md`](../reference/chapter-02-tokenizer-oracles.md)
+  retains the tokenizer cases;
+- [`engine-0-oracle.md`](../reference/engine-0-oracle.md) records the historical
+  fake candidate milestone.
+
+Guided work is in [Labs 1–8](../../docs/LABS.md). Chapter 4 will replace the
+temporary argmax-only treatment with softmax, sampling policy, randomness, and
+the rigorously explained autoregressive loop. ENGINE-1 intentionally adds no
+training, Transformer, general tensor framework, BLAS, accelerator, or GGUF
+dependency.

@@ -23,7 +23,7 @@ jobs:
       - name: Check Rust formatting
         working-directory: code/mini-engine
         run: cargo fmt --all -- --check
-      - name: Check and test ENGINE-0
+      - name: Check and test mini-engine
         working-directory: code/mini-engine
         run: |
           cargo check --workspace --all-targets

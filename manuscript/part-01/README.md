@@ -12,5 +12,5 @@ model, logits, sampling, and the autoregressive loop.
 | --- | --- | --- |
 | 1. The Missing Half of AI | COMPLETE | [Chapter](chapter-01-the-missing-half-of-ai.md), [ENGINE-0](../../code/mini-engine/README.md), [Lab 1](../../labs/lab-01-generate-one-token-manually.md) |
 | 2. From Text to Tokens | COMPLETE | [Chapter](chapter-02-from-text-to-tokens.md), [tokenized ENGINE-0](../../code/mini-engine/README.md), [Labs 2–4](../../docs/LABS.md) |
-| 3. The Smallest Possible Language Model | PLANNED | ENGINE-1 numerical model |
+| 3. The Smallest Possible Language Model | COMPLETE | [Chapter](chapter-03-the-smallest-possible-language-model.md), [ENGINE-1](../../code/mini-engine/README.md), [Labs 5–8](../../docs/LABS.md) |
 | 4. Logits, Sampling, and the Autoregressive Loop | PLANNED | Complete generation loop |

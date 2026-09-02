@@ -1,0 +1,17 @@
+ENGINE-1 CANNOT SEE EARLIER CONTEXT
+
+History A:  I --> like --> Rust --+
+                                    |
+                                    +--> final TokenId(3)
+                                    |          |
+History B:  I --> dislike --> Rust +           v
+                                         same E[3]
+                                              |
+                                              v
+                                         same hidden h
+                                              |
+                                              v
+                                         same logits z
+
+Different histories with the same final token are indistinguishable to this
+first-order model. Part II must make position representations context-dependent.

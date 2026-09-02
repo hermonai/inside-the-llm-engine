@@ -2,7 +2,7 @@
 name = "engine0"
 version = "0.1.0"
 edition = "2021"
-description = "ENGINE-0 request-to-token teaching runtime"
+description = "Progressive ENGINE-0/1 inference teaching runtime"
 publish = false
 
 [dependencies]

@@ -118,16 +118,53 @@ pub struct ModelContract {
     pub tokenizer: &'static str,
     pub tokenizer_revision: &'static str,
     pub chat_template: &'static str,
+    pub vocabulary_size: usize,
 }
 
 impl ModelContract {
-    pub const fn demo() -> Self {
+    pub const fn chapter2() -> Self {
         Self {
-            model: "engine0-demo-model",
+            model: "chapter2-tokenizer-fixture",
             tokenizer: "tiny-byte-bpe",
             tokenizer_revision: "chapter-02-v1",
             chat_template: "tiny-chat-v1",
+            vocabulary_size: 1008,
         }
+    }
+
+    pub const fn engine1() -> Self {
+        Self {
+            model: "engine1-tiny-language-model",
+            tokenizer: "engine1-four-token",
+            tokenizer_revision: "chapter-03-v1",
+            chat_template: "none",
+            vocabulary_size: 4,
+        }
+    }
+
+    pub fn validate_vocabulary(
+        &self,
+        tokenizer: &impl Tokenizer,
+        model_vocabulary_size: usize,
+    ) -> Result<(), ContractError> {
+        let identity = tokenizer.identity();
+        if identity.name != self.tokenizer || identity.revision != self.tokenizer_revision {
+            return Err(ContractError::TokenizerMismatch {
+                expected: format!("{}@{}", self.tokenizer, self.tokenizer_revision),
+                actual: format!("{}@{}", identity.name, identity.revision),
+            });
+        }
+        let tokenizer_vocabulary_size = tokenizer.vocabulary_size();
+        if tokenizer_vocabulary_size != self.vocabulary_size
+            || model_vocabulary_size != self.vocabulary_size
+        {
+            return Err(ContractError::VocabularyMismatch {
+                contract: self.vocabulary_size,
+                tokenizer: tokenizer_vocabulary_size,
+                model: model_vocabulary_size,
+            });
+        }
+        Ok(())
     }
 
     pub fn encode_chat(
@@ -137,13 +174,7 @@ impl ModelContract {
         messages: &[Message<'_>],
         add_generation_prompt: bool,
     ) -> Result<Vec<TokenId>, ContractError> {
-        let identity = tokenizer.identity();
-        if identity.name != self.tokenizer || identity.revision != self.tokenizer_revision {
-            return Err(ContractError::TokenizerMismatch {
-                expected: format!("{}@{}", self.tokenizer, self.tokenizer_revision),
-                actual: format!("{}@{}", identity.name, identity.revision),
-            });
-        }
+        self.validate_vocabulary(tokenizer, self.vocabulary_size)?;
         if template.identity() != self.chat_template {
             return Err(ContractError::TemplateMismatch {
                 expected: self.chat_template.to_string(),
@@ -159,8 +190,20 @@ impl ModelContract {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContractError {
-    TokenizerMismatch { expected: String, actual: String },
-    TemplateMismatch { expected: String, actual: String },
+    TokenizerMismatch {
+        expected: String,
+        actual: String,
+    },
+    TemplateMismatch {
+        expected: String,
+        actual: String,
+    },
+    VocabularyMismatch {
+        contract: usize,
+        tokenizer: usize,
+        model: usize,
+    },
+    MissingEndOfSequence,
     Tokenizer(TokenizerError),
 }
 
@@ -175,6 +218,17 @@ impl fmt::Display for ContractError {
                     f,
                     "chat-template mismatch: expected {expected}, got {actual}"
                 )
+            }
+            Self::VocabularyMismatch {
+                contract,
+                tokenizer,
+                model,
+            } => write!(
+                f,
+                "vocabulary mismatch: contract={contract}, tokenizer={tokenizer}, model={model}"
+            ),
+            Self::MissingEndOfSequence => {
+                f.write_str("tokenizer/model contract has no end-of-sequence token")
             }
             Self::Tokenizer(error) => error.fmt(f),
         }

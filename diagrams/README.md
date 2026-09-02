@@ -13,3 +13,5 @@ in a monospaced view. Diagrams are technical artifacts, not decoration.
 
 Chapter 2's text/token/UTF-8 and chat-contract diagrams are indexed under
 [`tokenizer/`](tokenizer/README.md).
+Chapter 3's numerical model diagrams are indexed under
+[`model/`](model/README.md).

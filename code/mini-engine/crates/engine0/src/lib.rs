@@ -1,19 +1,22 @@
 #![forbid(unsafe_code)]
 
-//! ENGINE-0 after Chapter 2: a deterministic tokenized request lifecycle.
+//! ENGINE-1 after Chapter 3: a tiny numerical language-model runtime.
 //!
-//! The tokenizer, special-token, chat-template, byte-decoding, and UTF-8
-//! streaming boundaries are real. `DemoModel` remains a fake candidate source;
-//! its integer scores are not logits and no neural computation occurs here.
+//! A token ID now selects an embedding row and a scalar output projection
+//! produces genuine vocabulary logits. Deterministic argmax remains separate
+//! from model execution until Chapter 4 introduces sampling.
 
 pub mod chat;
+pub mod model;
 pub mod tokenizer;
 pub mod utf8;
 
 use std::fmt;
 use std::time::{Duration, Instant};
 
-use tokenizer::{TokenId, Tokenizer, TOKEN_BLUE, TOKEN_EOS, TOKEN_GREEN};
+use chat::{ContractError, ModelContract};
+use model::{ForwardPass, Logits, Model};
+use tokenizer::{SpecialToken, TokenId, Tokenizer};
 use utf8::Utf8StreamDecoder;
 
 pub type RequestId = u64;
@@ -99,19 +102,6 @@ impl Token {
     }
 }
 
-/// A fake, scored model candidate. The score is not a real neural logit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Candidate {
-    pub token: Token,
-    pub score: i32,
-}
-
-impl Candidate {
-    pub const fn new(token: Token, score: i32) -> Self {
-        Self { token, score }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenerationState {
     generated: Vec<Token>,
@@ -133,96 +123,29 @@ impl GenerationState {
     }
 }
 
-/// Chapter 3 replaces this fake source with genuine numerical inference.
-pub trait Model {
-    fn candidates(
-        &self,
-        request: &Request,
-        state: &GenerationState,
-    ) -> Result<Vec<Candidate>, ModelError>;
-}
-
 pub trait Selector {
-    fn select(&self, candidates: &[Candidate]) -> Result<Token, GenerationError>;
+    fn select(&self, logits: &Logits) -> Result<TokenId, GenerationError>;
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct GreedySelector;
 
 impl Selector for GreedySelector {
-    fn select(&self, candidates: &[Candidate]) -> Result<Token, GenerationError> {
-        let mut best = candidates.first().ok_or(GenerationError::NoCandidates)?;
-        for candidate in &candidates[1..] {
-            if candidate.score > best.score {
-                best = candidate;
+    fn select(&self, logits: &Logits) -> Result<TokenId, GenerationError> {
+        let mut best_index = 0usize;
+        let mut best = *logits.as_slice().first().ok_or(GenerationError::NoLogits)?;
+        for (index, value) in logits.as_slice()[1..].iter().copied().enumerate() {
+            if value > best {
+                best = value;
+                best_index = index + 1;
             }
         }
-        Ok(best.token)
+        let id = u32::try_from(best_index).map_err(|_| {
+            GenerationError::InvalidRequest("selected token ID exceeds u32".to_string())
+        })?;
+        Ok(TokenId(id))
     }
 }
-
-/// The deterministic fake source from Chapter 1, now bound to real token IDs.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct DemoModel {
-    fail_at_step: Option<usize>,
-}
-
-impl DemoModel {
-    pub fn failing_at(step: usize) -> Self {
-        Self {
-            fail_at_step: Some(step),
-        }
-    }
-}
-
-impl Model for DemoModel {
-    fn candidates(
-        &self,
-        _request: &Request,
-        state: &GenerationState,
-    ) -> Result<Vec<Candidate>, ModelError> {
-        if self.fail_at_step == Some(state.step()) {
-            return Err(ModelError::new(format!(
-                "injected model failure at step {}",
-                state.step()
-            )));
-        }
-
-        if state.step() == 0 {
-            Ok(vec![
-                Candidate::new(Token::text(TOKEN_BLUE), 9),
-                Candidate::new(Token::text(TOKEN_GREEN), 4),
-                Candidate::new(Token::end(TOKEN_EOS), 1),
-            ])
-        } else {
-            Ok(vec![
-                Candidate::new(Token::end(TOKEN_EOS), 10),
-                Candidate::new(Token::text(TOKEN_BLUE), 1),
-            ])
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModelError {
-    message: String,
-}
-
-impl ModelError {
-    pub fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-}
-
-impl fmt::Display for ModelError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.message)
-    }
-}
-
-impl std::error::Error for ModelError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenerationError {
@@ -230,7 +153,7 @@ pub enum GenerationError {
     Model(String),
     Tokenizer(String),
     Utf8Stream(String),
-    NoCandidates,
+    NoLogits,
     AlreadyTerminal,
 }
 
@@ -241,7 +164,7 @@ impl fmt::Display for GenerationError {
             Self::Model(message) => write!(f, "model error: {message}"),
             Self::Tokenizer(message) => write!(f, "tokenizer error: {message}"),
             Self::Utf8Stream(message) => write!(f, "UTF-8 stream error: {message}"),
-            Self::NoCandidates => f.write_str("model returned no candidates"),
+            Self::NoLogits => f.write_str("model returned no logits"),
             Self::AlreadyTerminal => f.write_str("request already has a terminal outcome"),
         }
     }
@@ -329,7 +252,7 @@ impl Cancellation for CancelAtStep {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TraceKind {
     InputEncoded {
         bytes: usize,
@@ -339,6 +262,15 @@ pub enum TraceKind {
     ExecutionStarted,
     ModelInvoked {
         step: usize,
+    },
+    EmbeddingReady {
+        input_token: TokenId,
+        shape: [usize; 1],
+        values: Vec<f32>,
+    },
+    LogitsReady {
+        shape: [usize; 1],
+        values: Vec<f32>,
     },
     TokenSelected {
         step: usize,
@@ -363,7 +295,7 @@ pub enum TraceKind {
     Terminal(TerminalOutcome),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TraceEvent {
     pub at: Duration,
     pub request_id: RequestId,
@@ -372,6 +304,12 @@ pub struct TraceEvent {
 
 pub trait TraceSink {
     fn record(&mut self, event: TraceEvent);
+
+    /// Full activations are useful for ENGINE-1 but unsafe as a default for
+    /// future large tensors. Sinks must opt in explicitly.
+    fn record_tensor_values(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug, Default)]
@@ -381,7 +319,7 @@ impl TraceSink for NoopTrace {
     fn record(&mut self, _event: TraceEvent) {}
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct RecordingTrace {
     pub events: Vec<TraceEvent>,
 }
@@ -389,6 +327,10 @@ pub struct RecordingTrace {
 impl TraceSink for RecordingTrace {
     fn record(&mut self, event: TraceEvent) {
         self.events.push(event);
+    }
+
+    fn record_tensor_values(&self) -> bool {
+        true
     }
 }
 
@@ -438,6 +380,7 @@ pub struct Runtime<M, S, T> {
     model: M,
     selector: S,
     tokenizer: T,
+    eos_token: TokenId,
 }
 
 impl<M, S, T> Runtime<M, S, T>
@@ -446,12 +389,22 @@ where
     S: Selector,
     T: Tokenizer,
 {
-    pub fn new(model: M, selector: S, tokenizer: T) -> Self {
-        Self {
+    pub fn try_new(
+        model: M,
+        selector: S,
+        tokenizer: T,
+        contract: &ModelContract,
+    ) -> Result<Self, ContractError> {
+        contract.validate_vocabulary(&tokenizer, model.vocabulary_size())?;
+        let eos_token = tokenizer
+            .special_id(SpecialToken::Eos)
+            .ok_or(ContractError::MissingEndOfSequence)?;
+        Ok(Self {
             model,
             selector,
             tokenizer,
-        }
+            eos_token,
+        })
     }
 
     pub fn generate(
@@ -488,13 +441,31 @@ where
             }
 
             lifecycle.trace(TraceKind::ModelInvoked { step: state.step() });
-            let candidates = match self.model.candidates(&request, &state) {
-                Ok(candidates) => candidates,
-                Err(error) => break TerminalOutcome::Failed(GenerationError::Model(error.message)),
+            let mut history = Vec::with_capacity(request.input_tokens.len() + state.step());
+            history.extend_from_slice(&request.input_tokens);
+            history.extend(state.generated.iter().map(|token| token.id));
+            let forward = match self.model.forward(&history) {
+                Ok(forward) => forward,
+                Err(error) => {
+                    break TerminalOutcome::Failed(GenerationError::Model(error.to_string()))
+                }
             };
-            let selected = match self.selector.select(&candidates) {
-                Ok(token) => token,
+            if forward.logits.len() != self.model.vocabulary_size() {
+                break TerminalOutcome::Failed(GenerationError::Model(format!(
+                    "model returned {} logits for vocabulary size {}",
+                    forward.logits.len(),
+                    self.model.vocabulary_size()
+                )));
+            }
+            trace_forward(&mut lifecycle, &forward);
+            let selected_id = match self.selector.select(&forward.logits) {
+                Ok(token_id) => token_id,
                 Err(error) => break TerminalOutcome::Failed(error),
+            };
+            let selected = if selected_id == self.eos_token {
+                Token::end(selected_id)
+            } else {
+                Token::text(selected_id)
             };
             lifecycle.trace(TraceKind::TokenSelected {
                 step: state.step(),
@@ -539,6 +510,21 @@ where
 
         lifecycle.result(state, outcome)
     }
+}
+
+fn trace_forward(lifecycle: &mut Lifecycle<'_>, forward: &ForwardPass) {
+    if !lifecycle.trace_sink.record_tensor_values() {
+        return;
+    }
+    lifecycle.trace(TraceKind::EmbeddingReady {
+        input_token: forward.input_token,
+        shape: [forward.hidden.len()],
+        values: forward.hidden.clone(),
+    });
+    lifecycle.trace(TraceKind::LogitsReady {
+        shape: [forward.logits.len()],
+        values: forward.logits.as_slice().to_vec(),
+    });
 }
 
 fn completed_or_utf8_error(reason: StopReason, decoder: &Utf8StreamDecoder) -> TerminalOutcome {
@@ -664,6 +650,7 @@ impl<'a> Lifecycle<'a> {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::*;
+    use crate::tokenizer::TINY_LM_RUST;
 
     #[test]
     fn terminal_transition_can_happen_only_once() {
@@ -690,7 +677,7 @@ mod lifecycle_tests {
         lifecycle
             .finish(TerminalOutcome::Cancelled)
             .expect("first terminal");
-        lifecycle.emit_token(0, Token::text(TOKEN_BLUE));
+        lifecycle.emit_token(0, Token::text(TINY_LM_RUST));
         lifecycle.emit_text(0, "forbidden".to_string());
         lifecycle.trace(TraceKind::ExecutionStarted);
 

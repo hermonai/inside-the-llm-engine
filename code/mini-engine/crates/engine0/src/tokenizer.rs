@@ -36,6 +36,7 @@ pub enum TokenizerError {
     SpecialTokenHasNoOrdinaryBytes(TokenId),
     MissingSpecialToken(SpecialToken),
     InvalidMergeTable(String),
+    UnsupportedInput { offset: usize },
 }
 
 impl fmt::Display for TokenizerError {
@@ -49,6 +50,10 @@ impl fmt::Display for TokenizerError {
                 write!(f, "tokenizer has no configured {token:?} token")
             }
             Self::InvalidMergeTable(message) => write!(f, "invalid BPE merge table: {message}"),
+            Self::UnsupportedInput { offset } => write!(
+                f,
+                "input at byte offset {offset} has no token in this tiny vocabulary"
+            ),
         }
     }
 }
@@ -60,6 +65,7 @@ impl std::error::Error for TokenizerError {}
 /// by spelling a marker-looking string.
 pub trait Tokenizer {
     fn identity(&self) -> TokenizerIdentity;
+    fn vocabulary_size(&self) -> usize;
     fn encode(&self, input: &[u8]) -> Result<Vec<TokenId>, TokenizerError>;
     fn decode_token(&self, id: TokenId) -> Result<&[u8], TokenizerError>;
     fn special_id(&self, token: SpecialToken) -> Option<TokenId>;
@@ -83,6 +89,10 @@ impl Tokenizer for ByteTokenizer {
             name: "byte-oracle",
             revision: "chapter-02-v1",
         }
+    }
+
+    fn vocabulary_size(&self) -> usize {
+        256
     }
 
     fn encode(&self, input: &[u8]) -> Result<Vec<TokenId>, TokenizerError> {
@@ -271,6 +281,13 @@ impl Tokenizer for TinyBpeTokenizer {
         }
     }
 
+    fn vocabulary_size(&self) -> usize {
+        // The teaching vocabulary deliberately reserves sparse special-token
+        // IDs through 1007. A compatible logit vector therefore needs a row
+        // for every numeric identity in 0..=1007, including unused gaps.
+        TOKEN_END_TURN.0 as usize + 1
+    }
+
     fn encode(&self, input: &[u8]) -> Result<Vec<TokenId>, TokenizerError> {
         let mut tokens: Vec<TokenId> = input.iter().map(|byte| TokenId(u32::from(*byte))).collect();
         if tokens.len() < 2 {
@@ -317,5 +334,67 @@ impl Tokenizer for TinyBpeTokenizer {
 
     fn special_id(&self, token: SpecialToken) -> Option<TokenId> {
         self.specials.get(&token).copied()
+    }
+}
+
+pub const TINY_LM_EOS: TokenId = TokenId(0);
+pub const TINY_LM_I: TokenId = TokenId(1);
+pub const TINY_LM_LIKE: TokenId = TokenId(2);
+pub const TINY_LM_RUST: TokenId = TokenId(3);
+
+/// The vocabulary paired with the four-row ENGINE-1 fixture.
+///
+/// This is intentionally a complete model/tokenizer contract, not a remapping
+/// layered over Chapter 2's byte-BPE IDs. Leading spaces belong to the `like`
+/// and `Rust` pieces, so ordinary text such as `I like Rust` round-trips while
+/// each vocabulary identity still names exactly one embedding/logit row.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct TinyLmTokenizer;
+
+impl Tokenizer for TinyLmTokenizer {
+    fn identity(&self) -> TokenizerIdentity {
+        TokenizerIdentity {
+            name: "engine1-four-token",
+            revision: "chapter-03-v1",
+        }
+    }
+
+    fn vocabulary_size(&self) -> usize {
+        4
+    }
+
+    fn encode(&self, input: &[u8]) -> Result<Vec<TokenId>, TokenizerError> {
+        let mut remaining = input;
+        let mut ids = Vec::new();
+        while !remaining.is_empty() {
+            let (id, width) = if remaining.starts_with(b" Rust") {
+                (TINY_LM_RUST, 5)
+            } else if remaining.starts_with(b" like") {
+                (TINY_LM_LIKE, 5)
+            } else if remaining.starts_with(b"I") {
+                (TINY_LM_I, 1)
+            } else {
+                return Err(TokenizerError::UnsupportedInput {
+                    offset: input.len() - remaining.len(),
+                });
+            };
+            ids.push(id);
+            remaining = &remaining[width..];
+        }
+        Ok(ids)
+    }
+
+    fn decode_token(&self, id: TokenId) -> Result<&[u8], TokenizerError> {
+        match id {
+            TINY_LM_I => Ok(b"I"),
+            TINY_LM_LIKE => Ok(b" like"),
+            TINY_LM_RUST => Ok(b" Rust"),
+            TINY_LM_EOS => Err(TokenizerError::SpecialTokenHasNoOrdinaryBytes(id)),
+            _ => Err(TokenizerError::InvalidTokenId(id)),
+        }
+    }
+
+    fn special_id(&self, token: SpecialToken) -> Option<TokenId> {
+        (token == SpecialToken::Eos).then_some(TINY_LM_EOS)
     }
 }

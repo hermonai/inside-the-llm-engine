@@ -120,7 +120,7 @@ of scope, not forgotten.
 - **Prerequisites:** Q/K/V, RoPE, stable softmax basics.
 - **Concepts:** Score, scaling, causal mask, visible positions, softmax weights, weighted value sum, head concatenation.
 - **Mathematics / systems / hardware:** Full tensor shapes for MHA/GQA/MQA, `1/sqrt(head_dim)`, stable row softmax, `O(n^2)` prefill work; score scratch and memory access.
-- **Implementation / Hermon / external:** Build naive dense scalar attention and Lab 5; relate to Hermon's `CpuPagedAttention` only after semantics; compare original Transformer and current model definitions.
+- **Implementation / Hermon / external:** Build naive dense scalar attention and Lab 9; relate to Hermon's `CpuPagedAttention` only after semantics; compare original Transformer and current model definitions.
 - **Diagrams / experiments:** Causal visibility triangle and one query scanning K/V; disable mask or scaling to expose behavior.
 - **Correctness / benchmark:** Hand-computable masked attention, no future influence, GQA mapping, finite extreme scores; benchmark dense reference only as baseline.
 - **Misconceptions / failures / deliverable / next:** Attention weights are not explanations, causal masking is per query, and softmax stability is required; deliver verified attention output; Chapter 11 assumes contextual hidden vectors.
@@ -177,7 +177,7 @@ of scope, not forgotten.
 - **Prerequisites:** Chapter 14 manifest and checked arithmetic.
 - **Concepts:** Magic/version, typed values/arrays, dimensions, GGML type code, relative tensor offset, data alignment.
 - **Mathematics / systems / hardware:** Little-endian decoding, align-up, quantized block byte formulas; seek/read/mmap choices and parser budgets; OS page behavior only as consequence.
-- **Implementation / Hermon / external:** Implement Lab 7 bounds-checked parser/index; compare behavior and threat checks with `hermon-gguf` CURRENT library; use official GGUF spec/source.
+- **Implementation / Hermon / external:** Implement Lab 11 bounds-checked parser/index; compare behavior and threat checks with `hermon-gguf` CURRENT library; use official GGUF spec/source.
 - **Diagrams / experiments:** Byte-level container layout and tensor range resolution; mutate a minimal fixture across valid/invalid cases.
 - **Correctness / benchmark:** Truncation, huge counts, overlapping/non-contiguous offsets, invalid alignment/type/block width, exact bounded reader; benchmark metadata scan only if size/control stated.
 - **Misconceptions / failures / deliverable / next:** Parsing metadata is not executing the model, offsets require alignment context, and quantized element counts have block constraints; deliver indexed file; Chapter 16 interprets packed types.
@@ -200,7 +200,7 @@ of scope, not forgotten.
 - **Concepts:** Fused unpack/dot, block iteration, scale application, tiling, accumulator, row geometry, packed-kernel contract.
 - **Mathematics / systems / hardware:** Dot products grouped by quant blocks; logical versus physical bytes and arithmetic intensity; register/L1 working set, SIMD opportunity.
 - **Implementation / Hermon / external:** Implement scalar packed matvec then an optimized version; connect to Hermon's packed GGML bridge and native MoE matvec only within verified format scope; compare official kernel source.
-- **Diagrams / experiments:** Packed row to accumulator flow; Lab 8 bandwidth/compute decomposition over sizes and formats.
+- **Diagrams / experiments:** Packed row to accumulator flow; Lab 12 bandwidth/compute decomposition over sizes and formats.
 - **Correctness / benchmark:** Golden packed rows, partial/invalid groups, double/F32 oracle tolerances, accumulation semantics; report build, CPU, bytes, and control.
 - **Misconceptions / failures / deliverable / next:** Dequantization is computation and traffic, memory bandwidth may dominate, and equivalent formats need exact layout; deliver packed projection primitive; Chapter 18 integrates a model.
 
@@ -245,7 +245,7 @@ of scope, not forgotten.
 - **Prerequisites:** Causal attention, full decoder, prefill/decode distinction.
 - **Concepts:** Immutable past activations, per-layer K/V reuse, append position, cached versus uncached decode.
 - **Mathematics / systems / hardware:** Compare repeated full-prefix work with cached incremental work; persistent cache ownership; memory-capacity/bandwidth tradeoff.
-- **Implementation / Hermon / external:** Lab 6 first runs uncached, profiles, then adds KV; contrast Hermon's default llama.cpp-managed KV with PREVIEW Hermon-owned pool; cite primary cache descriptions.
+- **Implementation / Hermon / external:** Lab 10 first runs uncached, profiles, then adds KV; contrast Hermon's default llama.cpp-managed KV with PREVIEW Hermon-owned pool; cite primary cache descriptions.
 - **Diagrams / experiments:** Repeated no-cache layers versus append-only cached decode and per-layer layout; generate N tokens both ways.
 - **Correctness / benchmark:** Temperature-zero logits/token sequence agree, cache positions reset correctly, multiple sequence isolation; report prefill plus N-token decode and bytes.
 - **Misconceptions / failures / deliverable / next:** KV does not cache model output or remove attention over history, and stale cache can yield plausible text; deliver ENGINE-4 mechanism; Chapter 22 sizes it.
@@ -302,7 +302,7 @@ of scope, not forgotten.
 - **Prerequisites:** Multi-user baseline, prefill/decode shapes, request state.
 - **Concepts:** Iteration scheduling, physical token batch, logical slot/sequence ID, admission, prefill chunking, decode step, dynamic membership.
 - **Mathematics / systems / hardware:** Token-budget and utilization model; sole-mutator worker plus bounded channels; matvec-to-matmul and occupancy implications.
-- **Implementation / Hermon / external:** Build ENGINE-6 and Lab 9; source-map Hermon's CURRENT `BatchedWorker` invariants; compare vLLM/SGLang official scheduler designs without claiming identity.
+- **Implementation / Hermon / external:** Build ENGINE-6 and Lab 13; source-map Hermon's CURRENT `BatchedWorker` invariants; compare vLLM/SGLang official scheduler designs without claiming identity.
 - **Diagrams / experiments:** One mixed prefill/decode iteration and sequence-slot timeline; replay staggered arrivals against serial/pool/batched baselines.
 - **Correctness / benchmark:** Batched versus isolated greedy differential, positions, stop/cancel, failed-batch behavior; throughput, TTFT, ITL, tail latency, fairness with full manifest.
 - **Misconceptions / failures / deliverable / next:** Continuous batching is not static batching, one failed shared call affects represented sequences, and bigger batches can hurt latency; deliver ENGINE-6; Chapter 27 adds policy and flow control.
@@ -313,7 +313,7 @@ of scope, not forgotten.
 - **Prerequisites:** Continuous-batched state machine and queues.
 - **Concepts:** Fairness, priority, starvation, token budget, bounded buffer, backpressure, pacing, cancellation propagation, UTF-8-safe streaming.
 - **Mathematics / systems / hardware:** Queue wait/service accounting and fairness metrics; channel capacity and ownership release; device work cancellation granularity.
-- **Implementation / Hermon / external:** Add bounded streams, fair admission/token budget, cancellation, Lab 15 hook; compare Hermon's bounded stream and current worker policy versus TARGET scheduler; consult networking/queueing sources.
+- **Implementation / Hermon / external:** Add bounded streams, fair admission/token budget, cancellation, Lab 19 hook; compare Hermon's bounded stream and current worker policy versus TARGET scheduler; consult networking/queueing sources.
 - **Diagrams / experiments:** Backpressure propagation and cancellation across API/runtime/provider; slow consumer, long prompt, and mixed-priority replay.
 - **Correctness / benchmark:** No starvation under defined policy, memory bound, valid byte stream, exactly-once release; measure tails/fairness at saturation.
 - **Misconceptions / failures / deliverable / next:** Dropping a socket does not automatically stop model work, unbounded channels hide overload, and fairness differs from equal tokens; deliver production-shaped ENGINE-6; Part VI replaces slot-bound storage.
@@ -348,7 +348,7 @@ of scope, not forgotten.
 - **Prerequisites:** Block tables and KV geometry.
 - **Concepts:** Preallocated slab, free list, BlockId, allocate, incref, decref, refcount, layer layout, exhaustion.
 - **Mathematics / systems / hardware:** Pool-size checked products and per-block strides; allocator critical sections/atomics and RAII leases; alignment/cache-line concerns.
-- **Implementation / Hermon / external:** Build Lab 10 safe CPU pool; compare Hermon's `CpuBlockPool` and native typed pool as separate PREVIEW/LIBRARY layers; draw on allocator literature.
+- **Implementation / Hermon / external:** Build Lab 14 safe CPU pool; compare Hermon's `CpuBlockPool` and native typed pool as separate PREVIEW/LIBRARY layers; draw on allocator literature.
 - **Diagrams / experiments:** Pool metadata/data split and reference state machine; concurrent allocate/release stress.
 - **Correctness / benchmark:** Zero/over-allocation, double-decref defense, refcount reuse iff zero, layer/offset bounds, sanitizer; benchmark allocator ops separately from attention.
 - **Misconceptions / failures / deliverable / next:** Free-list membership and zero refcount must agree, an ID is not a pointer, and atomicity does not define ownership; deliver pool; Chapter 31 adds cache owners.
@@ -370,7 +370,7 @@ of scope, not forgotten.
 - **Prerequisites:** Prefix references, block capacity, continuation writes.
 - **Concepts:** Full immutable block, partial tail, alias, private continuation, COW, publish boundary.
 - **Mathematics / systems / hardware:** Valid-token range and copy bytes; mutation rights and lease transfer; block-copy bandwidth.
-- **Implementation / Hermon / external:** Implement COW and Lab 11 corruption reproducer; study Hermon's cross-backend `copy_block` integration failure as HISTORICAL evidence; compare OS/filesystem COW analogy and limits.
+- **Implementation / Hermon / external:** Implement COW and Lab 15 corruption reproducer; study Hermon's cross-backend `copy_block` integration failure as HISTORICAL evidence; compare OS/filesystem COW analogy and limits.
 - **Diagrams / experiments:** Two continuations before/after COW and mutation routing surface; disable COW to produce deterministic cross-request corruption.
 - **Correctness / benchmark:** Aligned and partial prefixes, source unchanged, destination valid region equal, backend copy differential; measure copy overhead by tail length.
 - **Misconceptions / failures / deliverable / next:** Refcounting alone does not prevent writes, full blocks need not be copied, and backend abstractions must cover every mutation; deliver safe sharing; Chapter 33 decides what stays resident.
@@ -484,7 +484,7 @@ of scope, not forgotten.
 - **Prerequisites:** Native scalar kernel, CPU/memory basics.
 - **Concepts:** Lane, vector width, load/store, horizontal reduction, mask/tail, alignment, intrinsic versus auto-vectorization, dispatch.
 - **Mathematics / systems / hardware:** Lane-wise dot/exp/value update; same buffer ownership; registers, cache lines, throughput/latency.
-- **Implementation / Hermon / external:** Add portable scalar plus one abstract vector microkernel and Lab 12 harness; compare Hermon's scalar oracle discipline; use vendor intrinsic docs.
+- **Implementation / Hermon / external:** Add portable scalar plus one abstract vector microkernel and Lab 16 harness; compare Hermon's scalar oracle discipline; use vendor intrinsic docs.
 - **Diagrams / experiments:** Scalar iterations packed into lanes and tail handling; inspect compiler output and sweep aligned/odd dimensions.
 - **Correctness / benchmark:** All tails, alignment, NaNs/infinities policy, scalar differential, sanitizer; cycles/element and bandwidth with compiler/ISA recorded.
 - **Misconceptions / failures / deliverable / next:** SIMD is not threading, width without locality may not help, and horizontal reductions alter order; deliver ISA-neutral microkernel contract; Chapter 43 maps NEON.
@@ -529,7 +529,7 @@ of scope, not forgotten.
 - **Concepts:** Metal device/queue/pipeline/buffer, threadgroup, command buffer, unified memory, storage mode, completion, shape gate.
 - **Mathematics / systems / hardware:** Map `(query,head,split)` tasks; buffer lifetime across command completion; Apple unified-memory bandwidth and fixed launch cost.
 - **Implementation / Hermon / external:** Build a scoped Metal provider with CPU fallback; examine Hermon's gated Metal native attention and negative short-shape result; use Apple docs.
-- **Diagrams / experiments:** Command lifecycle and shared-memory residency; Lab 13 Metal/CPU crossover sweep.
+- **Diagrams / experiments:** Command lifecycle and shared-memory residency; Lab 17 Metal/CPU crossover sweep.
 - **Correctness / benchmark:** Scalar differential by shape/dtype, unsupported fallback, command failure, buffer lifetime; warm/cold pipeline and synchronization included.
 - **Misconceptions / failures / deliverable / next:** Unified memory does not mean zero synchronization or zero copies in every API, GPU can be slower, and compiled pipeline is not selected execution; deliver Metal provider; Chapter 47 tackles discrete devices.
 
@@ -550,7 +550,7 @@ of scope, not forgotten.
 - **Prerequisites:** CPU/Metal/CUDA providers and benchmark policy.
 - **Concepts:** Crossover, fixed/variable cost, residency, launch, synchronization, batch shape, hysteresis/load-aware limits, reproducibility.
 - **Mathematics / systems / hardware:** `T_gpu = launch+transfer+work` versus `T_cpu`; provider selection ownership; integrated versus discrete memory economics.
-- **Implementation / Hermon / external:** Implement a pure shape-based initial gate and Lab 13; analyze Hermon's documented Metal/CUDA gates as HISTORICAL/CURRENT-LIBRARY evidence at commit; compare vendor guidance.
+- **Implementation / Hermon / external:** Implement a pure shape-based initial gate and Lab 17; analyze Hermon's documented Metal/CUDA gates as HISTORICAL/CURRENT-LIBRARY evidence at commit; compare vendor guidance.
 - **Diagrams / experiments:** Cost curves/crossover table and deterministic fallback tree; matched CPU/GPU sweep across context/query shapes.
 - **Correctness / benchmark:** Same outputs on both branches, T-1/T/T+1, forced modes, failure fallback; report losing cases and variance.
 - **Misconceptions / failures / deliverable / next:** Peak FLOPs do not predict decode latency, gate changes can alter floating reduction, and adaptive load gates harm reproducibility unless recorded; deliver ENGINE-9; Part IX optimizes decode policy.
@@ -642,7 +642,7 @@ of scope, not forgotten.
 - **Prerequisites:** GGUF/quantization, block pool, storage I/O.
 - **Concepts:** Expert container, aligned record, per-layer stride, packer, cache slot, acquire/prefetch, stored-form matvec.
 - **Mathematics / systems / hardware:** Arithmetic addressing and padding/stride cost; store/cache ownership; buffered/direct I/O, page alignment, NVMe transfer.
-- **Implementation / Hermon / external:** Build Lab 14 scoped expert packer/pager; study Hermon's LIBRARY v2 per-layer-stride container and K6 lessons; compare primary MoE offload work.
+- **Implementation / Hermon / external:** Build Lab 18 scoped expert packer/pager; study Hermon's LIBRARY v2 per-layer-stride container and K6 lessons; compare primary MoE offload work.
 - **Diagrams / experiments:** Container layout and miss-to-cache-fill path; pack mixed-size layer records and replay routes.
 - **Correctness / benchmark:** Checksums/ranges, short reads, layer stride, duplicate IDs, quant block boundaries, oracle matvec; storage bytes/s and ceiling explicitly not inference.
 - **Misconceptions / failures / deliverable / next:** Fixed record size may fail real mixed quantization, page cache can fake NVMe speed, and prefetch hint may spawn no work; deliver pager; Chapter 57 defines residency lifetime.
@@ -754,7 +754,7 @@ of scope, not forgotten.
 - **Prerequisites:** ENGINE-9, oracles/differentials, licensed external fixture.
 - **Concepts:** Trusted baseline, logit checkpoint, greedy sequence, prompt corpus, model artifact hash, coverage matrix, release gate.
 - **Mathematics / systems / hardware:** Layer/final logit tolerances and error accumulation; reset/cache isolation; same provider or disclosed cross-provider comparison.
-- **Implementation / Hermon / external:** Build Lab 16 with fixed model revision and baseline; mirror Hermon's ignored real-model differential pattern while closing fixture automation for mini-engine; inspect baseline source.
+- **Implementation / Hermon / external:** Build Lab 20 with fixed model revision and baseline; mirror Hermon's ignored real-model differential pattern while closing fixture automation for mini-engine; inspect baseline source.
 - **Diagrams / experiments:** Component-to-model proof ladder and corpus matrix; prompts crossing blocks/context shapes and repeated prefixes.
 - **Correctness / benchmark:** Tokenizer/template, logits, greedy outputs, cached/uncached, batched/isolated, providers, repeated runs; only equivalent configurations advance performance gates.
 - **Misconceptions / failures / deliverable / next:** One prompt is not support, token equality may hide margin changes, and ignored fixture tests are not ordinary-CI proof; deliver real-model gate; Part XII productionizes only passed paths.
@@ -789,7 +789,7 @@ of scope, not forgotten.
 - **Prerequisites:** Gateway, request state, bounded channels.
 - **Concepts:** Piece/delta, framing, heartbeat, bounded receiver, slow consumer, half-close, terminal usage/error, idempotent finish.
 - **Mathematics / systems / hardware:** Buffer/queue bounds and latency; producer-consumer ownership; provider completion can precede/lag network writes.
-- **Implementation / Hermon / external:** Implement SSE/NDJSON-safe stream and Lab 15; inspect Hermon's CURRENT Piece/Done/error contract and UTF-8 buffer; use protocol/networking specs.
+- **Implementation / Hermon / external:** Implement SSE/NDJSON-safe stream and Lab 19; inspect Hermon's CURRENT Piece/Done/error contract and UTF-8 buffer; use protocol/networking specs.
 - **Diagrams / experiments:** Runtime-channel-wire pipeline and slow-client backpressure; disconnect at prefill/decode/final event.
 - **Correctness / benchmark:** Valid framing/UTF-8, ordered pieces, exactly one terminal outcome, no Done after error, cleanup; time first byte/token and blocked-producer behavior.
 - **Misconceptions / failures / deliverable / next:** Token boundaries need not be text boundaries, socket close is not complete cancellation, and buffering changes latency/memory; deliver stream contract; Chapter 70 observes it.
@@ -833,7 +833,7 @@ of scope, not forgotten.
 - **Prerequisites:** ENGINE-10 candidate, profiling, observability, benchmark policy.
 - **Concepts:** Workload manifest, warm/cold cache, concurrency/arrival, TTFT/ITL/throughput/tail, control, repetitions/statistic, contamination, estimate.
 - **Mathematics / systems / hardware:** Distributions/confidence and latency-throughput tradeoffs; reset/isolation between runs; clocks, thermal state, driver/storage caches.
-- **Implementation / Hermon / external:** Build Lab 17 harness and artifact schema; critique/reproduce scoped Hermon methodology rather than repeat headlines; compare benchmark standards.
+- **Implementation / Hermon / external:** Build Lab 21 harness and artifact schema; critique/reproduce scoped Hermon methodology rather than repeat headlines; compare benchmark standards.
 - **Diagrams / experiments:** Benchmark boundary/state-reset flow and metric decision table; deliberately contaminate prefix/model/OS caches and detect it.
 - **Correctness / benchmark:** Equivalence gate first, full manifest/raw output, matched stop/model/quantization, repeated order-randomized controls; this chapter's deliverable is the benchmark suite.
 - **Misconceptions / failures / deliverable / next:** Independent ratios do not multiply into a measurement, storage ceiling is not tok/s, and favorable workload is not universal; deliver ENGINE-10 evidence framework; Part XIII audits Hermon with it.
@@ -1048,7 +1048,7 @@ Every chapter in this part must explicitly label **TODAY**, **NEAR TERM**,
 ### Chapter 92 — Performance Gate
 
 - **Purpose / key question:** Determine where the correct engine meets, exceeds, or misses explicit workload/hardware targets.
-- **Prerequisites:** Passed correctness gate and Lab 17 harness.
+- **Prerequisites:** Passed correctness gate and Lab 21 harness.
 - **Concepts:** Target workload, baseline, regression budget, profile, crossover, bottleneck, negative result.
 - **Mathematics / systems / hardware:** Latency/throughput/tail/memory analysis with confidence; reset/ownership of cache state; provider-specific profiles.
 - **Implementation / Hermon / external:** Run controlled CPU/provider, prompt/output, concurrency, and cache experiments; compare to Hermon only with matched semantics/setup.

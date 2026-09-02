@@ -1,0 +1,17 @@
+EMBEDDING IS ROW SELECTION
+
+                 D = 3 contiguous f32 values per row
+                      column 0   column 1   column 2
+                   +----------+----------+----------+
+TokenId(0) <eos>   |    0.0   |    0.0   |    0.0   |
+                   +----------+----------+----------+
+TokenId(1) I       |    0.0   |    1.0   |    0.0   |
+                   +----------+----------+----------+
+TokenId(2) like -->|    1.0   |   -0.5   |    2.0   |--> h [3]
+                   +----------+----------+----------+
+TokenId(3) Rust    |   -1.0   |    0.0   |    0.0   |
+                   +----------+----------+----------+
+
+row-major offset = token_id * D
+
+The ID chooses a row. Its scalar magnitude is not multiplied into the row.

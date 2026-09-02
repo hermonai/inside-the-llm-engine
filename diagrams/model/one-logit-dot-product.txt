@@ -1,0 +1,14 @@
+ONE LOGIT FROM ONE OUTPUT ROW
+
+hidden h              candidate row W[3]          products
++------+------+      +------+------+      +------------------+
+| 1.0  | -0.5 | 2.0  | 1.0  | -0.4 | 0.25 |      | 1.0 * 1.0      |
++------+------+      +------+------+      | + (-0.4 * -0.5) |
+                                             | + (0.25 * 2.0) |
+                                             | + bias[3] 0.5  |
+                                             +---------+------+
+                                                       |
+                                                       v
+                                              logit[3] = 2.2
+
+Repeat the same row-wise dot product for all V candidate tokens.

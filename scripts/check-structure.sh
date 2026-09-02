@@ -28,12 +28,37 @@ research/hermon/README.md
 research/part-01/README.md
 research/part-01/chapter-01-the-missing-half-of-ai.md
 research/part-01/chapter-02-from-text-to-tokens.md
+research/part-01/chapter-03-the-smallest-possible-language-model.md
 research/part-01/tokenizer-comparison.md
 diagrams/README.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then
         echo "missing or empty required file: $file" >&2
+        exit 1
+    fi
+done
+
+for file in \
+    manuscript/part-01/chapter-03-the-smallest-possible-language-model.md \
+    code/mini-engine/crates/engine0/src/model.rs \
+    code/reference/python/chapter03_oracle.py \
+    code/experiments/chapter-03-projection-scaling.py \
+    research/benchmarks/chapter-03-projection-scaling.md \
+    labs/lab-05-forward-pass-by-hand.md \
+    labs/lab-06-change-one-weight.md \
+    labs/lab-07-same-last-token-same-output.md \
+    labs/lab-08-break-the-shape.md \
+    diagrams/model/token-id-to-logits.txt \
+    diagrams/model/embedding-row-lookup.txt \
+    diagrams/model/one-logit-dot-product.txt \
+    diagrams/model/tiny-model-tensor-shapes.txt \
+    diagrams/model/parameters-vs-activations.txt \
+    diagrams/model/semantics-vs-execution.txt \
+    diagrams/model/context-limitation.txt
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 3 artifact: $file" >&2
         exit 1
     fi
 done
@@ -140,4 +165,10 @@ if [ "$chapter_two_words" -lt 6000 ] || [ "$chapter_two_words" -gt 10000 ]; then
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 specifications, Chapters 1-2 artifacts present"
+chapter_three_words=$(wc -w < manuscript/part-01/chapter-03-the-smallest-possible-language-model.md)
+if [ "$chapter_three_words" -lt 6000 ] || [ "$chapter_three_words" -gt 10000 ]; then
+    echo "Chapter 3 must contain 6,000-10,000 words, found $chapter_three_words" >&2
+    exit 1
+fi
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-3 artifacts present"
