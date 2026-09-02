@@ -13,4 +13,3 @@ Examples:
   r = 0.499999 -> token 1
   r = 0.500000 -> token 2
   r = 0.999999 -> token 2
-

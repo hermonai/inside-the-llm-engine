@@ -30,4 +30,3 @@ not sum to one. Every case must fail rather than inventing a token.
 
 Test exact boundaries `0.2` and `0.5` and the largest representable value below
 one. Explain the final-positive-candidate rounding fallback.
-

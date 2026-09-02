@@ -33,4 +33,3 @@ with no later token.
 
 Draw the commit point. Inject a tokenizer/UTF-8 failure after token commit and
 explain why the result contains the committed token plus one failed terminal.
-

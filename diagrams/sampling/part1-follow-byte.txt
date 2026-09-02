@@ -23,4 +23,3 @@ bias parameter bytes
                                    |
                                    v when complete
                            streamed UTF-8 text bytes
-

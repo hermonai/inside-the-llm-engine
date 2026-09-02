@@ -28,4 +28,3 @@ validation; do not replace the error with greedy behavior.
 Plot or tabulate the largest probability over more positive temperatures.
 Do not call temperature “randomness”: repeat with a fixed artificial draw and
 identify the separate distribution-shape and selection stages.
-

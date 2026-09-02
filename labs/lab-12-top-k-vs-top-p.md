@@ -24,4 +24,3 @@ are deliberate no-ops under ENGINE-1's contract.
 Combine top-k and top-p. Apply ENGINE-1's documented order, then reverse it by
 hand. Find a vector where the surviving set changes and explain why order is
 part of inference behavior.
-

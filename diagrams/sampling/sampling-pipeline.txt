@@ -36,4 +36,3 @@ solid arrow = derived data                 raw Logits remain unchanged
          TokenId                               seed -> mutable RNG
 
 Greedy is a separate path: raw logits -> one max scan -> lowest ID wins ties.
-

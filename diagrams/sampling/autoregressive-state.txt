@@ -32,4 +32,3 @@ solid arrow = data/state transition       dotted arrow = control check
 
 EOS is neither committed as visible output nor decoded. One Lifecycle owns
 Completed, Cancelled, and Failed terminal transitions.
-

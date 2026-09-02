@@ -32,4 +32,3 @@ maps to a token.
 Run two request samplers in alternating order. Prove neither consumes values
 from the other's RNG stream. Explain why one global RNG would fail under
 concurrent scheduling.
-

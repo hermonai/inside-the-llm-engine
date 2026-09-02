@@ -24,4 +24,3 @@ PART I — FOLLOW THE OWNER
  | ordered token/text events                                       |
  | exactly one terminal event                                      |
  +-----------------------------------------------------------------+
-

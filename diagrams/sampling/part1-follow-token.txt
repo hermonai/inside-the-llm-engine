@@ -28,4 +28,3 @@ embedding row -> hidden [D] -> output projection -> raw logits [V]
                                       UTF-8 text stream            |
                                                                    |
                                          next model forward <------+
-

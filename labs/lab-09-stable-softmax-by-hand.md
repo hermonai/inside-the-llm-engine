@@ -32,4 +32,3 @@ stable formula and verify finite probabilities.
 
 Add several constants to `[1,2,3]`. State a tolerance and test shift invariance.
 Cleanup: revert experimental fixtures unless promoted with a test.
-
