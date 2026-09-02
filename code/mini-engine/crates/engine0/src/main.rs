@@ -2,11 +2,12 @@ use std::process::ExitCode;
 
 use engine0::chat::ModelContract;
 use engine0::model::{ForwardPass, Model, ModelError, TinyLanguageModel};
+use engine0::sampling::SamplingConfig;
 use engine0::tokenizer::{TinyBpeTokenizer, TinyLmTokenizer, TokenId, Tokenizer};
 use engine0::utf8::Utf8StreamDecoder;
 use engine0::{
-    CancelAtStep, GreedySelector, NeverCancel, Request, Runtime, StreamEvent, TerminalOutcome,
-    TokenSink, TraceEvent, TraceSink,
+    CancelAtStep, NeverCancel, Request, Runtime, StreamEvent, TerminalOutcome, TokenSink,
+    TraceEvent, TraceSink,
 };
 
 struct ConsoleSink;
@@ -60,10 +61,11 @@ struct GenerateOptions {
     cancel_at: Option<usize>,
     fail_at: Option<usize>,
     trace: bool,
+    sampling: SamplingConfig,
 }
 
 fn usage() -> &'static str {
-    "usage:\n  engine0 [--trace] [--max-tokens N] [--cancel-at STEP] [--fail-at STEP] 'I like'\n  engine0 tokenize TEXT\n  engine0 decode TOKEN_ID..."
+    "usage:\n  engine0 [--trace] [--max-tokens N] [--cancel-at STEP] [--fail-at STEP] [--sample [--temperature T] [--top-k K] [--top-p P] [--seed S]] 'I'\n  engine0 tokenize TEXT\n  engine0 decode TOKEN_ID..."
 }
 
 fn parse_generate(args: Vec<String>) -> Result<GenerateOptions, String> {
@@ -73,10 +75,44 @@ fn parse_generate(args: Vec<String>) -> Result<GenerateOptions, String> {
     let mut cancel_at = None;
     let mut fail_at = None;
     let mut trace = false;
+    let mut stochastic = false;
+    let mut temperature = 1.0f64;
+    let mut top_k = None;
+    let mut top_p = None;
+    let mut seed = 0u64;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--trace" => trace = true,
+            "--sample" => stochastic = true,
+            "--temperature" => {
+                let value = args.next().ok_or("--temperature requires a value")?;
+                temperature = value
+                    .parse()
+                    .map_err(|_| format!("invalid --temperature value: {value}"))?;
+            }
+            "--top-k" => {
+                let value = args.next().ok_or("--top-k requires a value")?;
+                top_k = Some(
+                    value
+                        .parse()
+                        .map_err(|_| format!("invalid --top-k value: {value}"))?,
+                );
+            }
+            "--top-p" => {
+                let value = args.next().ok_or("--top-p requires a value")?;
+                top_p = Some(
+                    value
+                        .parse()
+                        .map_err(|_| format!("invalid --top-p value: {value}"))?,
+                );
+            }
+            "--seed" => {
+                let value = args.next().ok_or("--seed requires a value")?;
+                seed = value
+                    .parse()
+                    .map_err(|_| format!("invalid --seed value: {value}"))?;
+            }
             "--max-tokens" => {
                 let value = args.next().ok_or("--max-tokens requires a value")?;
                 max_tokens = value
@@ -109,12 +145,23 @@ fn parse_generate(args: Vec<String>) -> Result<GenerateOptions, String> {
         return Err(usage().to_string());
     }
 
+    if !stochastic && (temperature != 1.0 || top_k.is_some() || top_p.is_some() || seed != 0) {
+        return Err("--temperature, --top-k, --top-p, and --seed require --sample".to_string());
+    }
+    let sampling = if stochastic {
+        SamplingConfig::stochastic(temperature, top_k, top_p, seed)
+    } else {
+        SamplingConfig::Greedy
+    };
+    sampling.validate().map_err(|error| error.to_string())?;
+
     Ok(GenerateOptions {
         prompt: prompt_parts.join(" "),
         max_tokens,
         cancel_at,
         fail_at,
         trace,
+        sampling,
     })
 }
 
@@ -172,14 +219,15 @@ fn decode(args: &[String]) -> Result<(), String> {
 fn generate(options: GenerateOptions) -> Result<TerminalOutcome, String> {
     let tokenizer = TinyLmTokenizer;
     let request = Request::from_text(1, options.prompt.as_bytes(), options.max_tokens, &tokenizer)
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| error.to_string())?
+        .with_sampling(options.sampling);
     let model = FailureInjector {
         inner: TinyLanguageModel::chapter3_fixture(),
         fail_at_history_len: options
             .fail_at
             .map(|step| request.input_tokens.len() + step),
     };
-    let runtime = Runtime::try_new(model, GreedySelector, tokenizer, &ModelContract::engine1())
+    let runtime = Runtime::try_new(model, tokenizer, &ModelContract::engine1())
         .map_err(|error| error.to_string())?;
     let mut sink = ConsoleSink;
     let mut console_trace = ConsoleTrace;

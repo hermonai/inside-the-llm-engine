@@ -1,13 +1,14 @@
 #![forbid(unsafe_code)]
 
-//! ENGINE-1 after Chapter 3: a tiny numerical language-model runtime.
+//! ENGINE-1 after Chapter 4: a complete tiny autoregressive inference engine.
 //!
 //! A token ID now selects an embedding row and a scalar output projection
-//! produces genuine vocabulary logits. Deterministic argmax remains separate
-//! from model execution until Chapter 4 introduces sampling.
+//! produces genuine vocabulary logits. A request-owned sampler turns those
+//! logits into feedback tokens until EOS, cancellation, failure, or budget.
 
 pub mod chat;
 pub mod model;
+pub mod sampling;
 pub mod tokenizer;
 pub mod utf8;
 
@@ -15,19 +16,21 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use chat::{ContractError, ModelContract};
-use model::{ForwardPass, Logits, Model};
+use model::{ForwardPass, Model};
+use sampling::{SamplerState, SamplingConfig, SamplingError};
 use tokenizer::{SpecialToken, TokenId, Tokenizer};
 use utf8::Utf8StreamDecoder;
 
 pub type RequestId = u64;
 
 /// A generation request after text has crossed the tokenizer boundary.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Request {
     pub id: RequestId,
     pub input_tokens: Vec<TokenId>,
     pub input_bytes: usize,
     pub max_new_tokens: usize,
+    pub sampling: SamplingConfig,
 }
 
 impl Request {
@@ -42,6 +45,7 @@ impl Request {
             input_tokens: tokenizer.encode(input)?,
             input_bytes: input.len(),
             max_new_tokens,
+            sampling: SamplingConfig::Greedy,
         })
     }
 
@@ -56,7 +60,13 @@ impl Request {
             input_tokens,
             input_bytes,
             max_new_tokens,
+            sampling: SamplingConfig::Greedy,
         }
+    }
+
+    pub fn with_sampling(mut self, sampling: SamplingConfig) -> Self {
+        self.sampling = sampling;
+        self
     }
 
     fn validate(&self) -> Result<(), GenerationError> {
@@ -70,6 +80,9 @@ impl Request {
                 "max_new_tokens must be greater than zero".to_string(),
             ));
         }
+        self.sampling
+            .validate()
+            .map_err(GenerationError::Sampling)?;
         Ok(())
     }
 }
@@ -123,37 +136,13 @@ impl GenerationState {
     }
 }
 
-pub trait Selector {
-    fn select(&self, logits: &Logits) -> Result<TokenId, GenerationError>;
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct GreedySelector;
-
-impl Selector for GreedySelector {
-    fn select(&self, logits: &Logits) -> Result<TokenId, GenerationError> {
-        let mut best_index = 0usize;
-        let mut best = *logits.as_slice().first().ok_or(GenerationError::NoLogits)?;
-        for (index, value) in logits.as_slice()[1..].iter().copied().enumerate() {
-            if value > best {
-                best = value;
-                best_index = index + 1;
-            }
-        }
-        let id = u32::try_from(best_index).map_err(|_| {
-            GenerationError::InvalidRequest("selected token ID exceeds u32".to_string())
-        })?;
-        Ok(TokenId(id))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GenerationError {
     InvalidRequest(String),
     Model(String),
     Tokenizer(String),
     Utf8Stream(String),
-    NoLogits,
+    Sampling(SamplingError),
     AlreadyTerminal,
 }
 
@@ -164,7 +153,7 @@ impl fmt::Display for GenerationError {
             Self::Model(message) => write!(f, "model error: {message}"),
             Self::Tokenizer(message) => write!(f, "tokenizer error: {message}"),
             Self::Utf8Stream(message) => write!(f, "UTF-8 stream error: {message}"),
-            Self::NoLogits => f.write_str("model returned no logits"),
+            Self::Sampling(error) => write!(f, "sampling error: {error}"),
             Self::AlreadyTerminal => f.write_str("request already has a terminal outcome"),
         }
     }
@@ -178,7 +167,7 @@ pub enum StopReason {
     MaxTokens,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TerminalOutcome {
     Completed(StopReason),
     Cancelled,
@@ -197,7 +186,7 @@ impl fmt::Display for TerminalOutcome {
 }
 
 /// Token identities and valid text pieces are separate ordered events.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StreamEvent {
     Token {
         request_id: RequestId,
@@ -219,7 +208,7 @@ pub trait TokenSink {
     fn send(&mut self, event: StreamEvent);
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct RecordingSink {
     pub events: Vec<StreamEvent>,
 }
@@ -271,6 +260,14 @@ pub enum TraceKind {
     LogitsReady {
         shape: [usize; 1],
         values: Vec<f32>,
+    },
+    SamplerConfigured(SamplingConfig),
+    ProbabilitiesReady {
+        values: Vec<f64>,
+    },
+    RandomDraw {
+        sample_index: usize,
+        value: f64,
     },
     TokenSelected {
         step: usize,
@@ -367,7 +364,7 @@ impl LifecycleTimings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GenerationResult {
     pub request_id: RequestId,
     pub tokens: Vec<Token>,
@@ -376,22 +373,19 @@ pub struct GenerationResult {
 }
 
 #[derive(Debug, Clone)]
-pub struct Runtime<M, S, T> {
+pub struct Runtime<M, T> {
     model: M,
-    selector: S,
     tokenizer: T,
     eos_token: TokenId,
 }
 
-impl<M, S, T> Runtime<M, S, T>
+impl<M, T> Runtime<M, T>
 where
     M: Model,
-    S: Selector,
     T: Tokenizer,
 {
     pub fn try_new(
         model: M,
-        selector: S,
         tokenizer: T,
         contract: &ModelContract,
     ) -> Result<Self, ContractError> {
@@ -401,7 +395,6 @@ where
             .ok_or(ContractError::MissingEndOfSequence)?;
         Ok(Self {
             model,
-            selector,
             tokenizer,
             eos_token,
         })
@@ -422,6 +415,15 @@ where
         if let Err(error) = request.validate() {
             return lifecycle.result(state, TerminalOutcome::Failed(error));
         }
+        let mut sampler = match SamplerState::try_new(request.sampling.clone()) {
+            Ok(sampler) => sampler,
+            Err(error) => {
+                return lifecycle.result(
+                    state,
+                    TerminalOutcome::Failed(GenerationError::Sampling(error)),
+                )
+            }
+        };
 
         lifecycle.trace(TraceKind::InputEncoded {
             bytes: request.input_bytes,
@@ -431,6 +433,7 @@ where
         lifecycle.admitted_at = Some(started.elapsed());
         lifecycle.trace(TraceKind::ExecutionStarted);
         lifecycle.execution_started_at = Some(started.elapsed());
+        lifecycle.trace(TraceKind::SamplerConfigured(request.sampling.clone()));
 
         let outcome = loop {
             if cancellation.is_cancelled(&state) {
@@ -458,10 +461,25 @@ where
                 )));
             }
             trace_forward(&mut lifecycle, &forward);
-            let selected_id = match self.selector.select(&forward.logits) {
-                Ok(token_id) => token_id,
-                Err(error) => break TerminalOutcome::Failed(error),
+            if cancellation.is_cancelled(&state) {
+                break TerminalOutcome::Cancelled;
+            }
+            let sampling_step = match sampler.sample(&forward.logits) {
+                Ok(step) => step,
+                Err(error) => break TerminalOutcome::Failed(GenerationError::Sampling(error)),
             };
+            if let Some(probabilities) = &sampling_step.probabilities {
+                lifecycle.trace(TraceKind::ProbabilitiesReady {
+                    values: probabilities.as_slice().to_vec(),
+                });
+            }
+            if let Some(value) = sampling_step.draw {
+                lifecycle.trace(TraceKind::RandomDraw {
+                    sample_index: sampling_step.sample_index,
+                    value,
+                });
+            }
+            let selected_id = sampling_step.token_id;
             let selected = if selected_id == self.eos_token {
                 Token::end(selected_id)
             } else {
