@@ -273,6 +273,10 @@ pub enum TraceKind {
         step: usize,
         token_id: TokenId,
     },
+    TokenCommitted {
+        index: usize,
+        token_id: TokenId,
+    },
     TokenEmitted {
         index: usize,
         token_id: TokenId,
@@ -499,6 +503,10 @@ where
             }
             let index = state.generated.len();
             state.generated.push(selected);
+            lifecycle.trace(TraceKind::TokenCommitted {
+                index,
+                token_id: selected.id,
+            });
             lifecycle.emit_token(index, selected);
 
             let bytes = match self.tokenizer.decode_token(selected.id) {

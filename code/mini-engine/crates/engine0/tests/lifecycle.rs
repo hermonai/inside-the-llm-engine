@@ -91,10 +91,17 @@ fn trace_exposes_embedding_logits_selection_and_text_stages() {
         kinds[7],
         TraceKind::TokenSelected { token_id, .. } if *token_id == TINY_LM_RUST
     ));
-    assert!(matches!(kinds[8], TraceKind::TokenEmitted { .. }));
-    assert!(matches!(kinds[9], TraceKind::TokenDecoded { bytes: 5, .. }));
-    assert!(matches!(kinds[11], TraceKind::TextEmitted { bytes: 5, .. }));
-    assert!(matches!(kinds[12], TraceKind::ModelInvoked { step: 1 }));
+    assert!(matches!(
+        kinds[8],
+        TraceKind::TokenCommitted { index: 0, token_id } if *token_id == TINY_LM_RUST
+    ));
+    assert!(matches!(kinds[9], TraceKind::TokenEmitted { .. }));
+    assert!(matches!(
+        kinds[10],
+        TraceKind::TokenDecoded { bytes: 5, .. }
+    ));
+    assert!(matches!(kinds[12], TraceKind::TextEmitted { bytes: 5, .. }));
+    assert!(matches!(kinds[13], TraceKind::ModelInvoked { step: 1 }));
     assert!(matches!(
         kinds.last(),
         Some(TraceKind::Terminal(TerminalOutcome::Completed(
