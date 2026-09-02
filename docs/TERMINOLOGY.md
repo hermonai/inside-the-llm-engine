@@ -27,6 +27,20 @@ entry before a chapter reaches TECH-REVIEW.
   revision, not merely presentation formatting.
 - **Prefill** evaluates prompt positions and creates reusable per-position
   state; **decode** advances active sequences with newly generated positions.
+- A **logit** is an unnormalized model score; a **probability** is a normalized
+  non-negative mass. Logit processing, probability filtering, and token
+  selection are distinct stages.
+- **Greedy decoding** is deterministic argmax selection and does not require
+  softmax. **Categorical sampling** draws from a probability distribution and
+  therefore owns mutable pseudorandom state.
+- **Temperature** rescales logits before softmax; **top-k** retains a fixed
+  number of candidates, while **top-p** retains the smallest probability-ranked
+  prefix whose cumulative mass reaches the threshold.
+- A **seed** initializes a particular PRNG contract. It does not promise
+  identical output across engine versions, numerical backends, or models.
+- **EOS** is a sampled control token that ends generation; `max_new_tokens`
+  counts committed generated tokens. Keep both distinct from prompt length and
+  future text stop-string handling.
 - A **sequence** is one logical token history. A **physical token batch** is the
   work assembled for one forward execution and may mix phases/sequences.
 - The **KV cache** stores per-layer key/value vectors for prior positions. It

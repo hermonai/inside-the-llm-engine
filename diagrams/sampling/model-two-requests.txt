@@ -1,0 +1,18 @@
+SHARED MODEL, INDEPENDENT REQUEST STATE
+
+                         MODEL
+                 immutable weights [shared]
+                             |
+                +------------+------------+
+                |                         |
+                v                         v
+          Request A                   Request B
+      prompt/history A             prompt/history B
+       sampler config A             sampler config B
+       mutable RNG A                 mutable RNG B
+         budget A                      budget B
+       terminal A                    terminal B
+
+The model can be reused. Token histories and RNG streams cannot be shared.
+Future batching may evaluate A and B together, but selection state remains
+logically per sequence.

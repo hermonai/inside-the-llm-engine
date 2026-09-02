@@ -1,0 +1,27 @@
+PART I — FOLLOW THE OWNER
+
+ +----------------------- MODEL LIFETIME --------------------------+
+ | immutable tokenizer/model contract                              |
+ | immutable embedding, projection, and bias parameter bytes       |
+ +-----------------------------------------------------------------+
+
+ +---------------------- REQUEST LIFETIME -------------------------+
+ | immutable prompt token IDs and SamplingConfig                   |
+ | mutable committed token history                                 |
+ | mutable SamplerState: SplitMix64 state + successful sample count|
+ | mutable output budget and sole terminal state                   |
+ +-----------------------------------------------------------------+
+
+ +----------------------- FORWARD STEP ----------------------------+
+ | request-local hidden activation                                 |
+ | immutable raw Logits result                                     |
+ | temporary processed-score/probability workspace                 |
+ | one selected TokenId                                            |
+ +-----------------------------------------------------------------+
+
+ +-------------------------- STREAM -------------------------------+
+ | request-local pending UTF-8 bytes                               |
+ | ordered token/text events                                       |
+ | exactly one terminal event                                      |
+ +-----------------------------------------------------------------+
+

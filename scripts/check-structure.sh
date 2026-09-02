@@ -29,12 +29,40 @@ research/part-01/README.md
 research/part-01/chapter-01-the-missing-half-of-ai.md
 research/part-01/chapter-02-from-text-to-tokens.md
 research/part-01/chapter-03-the-smallest-possible-language-model.md
+research/part-01/chapter-04-logits-sampling-autoregressive-loop.md
 research/part-01/tokenizer-comparison.md
 diagrams/README.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then
         echo "missing or empty required file: $file" >&2
+        exit 1
+    fi
+done
+
+for file in \
+    manuscript/part-01/chapter-04-logits-sampling-autoregressive-loop.md \
+    code/mini-engine/crates/engine0/src/sampling.rs \
+    code/mini-engine/crates/engine0/tests/sampling.rs \
+    code/reference/python/chapter04_sampling_oracle.py \
+    research/benchmarks/chapter-04-sampling-cost.md \
+    labs/lab-09-stable-softmax-by-hand.md \
+    labs/lab-10-temperature.md \
+    labs/lab-11-fixed-categorical-draw.md \
+    labs/lab-12-top-k-vs-top-p.md \
+    labs/lab-13-build-the-autoregressive-loop.md \
+    labs/lab-14-change-the-seed.md \
+    labs/lab-15-break-the-sampler.md \
+    diagrams/sampling/sampling-pipeline.txt \
+    diagrams/sampling/autoregressive-state.txt \
+    diagrams/sampling/categorical-intervals.txt \
+    diagrams/sampling/part1-follow-token.txt \
+    diagrams/sampling/part1-follow-byte.txt \
+    diagrams/sampling/part1-follow-owner.txt \
+    diagrams/sampling/model-two-requests.txt
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 4 artifact: $file" >&2
         exit 1
     fi
 done
@@ -171,4 +199,10 @@ if [ "$chapter_three_words" -lt 6000 ] || [ "$chapter_three_words" -gt 10000 ]; 
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 specifications, Chapters 1-3 artifacts present"
+chapter_four_words=$(wc -w < manuscript/part-01/chapter-04-logits-sampling-autoregressive-loop.md)
+if [ "$chapter_four_words" -lt 6000 ] || [ "$chapter_four_words" -gt 10000 ]; then
+    echo "Chapter 4 must contain 6,000-10,000 words, found $chapter_four_words" >&2
+    exit 1
+fi
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-4 artifacts present"

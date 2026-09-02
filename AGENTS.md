@@ -100,15 +100,14 @@ paths. Never push unless the user explicitly authorizes it.
 
 ## Current state and next task
 
-Phase 0 repository architecture is established. Phase 1 is in progress:
-Chapters 1–3, ENGINE-0/1, Labs 1–8, eighteen canonical diagrams, and the
-current Hermon token-to-logits refresh are complete. The authoritative state
-and next task are in `docs/STATUS.md`.
+Phase 0 repository architecture and Phase 1 are complete: Chapters 1–4,
+ENGINE-0/1, Labs 1–15, twenty-five canonical diagrams, and the current Hermon
+request/token/logit/sampling refresh are complete. The authoritative state and
+next task are in `docs/STATUS.md`.
 
-The next bounded task is Chapter 4 — Logits, Sampling, and the Autoregressive
-Loop. Begin from ENGINE-1's typed finite logit vector and keep model semantics,
-logits processing, selection policy, token-history mutation, stopping, and
-terminal ownership separate. Derive numerically stable softmax, greedy and
-categorical selection, temperature, seeds, top-k/top-p, EOS/token budgets, and
-deterministic reproduction from first principles. Do not begin Part II's
-Transformer implementation.
+The next bounded task is Chapter 5 — Tensors Without Magic. Establish scalar,
+vector, matrix, tensor, rank, shape, dtype, element count, row-major layout,
+stride, contiguity, offset calculation, view/copy/alias semantics, ownership,
+bounds, and overflow-safe size arithmetic. Evolve ENGINE-1's ad hoc arrays into
+a small checked tensor/view substrate without beginning attention or building
+a PyTorch-like framework.

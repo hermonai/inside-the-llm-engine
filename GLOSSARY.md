@@ -319,6 +319,99 @@ constraints, and RNG state before selection. First introduced: Chapter 4.
 Common confusion: greedy argmax and stochastic sampling have different state
 and reproducibility contracts.
 
+### Autoregressive generation / token feedback
+
+**Short:** Repeatedly choose a next token, append it, and use it in the next
+model evaluation. **Precise:** At step `t`, a causal model scores token
+`x_(t+1)` from visible history; the runtime selects and commits one token so the
+next step conditions on the enlarged sequence. First introduced: Chapter 4.
+Related: forward pass, sampler, sequence. Common confusion: autoregressive
+feedback does not prove that a particular model representation uses all prior
+tokens.
+
+### Categorical distribution / categorical sampling
+
+**Short:** A probability distribution over a finite set and a draw selecting
+one member. **Precise:** ENGINE-1 maps a uniform draw in `[0,1)` to the first
+cumulative probability boundary strictly greater than it. First introduced:
+Chapter 4. Related: probability distribution, sampler, PRNG. Common confusion:
+the RNG creates a draw; model-derived probabilities determine interval sizes.
+
+### Greedy decoding
+
+**Short:** Select the token with the largest current logit. **Precise:** A
+deterministic `O(V)` argmax policy with an explicit tie rule; ENGINE-1 chooses
+the lowest token ID among equal maxima and does not compute softmax. First
+introduced: Chapter 4. Related: argmax, sampler. Common confusion: a locally
+maximal next token does not prove a globally maximal complete sequence.
+
+### Logit processing
+
+**Short:** Ordered policy transformations between raw logits and selection.
+**Precise:** Temperature, masks, top-k/top-p, penalties, and constraints can
+change the candidate distribution while raw model logits remain separate
+evidence. First introduced: Chapter 4. Related: sampler, logits. Common
+confusion: processor order is part of inference behavior, not interchangeable
+configuration decoration.
+
+### max_new_tokens
+
+**Short:** The maximum number of new output tokens a request may commit.
+**Precise:** It counts generated non-EOS tokens separately from prompt length;
+reaching it is a successful stop reason, not a model error. First introduced:
+Chapter 4. Related: request, stop reason. Common confusion: it is not total
+sequence length.
+
+### Probability distribution / renormalization
+
+**Short:** Non-negative mass summing to one; renormalization restores unit mass
+after filtering. **Precise:** If retained mass is `s>0`, each retained
+probability becomes `p_i/s` and removed candidates remain zero. First
+introduced: Chapter 4. Related: softmax, categorical sampling. Common confusion:
+sampling from a truncated distribution still requires defined normalization.
+
+### PRNG / seed
+
+**Short:** A pseudorandom number generator deterministically advances state;
+a seed initializes it. **Precise:** Reproduction also depends on algorithm,
+consumption order, engine/model/tokenizer versions, numeric path, and policy.
+ENGINE-1 owns one non-cryptographic SplitMix64 state per request. First
+introduced: Chapter 4. Related: sampler state. Common confusion: one seed does
+not guarantee identical output across systems.
+
+### Sampler configuration / sampler state
+
+**Short:** Configuration is immutable policy; state is mutable progress.
+**Precise:** ENGINE-1 configuration names greedy or stochastic parameters,
+while request-local state owns its PRNG and successful-sample count. First
+introduced: Chapter 4. Related: sampler, request, seed. Common confusion:
+shareable configuration does not make mutable RNG state shareable.
+
+### Softmax / stable softmax
+
+**Short:** Softmax normalizes scores into probabilities; stable softmax first
+subtracts the largest score. **Precise:** `p_i=exp(z_i-m)/sum_j exp(z_j-m)`
+with `m=max(z)` preserves exact softmax while keeping exponential arguments
+non-positive. First introduced: Chapter 4. Related: logits, probability
+distribution. Common confusion: greedy argmax does not require softmax.
+
+### Temperature
+
+**Short:** A positive sampling parameter that scales logit gaps before
+normalization. **Precise:** Stochastic ENGINE-1 computes `z'_i=z_i/T` for
+finite `T>0`; lower values sharpen and higher values flatten without changing
+ordering. First introduced: Chapter 4. Related: softmax, sampler. Common
+confusion: temperature changes distribution shape; the RNG supplies randomness.
+
+### Top-k / top-p / nucleus sampling
+
+**Short:** Top-k retains a fixed candidate count; top-p retains the smallest
+high-probability prefix reaching a mass threshold. **Precise:** ENGINE-1 applies
+top-k in logit space, stable softmax, then top-p in probability space with the
+crossing candidate included, followed by renormalization. First introduced:
+Chapter 4. Related: logit processing, sampler. Common confusion: top-p does not
+keep `p` percent of vocabulary entries.
+
 ### Sequence
 
 **Short:** One logical ordered token history advanced by the runtime.

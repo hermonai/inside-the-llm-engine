@@ -1,0 +1,26 @@
+PART I — FOLLOW THE BYTE
+
+MODEL LIFETIME                  FORWARD STEP / REQUEST              STREAM
+
+embedding parameter bytes
+projection parameter bytes
+bias parameter bytes
+          |
+          v
+       f32 arithmetic -> finite raw f32 logits [V]
+                                   |
+                                   v copy; raw evidence preserved
+                         f64 sampling workspace [V]
+                                   |
+                                   v
+                                TokenId
+                                   |
+                                   v tokenizer vocabulary lookup
+                         token byte piece (may be partial UTF-8)
+                                   |
+                                   v
+                           request UTF-8 buffer
+                                   |
+                                   v when complete
+                           streamed UTF-8 text bytes
+

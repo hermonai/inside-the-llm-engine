@@ -12,10 +12,11 @@ hardware. The reader progressively builds `mini-engine`: first a token
 generator, then a real model runner, and finally a production-shaped inference
 runtime.
 
-[Chapters 1–3](manuscript/part-01/README.md) and the standard-library-only
-[ENGINE-1](code/mini-engine/README.md) are now complete. They establish the
-request-to-terminal lifecycle, tokenizer/chat contract, byte-safe output
-stream, and the first real token-ID-to-logits numerical path. Chapter 4 is next.
+[Part I, Chapters 1–4](manuscript/part-01/README.md), and the
+standard-library-only [ENGINE-1](code/mini-engine/README.md) are complete. They
+establish the request-to-terminal lifecycle, tokenizer/chat contract,
+byte-safe output, a real token-ID-to-logits model, request-owned sampling, and
+the complete autoregressive feedback loop. Part II begins next with tensors.
 
 ```text
                          INSIDE THE LLM ENGINE
@@ -170,9 +171,10 @@ Contributors and AI agents should also read [AGENTS.md](AGENTS.md),
 
 ## Status
 
-Phase 0 established the repository and editorial architecture. Phase 1 is in
-progress: Chapters 1–3, ENGINE-0/1, Labs 1–8, and their source-verified
-research, oracles, and diagrams are complete; Chapter 4 is next. See
+Phase 0 established the repository and editorial architecture. Phase 1 is
+complete: Chapters 1–4, ENGINE-0/1, Labs 1–15, and their source-verified
+research, oracles, diagrams, and measurements pass their gates. Chapter 5 is
+next. See
 [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license

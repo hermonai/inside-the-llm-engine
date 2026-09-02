@@ -232,3 +232,35 @@ a stricter typed-error policy; no Hermon change was made.
 prefix-cache skeletons but is not imported by the current real-model request
 path. Full evidence and test boundaries are in
 [`research/part-01/chapter-02-from-text-to-tokens.md`](../part-01/chapter-02-from-text-to-tokens.md).
+
+## Chapter 3 refresh — 2026-09-02
+
+Hermon remained at `472a44c`, with llama.cpp pinned at `389ff61d`. The Chapter
+3 pass separated Hermon's CURRENT llama.cpp-backed logits from its PREVIEW
+Hermon-owned paged model. In the default batched worker, `llama_decode` executes
+the model and each active sequence samples from its own output row. The linked
+facade exposes tensor metadata and packed operations, but ordinary tests without
+an external GGUF fixture do not prove end-to-end model equivalence. The tiny
+book model therefore uses an independent, fully visible embedding/projection
+fixture rather than presenting Hermon's production model as simple. See
+[`research/part-01/chapter-03-the-smallest-possible-language-model.md`](../part-01/chapter-03-the-smallest-possible-language-model.md).
+
+## Chapter 4 refresh — 2026-09-03
+
+Hermon still resolves to `472a44c`; its pinned llama.cpp remains `389ff61d`.
+The CURRENT default batched path stores sampling configuration on the submitted
+request and constructs one mutable llama.cpp sampler per admitted `ActiveSeq`.
+Batching shares model execution, not RNG/sampler state: each sequence samples
+from its own logit row, checks EOG and completion-token budget before streaming,
+and carries the selected token into its next decode position.
+
+The C shim selects greedy decoding when temperature is non-positive. Otherwise
+its commit-specific chain is top-k, top-p, min-p, temperature, then categorical
+distribution; seed zero is replaced with time-derived state. Finalization emits
+one `StreamItem::Done`, while errors travel as `Err(EngineError)`. These are
+Hermon's stream semantics, not ENGINE-1's exact terminal type.
+
+The Hermon-owned paged GGUF path remains **PREVIEW** and locally uses greedy
+argmax. It must not be described as having the CURRENT path's stochastic
+sampler coverage. Exact paths, line ranges, and pinned llama.cpp behavior are in
+[`research/part-01/chapter-04-logits-sampling-autoregressive-loop.md`](../part-01/chapter-04-logits-sampling-autoregressive-loop.md).

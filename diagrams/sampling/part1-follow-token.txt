@@ -1,0 +1,31 @@
+PART I — FOLLOW THE TOKEN
+
+human text
+    |
+    v
+Tokenizer + model contract
+    |
+    v
+TokenId history
+    |
+    v
+embedding row -> hidden [D] -> output projection -> raw logits [V]
+                                                        |
+                                                        v
+                                      temperature / top-k / top-p
+                                                        |
+                                                        v
+                                        greedy or categorical selection
+                                                        |
+                                                        v
+                                                     TokenId
+                                             +----------+----------+
+                                             |                     |
+                                             v                     v
+                                      decode to bytes        append to history
+                                             |                     |
+                                             v                     |
+                                      UTF-8 text stream            |
+                                                                   |
+                                         next model forward <------+
+

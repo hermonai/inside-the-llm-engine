@@ -1,0 +1,39 @@
+ENGINE-1 STOCHASTIC SAMPLING PIPELINE
+
+solid arrow = derived data                 raw Logits remain unchanged
+
+  MODEL FORWARD
+        |
+        v
+  FINITE RAW LOGITS [V] f32
+        |
+        v copy to request-local f64 workspace
+  +-------------------+
+  | divide by T, T>0  |
+  +---------+---------+
+            v
+  +-------------------+
+  | top-k logit mask  |  None = disabled; k >= V = no change
+  +---------+---------+
+            v
+  +-------------------+
+  | stable softmax    |  subtract maximum before exponentiation
+  +---------+---------+
+            v
+  +-------------------+
+  | top-p probability |  include threshold-crossing candidate
+  | filter            |
+  +---------+---------+
+            v
+  +-------------------+
+  | renormalize       |  finite, non-negative, sum approximately 1
+  +---------+---------+
+            v
+  +-------------------+      request-owned SplitMix64 state
+  | categorical draw  | <----------------------------------+
+  +---------+---------+                                    |
+            v                                              |
+         TokenId                               seed -> mutable RNG
+
+Greedy is a separate path: raw logits -> one max scan -> lowest ID wins ties.
+
