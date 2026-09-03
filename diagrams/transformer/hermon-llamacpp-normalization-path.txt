@@ -1,0 +1,18 @@
+WHICH CHAPTER 7 OPERATIONS RUN ON HERMON'S VERIFIED PATHS?
+
+API request
+    │
+    ▼
+┌──────────────── Hermon runtime selection — CURRENT ────────────────┐
+│ unset mode ──▶ batched default ──▶ llama.cpp model graph           │
+│                                    │                               │
+│                                    ▼                               │
+│                 GGML GET_ROWS + RMS_NORM — pinned CURRENT          │
+│                 graph node ──▶ backend dispatch ──▶ typed kernel   │
+│                                                                    │
+│ explicit paged mode ┄┄▶ GgufLlamaForward — PREVIEW                 │
+│                         │ embedding row via bridge — LIBRARY       │
+│                         └ RMSNorm via Rust scalar loop — PREVIEW   │
+└────────────────────────────────────────────────────────────────────┘
+
+Verified: Hermon 472a44c; llama.cpp/GGML 389ff61. File presence is not default use.

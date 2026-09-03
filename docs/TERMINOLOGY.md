@@ -74,6 +74,16 @@ entry before a chapter reaches TECH-REVIEW.
 - A **reference kernel** prioritizes transparent semantics. An **optimized
   kernel** may narrow layout or shape support only through an explicit contract
   and must pass an **equivalence gate** before a performance gate.
+- An **embedding table** is learned parameter storage `[V,D]`; **embedding
+  lookup** checks a token ID and selects one row. It is not dense matrix
+  multiplication, and Chapter 7 returns an owned activation rather than a
+  parameter alias.
+- The **model dimension** `D` is embedding and residual-stream width. A
+  **residual stream** is request-owned activation state carried between
+  Transformer sublayers, not model-lifetime storage.
+- **RMSNorm** uses uncentered root mean square plus learned element-wise scale;
+  it is not **LayerNorm**, which includes mean centering. Name epsilon placement,
+  value, and reduction precision whenever they affect the contract.
 - **Packing** changes layout and costs movement/storage. A **microkernel** is a
   small register-oriented compute core. Chapter 6 previews both terms but
   ENGINE-2 implements neither.

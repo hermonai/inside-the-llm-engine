@@ -1,0 +1,16 @@
+WHICH STATISTIC DOES EACH NORMALIZATION USE?
+
+             LayerNorm                              RMSNorm
+                 │                                     │
+                 ▼                                     ▼
+          compute mean μ                         compute mean x²
+                 │                                     │
+                 ▼                                     ▼
+          center xᵢ − μ                          no recentering
+                 │                                     │
+                 ▼                                     ▼
+       variance-like scaling                   root-mean-square scaling
+                 │                                     │
+                 └──────── learned gain ───────────────┘
+
+They are different operators; RMSNorm does not silently subtract the activation mean.

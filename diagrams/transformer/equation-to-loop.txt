@@ -1,0 +1,20 @@
+HOW DOES THE RMSNORM EQUATION BECOME EXECUTION?
+
+┌──────────────┐   declare    ┌─────────────────────────────────────┐
+│ Equation     │ ───────────▶ │ x,w,y ∈ ℝᴰ; D > 0; ε finite, ε > 0 │
+└──────────────┘              └──────────────────┬──────────────────┘
+                                                │ lower shapes
+                                                ▼
+                                   ┌────────────────────────┐
+                                   │ views x [D], w [D]     │
+                                   │ fresh owner y [D]      │
+                                   └────────────┬───────────┘
+                                                │ map indices
+                                                ▼
+                                   ┌────────────────────────┐
+                                   │ checked get([i])       │
+                                   │ arbitrary valid stride │
+                                   └────────────┬───────────┘
+                                                │ execute
+                                                ▼
+                         reduce Σxᵢ² ──▶ scalar r ──▶ loop yᵢ=xᵢrwᵢ

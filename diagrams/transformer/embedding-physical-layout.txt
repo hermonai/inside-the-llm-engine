@@ -1,0 +1,15 @@
+HOW DOES A CANONICAL EMBEDDING ROW MAP TO STORAGE?
+
+shape [V,D]    element strides [D,1]    dtype f32    base offset 0
+
+logical E[t,j] ──▶ element offset tD+j ──▶ byte offset 4(tD+j)
+
+physical elements
+┌──────────── row 0 ────────────┬──────────── row 1 ────────────┬───────
+│ E₀,₀  E₀,₁  …  E₀,D−₁        │ E₁,₀  E₁,₁  …  E₁,D−₁        │  …
+└───────────────────────────────┴───────────────────────────────┴───────
+      ──────┬──────────────────────── selected row t ──────┬────────
+        …   │ Eₜ,₀  Eₜ,₁  …  Eₜ,D−₁                       │  …
+      ──────┴──────────────────────────────────────────────┴────────
+
+General view: offset = base + t·stride₀ + j·stride₁; never assume canonical.

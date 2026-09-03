@@ -223,7 +223,7 @@ ENGINE-1 maps the embedding operator's out-of-range error back to its existing
 does not insert RMSNorm into the Chapter 3 fixture, because doing so would
 silently change the model and logits.
 
-## Hand fixture and experiments
+## Hand fixture and experiment results
 
 The hand fixture is
 
@@ -237,11 +237,16 @@ Its sum of squares is `30`, mean square is `7.5`, and the oracle computes
 `r = 1/sqrt(7.50001)`. Both Python and Rust will publish the full output to a
 stated tolerance.
 
-The bounded scale experiment compares positive multipliers `0.1`, `1`, `10`,
-and `100`, plus values small enough for epsilon to matter. The expected finding
-is approximate invariance only when mean square dominates epsilon. The
-magnitude sweep uses `1e-20`, `1e-10`, `1`, `1e10`, and `1e20`; it must preserve
-underflow/epsilon dominance and overflow findings rather than filtering them.
+The bounded scale experiment compares positive multipliers `1e-8`, `0.1`, `1`,
+`10`, and `100`. Against the `alpha=1` Python result, maximum absolute deltas
+were `2.1908698`, `0.000144584`, `0`, `0.000001446`, and `0.000001460`.
+Approximate invariance holds only where mean square dominates epsilon.
+
+The magnitude sweep uses `1e-20`, `1e-10`, `1`, `1e10`, and `1e20`. The first
+two demonstrate epsilon-dominated output, `1` and `1e10` normalize near unit
+magnitude, and finite `1e20` produces a typed F32 square-overflow error. Four
+`1e19` values separately have finite squares but overflow the running F32 sum.
+These findings are preserved rather than filtered.
 
 No timing benchmark is planned. For one `[D]` RMSNorm call, the transparent
 two-pass structure reads input for reduction, reads input and weight for output,
@@ -299,11 +304,12 @@ The Hermon submodule pins
   dequantized. Row indices are asserted in range within the kernel, after
   graph/model validation.
 - The same file's F32 RMSNorm kernel requires the first tensor dimension to be
-  contiguous, partitions outer rows across threads, accumulates `x[i]*x[i]`
-  in `ggml_float`, divides by row width, and computes
-  `1/sqrtf(mean + eps)`. At this revision `ggml_float` is the build's GGML
-  accumulation alias; the inspected code, not a blanket cross-backend claim,
-  supports the CPU-path statement.
+  contiguous, partitions outer rows across threads, and accumulates in
+  `ggml_float`, which `ggml-cpu/vec.h` defines as `double` at this revision.
+  The expression forms `x[i]*x[i]` from F32 operands before casting the product
+  to that wider accumulator, then divides by row width and computes
+  `1/sqrtf(mean + eps)`. The inspected code, not a blanket cross-backend claim,
+  supports this CPU-path statement.
 - GGML stores epsilon in operator parameters and asserts it is nonnegative.
 The model graph later combines normalization with learned weights; a fused
 RMSNorm-plus-multiply CPU path also exists. Backend-specific execution can
@@ -314,9 +320,10 @@ backend dispatch -> typed CPU row or RMSNorm kernel. This is more layered than
 the teaching function but computes the same declared convention for the
 supported F32 case.
 
-## Planned correctness coverage
+## Correctness coverage
 
-Embedding tests cover first/middle/last IDs, `D=1`, `D>1`, wrong rank, empty
+Thirty new Rust tests cover the Chapter 7 contracts. Embedding tests cover
+first/middle/last IDs, `D=1`, `D>1`, wrong rank, empty
 vocabulary, empty model dimension, out-of-range IDs, strided and zero-stride
 tables, output ownership, sequence order/repetition, empty sequences, and an
 invalid sequence member.
@@ -328,9 +335,9 @@ values, square and reduction overflow, tiny-square underflow, output overflow,
 and deterministic approximate scale invariance. All previous Rust and Python
 regressions remain gates.
 
-## Planned diagrams
+## Canonical diagrams
 
-Fifteen Transformer diagrams will answer the required questions: token to
+Fifteen Transformer diagrams answer the required questions: token to
 model space, logical and physical table layout, parameters versus activations,
 view versus copy, residual width, RMS derivation, two-pass lowering,
 equation/shape/memory/loop mapping, zero-vector epsilon behavior, LayerNorm
@@ -363,4 +370,3 @@ engine boundary, and source-classified Hermon/llama.cpp execution mapping.
 - Batch/sequence scheduling, device placement, and distributed embeddings.
 - The projections that produce Q, K, and V, their orientation, and their
   head-shaped outputs. These are exactly the Chapter 8 boundary.
-

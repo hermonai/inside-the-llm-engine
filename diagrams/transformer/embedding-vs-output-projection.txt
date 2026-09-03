@@ -1,0 +1,13 @@
+WHY ARE EMBEDDING AND OUTPUT PROJECTION DIFFERENT?
+
+                         MODEL SPACE WIDTH D
+
+TokenId t ──▶ row lookup ──▶ [hidden x [D]] ──▶ GEMV + bias ──▶ [logits [V]]
+                ▲                                  ▲
+                │                                  │
+        (embedding E [V,D])              (output W [V,D], b [V])
+
+Embedding: one ID selects one row; little arithmetic.
+Projection: every output row forms a dot product with x.
+
+Some architectures tie E and W storage; Chapter 7 and ENGINE-1 do not assume that.

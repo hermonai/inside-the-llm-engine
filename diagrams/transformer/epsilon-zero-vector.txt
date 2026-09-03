@@ -1,0 +1,17 @@
+WHAT DOES EPSILON DO FOR THE ZERO VECTOR?
+
+                         x = [0,0,…,0]
+                                │
+                                ▼
+                         mean(x²) = 0
+                   ┌────────────┴────────────┐
+                   ▼                         ▼
+             ε = 0: REJECTED            ε > 0, finite
+             1 / √0 undefined               │
+                   │                         ▼
+                   └──✕ typed error      r = 1 / √ε finite
+                                             │ multiply by xᵢ=0
+                                             ▼
+                                        y = [0,0,…,0]
+
+Epsilon stabilizes the denominator; it does not turn a zero activation nonzero.

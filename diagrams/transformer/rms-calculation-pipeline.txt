@@ -1,0 +1,17 @@
+HOW DOES ONE VECTOR PRODUCE ITS RMS SCALE?
+
+[x₀, x₁, …, xD₋₁]
+          │ square each element
+          ▼
+[x₀², x₁², …, xD₋₁²]
+          │ reduce sum
+          ▼
+       Σ xᵢ²
+          │ divide by D
+          ▼
+  mean square m₂
+          │ add ε inside root
+          ▼
+    √(m₂ + ε) ──▶ reciprocal ──▶ r = 1 / √(m₂ + ε)
+
+Squaring prevents sign cancellation; the square root restores the input's units.

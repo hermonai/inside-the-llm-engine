@@ -1,0 +1,17 @@
+SHOULD LOOKUP RETURN A VIEW OR AN OWNED ACTIVATION?
+
+                         (embedding table E [V,D])
+                                      │ select row t
+                         ┌────────────┴────────────┐
+                         ▼                         ▼
+              borrowed row view             copied activation
+              TensorView<'weights>           OwnedTensor [D]
+                         │                         │
+              ┌──────────┴─────────┐     ┌────────┴──────────┐
+              │ no element copy    │     │ O(D) read + write │
+              │ aliases parameters │     │ no weight alias   │
+              │ lifetime is tied   │     │ request-owned     │
+              │ immutable only     │     │ safely mutable    │
+              └────────────────────┘     └────────┬──────────┘
+                                                 ▼
+                                      CHAPTER 7 POLICY: COPY

@@ -130,10 +130,20 @@ a function with itself under another flag may not be independent.
 ### Embedding
 
 **Short:** A vector representation selected for a token identifier.
-**Precise:** A row of learned model weights with shape `[hidden_dim]`, forming
-the initial hidden state for a token position. First introduced: Chapter 3.
-Related: token, hidden state. Common confusion: an embedding is not a token's
-human-language definition.
+**Precise:** A checked token ID selects one row from learned parameter table
+`[vocab_size, model_dimension]`; Chapter 7 materializes that row as an owned
+model-width activation. First introduced: Chapter 3; formalized Chapter 7.
+Related: token, hidden state, residual stream. Common confusion: an embedding
+is neither a token's human-language definition nor a dense matrix product.
+
+### Epsilon
+
+**Short:** A configured scalar that defines a numerical operator near a
+singularity. **Precise:** Chapter 7 RMSNorm requires finite `epsilon > 0` and
+adds it to mean square inside the square root, making zero-vector normalization
+defined. First introduced: Chapter 7. Related: RMSNorm, model metadata. Common
+confusion: epsilon's value and placement are part of model semantics, not
+interchangeable implementation decoration.
 
 ### Eviction / pin / residency
 
@@ -344,6 +354,25 @@ same as a conversation, sequence slot, or physical batch.
 execution resources, normally shared read-only across requests. First
 introduced: Chapter 1. Related: artifact, inference engine, backend. Common
 confusion: a running model still does not own the full request lifecycle.
+
+### Residual stream
+
+**Short:** The model-width activation carried between Transformer sublayers.
+**Precise:** For each token position it has width `D`; sublayers may create
+other internal shapes but values returning to the residual stream must satisfy
+that width and request-local ownership contract. First introduced: Chapter 7.
+Related: embedding, hidden state, RMSNorm. Common confusion: persistent through
+layers does not mean model-lifetime or durable storage.
+
+### RMS / RMSNorm
+
+**Short:** RMS is root mean square; RMSNorm rescales an activation by reciprocal
+epsilon-stabilized RMS and applies learned element-wise scale. **Precise:** For
+`x,w:[D]`, Chapter 7 defines `y_i = x_i*w_i / sqrt(mean(x^2)+epsilon)` with
+positive `D`, finite positive epsilon, explicit reduction precision, and no
+mean centering. First introduced: Chapter 7. Related: residual stream, epsilon,
+LayerNorm. Common confusion: RMSNorm is not LayerNorm and does not place epsilon
+outside the square root in this contract.
 
 ### Sampler
 

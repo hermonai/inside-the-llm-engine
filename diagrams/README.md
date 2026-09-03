@@ -87,5 +87,23 @@ metadata inventory is [`INDEX.md`](INDEX.md).
 - [`follow-the-reuse.txt`](linear/follow-the-reuse.txt) — distinguishes spatial and temporal reuse opportunities.
 - [`reference-candidate-gates.txt`](linear/reference-candidate-gates.txt) — gates candidate selection on contract, equivalence, and evidence.
 
+## Transformer primitives — Chapter 7
+
+- [`token-to-model-space.txt`](transformer/token-to-model-space.txt) — locates the discrete-to-numerical boundary.
+- [`embedding-logical-layout.txt`](transformer/embedding-logical-layout.txt) — shows which `[V,D]` row one ID selects.
+- [`embedding-physical-layout.txt`](transformer/embedding-physical-layout.txt) — maps logical embedding coordinates to storage.
+- [`parameters-vs-activations.txt`](transformer/parameters-vs-activations.txt) — separates model and request ownership.
+- [`embedding-view-vs-copy.txt`](transformer/embedding-view-vs-copy.txt) — explains the owned lookup output.
+- [`residual-stream-width.txt`](transformer/residual-stream-width.txt) — establishes the model-width boundary.
+- [`rms-calculation-pipeline.txt`](transformer/rms-calculation-pipeline.txt) — derives reciprocal RMS.
+- [`rmsnorm-two-pass.txt`](transformer/rmsnorm-two-pass.txt) — traces reduction then scaling.
+- [`equation-to-loop.txt`](transformer/equation-to-loop.txt) — connects notation, shapes, indexing, and loops.
+- [`epsilon-zero-vector.txt`](transformer/epsilon-zero-vector.txt) — defines zero-vector and epsilon behavior.
+- [`layernorm-vs-rmsnorm.txt`](transformer/layernorm-vs-rmsnorm.txt) — distinguishes the two operators.
+- [`normalization-precision-flow.txt`](transformer/normalization-precision-flow.txt) — identifies `f32` stages and failures.
+- [`embedding-vs-output-projection.txt`](transformer/embedding-vs-output-projection.txt) — separates lookup from GEMV.
+- [`chapter07-engine-architecture.txt`](transformer/chapter07-engine-architecture.txt) — summarizes the Chapter 7 milestone.
+- [`hermon-llamacpp-normalization-path.txt`](transformer/hermon-llamacpp-normalization-path.txt) — classifies relevant industrial paths.
+
 Future topic directories reserve canonical locations for accelerators,
-distributed execution, kernels, memory, MoE, scheduling, and Transformers.
+distributed execution, kernels, memory, MoE, and scheduling.

@@ -1,0 +1,10 @@
+FROM TEXT TO MODEL SPACE
+
+┌──────────────┐    encode     ┌──────────────┐    row lookup    (E [V,D])
+│ UTF-8 text   │ ────────────▶ │ TokenId t    │ ──────────────▶ row t
+└──────────────┘               └──────────────┘                       │
+                                                                   copy
+                                                                     ▼
+                                                            [activation x [D]]
+
+Tokenizer: text ↦ discrete symbol        Embedding: discrete symbol ↦ f32 vector

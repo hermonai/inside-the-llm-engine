@@ -1,6 +1,6 @@
 # Canonical Diagram Inventory
 
-Status `canonical` means reviewed for the Chapter 1–6 retrofit. Source is the
+Status `canonical` means technically and visually reviewed. Source is the
 repository-native Unicode text artifact; chapter embeds may be abbreviated but
 must preserve its semantics.
 
@@ -69,3 +69,18 @@ must preserve its semantics.
 | D061 | Follow byte | 6 | data flow | How do operand bytes reach arithmetic? | [`linear/follow-the-byte.txt`](linear/follow-the-byte.txt) | canonical |
 | D062 | Follow reuse | 6 | performance | Where are reuse opportunities? | [`linear/follow-the-reuse.txt`](linear/follow-the-reuse.txt) | canonical |
 | D063 | Candidate gates | 6 | control flow | When may a candidate replace reference? | [`linear/reference-candidate-gates.txt`](linear/reference-candidate-gates.txt) | canonical |
+| D064 | Token to model space | 7 | data flow | Where does text become numerical activation? | [`transformer/token-to-model-space.txt`](transformer/token-to-model-space.txt) | canonical |
+| D065 | Embedding logical layout | 7 | tensor shape | Which logical table row does one ID select? | [`transformer/embedding-logical-layout.txt`](transformer/embedding-logical-layout.txt) | canonical |
+| D066 | Embedding physical layout | 7 | memory layout | How does `E[t,j]` reach a physical byte? | [`transformer/embedding-physical-layout.txt`](transformer/embedding-physical-layout.txt) | canonical |
+| D067 | Parameters and activations | 7 | ownership | Which Chapter 7 values have model or request lifetime? | [`transformer/parameters-vs-activations.txt`](transformer/parameters-vs-activations.txt) | canonical |
+| D068 | Embedding view or copy | 7 | ownership | Why does lookup return an owned activation? | [`transformer/embedding-view-vs-copy.txt`](transformer/embedding-view-vs-copy.txt) | canonical |
+| D069 | Residual-stream width | 7 | tensor shape | What invariant does model dimension `D` establish? | [`transformer/residual-stream-width.txt`](transformer/residual-stream-width.txt) | canonical |
+| D070 | RMS calculation | 7 | numerical flow | How do squares become one reciprocal RMS factor? | [`transformer/rms-calculation-pipeline.txt`](transformer/rms-calculation-pipeline.txt) | canonical |
+| D071 | RMSNorm two passes | 7 | data flow | Why does the reference read input twice? | [`transformer/rmsnorm-two-pass.txt`](transformer/rmsnorm-two-pass.txt) | canonical |
+| D072 | Equation to loop | 7 | numerical flow | How do equation, shapes, offsets, and loops align? | [`transformer/equation-to-loop.txt`](transformer/equation-to-loop.txt) | canonical |
+| D073 | Epsilon and zero vector | 7 | control flow | How does positive epsilon define zero-vector behavior? | [`transformer/epsilon-zero-vector.txt`](transformer/epsilon-zero-vector.txt) | canonical |
+| D074 | LayerNorm and RMSNorm | 7 | numerical flow | Which statistic and centering does each operator use? | [`transformer/layernorm-vs-rmsnorm.txt`](transformer/layernorm-vs-rmsnorm.txt) | canonical |
+| D075 | Normalization precision | 7 | numerical flow | Which Chapter 7 stages use `f32` and can fail? | [`transformer/normalization-precision-flow.txt`](transformer/normalization-precision-flow.txt) | canonical |
+| D076 | Embedding and projection | 7 | data flow | Why is row lookup different from output GEMV? | [`transformer/embedding-vs-output-projection.txt`](transformer/embedding-vs-output-projection.txt) | canonical |
+| D077 | Transformer Primitives v1 | 7 | architecture | Which tested primitives now connect IDs to normalized vectors? | [`transformer/chapter07-engine-architecture.txt`](transformer/chapter07-engine-architecture.txt) | canonical |
+| D078 | Hermon and llama.cpp path | 7 | architecture | Which relevant paths are CURRENT, PREVIEW, or LIBRARY? | [`transformer/hermon-llamacpp-normalization-path.txt`](transformer/hermon-llamacpp-normalization-path.txt) | canonical |

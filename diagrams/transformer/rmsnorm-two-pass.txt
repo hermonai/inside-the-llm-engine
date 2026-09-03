@@ -1,0 +1,15 @@
+WHY IS THE REFERENCE RMSNORM A TWO-PASS OPERATOR?
+
+PASS 1 — REDUCE                           PASS 2 — SCALE
+
+(input x [D])                             (input x [D])
+      │ read D                                  │ read D again
+      ▼                                         ▼
+Σ xᵢ² ──▶ mean ──▶ add ε ──▶ rsqrt ──▶ scalar r
+                                                  │ broadcast
+(scale w [D]) ═════════════════════════════════════╪══▶ xᵢ · r · wᵢ
+                                                  │          │
+                                                  │          ▼
+                                                  └────▶ [output y [D]]
+
+Output cannot be finalized until every input has contributed to scalar r.

@@ -1,0 +1,21 @@
+CHAPTER 7 — TRANSFORMER PRIMITIVES v1
+
+TokenId t                         token sequence [T]
+    │                                    │
+    ├──────────────┬─────────────────────┘
+    ▼              ▼
+checked lookup   checked sequence lookup       (embedding E [V,D])
+    │              │                                      │ read only
+    ▼              ▼                                      │
+[x [D]]         [X [T,D]] ◀═══════════════════════════════┘
+    │
+    │             (RMSNorm scale w [D])
+    │                         │
+    └──────────┬──────────────┘
+               ▼
+       rms_norm_reference
+               │
+               ▼
+          [normalized y [D]] ──▶ ready for Chapter 8 projections
+
+Below every operator: TensorView checked indexing │ OwnedTensor canonical output

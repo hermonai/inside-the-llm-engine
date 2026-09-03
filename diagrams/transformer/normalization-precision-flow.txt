@@ -1,0 +1,13 @@
+WHERE DOES PRECISION ENTER RMSNORM?
+
+CHAPTER 7 REFERENCE
+
+(x storage f32) ──▶ square f32 ──▶ sum f32 ──▶ divide/sqrt/reciprocal f32
+       │                                                     │
+       │ reread                                              │ scalar r
+       ▼                                                     ▼
+(w storage f32) ═══════════════════════▶ multiply f32 ══▶ [y storage f32]
+
+Finite-range gates: non-finite input ──✕  square overflow ──✕  sum overflow ──✕
+
+PRODUCTION CONTRAST: lower-precision storage may use wider reduction arithmetic.

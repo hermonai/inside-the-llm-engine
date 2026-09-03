@@ -1,0 +1,14 @@
+WHO OWNS EMBEDDING AND NORMALIZATION DATA?
+
+┌────────────────────── MODEL LIFETIME ───────────────────────┐
+│ (embedding table E [V,D])       (RMSNorm scale w [D])       │
+│ immutable parameters                    │ read               │
+└───────────────┬─────────────────────────┼────────────────────┘
+                │ read row t              │
+                ▼                         ▼
+┌──────────────────── REQUEST LIFETIME ───────────────────────┐
+│ [residual x [D]] ───────────▶ RMSNorm ─────────▶ [y [D]]    │
+│ fresh owner; mutable                         fresh owner     │
+└─────────────────────────────────────────────────────────────┘
+
+Parameter reads never grant mutable aliases; activation owners release with the request.

@@ -1,0 +1,15 @@
+WHAT DOES THE RESIDUAL-STREAM DIMENSION GUARANTEE?
+
+TokenId t ──▶ embedding row ──▶ [x₀ [D]]
+                                     │
+                                     ▼
+                 ┌──────── RESIDUAL STREAM ────────┐
+                 │ persistent model-width state    │
+                 │ input width D                   │
+                 │                                 │
+                 │ RMSNorm: [D] ──▶ [D]            │
+                 │ future sublayer: Chapter 8+     │
+                 │ return width D                  │
+                 └─────────────────────────────────┘
+
+D is a boundary invariant; it does not claim every future internal tensor has width D.
