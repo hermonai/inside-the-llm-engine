@@ -9,6 +9,7 @@
 pub mod chat;
 pub mod model;
 pub mod sampling;
+pub mod tensor;
 pub mod tokenizer;
 pub mod utf8;
 

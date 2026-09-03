@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::tensor::{OwnedTensor, TensorError};
 use crate::tokenizer::TokenId;
 
 /// One finite, unnormalized score per token in the model vocabulary.
@@ -58,8 +59,8 @@ pub trait Model {
 pub struct TinyLanguageModel {
     vocab_size: usize,
     hidden_dim: usize,
-    embedding: Vec<f32>,
-    output_weight: Vec<f32>,
+    embedding: OwnedTensor,
+    output_weight: OwnedTensor,
     output_bias: Vec<f32>,
 }
 
@@ -98,6 +99,11 @@ impl TinyLanguageModel {
         check_finite_parameters("embedding", &embedding)?;
         check_finite_parameters("output projection", &output_weight)?;
         check_finite_parameters("output bias", &output_bias)?;
+
+        let embedding = OwnedTensor::from_vec(vec![vocab_size, hidden_dim], embedding)
+            .map_err(ModelError::Tensor)?;
+        let output_weight = OwnedTensor::from_vec(vec![vocab_size, hidden_dim], output_weight)
+            .map_err(ModelError::Tensor)?;
 
         Ok(Self {
             vocab_size,
@@ -144,7 +150,23 @@ impl TinyLanguageModel {
         self.parameter_count() * std::mem::size_of::<f32>()
     }
 
-    fn embedding_row(&self, token: TokenId) -> Result<&[f32], ModelError> {
+    pub fn embedding_shape(&self) -> &[usize] {
+        self.embedding.shape()
+    }
+
+    pub fn embedding_strides(&self) -> &[usize] {
+        self.embedding.strides()
+    }
+
+    pub fn output_weight_shape(&self) -> &[usize] {
+        self.output_weight.shape()
+    }
+
+    pub fn output_weight_strides(&self) -> &[usize] {
+        self.output_weight.strides()
+    }
+
+    fn embedding_row(&self, token: TokenId) -> Result<Vec<f32>, ModelError> {
         let row = usize::try_from(token.0).map_err(|_| ModelError::TokenOutOfRange {
             token,
             vocab_size: self.vocab_size,
@@ -155,8 +177,14 @@ impl TinyLanguageModel {
                 vocab_size: self.vocab_size,
             });
         }
-        let start = row * self.hidden_dim;
-        Ok(&self.embedding[start..start + self.hidden_dim])
+        (0..self.hidden_dim)
+            .map(|column| {
+                self.embedding
+                    .get2(row, column)
+                    .copied()
+                    .map_err(ModelError::Tensor)
+            })
+            .collect()
     }
 }
 
@@ -171,7 +199,7 @@ impl Model for TinyLanguageModel {
         // Token IDs select rows; their scalar magnitudes have no model
         // meaning. Copying the row makes this forward activation request-local
         // while the parameters remain shareable through `&self`.
-        let hidden = self.embedding_row(input_token)?.to_vec();
+        let hidden = self.embedding_row(input_token)?;
         let mut values = vec![0.0; self.vocab_size];
 
         // Each output row belongs to one candidate token. Row-major storage
@@ -179,9 +207,12 @@ impl Model for TinyLanguageModel {
         // z_i = b_i + sum_j W[i,j] h_j visible as scalar execution.
         for (output, value) in values.iter_mut().enumerate() {
             let mut accumulator = self.output_bias[output];
-            let row_start = output * self.hidden_dim;
             for (dimension, hidden_value) in hidden.iter().copied().enumerate() {
-                accumulator += self.output_weight[row_start + dimension] * hidden_value;
+                accumulator += *self
+                    .output_weight
+                    .get2(output, dimension)
+                    .map_err(ModelError::Tensor)?
+                    * hidden_value;
             }
             *value = accumulator;
         }
@@ -253,6 +284,7 @@ pub enum ModelError {
         index: usize,
         value: f32,
     },
+    Tensor(TensorError),
     InjectedFailure(String),
 }
 
@@ -293,6 +325,7 @@ impl fmt::Display for ModelError {
             Self::NonFiniteLogit { index, value } => {
                 write!(f, "non-finite logit at index {index}: {value}")
             }
+            Self::Tensor(error) => write!(f, "tensor error: {error}"),
             Self::InjectedFailure(message) => f.write_str(message),
         }
     }

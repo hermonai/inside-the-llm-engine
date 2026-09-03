@@ -22,6 +22,10 @@ fn construction_accepts_valid_shapes_and_counts_bytes() {
     assert_eq!(model.hidden_dim(), 3);
     assert_eq!(model.parameter_count(), 28);
     assert_eq!(model.parameter_bytes(), 112);
+    assert_eq!(model.embedding_shape(), &[4, 3]);
+    assert_eq!(model.embedding_strides(), &[3, 1]);
+    assert_eq!(model.output_weight_shape(), &[4, 3]);
+    assert_eq!(model.output_weight_strides(), &[3, 1]);
 }
 
 #[test]
