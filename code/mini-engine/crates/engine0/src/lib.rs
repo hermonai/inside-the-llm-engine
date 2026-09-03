@@ -7,8 +7,10 @@
 //! logits into feedback tokens until EOS, cancellation, failure, or budget.
 
 pub mod chat;
+pub mod embedding;
 pub mod linear;
 pub mod model;
+pub mod normalization;
 pub mod sampling;
 pub mod tensor;
 pub mod tokenizer;

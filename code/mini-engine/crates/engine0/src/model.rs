@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::embedding::{embedding_lookup_reference, EmbeddingError};
 use crate::linear::{gemv_reference, KernelError};
 use crate::tensor::{OwnedTensor, TensorError, TensorView};
 use crate::tokenizer::TokenId;
@@ -168,24 +169,14 @@ impl TinyLanguageModel {
     }
 
     fn embedding_row(&self, token: TokenId) -> Result<Vec<f32>, ModelError> {
-        let row = usize::try_from(token.0).map_err(|_| ModelError::TokenOutOfRange {
-            token,
-            vocab_size: self.vocab_size,
-        })?;
-        if row >= self.vocab_size {
-            return Err(ModelError::TokenOutOfRange {
-                token,
-                vocab_size: self.vocab_size,
-            });
-        }
-        (0..self.hidden_dim)
-            .map(|column| {
-                self.embedding
-                    .get2(row, column)
-                    .copied()
-                    .map_err(ModelError::Tensor)
+        embedding_lookup_reference(&self.embedding.view(), token)
+            .map(OwnedTensor::into_vec)
+            .map_err(|error| match error {
+                EmbeddingError::TokenOutOfRange { token, vocab_size } => {
+                    ModelError::TokenOutOfRange { token, vocab_size }
+                }
+                other => ModelError::Embedding(other),
             })
-            .collect()
     }
 }
 
@@ -282,6 +273,7 @@ pub enum ModelError {
     },
     Tensor(TensorError),
     Kernel(KernelError),
+    Embedding(EmbeddingError),
     InjectedFailure(String),
 }
 
@@ -324,6 +316,7 @@ impl fmt::Display for ModelError {
             }
             Self::Tensor(error) => write!(f, "tensor error: {error}"),
             Self::Kernel(error) => write!(f, "linear algebra kernel error: {error}"),
+            Self::Embedding(error) => write!(f, "embedding error: {error}"),
             Self::InjectedFailure(message) => f.write_str(message),
         }
     }
