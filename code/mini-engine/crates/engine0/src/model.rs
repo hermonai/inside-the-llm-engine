@@ -1,6 +1,7 @@
 use std::fmt;
 
-use crate::tensor::{OwnedTensor, TensorError};
+use crate::linear::{gemv_reference, KernelError};
+use crate::tensor::{OwnedTensor, TensorError, TensorView};
 use crate::tokenizer::TokenId;
 
 /// One finite, unnormalized score per token in the model vocabulary.
@@ -200,21 +201,16 @@ impl Model for TinyLanguageModel {
         // meaning. Copying the row makes this forward activation request-local
         // while the parameters remain shareable through `&self`.
         let hidden = self.embedding_row(input_token)?;
-        let mut values = vec![0.0; self.vocab_size];
+        let hidden_view = TensorView::try_from_parts(&hidden, vec![self.hidden_dim], vec![1], 0)
+            .map_err(ModelError::Tensor)?;
+        let mut values = gemv_reference(&self.output_weight.view(), &hidden_view)
+            .map_err(ModelError::Kernel)?
+            .into_vec();
 
-        // Each output row belongs to one candidate token. Row-major storage
-        // keeps that candidate's weights contiguous and makes the equation
-        // z_i = b_i + sum_j W[i,j] h_j visible as scalar execution.
-        for (output, value) in values.iter_mut().enumerate() {
-            let mut accumulator = self.output_bias[output];
-            for (dimension, hidden_value) in hidden.iter().copied().enumerate() {
-                accumulator += *self
-                    .output_weight
-                    .get2(output, dimension)
-                    .map_err(ModelError::Tensor)?
-                    * hidden_value;
-            }
-            *value = accumulator;
+        // Bias remains an explicit model operation: ENGINE-2's GEMV computes
+        // W h, while the model owns the contract z = W h + b.
+        for (value, bias) in values.iter_mut().zip(&self.output_bias) {
+            *value += bias;
         }
 
         Ok(ForwardPass {
@@ -285,6 +281,7 @@ pub enum ModelError {
         value: f32,
     },
     Tensor(TensorError),
+    Kernel(KernelError),
     InjectedFailure(String),
 }
 
@@ -326,6 +323,7 @@ impl fmt::Display for ModelError {
                 write!(f, "non-finite logit at index {index}: {value}")
             }
             Self::Tensor(error) => write!(f, "tensor error: {error}"),
+            Self::Kernel(error) => write!(f, "linear algebra kernel error: {error}"),
             Self::InjectedFailure(message) => f.write_str(message),
         }
     }

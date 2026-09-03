@@ -207,6 +207,27 @@ impl<'a> TensorView<'a> {
         canonical_row_major_strides(&self.shape).is_ok_and(|canonical| canonical == self.strides)
     }
 
+    /// Borrow the exact logical range when this view is canonical row-major.
+    ///
+    /// This is the zero-copy boundary used by kernels that require packed
+    /// storage. It never materializes a strided view or silently repairs its
+    /// layout.
+    pub fn as_contiguous_slice(&self) -> Result<&'a [f32], TensorError> {
+        if !self.is_contiguous_row_major() {
+            return Err(TensorError::NonContiguous);
+        }
+        let end = self
+            .base_offset
+            .checked_add(self.element_count()?)
+            .ok_or(TensorError::OffsetOverflow)?;
+        self.storage
+            .get(self.base_offset..end)
+            .ok_or(TensorError::InvalidViewExtent {
+                required: end,
+                storage_len: self.storage.len(),
+            })
+    }
+
     pub fn get(&self, indices: &[usize]) -> Result<&'a f32, TensorError> {
         let offset = checked_offset(
             &self.shape,

@@ -181,6 +181,23 @@ fn transpose_swaps_shape_strides_and_logical_values() {
 }
 
 #[test]
+fn contiguous_slice_borrows_exact_logical_range_without_copying() {
+    let tensor = OwnedTensor::from_vec(vec![4, 2], (0..8).map(|x| x as f32).collect()).unwrap();
+    let slice = tensor.view().slice_axis(0, 1, 3).unwrap();
+    let packed = slice.as_contiguous_slice().unwrap();
+    assert_eq!(packed, &[2.0, 3.0, 4.0, 5.0]);
+    assert!(std::ptr::eq(
+        packed.as_ptr(),
+        tensor.as_slice()[2..].as_ptr()
+    ));
+
+    assert_eq!(
+        tensor.view().transpose().unwrap().as_contiguous_slice(),
+        Err(TensorError::NonContiguous)
+    );
+}
+
+#[test]
 fn transpose_rejects_non_matrix_rank() {
     let vector = OwnedTensor::from_vec(vec![3], vec![1.0, 2.0, 3.0]).unwrap();
     assert_eq!(

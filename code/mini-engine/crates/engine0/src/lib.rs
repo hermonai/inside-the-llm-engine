@@ -7,6 +7,7 @@
 //! logits into feedback tokens until EOS, cancellation, failure, or budget.
 
 pub mod chat;
+pub mod linear;
 pub mod model;
 pub mod sampling;
 pub mod tensor;
