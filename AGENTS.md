@@ -101,12 +101,12 @@ paths. Never push unless the user explicitly authorizes it.
 ## Current state and next task
 
 Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
-progress: Chapter 5, Tensor Substrate v1, Labs 16–21, thirty-six canonical
-Unicode text diagrams, and the current Hermon tensor-boundary refresh are
-complete. The authoritative state and next task are in `docs/STATUS.md`.
+progress: Chapters 5–6, Tensor Substrate v1, ENGINE-2's checked reference and
+blocked scalar kernels, Labs 16–29, 52 canonical Unicode text diagrams, and the
+current Hermon tensor/kernel-boundary refresh are complete. The authoritative
+state and next task are in `docs/STATUS.md`.
 
-The next bounded task is Chapter 6 — Matrix Multiplication: The Engine Room.
-Derive dot product, matrix-vector and matrix-matrix multiplication, loop order,
-operation count, memory traffic, arithmetic intensity, tiling, a scalar oracle,
-and blocked scalar kernels over Tensor Substrate v1. Do not begin embeddings,
-RMSNorm, attention, SIMD, BLAS, or accelerator execution.
+The next bounded task is Chapter 7 — Embeddings and RMSNorm. Start from the
+existing explicit embedding lookup and ENGINE-2 kernel layer; derive and build
+RMSNorm without beginning attention, Q/K/V, RoPE, KV caching, GGUF,
+quantization, SIMD, BLAS, or accelerator execution.

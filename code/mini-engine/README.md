@@ -1,9 +1,9 @@
 # mini-engine
 
 This dependency-free Rust workspace advances from ENGINE-0 through ENGINE-10.
-The current milestone is the complete **ENGINE-1**: the Chapter 2
-text/token/byte boundary feeds a genuine numerical model, and Chapter 4 turns
-its logits into an autoregressive generation loop.
+The current milestone is **ENGINE-2 / Linear Algebra Kernel Layer v1**. The
+complete ENGINE-1 text/token/model/sampling loop remains intact, while Chapter
+6 gives its numerical projection a checked kernel API.
 
 Chapter 5 adds **Tensor Substrate v1** beneath ENGINE-1 without changing its
 observable behavior:
@@ -18,10 +18,21 @@ observable behavior:
 - no unsafe code, tensor framework, operator graph, dtype/device genericity, or
   hidden element allocation.
 
-The immutable embedding and output projection now use `OwnedTensor [V,D]`.
-Bias, hidden activations, and logits remain focused one-dimensional types. The
-scalar `z = W h + b` loop still performs the computation; Chapter 6 will add
-operators separately from tensor storage.
+The immutable embedding and output projection use `OwnedTensor [V,D]`. Bias,
+hidden activations, and logits remain focused one-dimensional types. Embedding
+stays an explicit row lookup; projection now calls `gemv_reference(W, h)` and
+the model adds bias separately.
+
+ENGINE-2 adds an operator layer separate from tensor storage:
+
+- `dot_reference` for equal-length rank-1 views;
+- `gemv_reference` for `[M,K] × [K] -> [M]`;
+- `matmul_reference` for `[M,K] × [K,N] -> [M,N]` over valid strided views;
+- `matmul_blocked` for explicit positive tiles over canonical row-major views;
+- fresh canonical outputs, defined zero-dimension behavior, checked output
+  size, and typed rank/dimension/layout/block errors;
+- no hidden layout materialization, unsafe code, dependencies, SIMD, BLAS,
+  threads, or accelerator dispatch.
 
 ENGINE-1 establishes:
 
@@ -60,6 +71,7 @@ cargo run -p engine0 -- --trace --sample --temperature 1 --top-k 3 \
   --top-p .9 --seed 42 'I like'
 cargo run -p engine0 -- tokenize lower
 cargo run -p engine0 -- decode 259
+cargo run --release -p engine0 --example chapter06_bench
 cargo test --workspace
 ```
 
@@ -75,12 +87,14 @@ Independent references:
   independently proves the sampling stages with artificial draws;
 - [`chapter05_tensor_oracle.py`](../reference/python/chapter05_tensor_oracle.py)
   independently proves strides, offsets, transpose, reshape, and materialization;
+- [`chapter06_matmul_oracle.py`](../reference/python/chapter06_matmul_oracle.py)
+  independently proves dot, GEMV, GEMM, transpose, and fractional arithmetic;
 - [`chapter-02-tokenizer-oracles.md`](../reference/chapter-02-tokenizer-oracles.md)
   retains the tokenizer cases;
 - [`engine-0-oracle.md`](../reference/engine-0-oracle.md) records the historical
   fake candidate milestone.
 
-Guided work is in [Labs 1–21](../../docs/LABS.md). Chapter 6 will build explicit
-matrix operators on the checked substrate. The project intentionally adds no
+Guided work is in [Labs 1–29](../../docs/LABS.md). Chapter 7 will add embedding
+and RMSNorm semantics on this substrate. The project intentionally adds no
 training, Transformer layer, general tensor framework, BLAS, accelerator, or
 GGUF dependency yet.

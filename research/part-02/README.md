@@ -7,8 +7,8 @@ at a time.
 | Chapter | Research question | Status |
 | ---: | --- | --- |
 | [5](chapter-05-tensors-without-magic.md) | How do logical tensor indices map safely to owned physical storage? | COMPLETE |
-| [6](chapter-06-matrix-multiplication-the-engine-room.md) | How should reference and blocked matrix multiplication expose work and traffic? | RESEARCHING |
-| 7 | How do embedding lookup and RMSNorm transform typed tensors? | PLANNED |
+| [6](chapter-06-matrix-multiplication-the-engine-room.md) | How should reference and blocked matrix multiplication expose work and traffic? | COMPLETE |
+| 7 | How do embedding lookup and RMSNorm transform typed tensors? | NEXT |
 | 8 | How do Q/K/V projections create head-shaped activations? | PLANNED |
 | 9 | How does RoPE encode position without hiding layout? | PLANNED |
 | 10 | How does causal attention combine scores, masks, softmax, and values? | PLANNED |

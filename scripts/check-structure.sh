@@ -33,11 +33,52 @@ research/part-01/chapter-04-logits-sampling-autoregressive-loop.md
 research/part-01/tokenizer-comparison.md
 research/part-02/README.md
 research/part-02/chapter-05-tensors-without-magic.md
+research/part-02/chapter-06-matrix-multiplication-the-engine-room.md
 diagrams/README.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then
         echo "missing or empty required file: $file" >&2
+        exit 1
+    fi
+done
+
+for file in \
+    manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md \
+    code/mini-engine/crates/engine0/src/linear.rs \
+    code/mini-engine/crates/engine0/tests/linear.rs \
+    code/mini-engine/crates/engine0/examples/chapter06_bench.rs \
+    code/reference/python/chapter06_matmul_oracle.py \
+    research/benchmarks/chapter-06-loop-order.md \
+    research/benchmarks/chapter-06-blocked-matmul.md \
+    research/benchmarks/chapter-06-gemv-vs-gemm.md \
+    labs/lab-22-dot-product.md \
+    labs/lab-23-gemv-by-hand.md \
+    labs/lab-24-gemm-by-hand.md \
+    labs/lab-25-loop-order.md \
+    labs/lab-26-blocked-gemm.md \
+    labs/lab-27-break-the-kernel.md \
+    labs/lab-28-kernel-equivalence.md \
+    labs/lab-29-gemv-vs-gemm.md \
+    diagrams/linear/dot-product-multiply-accumulate.txt \
+    diagrams/linear/gemv-shape-contract.txt \
+    diagrams/linear/gemm-shape-contract.txt \
+    diagrams/linear/gemm-one-output-cell.txt \
+    diagrams/linear/weight-orientation.txt \
+    diagrams/linear/row-major-access.txt \
+    diagrams/linear/loop-order-ijk-vs-ikj.txt \
+    diagrams/linear/cache-reuse-and-tiling.txt \
+    diagrams/linear/reference-vs-blocked-kernel.txt \
+    diagrams/linear/optimization-ladder.txt \
+    diagrams/linear/gemv-vs-gemm-reuse.txt \
+    diagrams/linear/roofline-concept.txt \
+    diagrams/linear/engine-2-kernel-stack.txt \
+    diagrams/linear/follow-the-flop.txt \
+    diagrams/linear/follow-the-byte.txt \
+    diagrams/linear/follow-the-reuse.txt
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 6 artifact: $file" >&2
         exit 1
     fi
 done
@@ -244,4 +285,10 @@ if [ "$chapter_five_words" -lt 6000 ] || [ "$chapter_five_words" -gt 10000 ]; th
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 specifications, Chapters 1-5 artifacts present"
+chapter_six_words=$(wc -w < manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
+if [ "$chapter_six_words" -lt 7000 ] || [ "$chapter_six_words" -gt 11000 ]; then
+    echo "Chapter 6 must contain 7,000-11,000 words, found $chapter_six_words" >&2
+    exit 1
+fi
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-6 artifacts present"

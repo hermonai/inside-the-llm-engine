@@ -14,3 +14,6 @@ baselines unless measured under the benchmark policy.
 - [`chapter05_tensor_oracle.py`](python/chapter05_tensor_oracle.py)
   independently derives canonical strides, exact offsets, transpose logical
   order, reshape offsets, and contiguous materialization order.
+- [`chapter06_matmul_oracle.py`](python/chapter06_matmul_oracle.py)
+  independently computes dot, GEMV, GEMM, transpose-view logical products, and
+  binary32-rounded fractional fixtures.

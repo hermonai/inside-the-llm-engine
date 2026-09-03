@@ -10,12 +10,12 @@ Last updated: 2026-09-03.
 | Book constitution and policies | COMPLETE | Core editorial/source/code/math/style/benchmark contracts created |
 | Master outline | OUTLINED | 15 parts, 94 chapter authoring specifications; review again before each phase |
 | Public README and BOOK | COMPLETE | Launch-facing overview and table of contents agree |
-| Glossary and terminology | IN PROGRESS | Chapters 1–5 system, token, numerical model, sampling, tensor-memory, and streaming terms added; expand with each chapter |
-| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–5 request/tokenizer/logit/sampling/tensor boundaries verified at `hermon` commit `472a44c` |
+| Glossary and terminology | IN PROGRESS | Chapters 1–6 system, token, numerical model, sampling, tensor-memory, linear-algebra, and streaming terms added; expand with each chapter |
+| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–6 request/tokenizer/logit/sampling/tensor/kernel boundaries verified at `hermon` commit `472a44c` |
 | Manuscript part indexes | COMPLETE | 15 part contracts plus appendices scaffolded |
-| Diagram system | COMPLETE | Thirty-six canonical Unicode text diagrams plus an automated display-width gate |
+| Diagram system | COMPLETE | Fifty-two canonical Unicode text diagrams plus an automated display-width gate |
 | Research system | COMPLETE | Inventories and note templates established |
-| Code project | COMPLETE | ENGINE-1 plus dependency-free checked Tensor Substrate v1; 108 tests pass |
+| Code project | COMPLETE | ENGINE-2 adds dependency-free checked reference and blocked scalar kernels over Tensor Substrate v1; 133 tests pass |
 | Initial CI | COMPLETE | Structure, links, diagrams, Rust format/check/test/Clippy workflow added |
 | License | PLANNED | Maintainers must choose prose and code licensing; no license inferred from Hermon |
 
@@ -32,7 +32,7 @@ tracked separately below.
 | Chapter 3 — The Smallest Possible Language Model | COMPLETE | 6,508-word reviewed chapter, primary-source research, seven canonical diagrams, full-vector Python oracle |
 | Chapter 4 — Logits, Sampling, and the Autoregressive Loop | COMPLETE | 6,258-word reviewed chapter, primary-source research, seven canonical diagrams, fixed-draw Python oracle |
 | ENGINE-0 | COMPLETE | Dependency-free tokenized request/runtime/stream lifecycle; byte oracle, BPE, chat/template contract, strict UTF-8 framing; 37 tests and full Rust gate pass |
-| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 108 in the current full suite |
+| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 133 in the current full suite |
 | Lab 1 — Generate One Token Manually | COMPLETE | Independent candidate oracle plus CHECK/BUILD/BREAK/EXTEND exercise |
 | Labs 2–4 — Tokenization / UTF-8 / chat template | COMPLETE | Hand BPE, split-byte streaming, malformed terminal policy, and wrong-template experiments |
 | Labs 5–8 — Numerical forward / causality / context / shape | COMPLETE | Full hand logits, one-weight intervention, same-last-token proof, and typed malformed-shape failures |
@@ -42,17 +42,20 @@ tracked separately below.
 
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapter 5 complete; Chapter 6 is next |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–6 complete; Chapter 7 is next |
 | Chapter 5 — Tensors Without Magic | COMPLETE | 6,049-word reviewed chapter, primary-source research, eleven canonical diagrams, traversal record, and independent offset oracle |
 | Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
 | Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
+| Chapter 6 — Matrix Multiplication: The Engine Room | COMPLETE | 7,500-word reviewed chapter, primary-source research, sixteen canonical diagrams, three performance records, and independent numerical oracle |
+| ENGINE-2 / Linear Algebra Kernel Layer v1 | COMPLETE | Strided dot/GEMV/GEMM reference kernels, canonical-only blocked scalar GEMM, explicit layout/ownership/error contracts, and ENGINE-1 projection migration |
+| Labs 22–29 — Linear algebra kernels | COMPLETE | Hand dot/GEMV/GEMM, loop-order offsets, tile tails, typed failures, deterministic equivalence, and GEMV/GEMM measurement |
 
 ## Curriculum status
 
 | Scope | Status | Milestone |
 | --- | --- | --- |
 | Part I (Ch. 1–4) | COMPLETE | ENGINE-1 is the smallest complete autoregressive inference engine |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapter 5 and Tensor Substrate v1 complete; Chapter 6 is next |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–6, Tensor Substrate v1, and ENGINE-2 complete; Chapter 7 is next |
 | Part III (Ch. 14–18) | PLANNED | ENGINE-3 |
 | Part IV (Ch. 19–22) | PLANNED | ENGINE-4 |
 | Part V (Ch. 23–27) | PLANNED | ENGINE-5 / ENGINE-6 |
@@ -78,8 +81,8 @@ tracked separately below.
 
 ## Next recommended task
 
-Execute only Chapter 6 — Matrix Multiplication: The Engine Room. Begin with a
-clear scalar reference kernel, derive shape and arithmetic-work contracts, then
-introduce cache-aware loop ordering and blocked CPU multiplication with an
-independent oracle. Do not begin RMSNorm, attention, RoPE, KV caching, GGUF,
-quantization, SIMD intrinsics, GPU execution, or autograd.
+Execute only Chapter 7 — Embeddings and RMSNorm. Preserve the explicit
+embedding row lookup and ENGINE-2 kernel boundary, derive RMSNorm with an
+independent oracle, and keep storage, accumulation, epsilon, ownership, and
+failure semantics visible. Do not begin attention, Q/K/V, RoPE, KV caching,
+GGUF, quantization, SIMD intrinsics, GPU execution, or autograd.

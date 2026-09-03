@@ -17,7 +17,7 @@ Milestone: ENGINE-0 / ENGINE-1.
 ### Part II — Build a Transformer Inference Engine
 
 5. [Tensors Without Magic](manuscript/part-02/chapter-05-tensors-without-magic.md)
-6. Matrix Multiplication: The Engine Room
+6. [Matrix Multiplication: The Engine Room](manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
 7. Embeddings and RMSNorm
 8. Queries, Keys, and Values
 9. Position: RoPE From First Principles

@@ -18,7 +18,9 @@ establish the request-to-terminal lifecycle, tokenizer/chat contract,
 byte-safe output, a real token-ID-to-logits model, request-owned sampling, and
 the complete autoregressive feedback loop. Part II is now in progress:
 [Chapter 5](manuscript/part-02/chapter-05-tensors-without-magic.md) adds the
-checked Tensor Substrate v1, and Chapter 6 begins matrix multiplication next.
+checked Tensor Substrate v1. [Chapter 6](manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
+builds ENGINE-2's reference and blocked scalar linear-algebra kernels and
+migrates the existing projection through GEMV. Chapter 7 is next.
 
 ```text
                          INSIDE THE LLM ENGINE
@@ -85,7 +87,7 @@ The curriculum advances through eleven named milestones:
 ```text
 ENGINE-0  token generator
     └──▶ ENGINE-1  tiny neural language model
-          └──▶ ENGINE-2  tiny Transformer
+          └──▶ ENGINE-2  linear algebra kernel layer
                 └──▶ ENGINE-3  real GGUF model runner
                       └──▶ ENGINE-4  KV-cached decoder
                             └──▶ ENGINE-5  concurrent inference server
@@ -170,9 +172,9 @@ Contributors and AI agents should also read [AGENTS.md](AGENTS.md),
 ## Status
 
 Phase 0 established the repository and editorial architecture. Phase 1 is
-complete. Phase 2 is in progress: Chapter 5, Tensor Substrate v1, Labs 16–21,
-and their source-verified research, oracle, Unicode diagrams, and traversal
-measurement pass their gates. Chapter 6 is next. See
+complete. Phase 2 is in progress: Chapters 5–6, Tensor Substrate v1, ENGINE-2,
+Labs 16–29, and their source-verified research, independent oracles, 52 Unicode
+diagrams, and four performance records pass their gates. Chapter 7 is next. See
 [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license
