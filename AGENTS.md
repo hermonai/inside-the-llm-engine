@@ -103,12 +103,14 @@ paths. Never push unless the user explicitly authorizes it.
 ## Current state and next task
 
 Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
-progress: Chapters 5–6, Tensor Substrate v1, ENGINE-2's checked reference and
-blocked scalar kernels, Labs 16–29, 63 canonical Unicode text diagrams, and the
-Chapter 1–6 diagram/math retrofit are complete. The authoritative state and
-next task are in `docs/STATUS.md`.
+progress: Chapters 5–7, Tensor Substrate v1, ENGINE-2's checked reference and
+blocked scalar kernels, Transformer Primitives v1, Labs 16–38, 78 canonical
+Unicode text diagrams, and the Chapter 1–6 diagram/math retrofit are complete.
+The full suite contains 163 tests. The authoritative state and next task are in
+`docs/STATUS.md`.
 
-The next bounded task is Chapter 7 — Embeddings and RMSNorm. Start from the
-existing explicit embedding lookup and ENGINE-2 kernel layer; derive and build
-RMSNorm without beginning attention, Q/K/V, RoPE, KV caching, GGUF,
-quantization, SIMD, BLAS, or accelerator execution.
+The next bounded task is Chapter 8 — Queries, Keys, and Values. Start from the
+ENGINE-2 GEMM/GEMV layer and Chapter 7's residual-width activations; derive and
+build checked Q/K/V projections and head-shape transformations without
+beginning attention scores, masking, attention softmax, value aggregation,
+RoPE, KV caching, GGUF, quantization, SIMD, BLAS, or accelerator execution.

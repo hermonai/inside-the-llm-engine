@@ -170,6 +170,27 @@ publication rather than quoting an old status line.
 4. Revisit MoE runtime integration status immediately before Part X.
 5. Compare canonical docs with source again before every Part XIII chapter.
 
+## Chapter 7 refresh — 2026-09-03
+
+Hermon still resolves to `472a44c`; its pinned llama.cpp/GGML submodule remains
+`389ff61d`. The Chapter 7 pass verified that the unset runtime mode selects the
+**CURRENT** llama.cpp-backed batched path, so default embedding and RMSNorm do
+not run through the Rust helper in `paged.rs`.
+
+The explicitly gated **PREVIEW** `GgufLlamaForward` materializes embeddings via
+the **LIBRARY** `hermon-llamacpp::tensor_row_f32` bridge, validates finite
+positive RMS epsilon from GGUF metadata, and runs a visible F32 Rust RMSNorm
+loop. `hermon-gguf::model_shape` validates token-embedding geometry as a
+**LIBRARY** function; this does not change runtime selection.
+
+At the pin, llama graph construction uses `ggml_get_rows` for tokens and
+`ggml_rms_norm` for the configured normalization. CPU `GET_ROWS` copies F32 or
+converts/dequantizes supported packed rows to F32. CPU RMSNorm requires a
+contiguous first dimension, forms each F32 square before adding it to a
+`ggml_float` accumulator (`double` at this revision), places epsilon inside
+the square root, and has a fused learned-scale path. Full evidence and exact
+paths are in the [Chapter 7 research note](../part-02/chapter-07-embeddings-and-normalization.md).
+
 ## Chapter 1 refresh — 2026-09-02
 
 The remote and local `main` branch still resolve to `472a44c`; the initial

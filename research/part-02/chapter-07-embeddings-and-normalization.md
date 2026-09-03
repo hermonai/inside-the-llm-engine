@@ -370,3 +370,13 @@ engine boundary, and source-classified Hermon/llama.cpp execution mapping.
 - Batch/sequence scheduling, device placement, and distributed embeddings.
 - The projections that produce Q, K, and V, their orientation, and their
   head-shaped outputs. These are exactly the Chapter 8 boundary.
+
+## Review record
+
+- **Technical review, 2026-09-04:** rechecked every central equation against
+  the Rust implementation and independent Python oracle; re-ran the 30 focused
+  operator tests; reverified the pinned Hermon and llama.cpp paths; confirmed
+  the historical Chapter 3 generation fixture remains unchanged.
+- **Editorial review, 2026-09-04:** checked the 6,034-word chapter against the
+  chapter contract, canonical terminology, shape declarations, source-status
+  labels, cross-links, diagram purposes, and the exact Chapter 8 scope boundary.

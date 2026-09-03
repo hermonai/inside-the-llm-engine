@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-03.
+Last updated: 2026-09-04.
 
 ## Phase 0 ledger
 
@@ -10,13 +10,13 @@ Last updated: 2026-09-03.
 | Book constitution and policies | COMPLETE | Core editorial/source/code/math/style/benchmark contracts created |
 | Master outline | OUTLINED | 15 parts, 94 chapter authoring specifications; review again before each phase |
 | Public README and BOOK | COMPLETE | Launch-facing overview and table of contents agree |
-| Glossary and terminology | IN PROGRESS | Chapters 1–6 system, token, numerical model, sampling, tensor-memory, linear-algebra, and streaming terms added; expand with each chapter |
-| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–6 request/tokenizer/logit/sampling/tensor/kernel boundaries verified at `hermon` commit `472a44c` |
+| Glossary and terminology | IN PROGRESS | Chapters 1–7 system, token, numerical model, sampling, tensor-memory, linear-algebra, embedding, normalization, and streaming terms added; expand with each chapter |
+| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–7 request/tokenizer/logit/sampling/tensor/kernel/embedding/normalization boundaries verified at `hermon` commit `472a44c` |
 | Manuscript part indexes | COMPLETE | 15 part contracts plus appendices scaffolded |
-| Diagram system | COMPLETE | Sixty-three inventoried canonical Unicode diagrams; shared grammar plus automated style and display-width gates |
+| Diagram system | COMPLETE | Seventy-eight inventoried canonical Unicode diagrams; shared grammar plus automated style and display-width gates |
 | Diagram/math retrofit | COMPLETE | Chapters 1–6 audited; 11 diagrams added, 2 redesigned, 47 equation blocks standardized, and 18 explicit shape declarations added |
 | Research system | COMPLETE | Inventories and note templates established |
-| Code project | COMPLETE | ENGINE-2 adds dependency-free checked reference and blocked scalar kernels over Tensor Substrate v1; 133 tests pass |
+| Code project | COMPLETE | ENGINE-2 plus Transformer Primitives v1 provide dependency-free checked kernels, embedding lookup, and RMSNorm over Tensor Substrate v1; 163 tests pass |
 | Initial CI | COMPLETE | Structure, links, diagram style/width, math structure, Rust format/check/test/Clippy workflow added |
 | License | PLANNED | Maintainers must choose prose and code licensing; no license inferred from Hermon |
 
@@ -33,7 +33,7 @@ tracked separately below.
 | Chapter 3 — The Smallest Possible Language Model | COMPLETE | 6,373-word reviewed chapter, primary-source research, eight canonical diagrams, full-vector Python oracle |
 | Chapter 4 — Logits, Sampling, and the Autoregressive Loop | COMPLETE | 6,306-word reviewed chapter, primary-source research, nine canonical diagrams, fixed-draw Python oracle |
 | ENGINE-0 | COMPLETE | Dependency-free tokenized request/runtime/stream lifecycle; byte oracle, BPE, chat/template contract, strict UTF-8 framing; 37 tests and full Rust gate pass |
-| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 133 in the current full suite |
+| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 163 in the current full suite |
 | Lab 1 — Generate One Token Manually | COMPLETE | Independent candidate oracle plus CHECK/BUILD/BREAK/EXTEND exercise |
 | Labs 2–4 — Tokenization / UTF-8 / chat template | COMPLETE | Hand BPE, split-byte streaming, malformed terminal policy, and wrong-template experiments |
 | Labs 5–8 — Numerical forward / causality / context / shape | COMPLETE | Full hand logits, one-weight intervention, same-last-token proof, and typed malformed-shape failures |
@@ -43,21 +43,23 @@ tracked separately below.
 
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–6 complete; Chapter 7 implementation and research are in progress |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–7 complete; Chapter 8 is next |
 | Chapter 5 — Tensors Without Magic | COMPLETE | 6,083-word reviewed chapter, primary-source research, thirteen canonical diagrams, traversal record, and independent offset oracle |
 | Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
 | Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
 | Chapter 6 — Matrix Multiplication: The Engine Room | COMPLETE | 7,480-word reviewed chapter, primary-source research, seventeen canonical diagrams, three performance records, and independent numerical oracle |
 | ENGINE-2 / Linear Algebra Kernel Layer v1 | COMPLETE | Strided dot/GEMV/GEMM reference kernels, canonical-only blocked scalar GEMM, explicit layout/ownership/error contracts, and ENGINE-1 projection migration |
 | Labs 22–29 — Linear algebra kernels | COMPLETE | Hand dot/GEMV/GEMM, loop-order offsets, tile tails, typed failures, deterministic equivalence, and GEMV/GEMM measurement |
-| Chapter 7 — Embeddings and Normalization | RESEARCHING | Primary-source and Hermon/llama.cpp trace complete; checked operators and chapter artifacts in progress |
+| Chapter 7 — Embeddings and Normalization | COMPLETE | 6,034-word reviewed chapter, primary-source and Hermon/llama.cpp trace, fifteen canonical diagrams, independent oracle, and scale/magnitude experiments |
+| Transformer Primitives v1 | COMPLETE | Checked single and sequence embedding lookup plus explicit two-pass F32 RMSNorm with immutable strided inputs, canonical owned outputs, typed numerical failures, and unchanged historical model behavior |
+| Labs 30–38 — Embeddings and normalization | COMPLETE | Table layout, checked lookup, view/copy ownership, hand RMS, implementation, epsilon, scale, magnitude, and Rust/Python equivalence exercises |
 
 ## Curriculum status
 
 | Scope | Status | Milestone |
 | --- | --- | --- |
 | Part I (Ch. 1–4) | COMPLETE | ENGINE-1 is the smallest complete autoregressive inference engine |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–6, Tensor Substrate v1, and ENGINE-2 complete; Chapter 7 is next |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–7, Tensor Substrate v1, ENGINE-2, and Transformer Primitives v1 complete; Chapter 8 is next |
 | Part III (Ch. 14–18) | PLANNED | ENGINE-3 |
 | Part IV (Ch. 19–22) | PLANNED | ENGINE-4 |
 | Part V (Ch. 23–27) | PLANNED | ENGINE-5 / ENGINE-6 |
@@ -83,8 +85,8 @@ tracked separately below.
 
 ## Next recommended task
 
-Complete only Chapter 7 — Embeddings and Normalization. The source trace and
-operator contracts are established; finish the independent oracle, experiments,
-labs, diagrams, manuscript, review, and completion gates. Do not begin
-attention, Q/K/V, RoPE, KV caching, GGUF, quantization, SIMD intrinsics, GPU
+Complete only Chapter 8 — Queries, Keys, and Values. Derive checked linear
+projections and the reshape/transposition contracts that create head-shaped
+activations. Do not begin attention scores, masking, attention softmax, value
+aggregation, RoPE, KV caching, GGUF, quantization, SIMD intrinsics, GPU
 execution, or autograd.

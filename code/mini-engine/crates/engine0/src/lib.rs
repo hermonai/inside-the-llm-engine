@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
 
-//! ENGINE-1 after Chapter 4: a complete tiny autoregressive inference engine.
+//! ENGINE-2 after Chapter 7: a tiny engine plus checked numerical primitives.
 //!
 //! A token ID now selects an embedding row and a scalar output projection
 //! produces genuine vocabulary logits. A request-owned sampler turns those
 //! logits into feedback tokens until EOS, cancellation, failure, or budget.
+//! Tensor, linear-algebra, embedding, and RMSNorm modules expose the explicit
+//! checked contracts used by Part II without changing that historical loop.
 
 pub mod chat;
 pub mod embedding;

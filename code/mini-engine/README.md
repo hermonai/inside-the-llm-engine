@@ -1,9 +1,10 @@
 # mini-engine
 
 This dependency-free Rust workspace advances from ENGINE-0 through ENGINE-10.
-The current milestone is **ENGINE-2 / Linear Algebra Kernel Layer v1**. The
-complete ENGINE-1 text/token/model/sampling loop remains intact, while Chapter
-6 gives its numerical projection a checked kernel API.
+The current milestone is **ENGINE-2 / Transformer Primitives v1**. The complete
+ENGINE-1 text/token/model/sampling loop remains intact, Chapter 6 gives its
+projection a checked linear-algebra API, and Chapter 7 makes embedding lookup
+explicit and adds a checked RMSNorm primitive.
 
 Chapter 5 adds **Tensor Substrate v1** beneath ENGINE-1 without changing its
 observable behavior:
@@ -20,8 +21,8 @@ observable behavior:
 
 The immutable embedding and output projection use `OwnedTensor [V,D]`. Bias,
 hidden activations, and logits remain focused one-dimensional types. Embedding
-stays an explicit row lookup; projection now calls `gemv_reference(W, h)` and
-the model adds bias separately.
+calls a checked row-lookup operator; projection calls `gemv_reference(W, h)`
+and the model adds bias separately.
 
 ENGINE-2 adds an operator layer separate from tensor storage:
 
@@ -33,6 +34,20 @@ ENGINE-2 adds an operator layer separate from tensor storage:
   size, and typed rank/dimension/layout/block errors;
 - no hidden layout materialization, unsafe code, dependencies, SIMD, BLAS,
   threads, or accelerator dispatch.
+
+Transformer Primitives v1 extends that layer without pretending to be a full
+Transformer:
+
+- `embedding_lookup_reference` maps `[V,D]` plus one checked `TokenId` to a
+  fresh canonical `[D]` activation;
+- `embedding_sequence_reference` preserves a checked `[T]` sequence in a new
+  canonical `[T,D]` owner;
+- `rms_norm_reference` maps strided `x,w:[D]` plus finite positive epsilon to a
+  canonical `[D]` output;
+- `f32` products and accumulation remain visible, including typed square,
+  reduction, and output finite-range failures;
+- RMSNorm is deliberately not inserted into the historical Chapter 3 model,
+  whose hidden vector, logits, `Rust`, and EOS regression remain unchanged.
 
 ENGINE-1 establishes:
 
@@ -72,6 +87,7 @@ cargo run -p engine0 -- --trace --sample --temperature 1 --top-k 3 \
 cargo run -p engine0 -- tokenize lower
 cargo run -p engine0 -- decode 259
 cargo run --release -p engine0 --example chapter06_bench
+cargo run --release -p engine0 --example chapter07_scale_and_stress
 cargo test --workspace
 ```
 
@@ -89,12 +105,14 @@ Independent references:
   independently proves strides, offsets, transpose, reshape, and materialization;
 - [`chapter06_matmul_oracle.py`](../reference/python/chapter06_matmul_oracle.py)
   independently proves dot, GEMV, GEMM, transpose, and fractional arithmetic;
+- [`chapter07_embedding_rmsnorm_oracle.py`](../reference/python/chapter07_embedding_rmsnorm_oracle.py)
+  independently proves lookup, RMSNorm, epsilon, scale, and magnitude behavior;
 - [`chapter-02-tokenizer-oracles.md`](../reference/chapter-02-tokenizer-oracles.md)
   retains the tokenizer cases;
 - [`engine-0-oracle.md`](../reference/engine-0-oracle.md) records the historical
   fake candidate milestone.
 
-Guided work is in [Labs 1–29](../../docs/LABS.md). Chapter 7 will add embedding
-and RMSNorm semantics on this substrate. The project intentionally adds no
-training, Transformer layer, general tensor framework, BLAS, accelerator, or
-GGUF dependency yet.
+Guided work is in [Labs 1–38](../../docs/LABS.md). Chapter 8 will add Q/K/V
+projection semantics on this substrate. The project intentionally adds no
+training, complete Transformer layer, attention, general tensor framework,
+BLAS, accelerator, or GGUF dependency yet.

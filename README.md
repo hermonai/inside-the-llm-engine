@@ -20,7 +20,9 @@ the complete autoregressive feedback loop. Part II is now in progress:
 [Chapter 5](manuscript/part-02/chapter-05-tensors-without-magic.md) adds the
 checked Tensor Substrate v1. [Chapter 6](manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
 builds ENGINE-2's reference and blocked scalar linear-algebra kernels and
-migrates the existing projection through GEMV. Chapter 7 is next.
+migrates the existing projection through GEMV. [Chapter 7](manuscript/part-02/chapter-07-embeddings-and-normalization.md)
+adds checked single/sequence embedding and RMSNorm as Transformer Primitives
+v1 while preserving the original tiny-model regression. Chapter 8 is next.
 
 ```text
                          INSIDE THE LLM ENGINE
@@ -174,10 +176,11 @@ artifacts follow [the math style](docs/MATH_STYLE.md) and
 ## Status
 
 Phase 0 established the repository and editorial architecture. Phase 1 is
-complete. Phase 2 is in progress: Chapters 5–6, Tensor Substrate v1, ENGINE-2,
-Labs 16–29, and their source-verified research, independent oracles, 63 Unicode
-diagrams, and four performance records pass their gates. The Chapter 1–6
-diagram/math retrofit is complete; Chapter 7 is next. See
+complete. Phase 2 is in progress: Chapters 5–7, Tensor Substrate v1, ENGINE-2
+plus Transformer Primitives v1, Labs 16–38, and their source-verified research,
+independent oracles, 78 Unicode diagrams, and four performance records pass
+their gates. The Chapter 1–6 diagram/math retrofit is complete; Chapter 8 is
+next. See
 [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license

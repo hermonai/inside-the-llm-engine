@@ -36,12 +36,51 @@ research/part-01/tokenizer-comparison.md
 research/part-02/README.md
 research/part-02/chapter-05-tensors-without-magic.md
 research/part-02/chapter-06-matrix-multiplication-the-engine-room.md
+research/part-02/chapter-07-embeddings-and-normalization.md
 diagrams/README.md
 diagrams/INDEX.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then
         echo "missing or empty required file: $file" >&2
+        exit 1
+    fi
+done
+
+for file in \
+    manuscript/part-02/chapter-07-embeddings-and-normalization.md \
+    code/mini-engine/crates/engine0/src/embedding.rs \
+    code/mini-engine/crates/engine0/src/normalization.rs \
+    code/mini-engine/crates/engine0/tests/transformer_primitives.rs \
+    code/mini-engine/crates/engine0/examples/chapter07_scale_and_stress.rs \
+    code/reference/python/chapter07_embedding_rmsnorm_oracle.py \
+    labs/lab-30-inspect-embedding-row.md \
+    labs/lab-31-checked-embedding-lookup.md \
+    labs/lab-32-embedding-view-vs-copy.md \
+    labs/lab-33-compute-rms-by-hand.md \
+    labs/lab-34-implement-rmsnorm.md \
+    labs/lab-35-break-epsilon.md \
+    labs/lab-36-rmsnorm-scale-experiment.md \
+    labs/lab-37-rmsnorm-magnitude-stress.md \
+    labs/lab-38-rust-python-rmsnorm.md \
+    diagrams/transformer/token-to-model-space.txt \
+    diagrams/transformer/embedding-logical-layout.txt \
+    diagrams/transformer/embedding-physical-layout.txt \
+    diagrams/transformer/parameters-vs-activations.txt \
+    diagrams/transformer/embedding-view-vs-copy.txt \
+    diagrams/transformer/residual-stream-width.txt \
+    diagrams/transformer/rms-calculation-pipeline.txt \
+    diagrams/transformer/rmsnorm-two-pass.txt \
+    diagrams/transformer/equation-to-loop.txt \
+    diagrams/transformer/epsilon-zero-vector.txt \
+    diagrams/transformer/layernorm-vs-rmsnorm.txt \
+    diagrams/transformer/normalization-precision-flow.txt \
+    diagrams/transformer/embedding-vs-output-projection.txt \
+    diagrams/transformer/chapter07-engine-architecture.txt \
+    diagrams/transformer/hermon-llamacpp-normalization-path.txt
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 7 artifact: $file" >&2
         exit 1
     fi
 done
@@ -294,4 +333,10 @@ if [ "$chapter_six_words" -lt 7000 ] || [ "$chapter_six_words" -gt 11000 ]; then
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 specifications, Chapters 1-6 artifacts present"
+chapter_seven_words=$(wc -w < manuscript/part-02/chapter-07-embeddings-and-normalization.md)
+if [ "$chapter_seven_words" -lt 6000 ] || [ "$chapter_seven_words" -gt 9000 ]; then
+    echo "Chapter 7 must contain 6,000-9,000 words, found $chapter_seven_words" >&2
+    exit 1
+fi
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-7 artifacts present"

@@ -177,7 +177,7 @@ fn rmsnorm_matches_the_hand_calculated_mixed_sign_example() {
     let inverse_rms = 1.0_f32 / (7.5_f32 + 1.0e-5).sqrt();
     let expected = [
         1.0 * inverse_rms,
-        -1.0 * inverse_rms,
+        -inverse_rms,
         6.0 * inverse_rms,
         4.0 * inverse_rms,
     ];
@@ -228,7 +228,7 @@ fn rmsnorm_accepts_strided_input_and_weight() {
         rms_norm_reference(&input, &weight, 1.0e-5)
             .unwrap()
             .as_slice(),
-        &[2.0 * scale, -1.0 * scale, -3.0 * scale],
+        &[2.0 * scale, -scale, -3.0 * scale],
     );
 }
 
