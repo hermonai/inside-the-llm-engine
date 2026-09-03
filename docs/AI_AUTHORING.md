@@ -55,6 +55,13 @@ are durable memory; `STATUS.md` is coordination; tests and benchmark records are
 the executable evidence. Human or independent-agent technical review is still
 required. No chapter is done because a model produced fluent prose.
 
+Generated mathematical notation and diagrams require the same verification as
+generated code. An AI author must apply `MATH_STYLE.md` and
+`DIAGRAM_STYLE.md`, reconcile shapes and units with the implementation, verify
+numerical examples against independent evidence, and update the canonical
+indexes. It must not invent visual complexity, silently change arrow meaning,
+or render a target architecture as current behavior.
+
 When Codex and Claude Code collaborate, each reads `AGENTS.md`, status, roadmap,
 Git state, branch/history, and the relevant chapter spec; claims one task;
 updates research and status; and avoids rewriting unrelated work. Atomic

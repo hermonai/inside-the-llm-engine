@@ -1,0 +1,12 @@
+CONTROL PLANE AND DATA PLANE — who decides, and what bytes move?
+
+┌──────────────────────────── CONTROL PLANE ─────────────────────────────┐
+│ validate ──▶ resolve ──▶ admit ──▶ schedule ──▶ stop/fail ──▶ account │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 │ owns policy and lifecycle
+                                 ▼
+┌────────────────────────────── DATA PLANE ──────────────────────────────┐
+│ (artifact) ══▶ (weights) ══▶ model step ══▶ logits ──▶ token ══▶ bytes │
+└────────────────────────────────────────────────────────────────────────┘
+
+The control plane may schedule data movement; it does not become the tensor payload.

@@ -7,10 +7,10 @@ projection parameter bytes
 bias parameter bytes
           │
           ▼
-       f32 arithmetic ─▶ finite raw f32 logits [V]
+       f32 arithmetic ─▶ finite raw f32 logits [V_vocab]
                                    │
                                    ▼ copy; raw evidence preserved
-                         f64 sampling workspace [V]
+                         f64 sampling workspace [V_vocab]
                                    │
                                    ▼
                                 TokenId

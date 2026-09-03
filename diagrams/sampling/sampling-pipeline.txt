@@ -5,7 +5,7 @@ solid arrow = derived data                 raw Logits remain unchanged
   MODEL FORWARD
         │
         ▼
-  FINITE RAW LOGITS [V] f32
+  FINITE RAW LOGITS [V_vocab] f32
         │
         ▼ copy to request-local f64 workspace
   ┌───────────────────┐

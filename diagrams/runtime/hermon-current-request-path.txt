@@ -1,0 +1,15 @@
+HERMON REQUEST PATH — which branches are source-verified at the inspected commit?
+
+ [CURRENT] API handler ──▶ [CURRENT] model/route resolution
+                                      │
+                     ┌────────────────┴────────────────┐
+                     │ local GGUF + engine linked      │ otherwise
+                     ▼                                 ▼
+            [CURRENT] Dispatcher          [CURRENT] Ollama/cloud clients
+                     │                                 │
+                     ▼                                 ▼
+            [CURRENT] native engine ───────┬──────▶ [CURRENT] stream response
+                                           │
+                               Piece / Done / typed error
+
+Related source may be [PREVIEW] or [LIBRARY]; existence alone does not prove this reachability.

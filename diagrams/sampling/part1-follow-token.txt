@@ -9,7 +9,7 @@ Tokenizer + model contract
 TokenId history
     │
     ▼
-embedding row ─▶ hidden [D] ─▶ output projection ─▶ raw logits [V]
+embedding row ─▶ hidden [D] ─▶ output projection ─▶ raw logits [V_vocab]
                                                         │
                                                         ▼
                                       temperature / top-k / top-p

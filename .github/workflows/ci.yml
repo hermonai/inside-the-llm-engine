@@ -18,6 +18,10 @@ jobs:
         run: python3 scripts/check-links.py
       - name: Check canonical diagram width
         run: python3 scripts/check-diagram-width.py
+      - name: Check canonical diagram style and inventory
+        run: python3 scripts/check-diagram-style.py
+      - name: Check mathematical style structure
+        run: python3 scripts/check-math-style.py
       - name: Check Rust formatting
         working-directory: code/mini-engine
         run: cargo fmt --all -- --check

@@ -1,11 +1,10 @@
 BPE ENCODING WITH FIXED MERGE RANKS
 
 bytes:        l │ o │ w │ e │ r
-rank 0:      [l │ o] ─▶ lo       => lo │ w │ e │ r
-rank 1:     [lo + w] ─▶ low      => low │ e │ r
-rank 2:                    [e+r] => low │ er
-rank 3:             [low + er]  => lower
+rank 0:      [l │ o] ─▶ lo       gives lo │ w │ e │ r
+rank 1:     [lo │ w] ─▶ low      gives low │ e │ r
+rank 2:                    [e│r] gives low │ er
+rank 3:             [low │ er]  gives lower
 
 Legend: [a + b] is one adjacent pair selected by the lowest available rank.
 Encoding applies learned rules; it does not learn new rules from this prompt.
-

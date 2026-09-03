@@ -1,0 +1,10 @@
+LATENCY DECOMPOSITION — which named intervals make up one request?
+
+ request     accepted     model ready       first token       last token      terminal
+   │            │             │                  │                 │              │
+   ├─ network ─▶├── queue ───▶├─ prepare/prefill▶├─ decode steps ─▶├─ stream ────▶│
+   │            │             │                  │                 │              │
+   └────────────┴─────────────┴────── T_total: end-to-end wall time ──────────────┘
+
+Analytical decomposition: named intervals can overlap in a pipelined runtime.
+Measurement rule: record actual timestamps; do not infer internal work from wire gaps.

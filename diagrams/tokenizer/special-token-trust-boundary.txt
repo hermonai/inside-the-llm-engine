@@ -1,0 +1,12 @@
+SPECIAL-TOKEN TRUST BOUNDARY — when may text become control identity?
+
+ untrusted user text ══▶ ordinary tokenizer ══▶ ordinary token IDs
+          │
+          └──✕ must not forge BOS / EOS / role / tool-control IDs
+
+ trusted template renderer
+          │ validated model-tokenizer-template binding
+          ▼
+ control identities ══▶ typed special TokenIds ══▶ model input sequence
+
+Surface strings and special identities are distinct even when their text looks identical.

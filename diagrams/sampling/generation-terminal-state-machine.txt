@@ -1,0 +1,15 @@
+GENERATION STATE MACHINE — how does every request reach exactly one terminal outcome?
+
+ [submitted] ──valid──▶ [admitted] ──start──▶ [executing]
+      │ invalid                                      │ non-EOS token
+      ▼                                              ▼
+  {failed}                                      [streaming]
+                                                    │ bytes emitted
+                                                    └──────────────▶ [executing]
+
+ [executing] ──EOS or budget──▶ {completed}
+ any active state ┄┄cancel────▶ {cancelled}
+ validation, model, sampling, decode, or stream error ──▶ {failed}
+
+Legend: [X] active mutable state   {X} terminal state   ┄┄▶ asynchronous control
+After the first terminal transition, no token, text, or second terminal event may be emitted.

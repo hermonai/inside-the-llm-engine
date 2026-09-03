@@ -3,7 +3,7 @@ PARAMETERS, ACTIVATIONS, AND OWNERS
                          MODEL LIFETIME
               immutable parameters shared by requests
         ┌───────────────────────────────────────────────┐
-        │ E [V,D]        W [V,D]          b [V]         │
+        │ E [V_vocab,D]  W [V_vocab,D]  b [V_vocab]    │
         └───────────────────────┬───────────────────────┘
                                 │
                    ┌────────────┴────────────┐

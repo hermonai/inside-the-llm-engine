@@ -6,17 +6,18 @@ text "I like" ══▶ tokenizer ══▶ [TokenId(1), TokenId(2)]
                                              │
                                              │ final id x = 2
                                              ▼
-                                  ┌─────────────────────┐
-                       (E [V,D]) ══▶ EMBEDDING LOOKUP    │
-                                  └──────────┬──────────┘
-                                             │ h [D]
-                                             ▼
-                                  ┌─────────────────────┐
-                       (W [V,D]) ══▶ OUTPUT PROJECTION   │
-                          (b [V]) ══▶ z = W h + b         │
-                                  └──────────┬──────────┘
-                                             │ z [V]
-                                             ▼
+                              ┌────────────────────────┐
+          (E [V_vocab,D]) ══▶│ EMBEDDING ROW GATHER   │
+                              └────────────┬───────────┘
+                                           │ h [D]
+                                           ▼
+                              ┌────────────────────────┐
+          (W [V_vocab,D]) ══▶│ OUTPUT PROJECTION      │
+             (b [V_vocab]) ══▶│ z = W h + b            │
+                              └────────────┬───────────┘
+                                           │ z [V_vocab]
+                                           ▼
                               [-0.7, 0.1, 0.4, 2.2]
-                                             │
-                                  Chapter 4 begins here
+                                           │
+                                           ▼
+                                Chapter 4 begins here

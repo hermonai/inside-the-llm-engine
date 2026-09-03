@@ -1,0 +1,14 @@
+RESHAPE VIEW — when can grouping change without moving elements?
+
+ owner storage: [ a  b  c  d  e  f ]
+                      ▲ same six contiguous elements
+                      │
+        ┌─────────────┴─────────────┐
+        │                           │
+ view A: shape [2,3]           view B: shape [3,2]
+ strides [3,1]                 strides [2,1]
+ [ a b c ]                     [ a b ]
+ [ d e f ]                     [ c d ]
+                               [ e f ]
+
+Both views borrow one owner. A non-contiguous source requires materialization first.

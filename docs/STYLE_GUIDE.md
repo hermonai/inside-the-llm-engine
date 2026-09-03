@@ -42,3 +42,5 @@ Follow `TERMINOLOGY.md`. Use “prefill” and “decode” for workload phases,
 “KV cache” for stored key/value state, and “paged KV” for a block-mapped
 layout—not as a synonym for any cache. Use code formatting for identifiers,
 paths, commands, and literal configuration. Keep reusable diagrams monospaced.
+Apply `DIAGRAM_STYLE.md` to visual artifacts and `MATH_STYLE.md` to equations;
+style never overrides technical truth, dimensions, units, or source status.

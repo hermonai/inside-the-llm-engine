@@ -20,9 +20,12 @@ def display_width(text: str) -> int:
 
 
 failures: list[str] = []
+maximum = (0, Path(), 0)
 for path in sorted((ROOT / "diagrams").glob("**/*.txt")):
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         width = display_width(line)
+        if width > maximum[0]:
+            maximum = (width, path.relative_to(ROOT), number)
         if width > LIMIT:
             failures.append(f"{path.relative_to(ROOT)}:{number}: display width {width} > {LIMIT}")
 
@@ -31,4 +34,7 @@ if failures:
     raise SystemExit(1)
 
 count = len(list((ROOT / "diagrams").glob("**/*.txt")))
-print(f"diagram width check passed: {count} Unicode text diagrams, limit {LIMIT}")
+print(
+    f"diagram width check passed: {count} Unicode text diagrams, limit {LIMIT}; "
+    f"maximum observed {maximum[0]} at {maximum[1]}:{maximum[2]}"
+)

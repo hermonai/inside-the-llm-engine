@@ -9,8 +9,10 @@ may not omit the underlying obligations without recording why.
 1. An opening problem and why it matters to an inference engine.
 2. A concrete mental model before advanced formalism.
 3. A first-principles derivation and consistent core terminology.
-4. At least one meaningful Unicode text system/data/ownership diagram.
-5. Mathematical treatment where relevant, including dimensions and cost.
+4. At least one meaningful canonical Unicode diagram that follows
+   `DIAGRAM_STYLE.md`, answers a named question, and is inventoried.
+5. Mathematical treatment that follows `MATH_STYLE.md`, including symbol and
+   shape declarations, units, approximation status, and cost where relevant.
 6. A reference implementation or explicitly labeled pseudocode.
 7. A walkthrough that follows data, token, byte, or owner.
 8. The failure mode or limit of the naive design.
@@ -62,7 +64,10 @@ body supplies evidence or action.
 - Code builds, formats, and tests at the chapter's milestone.
 - Optimized numerical output is checked against an independent oracle.
 - Benchmark metadata and raw results are durable and reproducible.
-- Diagrams render in a monospaced view without color or external images.
+- Diagrams render in a monospaced view without color or external images, pass
+  diagram style/width checks, and have matching inventory purpose statements.
+- Central equations follow the notation contract, appear in `MATH_INDEX.md`
+  when reused across chapters, and numerical examples match an oracle or test.
 - Terms match `TERMINOLOGY.md` and new terms update `GLOSSARY.md`.
 - Technical review and editorial review are separate recorded passes.
 - Links and chapter transitions are checked.

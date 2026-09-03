@@ -26,16 +26,24 @@ it; record structural changes rather than silently reshaping the curriculum.
 
 Write the problem and mental model first. Build the smallest correct reference,
 then expose its failure at scale, then implement the production-shaped design.
-Keep code, diagrams, research, and prose in the same change when practical, but
-use atomic commits that a second agent can review or continue.
+Draft diagrams from a named question using `DIAGRAM_STYLE.md`; register every
+canonical artifact in `diagrams/INDEX.md`. Draft sustained mathematics with a
+local symbol table using `MATH_STYLE.md`; register reusable equations in
+`MATH_INDEX.md`. Keep code, diagrams, research, and prose in the same change
+when practical, but use atomic commits that a second agent can review.
 
 ## Review gates
 
 - **Correctness:** tests and independent oracle pass.
 - **Technical:** claims, shapes, ownership, code, and status are accurate.
-- **Editorial:** progression, tone, terminology, and exercises teach clearly.
+- **Editorial:** progression, tone, terminology, equations, diagrams, and
+  exercises teach clearly.
 - **Cross-link:** references, glossary, diagrams, labs, milestones, and next
   chapter assumptions agree.
+
+Run the diagram style/width and math-style checks before marking the editorial
+gate complete. A diagram or equation that is attractive but semantically false
+fails the technical gate.
 
 Status may advance through PLANNED, RESEARCHING, OUTLINED, DRAFTING,
 CODE-COMPLETE, TECH-REVIEW, EDIT-REVIEW, COMPLETE. Skipping a label requires a

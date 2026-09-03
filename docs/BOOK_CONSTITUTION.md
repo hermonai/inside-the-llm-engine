@@ -94,7 +94,9 @@ Core architecture must remain understandable in plain Markdown, terminals,
 editors, AI context windows, and print. Prefer polished Unicode box-drawing
 text with defined arrow meanings; show state, ownership, concurrency, and
 residency. Keep a monospaced, color-free representation that needs no external
-renderer. The voice is technical, direct, concrete, curious, and never
+renderer. `DIAGRAM_STYLE.md` defines the grammar and inventory contract;
+`MATH_STYLE.md` defines notation, shapes, units, and numerical evidence. The
+voice is technical, direct, concrete, curious, and never
 mystical or condescending.
 
 ## Completion

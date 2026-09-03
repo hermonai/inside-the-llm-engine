@@ -3,7 +3,6 @@ GENERATED ID TO OUTPUT STREAM
 model selects ID ─▶ vocabulary lookup ─▶ byte piece ─▶ [UTF-8 buffer]
        │                   │                │               │
        ▼                   ▼                ▼               └──▶ valid text event
- token event         typed ID error    may be partial       `──▶ wait / fail
+ token event         typed ID error    may be partial       └──▶ wait / fail
 
 Legend: [state] is mutable and owned per request. Token and text events differ.
-

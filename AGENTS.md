@@ -15,8 +15,9 @@ The operational hierarchy is:
 3. `docs/OUTLINE.md` for the 94 chapter specifications.
 4. `docs/CHAPTER_CONTRACT.md` for a finished chapter's obligations.
 5. `docs/SOURCE_POLICY.md` for evidence and Hermon status classification.
-6. `docs/CODE_POLICY.md`, `docs/MATH_STYLE.md`, `docs/STYLE_GUIDE.md`, and
-   `docs/BENCHMARK_POLICY.md` for domain-specific rules.
+6. `docs/CODE_POLICY.md`, `docs/MATH_STYLE.md`, `docs/DIAGRAM_STYLE.md`,
+   `docs/STYLE_GUIDE.md`, and `docs/BENCHMARK_POLICY.md` for domain-specific
+   rules.
 
 `BOOK.md` is the public table of contents; it must remain consistent with the
 detailed outline. `README.md` describes the project but does not override the
@@ -69,14 +70,15 @@ truth.
 
 ## Diagrams, code, math, and benchmarks
 
-- Prefer polished Unicode text diagrams. Arrows need defined meaning;
-  distinguish control from bulk data; show mutable ownership, concurrency, and
-  residency. Keep reusable diagrams in `diagrams/`.
+- Follow `docs/DIAGRAM_STYLE.md`: every canonical Unicode diagram answers a
+  named question, uses the shared arrow/state grammar, fits 100 display
+  columns, and is registered in `diagrams/INDEX.md` with a one-line purpose.
 - Main teaching code is Rust. Use Python for independent numerical clarity and C
   for explicit kernel/ABI lessons. Label pseudocode. Each milestone must run,
   test, and remain understandable.
-- Every equation must name shapes, symbols, memory, computation, and its code
-  representation. Explain prefill/decode differences.
+- Follow `docs/MATH_STYLE.md`: every central equation defines symbols and
+  shapes, distinguishes vectors/matrices from scalars, states units and
+  approximation status, and maps to an oracle or test when numerical.
 - Every benchmark records commit, build, hardware, software, model,
   quantization, workload, concurrency, mode/provider, cache state, repetitions,
   statistic, and control. Incorrect output invalidates the benchmark.
@@ -102,9 +104,9 @@ paths. Never push unless the user explicitly authorizes it.
 
 Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
 progress: Chapters 5–6, Tensor Substrate v1, ENGINE-2's checked reference and
-blocked scalar kernels, Labs 16–29, 52 canonical Unicode text diagrams, and the
-current Hermon tensor/kernel-boundary refresh are complete. The authoritative
-state and next task are in `docs/STATUS.md`.
+blocked scalar kernels, Labs 16–29, 63 canonical Unicode text diagrams, and the
+Chapter 1–6 diagram/math retrofit are complete. The authoritative state and
+next task are in `docs/STATUS.md`.
 
 The next bounded task is Chapter 7 — Embeddings and RMSNorm. Start from the
 existing explicit embedding lookup and ENGINE-2 kernel layer; derive and build

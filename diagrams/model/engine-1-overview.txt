@@ -1,0 +1,16 @@
+ENGINE-1 OVERVIEW — where do semantics, weights, and request state meet?
+
+ (E, W, b: model weights)                    [history: request state]
+          │                                             │
+          │ immutable                                   │ last TokenId
+          └──────────────────┬──────────────────────────┘
+                             ▼
+                  ┌──────────────────────┐
+                  │ TinyTableModel      │
+                  │ gather ──▶ project  │
+                  └──────────┬───────────┘
+                             │ logits [V_vocab]
+                             ▼
+                     [sampler state] ──▶ next TokenId
+
+The model owns parameters; the request owns history and sampling state.

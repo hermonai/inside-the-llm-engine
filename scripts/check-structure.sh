@@ -15,6 +15,8 @@ docs/CHAPTER_CONTRACT.md
 docs/SOURCE_POLICY.md
 docs/CODE_POLICY.md
 docs/MATH_STYLE.md
+docs/MATH_INDEX.md
+docs/DIAGRAM_STYLE.md
 docs/STYLE_GUIDE.md
 docs/TERMINOLOGY.md
 docs/BENCHMARK_POLICY.md
@@ -34,7 +36,8 @@ research/part-01/tokenizer-comparison.md
 research/part-02/README.md
 research/part-02/chapter-05-tensors-without-magic.md
 research/part-02/chapter-06-matrix-multiplication-the-engine-room.md
-diagrams/README.md'
+diagrams/README.md
+diagrams/INDEX.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then

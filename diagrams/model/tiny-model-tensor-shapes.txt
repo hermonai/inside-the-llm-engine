@@ -2,19 +2,19 @@ ENGINE-1 TENSOR SHAPES
 
 Name                 Symbol      Shape       Dtype       Lifetime
 ───────────────────  ──────────  ──────────  ──────────  ────────────────
-embedding            E           [V,D]       f32         model
-output projection    W           [V,D]       f32         model
-output bias          b           [V]         f32         model
+embedding            E           [V_vocab,D] f32         model
+output projection    W           [V_vocab,D] f32         model
+output bias          b           [V_vocab]   f32         model
 input token          x           scalar      TokenId     request / step
 hidden activation    h           [D]         f32         forward call
-logits               z           [V]         f32         forward result
+logits               z           [V_vocab]   f32         forward result
 
                               h [D]
                                 │
                                 ▼
-                        W [V,D] times h [D]
+                     W [V_vocab,D] times h [D]
                                 │
                                 ▼
-                         z [V] plus b [V]
+                       z [V_vocab] plus b [V_vocab]
 
 All f32 arrays are contiguous row-major in ENGINE-1.

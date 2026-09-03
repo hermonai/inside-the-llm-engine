@@ -18,7 +18,9 @@ Canonical Chapter 6 diagrams:
 - [`follow-the-flop.txt`](follow-the-flop.txt)
 - [`follow-the-byte.txt`](follow-the-byte.txt)
 - [`follow-the-reuse.txt`](follow-the-reuse.txt)
+- [`reference-candidate-gates.txt`](reference-candidate-gates.txt)
 
 These are Unicode text graphs, sized for source, terminal, and print layouts.
 They describe the scalar ENGINE-2 milestone; vectorized and accelerator paths
 remain later work.
+Detailed one-line purposes are inventoried in [`../INDEX.md`](../INDEX.md).

@@ -1,0 +1,17 @@
+REFERENCE AND CANDIDATE GATES — when may a faster kernel replace the oracle?
+
+                  ┌──────────────────────┐
+ inputs ═════════▶│ reference kernel     │════▶ expected output
+        │         │ broad clear contract │
+        │         └──────────────────────┘
+        │
+        │         ┌──────────────────────┐
+        └════════▶│ candidate kernel     │════▶ candidate output
+                  │ narrow fast contract │
+                  └──────────┬───────────┘
+                             │
+            shape/layout gate├──✕ reject unsupported input
+           equivalence gate  ├──✕ reject wrong output
+           performance gate  └──✕ reject unsupported speed claim
+
+Only a candidate that passes all applicable gates can become the selected path.

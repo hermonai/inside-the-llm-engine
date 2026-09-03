@@ -1,0 +1,8 @@
+TOKEN COUNT AS A SYSTEM VARIABLE — what changes when an input produces more IDs?
+
+                    ┌──▶ longer model sequence ──▶ more prefill work
+ input text ──▶ N ──┼──▶ larger request state ──▶ more memory pressure
+ token IDs          ├──▶ context budget use ────▶ less decode headroom
+                    └──▶ batching shape ────────▶ scheduling consequences
+
+Token count is measured for a specific tokenizer, revision, and template—not for text alone.

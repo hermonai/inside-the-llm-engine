@@ -1,6 +1,6 @@
 ENGINE-1 AUTOREGRESSIVE STATE
 
-solid arrow = data/state transition       dotted arrow = control check
+──▶ data/state transition       ┄┄▶ control or failure check
 
  ┌──────────────────────────────────────────────────────────────────┐
  │ GenerationState (one request)                                    │
@@ -9,14 +9,14 @@ solid arrow = data/state transition       dotted arrow = control check
                                 │
                                 ▼ history = prompt + committed tokens
                          ┌──────────────┐
-              cancel ....│ model.forward│.... model failure
+              cancel ┄┄▶ │ model.forward │ ┄┄▶ model failure
                          └──────────────┘
                                 ▼
-                           raw logits [V]
+                      raw logits [V_vocab]
                                 │
                                 ▼
                          ┌──────────────┐
-              cancel ....│ sample       │.... sampling failure
+              cancel ┄┄▶ │ sample       │ ┄┄▶ sampling failure
                          └──────────────┘
                                 ▼
                               token
@@ -28,7 +28,7 @@ solid arrow = data/state transition       dotted arrow = control check
                                                ▼
                                    decode bytes ─▶ UTF-8 ─▶ stream
                                                │
-                                    budget .....+..... next step
+                                    budget ┄┄▶ next step
 
 EOS is neither committed as visible output nor decoded. One Lifecycle owns
 Completed, Cancelled, and Failed terminal transitions.

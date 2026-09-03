@@ -1,0 +1,13 @@
+STORAGE EXTENT — why can element count be too small for a view?
+
+ logical shape [2,2], strides [3,1], base 0
+
+ [0,0] ──▶ offset 0        [0,1] ──▶ offset 1
+ [1,0] ──▶ offset 3        [1,1] ──▶ offset 4
+
+ physical storage offsets
+ ┌────┬────┬────┬────┬────┐
+ │  0 │  1 │gap │  3 │  4 │
+ └────┴────┴────┴────┴────┘
+
+Element count = 4; minimum reachable storage length = 5 elements.

@@ -1,0 +1,14 @@
+STABLE SOFTMAX — how do logits become finite probabilities?
+
+ logits z [V_vocab]
+        │
+        ▼
+ maximum m = max(z) ──▶ shifted logits zᵢ − m ──▶ exp(zᵢ − m)
+                                                    │
+                                                    ▼
+                                      sum S = Σⱼ exp(zⱼ − m)
+                                                    │
+                                                    ▼
+                                      probabilities pᵢ = exp(zᵢ − m) / S
+
+Subtracting one shared constant preserves ratios and avoids overflow.
