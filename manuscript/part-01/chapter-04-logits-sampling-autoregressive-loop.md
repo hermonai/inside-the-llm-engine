@@ -17,9 +17,9 @@ That missing machinery is the subject of this chapter.
 We will turn one forward result into a complete generation loop:
 
 ```text
-text -> token IDs -> model -> logits -> sampling policy -> next TokenId
-          ^                                              |
-          +---------------- feedback --------------------+
+text ──▶ token IDs ──▶ model ──▶ logits ──▶ sampling policy ──▶ next TokenId
+          ▲                                                   │
+          └────────────────────── feedback ────────────────────┘
 ```
 
 The result is small, but it is real. ENGINE-1 will support a separate greedy
@@ -57,13 +57,15 @@ filtered candidates.
 
 ## What autoregressive generation means
 
-Suppose a token sequence contains random variables `x_1,...,x_n`. The chain
+Suppose a token sequence contains random variables $x_0,\ldots,x_T$. The chain
 rule factors its joint probability:
 
-```text
-P(x_1,...,x_n)
-= P(x_1) P(x_2|x_1) ... P(x_n|x_1,...,x_(n-1))
-```
+$$
+P(x_0,\ldots,x_T)
+=\prod_{t=0}^{T}P\!\left(x_t\mid x_0,\ldots,x_{t-1}\right),
+$$
+
+where the $t=0$ factor is the unconditional $P(x_0)$.
 
 An autoregressive language model repeatedly predicts the next token given the
 tokens already visible. At step `t`, it produces scores for `x_(t+1)`. The
@@ -88,17 +90,20 @@ A logit is an unnormalized score. It may be negative, zero, or positive. Its
 absolute value is not a probability, and the vector does not need to sum to
 anything meaningful.
 
-For a finite score vector `z` of length `V`, softmax defines:
+For a finite score vector
+$\mathbf{z}\in\mathbb{R}^{V_{\mathrm{vocab}}}$, softmax defines
 
-```text
-                  exp(z_i)
-p_i = --------------------------------
-      sum_(j=0)^(V-1) exp(z_j)
-```
+$$
+p_i=\frac{e^{z_i}}
+{\sum_{j=0}^{V_{\mathrm{vocab}}-1}e^{z_j}},
+\qquad
+\mathbf{p}\in[0,1]^{V_{\mathrm{vocab}}},
+\quad \sum_i p_i=1.
+$$
 
 Here:
 
-- `V` is vocabulary size;
+- $V_{\mathrm{vocab}}$ is vocabulary size;
 - `z_i` is the raw score for token ID `i`;
 - `p_i` is that token's normalized probability;
 - `z` is `[V]` model output;
@@ -127,28 +132,23 @@ Try logits `[1000,999,998]`. The ordering and gaps are harmless. The direct
 implementation is not: `exp(1000)` overflows ordinary floating-point storage.
 An infinite numerator can produce infinite sums and undefined divisions.
 
-The mathematical formula needs an equivalent numerical form. Let:
+The mathematical formula needs an equivalent numerical form. Let
 
-```text
-m = max(z)
-```
-
-Then compute:
-
-```text
-                      exp(z_i - m)
-p_i = ---------------------------------------------
-      sum_(j=0)^(V-1) exp(z_j - m)
-```
+$$
+m=\max_{0\le j<V_{\mathrm{vocab}}}z_j,
+\qquad
+p_i=\frac{e^{z_i-m}}
+{\sum_{j=0}^{V_{\mathrm{vocab}}-1}e^{z_j-m}}.
+$$
 
 Subtracting one constant from every score does not alter softmax. For any
-constant `c`:
+finite constant $c$:
 
-```text
-exp(z_i+c) / sum_j exp(z_j+c)
-= exp(z_i)exp(c) / (exp(c)sum_j exp(z_j))
-= exp(z_i) / sum_j exp(z_j)
-```
+$$
+\frac{e^{z_i+c}}{\sum_j e^{z_j+c}}
+=\frac{e^{z_i}e^c}{e^c\sum_j e^{z_j}}
+=\frac{e^{z_i}}{\sum_j e^{z_j}}.
+$$
 
 With `c=-m`, every exponential argument is at most zero. At least one is
 exactly zero, whose exponential is one. Numerators cannot overflow, and the
@@ -160,13 +160,15 @@ functions](https://doi.org/10.1093/imanum/draa038). ENGINE-1 uses the
 clarity-first maximum, exponential, sum, and normalization passes in `f64` for
 the sampling workspace while preserving the model's raw `f32` logits.
 
-For `[1000,999,998]`:
+For $\mathbf{z}=[1000,999,998]$, $m=1000$ and
 
-```text
-m       = 1000
-shifted = [0,-1,-2]
-p       = [0.6652409558,0.2447284711,0.0900305732]
-```
+$$
+\mathbf{z}-m=[0,-1,-2],\qquad
+\mathbf{p}\approx[0.6652409558,0.2447284711,0.0900305732].
+$$
+
+The canonical [stable-softmax flow](../../diagrams/sampling/stable-softmax.txt)
+connects these equations to the implementation passes.
 
 All results are finite.
 
@@ -179,9 +181,10 @@ All results are finite.
 Softmax preserves ordering because exponentiation is strictly increasing and
 every candidate shares the same positive denominator:
 
-```text
-argmax(z) = argmax(softmax(z))
-```
+$$
+\operatorname*{arg\,max}_i z_i
+=\operatorname*{arg\,max}_i \operatorname{softmax}(\mathbf{z})_i.
+$$
 
 Greedy decoding can scan raw logits and choose the maximum. It does not need
 exponentials or normalized probabilities.
@@ -262,11 +265,13 @@ of a reproduction contract.
 
 ## Categorical sampling, one interval at a time
 
-Suppose probabilities are:
+Suppose $\mathbf{p}=[0.20,0.30,0.50]$. Define cumulative boundaries
+$c_i=\sum_{j=0}^{i}p_j$ and $c_{-1}=0$. For a draw $r\sim U[0,1)$, select
 
-```text
-[0.20,0.30,0.50]
-```
+$$
+i=\min\{k:r<c_k\},
+\qquad\text{equivalently}\qquad c_{i-1}\le r<c_i.
+$$
 
 Their cumulative boundaries divide `[0,1)`:
 
@@ -305,17 +310,18 @@ that fallback to rescue an invalid or empty distribution.
 
 ## Temperature changes shape, not randomness
 
-For stochastic mode, ENGINE-1 requires finite `T>0` and transforms scores:
+For stochastic mode, ENGINE-1 requires a finite temperature $\tau>0$ and
+transforms scores:
 
-```text
-z'_i = z_i / T
-```
+$$
+z'_i=\frac{z_i}{\tau}.
+$$
 
 Then it computes the distribution. Temperature affects score gaps:
 
-- `T<1` magnifies gaps and sharpens the distribution;
-- `T=1` leaves scores unchanged;
-- `T>1` shrinks gaps and flattens the distribution.
+- $\tau<1$ magnifies gaps and sharpens the distribution;
+- $\tau=1$ leaves scores unchanged;
+- $\tau>1$ shrinks gaps and flattens the distribution.
 
 Positive division preserves ordering. For logits `[1,2,3]`:
 
@@ -379,7 +385,7 @@ Consider:
 | D | 0.10 |
 | E | 0.05 |
 
-For `p=0.80`, A and B provide only `0.70`. C crosses the threshold, so C is
+For threshold $\tau_p=0.80$, A and B provide only $0.70$. C crosses the threshold, so C is
 included. The nucleus is A/B/C with mass `0.85`. ENGINE-1 renormalizes:
 
 ```text
@@ -389,7 +395,14 @@ included. The nucleus is A/B/C with mass `0.85`. ENGINE-1 renormalizes:
 Top-k retains a fixed count. Top-p retains an adaptive count determined by the
 distribution's concentration. Neither is universally superior.
 
-ENGINE-1 accepts `p` only in `(0,1]`; `p=1` is a deliberate no-op. Equal
+Formally, after sorting $p_{(0)}\ge\cdots\ge p_{(V_{\mathrm{vocab}}-1)}$,
+the retained prefix ends at
+
+$$
+m=\min\left\{k:\sum_{j=0}^{k}p_{(j)}\ge\tau_p\right\}.
+$$
+
+ENGINE-1 accepts $\tau_p$ only in $(0,1]$; $\tau_p=1$ is a deliberate no-op. Equal
 probabilities use token ID ascending as the secondary order.
 
 ## Filter order is inference behavior
@@ -858,10 +871,15 @@ a mathematically owned token.
 One could scale a random draw by retained mass, but that is renormalization in
 another form. ENGINE-1 performs it explicitly:
 
-```text
-q_i = p_i / sum_(j retained) p_j    when i is retained
-q_i = 0                              otherwise
-```
+$$
+q_i=
+\begin{cases}
+\displaystyle\frac{p_i}{\sum_{j\in S}p_j}, & i\in S,\\[6pt]
+0, & i\notin S,
+\end{cases}
+$$
+
+where $S$ is the retained candidate set.
 
 Now retained `q_i` values sum approximately to one. The categorical selector
 has one contract regardless of which filters ran. Stage tests compose cleanly:
@@ -875,6 +893,9 @@ greedy. A future policy may require “always keep at least one,” but that rul
 must be explicit in the processor that owns it.
 
 ## A lifecycle matrix for the real loop
+
+The canonical [generation state machine](../../diagrams/sampling/generation-terminal-state-machine.txt)
+makes the transition events and three terminal states explicit.
 
 The happy path alone cannot establish runtime correctness. Consider what has
 been committed and what may be emitted at each terminal cause:
@@ -1072,11 +1093,11 @@ real numerical model. Chapter 4 turns numerical prediction into generation.
 
 ```text
 CHAPTER 1                    What machine are we building?
-    |
+    │
 CHAPTER 2                    How does text become token IDs?
-    |
+    │
 CHAPTER 3                    How do token IDs become logits?
-    |
+    │
 CHAPTER 4                    How do logits become generation?
 ```
 
@@ -1084,28 +1105,38 @@ The Part I engine is now:
 
 ```text
 Human text
-    |
+    │
+    ▼
 Tokenizer
-    |
+    │
+    ▼
 Token IDs
-    |
+    │
+    ▼
 Tiny numerical language model
-    |
+    │
+    ▼
 Embedding lookup + output projection
-    |
+    │
+    ▼
 Raw logits
-    |
+    │
+    ▼
 Sampling policy
-    |
-Next TokenId --------+
-    |                 |
-Decode bytes          |
-    |                 |
-UTF-8 stream          |
-    |                 |
-Human output          |
-                      |
-append to history ----+
+    │
+    ▼
+Next TokenId ─────────┐
+    │                 │
+    ▼                 │
+Decode bytes          │
+    │                 │
+    ▼                 │
+UTF-8 stream          │
+    │                 │
+    ▼                 │
+Human output          │
+                      │
+append to history ◀───┘
 ```
 
 It is tiny. It is scalar. It has only four tokens. It depends only on the final

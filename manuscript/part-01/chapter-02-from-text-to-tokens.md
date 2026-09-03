@@ -223,14 +223,17 @@ Exact round trip depends on the whole chain.
 
 A vocabulary is a finite table. One direction associates IDs with token
 definitions; the encoder uses enough additional structure to choose a sequence
-of those IDs for input. Let:
+of those IDs for input. Let $V_{\mathrm{vocab}}$ be vocabulary size and $N$ be
+the number of token IDs in one encoded input. Then every ordinary ID $x_i$
+must satisfy
 
-```text
-V = vocabulary size
-n = number of token IDs in one encoded input
-```
+$$
+x_i\in\{0,1,\ldots,V_{\mathrm{vocab}}-1\},
+\qquad 0\le i<N.
+$$
 
-Each ordinary ID must be in `0..V` under the vocabulary's indexing convention.
+This is the half-open code interval `0..V_vocab` under the vocabulary's
+indexing convention.
 But `id = 42` is not portable. Vocabulary A may define 42 as bytes for a common
 word fragment. Vocabulary B may assign 42 to punctuation, a byte fallback
 piece, or a control identity.
@@ -402,12 +405,13 @@ Exact round trip is conditional. It can hold when:
 It can fail when any of those conditions fails.
 
 Our toy BPE has identity normalization, a complete byte alphabet, reversible
-merges, and no implicit special insertion. Therefore, for every byte vector
-`x`:
+merges, and no implicit special insertion. Therefore, over the domain
+$\mathcal{B}^{*}$ of finite byte strings:
 
-```text
-decode(encode(x)) = x
-```
+$$
+\operatorname{decode}(\operatorname{encode}(\mathbf{x}))=\mathbf{x},
+\qquad \mathbf{x}\in\mathcal{B}^{*}.
+$$
 
 The equality is over bytes. If `x` is malformed UTF-8, the result is still the
 same malformed byte vector and cannot enter the text stream successfully.
@@ -418,6 +422,9 @@ but its normalizer collapses or removes some whitespace. The decoded surface
 is not the original source string for that fixture.
 
 ## Special tokens are control identities
+
+The canonical [special-token trust boundary](../../diagrams/tokenizer/special-token-trust-boundary.txt)
+separates untrusted surface text from template-authorized control identities.
 
 Model vocabularies commonly reserve identities with roles such as:
 
@@ -555,11 +562,12 @@ The [contract diagram](../../diagrams/tokenizer/model-tokenizer-template-contrac
 makes the dependency visible:
 
 ```text
-        (tokenizer + revision) <-> (special IDs) <-> (chat template)
-                    \                 |                 /
-                     +----------- exact IDs -----------+
-                                      |
-                              running model weights
+        (tokenizer + revision) ◀──▶ (special IDs) ◀──▶ (chat template)
+                    ╲                    │                    ╱
+                     └──────────── exact identities ────────┘
+                                          │
+                                          ▼
+                                  (running model weights)
 ```
 
 ENGINE-0 introduces a small `ModelContract` that records:
@@ -589,10 +597,10 @@ The [token-to-stream diagram](../../diagrams/tokenizer/token-to-byte-stream.txt)
 separates events and state:
 
 ```text
-model selects ID -> vocabulary lookup -> byte piece -> [UTF-8 buffer]
-       |                   |                |               |
-       v                   v                v               +--> valid text event
- token event         typed ID error    may be partial       `--> wait / fail
+model selects ID ──▶ vocabulary lookup ──▶ byte piece ──▶ [UTF-8 buffer]
+       │                      │                  │               │
+       ▼                      ▼                  ▼               ├──▶ valid text event
+ token event          typed ID error       may be partial       └──▶ wait / fail
 ```
 
 Consider `世`, whose UTF-8 bytes are `E4 B8 96`. Suppose one generated ID maps
@@ -869,8 +877,15 @@ the subword algorithm.
 ## Token count is a systems variable
 
 Tokenization is model semantics, but token count also enters system economics.
-If an encoded prompt has length `n`, later stages see `n` positions, not the
+If an encoded prompt has length $N$, later stages see $N$ positions, not the
 number of words or bytes the caller expected.
+
+For a model context capacity $T_{\max}$ and requested generation budget
+$N_{\mathrm{new}}$, admission must at least respect the dimensional constraint
+
+$$
+N+N_{\mathrm{new}}\le T_{\max}\quad[\mathrm{token\ positions}].
+$$
 
 Token count affects:
 
@@ -886,7 +901,9 @@ Token count affects:
 Do not turn this list into a premature performance formula. Different model
 architectures, batching, hardware, and token distributions change costs. The
 durable statement is dimensional: the engine schedules token positions, so the
-correct tokenizer's `n` is an input to later work and memory models.
+correct tokenizer's $N$ is an input to later work and memory models. The
+canonical [system-impact map](../../diagrams/tokenizer/token-count-system-impact.txt)
+shows those downstream dependencies without inventing a cost coefficient.
 
 A tokenizer with fewer tokens for one sentence is not automatically better.
 Vocabulary size `V` also affects future embedding and output dimensions. A

@@ -58,27 +58,34 @@ an engine selects and feeds back the next token. We stop at correct logits.
 
 A language model assigns scores or probabilities to linguistic sequences. For
 next-token inference, we ask for a distribution over the next vocabulary token
-given an observed history. If the history is
+given an observed history. For a history $(x_0,x_1,\ldots,x_t)$, the target is
 
-```text
-x_0, x_1, ..., x_t
-```
+$$
+P\!\left(x_{t+1}\mid x_0,x_1,\ldots,x_t\right).
+$$
 
-the general target is often written as:
+| Symbol | Meaning |
+| --- | --- |
+| $V_{\mathrm{vocab}}$ | number of token identities in the bound vocabulary |
+| $D$ | hidden-vector dimension |
+| $x_t$ | token identity at sequence position $t$ |
+| $\mathbf{E}$ | embedding matrix owned by the model |
+| $\mathbf{W},\mathbf{b}$ | output projection owned by the model |
+| $\mathbf{h}$ | one forward call's hidden activation |
+| $\mathbf{z}$ | one forward call's logit vector |
 
-```text
-P(x_(t+1) | x_0, x_1, ..., x_t)
-```
-
-The output space matters: the possible outcomes are all `V` entries in the
-model vocabulary. The model must therefore produce `V` scores before a policy
+The output space matters: the possible outcomes are all $V_{\mathrm{vocab}}$
+entries in the model vocabulary. The model must therefore produce
+$V_{\mathrm{vocab}}$ scores before a policy
 can choose one token.
 
 Our first numerical model makes a severe approximation:
 
-```text
-P(next | complete history) is approximated by P(next | final token)
-```
+$$
+P\!\left(x_{t+1}\mid x_0,\ldots,x_t\right)
+\approx P\!\left(x_{t+1}\mid x_t\right)
+\quad\text{(ENGINE-1 approximation).}
+$$
 
 It accepts a full sequence but uses only `x_t`, the last token. This is a
 first-order, neural bigram-like language model. It is still a language model:
@@ -102,54 +109,56 @@ learned vector representations.
 
 ## From a discrete ID to a vector
 
-Let the vocabulary contain `V` token identities and let each identity have a
-vector with `D` components. Store those vectors as rows of an **embedding
+Let the vocabulary contain $V_{\mathrm{vocab}}$ token identities and let each
+identity have $D$ components. Store those vectors as rows of an **embedding
 matrix**:
 
-```text
-E: [V, D]
-```
+$$
+\mathbf{E}\in\mathbb{R}^{V_{\mathrm{vocab}}\times D}.
+$$
 
-`V` is the number of rows. `D`, the **hidden dimension**, is the number of
+$V_{\mathrm{vocab}}$ is the number of rows. $D$, the **hidden dimension**, is the number of
 values in each row. ENGINE-1 stores every value as `f32` in contiguous
 row-major order.
 
-If the input token is `x`, the embedding operation is:
+If the input token is $x$, the embedding operation is the row gather
 
-```text
-h = E[x]
-```
+$$
+\mathbf{h}=\mathbf{E}_{x,:},
+\qquad x\in\{0,\ldots,V_{\mathrm{vocab}}-1\},
+\quad \mathbf{h}\in\mathbb{R}^{D}.
+$$
 
-`x` is a scalar `TokenId`. `h` is a vector of shape `[D]`. The
+$x$ is a scalar `TokenId`; $\mathbf{h}$ is a vector of shape `[D]`. The
 [embedding lookup diagram](../../diagrams/model/embedding-row-lookup.txt)
 makes the access concrete:
 
 ```text
                  D = 3 contiguous f32 values per row
                       column 0   column 1   column 2
-                   +----------+----------+----------+
-TokenId(0) <eos>   |    0.0   |    0.0   |    0.0   |
-                   +----------+----------+----------+
-TokenId(1) I       |    0.0   |    1.0   |    0.0   |
-                   +----------+----------+----------+
-TokenId(2) like -->|    1.0   |   -0.5   |    2.0   |--> h [3]
-                   +----------+----------+----------+
-TokenId(3) Rust    |   -1.0   |    0.0   |    0.0   |
-                   +----------+----------+----------+
+                   ┌──────────┬──────────┬──────────┐
+TokenId(0) <eos>   │    0.0   │    0.0   │    0.0   │
+                   ├──────────┼──────────┼──────────┤
+TokenId(1) I       │    0.0   │    1.0   │    0.0   │
+                   ├──────────┼──────────┼──────────┤
+TokenId(2) like ──▶│    1.0   │   -0.5   │    2.0   │──▶ h [3]
+                   ├──────────┼──────────┼──────────┤
+TokenId(3) Rust    │   -1.0   │    0.0   │    0.0   │
+                   └──────────┴──────────┴──────────┘
 ```
 
-For `x = 2`, the result is:
+For $x=2$, the result is
 
-```text
-h = [1.0, -0.5, 2.0]
-```
+$$
+\mathbf{h}=[1.0,-0.5,2.0].
+$$
 
 This is a row selection, sometimes called a gather. ENGINE-1 computes the row
-start as:
+start at the element offset
 
-```text
-row_start = token_id * D
-```
+$$
+o_{\mathrm{row}}=xD\quad[\mathrm{elements}].
+$$
 
 and copies the next `D` values. The scalar value 2 is used only in address
 calculation. We do not multiply the vector by 2.
@@ -203,44 +212,46 @@ would hide the actual access pattern. The code reads one contiguous row.
 ## One score for every possible next token
 
 The hidden vector represents the input. The model now needs one score for each
-candidate next token. With vocabulary size `V`, the result must have shape
-`[V]`.
+candidate next token. The result has $V_{\mathrm{vocab}}$ components.
 
-Introduce an **output projection** matrix `W` and bias vector `b`:
+Introduce an **output projection** matrix $\mathbf{W}$ and bias vector
+$\mathbf{b}$:
 
-```text
-W: [V, D]
-b: [V]
-```
+$$
+\mathbf{W}\in\mathbb{R}^{V_{\mathrm{vocab}}\times D},
+\qquad \mathbf{b}\in\mathbb{R}^{V_{\mathrm{vocab}}}.
+$$
 
-Each row `W[i]` belongs to candidate token `i`. Compute:
+Each row $\mathbf{W}_{i,:}$ belongs to candidate token $i$. Compute
 
-```text
-z = W h + b
-```
+$$
+\mathbf{z}=\mathbf{W}\mathbf{h}+\mathbf{b},
+\qquad \mathbf{z}\in\mathbb{R}^{V_{\mathrm{vocab}}}.
+$$
 
-where `z` has shape `[V]`. For one candidate `i`:
+For one candidate $i$:
 
-```text
-z_i = b_i + sum from j=0 to D-1 of W[i,j] * h_j
-```
+$$
+z_i=b_i+\sum_{j=0}^{D-1}W_{ij}h_j,
+\qquad 0\le i<V_{\mathrm{vocab}}.
+$$
 
 This operation takes the **dot product** of row `i` and `h`, then adds one
 bias. The [one-logit diagram](../../diagrams/model/one-logit-dot-product.txt)
 connects vector notation to scalar arithmetic:
 
 ```text
-hidden h              candidate row W[3]          products
-[1.0, -0.5, 2.0]      [1.0, -0.4, 0.25]          1.0 * 1.0
-                                                + -0.4 * -0.5
-                                                + 0.25 * 2.0
-                                                + bias[3] 0.5
-                                                        |
-                                                        v
-                                               logit[3] = 2.2
+hidden h              candidate row W[3]
+[1.0, -0.5, 2.0]      [1.0, -0.4, 0.25]
+          └──────────────────┬──────────────────┘
+                             ▼
+          1.0×1.0 + (-0.4×-0.5) + (0.25×2.0) + bias[3]
+                             │
+                             ▼
+                       logit[3] = 2.2
 ```
 
-Repeat that operation for all `V` rows. Matrix notation compresses the idea;
+Repeat that operation for all $V_{\mathrm{vocab}}$ rows. Matrix notation compresses the idea;
 the implementation exposes the work:
 
 ```rust
@@ -258,6 +269,8 @@ for output in 0..vocab_size {
 The inner loop calculates one candidate score. The outer loop repeats it for
 the vocabulary. There is no answer table in this code: changing an embedding,
 projection weight, or bias changes the arithmetic that produces the vector.
+The canonical [ENGINE-1 overview](../../diagrams/model/engine-1-overview.txt)
+places those immutable parameters beside request-owned history and sampler state.
 
 ### “Linear” layers usually include bias
 
@@ -319,7 +332,8 @@ Our vocabulary has four identities:
 3 Rust
 ```
 
-The hidden dimension is three. Therefore `V=4` and `D=3`. The parameters are:
+The hidden dimension is three. Therefore $V_{\mathrm{vocab}}=4$ and $D=3$.
+The parameters are:
 
 ```text
 E = [
@@ -346,50 +360,28 @@ parameters” names their usual origin; it does not mean ENGINE-1 trains them.
 
 Input `like` has ID 2. First select the embedding row:
 
-```text
-h = E[2] = [1.0, -0.5, 2.0]
-```
+$$
+\mathbf{h}=\mathbf{E}_{2,:}=[1.0,-0.5,2.0].
+$$
 
 Now calculate every candidate.
 
-For EOS, row 0:
+All four candidate rows follow the same contract:
 
-```text
-z_0 = b_0 + W[0,0]h_0 + W[0,1]h_1 + W[0,2]h_2
-    = -0.2 + (-0.5 * 1.0) + (0.4 * -0.5) + (0.1 * 2.0)
-    = -0.2 + -0.5 + -0.2 + 0.2
-    = -0.7
-```
+$$
+\begin{aligned}
+z_0&=-0.2+(-0.5)(1.0)+(0.4)(-0.5)+(0.1)(2.0)=-0.7,\\
+z_1&= 0.0+(0.2)(1.0)+(0.2)(-0.5)+(0.0)(2.0)= 0.1,\\
+z_2&= 0.0+(0.3)(1.0)+(0.2)(-0.5)+(0.1)(2.0)= 0.4,\\
+z_3&= 0.5+(1.0)(1.0)+(-0.4)(-0.5)+(0.25)(2.0)=2.2.
+\end{aligned}
+$$
 
-For `I`, row 1:
+Therefore the full oracle is
 
-```text
-z_1 = 0.0 + (0.2 * 1.0) + (0.2 * -0.5) + (0.0 * 2.0)
-    = 0.0 + 0.2 + -0.1 + 0.0
-    = 0.1
-```
-
-For `like`, row 2:
-
-```text
-z_2 = 0.0 + (0.3 * 1.0) + (0.2 * -0.5) + (0.1 * 2.0)
-    = 0.0 + 0.3 + -0.1 + 0.2
-    = 0.4
-```
-
-For `Rust`, row 3:
-
-```text
-z_3 = 0.5 + (1.0 * 1.0) + (-0.4 * -0.5) + (0.25 * 2.0)
-    = 0.5 + 1.0 + 0.2 + 0.5
-    = 2.2
-```
-
-The full oracle is:
-
-```text
-z = [-0.7, 0.1, 0.4, 2.2]
-```
+$$
+\mathbf{z}=[-0.7,0.1,0.4,2.2].
+$$
 
 Notice what the oracle does not say. It does not say merely “the answer is
 token 3.” Many wrong vectors can share the same largest index. A transposed
@@ -426,9 +418,10 @@ oracle=PASS
 
 The Rust differential uses a small absolute-plus-relative tolerance:
 
-```text
-|actual - expected| <= abs_epsilon + rel_epsilon * |expected|
-```
+$$
+|a-r|\le \epsilon_{\mathrm{abs}}+
+\epsilon_{\mathrm{rel}}|r|,
+$$
 
 Why not exact equality? Several fixture values happen to have exact binary
 representations, and this short reduction is deterministic on the current
@@ -531,13 +524,13 @@ shows why the distinction matters:
 ```text
                          MODEL LIFETIME
               immutable parameters shared by requests
-        +-----------------------------------------------+
-        | E [V,D]        W [V,D]          b [V]         |
-        +-----------------------+-----------------------+
-                                |
-                   +------------+------------+
-                   |                         |
-                   v                         v
+        ┌───────────────────────────────────────────────┐
+        │ E [V_vocab,D]  W [V_vocab,D]  b [V_vocab]    │
+        └───────────────────────┬───────────────────────┘
+                                │ immutable borrows
+                   ┌────────────┴────────────┐
+                   │                         │
+                   ▼                         ▼
         Request A / forward A      Request B / forward B
         [input x_A, h_A, z_A]      [input x_B, h_B, z_B]
 ```
@@ -558,20 +551,20 @@ small now:
 
 ```text
 MODEL MEMORY
-+------------------------------+
-| E: embedding weights         |
-+------------------------------+
-| W: output projection weights |
-+------------------------------+
-| b: output biases             |
-+------------------------------+
+┌──────────────────────────────┐
+│ E: embedding weights         │
+├──────────────────────────────┤
+│ W: output projection weights │
+├──────────────────────────────┤
+│ b: output biases             │
+└──────────────────────────────┘
 
 FORWARD ACTIVATIONS
-+------------------------------+
-| h: hidden vector             |
-+------------------------------+
-| z: logits                    |
-+------------------------------+
+┌──────────────────────────────┐
+│ h: hidden vector             │
+├──────────────────────────────┤
+│ z: logits                    │
+└──────────────────────────────┘
 ```
 
 No “hidden reasoning” is stored here. The adjective *hidden* distinguishes an
@@ -585,23 +578,23 @@ extends our first recurring journey:
 
 ```text
 "I like"
-    |
-    v
+    │
+    ▼
 UTF-8 bytes
-    |
-    v
+    │
+    ▼
 TinyLmTokenizer
-    |
-    v
+    │
+    ▼
 [TokenId(1), TokenId(2)]
-    |
-    v
+    │
+    ▼
 E[2] = [1.0, -0.5, 2.0]
-    |
-    v
+    │
+    ▼
 W h + b
-    |
-    v
+    │
+    ▼
 [-0.7, 0.1, 0.4, 2.2]
 ```
 
@@ -622,29 +615,30 @@ neither parameters nor activations.
 
 ## Count the parameters before counting performance
 
-The embedding contains `V*D` parameters. The untied output projection contains
-another `V*D`. The bias contains `V`. Therefore:
+The embedding contains $V_{\mathrm{vocab}}D$ parameters. The untied output
+projection contains another $V_{\mathrm{vocab}}D$. The bias contains
+$V_{\mathrm{vocab}}$. Therefore:
 
-```text
-parameter_count = V*D + V*D + V
-                = 2VD + V
-```
+$$
+N_{\mathrm{param}}
+=V_{\mathrm{vocab}}D+V_{\mathrm{vocab}}D+V_{\mathrm{vocab}}
+=2V_{\mathrm{vocab}}D+V_{\mathrm{vocab}}.
+$$
 
 With `f32`, each parameter occupies four bytes:
 
-```text
-parameter_bytes = (2VD + V) * 4 bytes
-```
+$$
+B_{\mathrm{param}}
+=4\left(2V_{\mathrm{vocab}}D+V_{\mathrm{vocab}}\right)
+\quad[\mathrm{bytes}].
+$$
 
-For ENGINE-1, `V=4` and `D=3`:
+For ENGINE-1, $V_{\mathrm{vocab}}=4$ and $D=3$:
 
-```text
-E: 4 * 3 = 12 parameters
-W: 4 * 3 = 12 parameters
-b: 4     =  4 parameters
-total          = 28 parameters
-f32 bytes      = 28 * 4 = 112 bytes
-```
+$$
+N_{\mathrm{param}}=2(4)(3)+4=28,
+\qquad B_{\mathrm{param}}=28(4)=112\ \mathrm{bytes}.
+$$
 
 This count excludes `Vec` metadata, allocator bookkeeping, dimensions, code,
 and forward activations. It describes parameter payload only. The hidden
@@ -661,16 +655,14 @@ The same formulas produce a useful scale table:
 The formula scales quickly. Consider a hypothetical vocabulary of 50,000 and
 hidden dimension 4,096 under this same simplified, untied architecture:
 
-```text
-one V-by-D matrix = 50,000 * 4,096
-                  = 204,800,000 parameters
-
-two matrices plus bias
-                  = 409,650,000 parameters
-
-f32 payload       = 1,638,600,000 bytes
-                  = about 1.526 GiB
-```
+$$
+\begin{aligned}
+V_{\mathrm{vocab}}D&=50{,}000(4{,}096)=204{,}800{,}000,\\
+N_{\mathrm{param}}&=409{,}650{,}000,\\
+B_{\mathrm{param}}&=1{,}638{,}600{,}000\ \mathrm{bytes}
+\approx1.526\ \mathrm{GiB}.
+\end{aligned}
+$$
 
 That is not the size of a complete real language model and not a measurement.
 It isolates vocabulary embedding and projection under stated assumptions. It
@@ -691,11 +683,14 @@ offset, and reads one row: `D` parameter values. It does not scan all `V` rows.
 
 Output projection is different. For each of `V` output rows, it performs `D`
 multiplications and approximately `D` additions including bias accumulation.
-The work grows as:
+The work grows as
 
-```text
-O(V * D)
-```
+$$
+\Theta\!\left(V_{\mathrm{vocab}}D\right)
+$$
+
+for this exact dense projection: every output row and hidden component is
+visited once.
 
 For one forward call, the scalar kernel reads essentially all `V*D` projection
 weights and `V` biases and writes `V` logits. It reuses the small hidden vector

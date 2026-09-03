@@ -63,22 +63,21 @@ makes that split explicit:
 
 ```text
        persistent storage                    process / device memory
-  +--------------------------+            +---------------------------+
-  | (MODEL ARTIFACT)         | == load ==> | (RUNNING MODEL)           |
-  | configuration            |            | validated model semantics |
-  | tokenizer data           |            | resident weight bytes     |
-  | serialized weights       |            | execution resources       |
-  +--------------------------+            +-------------+-------------+
-                                                        |
-                                                        | candidates/logits
-                                                        v
-  +--------------------------------------------------------------------+
-  | INFERENCE ENGINE                                                   |
-  |  resolve -> admit -> schedule -> model step -> select -> stop      |
-  |                |                                      |            |
-  |                v                                      v            |
-  |      [request state / timing]              [ordered output stream]  |
-  +--------------------------------------------------------------------+
+  ┌──────────────────────────┐            ┌───────────────────────────┐
+  │ (MODEL ARTIFACT)         │═══ load ══▶│ (RUNNING MODEL)           │
+  │ configuration            │            │ validated model semantics │
+  │ tokenizer data           │            │ resident weight bytes     │
+  │ serialized weights       │            │ execution resources       │
+  └──────────────────────────┘            └─────────────┬─────────────┘
+                                                        │ logits
+                                                        ▼
+  ┌────────────────────────────────────────────────────────────────────┐
+  │ INFERENCE ENGINE                                                   │
+  │ resolve ──▶ admit ──▶ schedule ──▶ model step ──▶ select ──▶ stop │
+  │               │                                      │             │
+  │               ▼                                      ▼             │
+  │      [request state / timing]              [ordered output stream] │
+  └────────────────────────────────────────────────────────────────────┘
 ```
 
 Parentheses denote data treated as immutable during a request. Brackets denote
@@ -255,13 +254,13 @@ produces candidate scores, selects or transfers token identities, and sends
 output bytes.
 
 ```text
-control plane: validate -> resolve -> admit -> schedule -> stop/fail -> account
-                                      |
-                                      v
-data plane:    artifact -> weights -> model step -> candidates -> token -> bytes
-                                      ^                         |
-                                      |                         v
-                                request state <----------- ordered stream
+CONTROL: validate ──▶ resolve ──▶ admit ──▶ schedule ──▶ stop/fail ──▶ account
+                                      │ owns lifecycle
+                                      ▼
+DATA:    (artifact) ══▶ (weights) ══▶ model step ══▶ logits ──▶ token ══▶ bytes
+                                      ▲                         │
+                                      │                         ▼
+                               [request state] ◀──────── [ordered stream]
 ```
 
 This is a reasoning tool, not a claim that the planes require separate
@@ -271,6 +270,8 @@ processes, making some of the split physical as well as conceptual. The API
 process performs input processing and streaming; the engine core schedules and
 manages KV state; workers perform model execution on devices ([vLLM architecture
 overview](https://docs.vllm.ai/en/latest/design/arch_overview/)).
+The canonical [control/data-plane diagram](../../diagrams/runtime/control-plane-data-plane.txt)
+preserves the distinction independently of process topology.
 
 The distinction helps during failure analysis. If a model step is fast but
 admission waits, the bottleneck is not model arithmetic. If a device finishes
@@ -335,12 +336,11 @@ the runtime constructs a lifecycle.
 A useful minimum state machine is:
 
 ```text
-submitted -> validated -> admitted -> executing -> streaming -> terminal
-                |            |            |            |
-                +------------+------------+------------+
-                                  |
-                                  v
-                  completed | cancelled | failed
+[submitted] ──▶ [validated] ──▶ [admitted] ──▶ [executing] ──▶ [streaming]
+     │                │              │               │              │
+     └──invalid──▶ [failed] ◀────────┴──error────────┘              │
+                                                                    ▼
+                                    terminal: [completed] [cancelled] [failed]
 ```
 
 Real engines add queued, blocked, preempted, draining, or model-loading states.
@@ -391,45 +391,46 @@ Saying “latency is 120 milliseconds” is incomplete. From which event to whic
 event? Under what concurrency? Does it include queueing, model load,
 tokenization, network transfer, or client rendering?
 
-Name lifecycle timestamps first:
+Name lifecycle timestamps first: $t_0$ when the request enters the measured
+runtime boundary, $t_a$ at admission, $t_s$ when execution starts, $t_r$ when
+the first token is ready, $t_e$ when its first externally visible event is
+emitted, $t_i$ for each later output event, and $t_T$ for the terminal event.
+All timestamps use one monotonic clock.
 
-```text
-t0  request enters the measured runtime boundary
-ta  request is admitted
-ts  execution starts
-tr  first output token is ready
-te  first output token/piece is externally emitted
-ti  each later output event is emitted
-tt  terminal outcome is emitted
-```
+The named endpoint differences are:
 
-Then define intervals:
-
-```text
-queue delay              = ts - ta
-first-token compute span = tr - ts
-ready-to-emit delay      = te - tr
-time to first token      = te - ta
-inter-token latency i    = ti - t(i-1)
-runtime request latency  = tt - t0
-```
+$$
+\begin{aligned}
+T_{\mathrm{queue}} &= t_s-t_a && [\mathrm{s}],\\
+T_{\mathrm{first\ compute}} &= t_r-t_s && [\mathrm{s}],\\
+T_{\mathrm{ready\to emit}} &= t_e-t_r && [\mathrm{s}],\\
+T_{\mathrm{TTFT}} &= t_e-t_a && [\mathrm{s}],\\
+T_{\mathrm{ITL},i} &= t_i-t_{i-1} && [\mathrm{s}],\\
+T_{\mathrm{request}} &= t_T-t_0 && [\mathrm{s}].
+\end{aligned}
+$$
 
 Some systems measure time to first token from client arrival rather than
 admission. Some report the first token identity before complete text bytes are
 available. Neither choice is universally wrong, but the endpoints must travel
 with the number.
 
-A useful decomposition is:
+A useful conceptual decomposition for $N_{\mathrm{decode}}$ decode steps is:
 
-```text
-T_request = T_validate + T_queue + T_prepare + T_model
-          + T_select + T_emit + T_between_tokens + T_terminal
-```
+$$
+T_{\mathrm{total}}
+=T_{\mathrm{network}}+T_{\mathrm{queue}}+T_{\mathrm{prepare}}
++T_{\mathrm{prefill}}
++\sum_{t=1}^{N_{\mathrm{decode}}}T_{\mathrm{decode},t}
++T_{\mathrm{stream}}.
+$$
 
 This is a sum of measured categories only if the implementation actually
 records compatible boundaries. It is not permission to invent an end-to-end
 number by adding unrelated benchmarks. Some terms may overlap in a pipelined
 engine; in that case a timeline, not a simple sum, is the truthful model.
+The canonical [latency decomposition](../../diagrams/runtime/latency-decomposition.txt)
+keeps those endpoints visible.
 
 ### TTFT, ITL, and request latency answer different questions
 
@@ -448,12 +449,18 @@ measurement.
 
 ### Throughput is not the inverse of one request's latency
 
-Throughput is completed work per unit time:
+Throughput is completed work per unit time. For a measurement interval of
+$\Delta t$ seconds:
 
-```text
-request throughput = completed requests / elapsed seconds
-token throughput   = emitted output tokens / elapsed seconds
-```
+$$
+R_{\mathrm{request}}
+=\frac{N_{\mathrm{completed\ requests}}}{\Delta t}
+\quad[\mathrm{requests/s}],
+\qquad
+R_{\mathrm{token}}
+=\frac{N_{\mathrm{emitted\ output\ tokens}}}{\Delta t}
+\quad[\mathrm{tokens/s}].
+$$
 
 Both require a population and a workload definition. Requests with different
 prompt and output lengths are not interchangeable work units. Token throughput
@@ -570,10 +577,14 @@ when a particular implementation combines them.
 
 ## Inside Hermon: one verified current request path
 
+The canonical [source-status path](../../diagrams/runtime/hermon-current-request-path.txt)
+summarizes the local and provider branches below; its labels apply to the
+inspected commit, not to every Hermon revision.
+
 Hermon is this book's recurring production case study. The following account is
 **CURRENT** only for commit
 [`472a44c`](https://github.com/hermonai/hermon/commit/472a44cdb511b2dae6c9569e59543db8f8350b25),
-inspected on 2026-09-02. The durable source record is in the
+inspected on 2026-09-03. The durable source record is in the
 [Chapter 1 research note](../../research/part-01/chapter-01-the-missing-half-of-ai.md).
 
 > **INSIDE HERMON — CURRENT**

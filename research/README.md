@@ -32,3 +32,5 @@ Active chapter research:
   [Chapter 1 — The Missing Half of AI](part-01/chapter-01-the-missing-half-of-ai.md).
 - [Part II](part-02/README.md), through
   [Chapter 6 — Matrix Multiplication: The Engine Room](part-02/chapter-06-matrix-multiplication-the-engine-room.md).
+- [Chapter 1–6 diagram and math retrofit](editorial/diagram-math-retrofit.md),
+  recording visual, notation, count, and verification decisions.

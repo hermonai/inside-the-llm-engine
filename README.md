@@ -167,14 +167,17 @@ scripts/      repository checks and reproducibility helpers
 Start with [the book constitution](docs/BOOK_CONSTITUTION.md) before drafting.
 Contributors and AI agents should also read [AGENTS.md](AGENTS.md),
 [the source policy](docs/SOURCE_POLICY.md), and
-[the chapter contract](docs/CHAPTER_CONTRACT.md).
+[the chapter contract](docs/CHAPTER_CONTRACT.md). Mathematical and visual
+artifacts follow [the math style](docs/MATH_STYLE.md) and
+[the diagram style](docs/DIAGRAM_STYLE.md).
 
 ## Status
 
 Phase 0 established the repository and editorial architecture. Phase 1 is
 complete. Phase 2 is in progress: Chapters 5–6, Tensor Substrate v1, ENGINE-2,
-Labs 16–29, and their source-verified research, independent oracles, 52 Unicode
-diagrams, and four performance records pass their gates. Chapter 7 is next. See
+Labs 16–29, and their source-verified research, independent oracles, 63 Unicode
+diagrams, and four performance records pass their gates. The Chapter 1–6
+diagram/math retrofit is complete; Chapter 7 is next. See
 [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license

@@ -52,12 +52,13 @@ performance problem, not merely a type check.
 ENGINE-1 already contained a linear projection:
 
 $$
-\mathbf{z}=W\mathbf{h}+\mathbf{b},
+\mathbf{z}=\mathbf{W}\mathbf{h}+\mathbf{b},
 $$
 
-where $W$ has shape $[V,D]$, the hidden activation $\mathbf{h}$ has shape
-$[D]$, the bias $\mathbf{b}$ has shape $[V]$, and logits $\mathbf{z}$ have
-shape $[V]$. The old implementation spelled the matrix-vector product as loops
+where $\mathbf{W}\in\mathbb{R}^{V_{\mathrm{vocab}}\times D}$,
+$\mathbf{h}\in\mathbb{R}^{D}$,
+$\mathbf{b}\in\mathbb{R}^{V_{\mathrm{vocab}}}$, and
+$\mathbf{z}\in\mathbb{R}^{V_{\mathrm{vocab}}}$. The old implementation spelled the matrix-vector product as loops
 inside the model. That was appropriate when the loop first made logits real.
 It is now duplication. Chapter 6 extracts the numerical operation into a
 kernel layer while leaving embedding lookup and bias addition as explicit
@@ -153,8 +154,9 @@ $K-1$, into `f32`.
 
 ## Matrix times vector
 
-Let $A$ have shape $[M,K]$ and vector $\mathbf{x}$ have shape $[K]$. Their
-matrix-vector product $\mathbf{y}=A\mathbf{x}$ has shape $[M]$, with one dot
+Let $\mathbf{A}\in\mathbb{R}^{M\times K}$ and
+$\mathbf{x}\in\mathbb{R}^{K}$. Their matrix-vector product
+$\mathbf{y}=\mathbf{A}\mathbf{x}\in\mathbb{R}^{M}$ has one dot
 product per matrix row:
 
 $$
@@ -224,8 +226,9 @@ path is needed.
 
 ## Matrix times matrix
 
-Let $A$ have shape $[M,K]$ and $B$ have shape $[K,N]$. Their matrix product
-$C=AB$ has shape $[M,N]$ and elements
+Let $\mathbf{A}\in\mathbb{R}^{M\times K}$ and
+$\mathbf{B}\in\mathbb{R}^{K\times N}$. Their matrix product
+$\mathbf{C}=\mathbf{A}\mathbf{B}\in\mathbb{R}^{M\times N}$ has elements
 
 $$
 C_{ij}=\sum_{k=0}^{K-1}A_{ik}B_{kj},
@@ -381,7 +384,7 @@ cell. Counting one multiplication and one addition as two floating-point
 operations gives approximately
 
 $$
-F_{\mathrm{GEMM}}=2MKN\ \text{FLOPs}.
+F_{\mathrm{GEMM}}\approx2MKN\quad[\mathrm{FLOPs}].
 $$
 
 If one counts the first assignment differently, the exact addition count is
@@ -392,7 +395,7 @@ compiler emits exactly that many instructions.
 For GEMV,
 
 $$
-F_{\mathrm{GEMV}}=2MK\ \text{FLOPs}.
+F_{\mathrm{GEMV}}\approx2MK\quad[\mathrm{FLOPs}].
 $$
 
 **FLOP** names an amount of floating-point work. **FLOP/s** names a rate. An
@@ -400,7 +403,7 @@ observed effective rate based on elapsed time $t$ seconds is
 
 $$
 P_{\mathrm{effective}}
-=\frac{2MKN}{t}\ \text{FLOP/s}.
+\approx\frac{2MKN}{t}\quad[\mathrm{FLOP/s}].
 $$
 
 The benchmark reports GFLOP/s by dividing that rate by $10^9$. It does not
@@ -621,7 +624,7 @@ The smallest compulsory payload model for canonical `f32` GEMM reads each
 input once and writes each output once:
 
 $$
-Q_{\min}=4(MK+KN+MN)\ \text{bytes}.
+Q_{\min}=4(MK+KN+MN)\quad[\mathrm{bytes}].
 $$
 
 This is a lower-bound model, not measured traffic. Write allocation, eviction,
@@ -635,14 +638,14 @@ keeps the ownership and transfer story separate from the formula.
 chosen memory boundary:
 
 $$
-I=\frac{\text{FLOPs}}{\text{bytes moved}}.
+I=\frac{F}{Q}\quad[\mathrm{FLOP/byte}].
 $$
 
 Using the compulsory-payload model for GEMM gives
 
 $$
 I_{\mathrm{ideal}}
-=\frac{2MKN}{4(MK+KN+MN)}\ \text{FLOP/byte}.
+\approx\frac{2MKN}{4(MK+KN+MN)}\quad[\mathrm{FLOP/byte}].
 $$
 
 The word *ideal* is essential. Without hardware counters, ENGINE-2 does not
@@ -652,7 +655,7 @@ For GEMV with $A:[M,K]$, $x:[K]$, and $y:[M]$, the analogous model is
 
 $$
 I_{\mathrm{GEMV,ideal}}
-=\frac{2MK}{4(MK+K+M)}.
+\approx\frac{2MK}{4(MK+K+M)}\quad[\mathrm{FLOP/byte}].
 $$
 
 For large $M$ and $K$, the $MK$ weight term dominates, so intensity approaches
@@ -718,7 +721,7 @@ intended active set. For block extents $(B_M,B_K,B_N)$, one rough `f32` payload
 is
 
 $$
-Q_{tile}=4(B_MB_K+B_KB_N+B_MB_N)\ \text{bytes}.
+Q_{\mathrm{tile}}=4(B_MB_K+B_KB_N+B_MB_N)\quad[\mathrm{bytes}].
 $$
 
 That formula does not select a universally correct tile. Cache capacity is not
@@ -814,6 +817,9 @@ The [optimization ladder](../../diagrams/linear/optimization-ladder.txt) places
 blocking in context. Packing, register blocking, SIMD microkernels, threading,
 NUMA placement, accelerators, and fusion remain later rungs. ENGINE-2 stops at
 scalar cache blocking so the first optimization remains inspectable.
+The [reference/candidate gate](../../diagrams/linear/reference-candidate-gates.txt)
+states the contract, equivalence, and performance-evidence sequence required
+before a candidate can replace the oracle path.
 
 ## Prove it: independent oracle
 

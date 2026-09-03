@@ -13,10 +13,11 @@ Last updated: 2026-09-03.
 | Glossary and terminology | IN PROGRESS | Chapters 1–6 system, token, numerical model, sampling, tensor-memory, linear-algebra, and streaming terms added; expand with each chapter |
 | Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–6 request/tokenizer/logit/sampling/tensor/kernel boundaries verified at `hermon` commit `472a44c` |
 | Manuscript part indexes | COMPLETE | 15 part contracts plus appendices scaffolded |
-| Diagram system | COMPLETE | Fifty-two canonical Unicode text diagrams plus an automated display-width gate |
+| Diagram system | COMPLETE | Sixty-three inventoried canonical Unicode diagrams; shared grammar plus automated style and display-width gates |
+| Diagram/math retrofit | COMPLETE | Chapters 1–6 audited; 11 diagrams added, 2 redesigned, 47 equation blocks standardized, and 20 explicit shape declarations added |
 | Research system | COMPLETE | Inventories and note templates established |
 | Code project | COMPLETE | ENGINE-2 adds dependency-free checked reference and blocked scalar kernels over Tensor Substrate v1; 133 tests pass |
-| Initial CI | COMPLETE | Structure, links, diagrams, Rust format/check/test/Clippy workflow added |
+| Initial CI | COMPLETE | Structure, links, diagram style/width, math structure, Rust format/check/test/Clippy workflow added |
 | License | PLANNED | Maintainers must choose prose and code licensing; no license inferred from Hermon |
 
 Phase 0 remains complete as repository architecture. Phase 1 completion is
@@ -27,10 +28,10 @@ tracked separately below.
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
 | Part I (Ch. 1–4) | COMPLETE | Four reviewed chapters, complete ENGINE-1 generation loop, Labs 1–15, and independent numerical oracles |
-| Chapter 1 — The Missing Half of AI | COMPLETE | 6,874-word reviewed chapter, primary-source research, four canonical diagrams |
-| Chapter 2 — From Text to Tokens | COMPLETE | 7,306-word reviewed chapter, primary-source research, seven canonical diagrams, two-tokenizer comparison |
-| Chapter 3 — The Smallest Possible Language Model | COMPLETE | 6,508-word reviewed chapter, primary-source research, seven canonical diagrams, full-vector Python oracle |
-| Chapter 4 — Logits, Sampling, and the Autoregressive Loop | COMPLETE | 6,258-word reviewed chapter, primary-source research, seven canonical diagrams, fixed-draw Python oracle |
+| Chapter 1 — The Missing Half of AI | COMPLETE | 6,913-word reviewed chapter, primary-source research, seven canonical diagrams |
+| Chapter 2 — From Text to Tokens | COMPLETE | 7,373-word reviewed chapter, primary-source research, nine canonical diagrams, two-tokenizer comparison |
+| Chapter 3 — The Smallest Possible Language Model | COMPLETE | 6,373-word reviewed chapter, primary-source research, eight canonical diagrams, full-vector Python oracle |
+| Chapter 4 — Logits, Sampling, and the Autoregressive Loop | COMPLETE | 6,306-word reviewed chapter, primary-source research, nine canonical diagrams, fixed-draw Python oracle |
 | ENGINE-0 | COMPLETE | Dependency-free tokenized request/runtime/stream lifecycle; byte oracle, BPE, chat/template contract, strict UTF-8 framing; 37 tests and full Rust gate pass |
 | ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 133 in the current full suite |
 | Lab 1 — Generate One Token Manually | COMPLETE | Independent candidate oracle plus CHECK/BUILD/BREAK/EXTEND exercise |
@@ -43,10 +44,10 @@ tracked separately below.
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
 | Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–6 complete; Chapter 7 is next |
-| Chapter 5 — Tensors Without Magic | COMPLETE | 6,049-word reviewed chapter, primary-source research, eleven canonical diagrams, traversal record, and independent offset oracle |
+| Chapter 5 — Tensors Without Magic | COMPLETE | 6,083-word reviewed chapter, primary-source research, thirteen canonical diagrams, traversal record, and independent offset oracle |
 | Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
 | Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
-| Chapter 6 — Matrix Multiplication: The Engine Room | COMPLETE | 7,500-word reviewed chapter, primary-source research, sixteen canonical diagrams, three performance records, and independent numerical oracle |
+| Chapter 6 — Matrix Multiplication: The Engine Room | COMPLETE | 7,480-word reviewed chapter, primary-source research, seventeen canonical diagrams, three performance records, and independent numerical oracle |
 | ENGINE-2 / Linear Algebra Kernel Layer v1 | COMPLETE | Strided dot/GEMV/GEMM reference kernels, canonical-only blocked scalar GEMM, explicit layout/ownership/error contracts, and ENGINE-1 projection migration |
 | Labs 22–29 — Linear algebra kernels | COMPLETE | Hand dot/GEMV/GEMM, loop-order offsets, tile tails, typed failures, deterministic equivalence, and GEMV/GEMM measurement |
 

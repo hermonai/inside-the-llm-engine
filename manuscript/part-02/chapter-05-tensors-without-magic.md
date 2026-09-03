@@ -96,8 +96,10 @@ The real implementation handles zero dimensions first, then uses checked
 multiplication. It also checks the byte count:
 
 $$
-B = N(\mathbf{d}) \times \operatorname{bytes\_per\_element}(\text{dtype}).
+B=N(\mathbf{d})\,w_{\mathrm{dtype}}\quad[\mathrm{bytes}],
 $$
+
+where $w_{\mathrm{dtype}}$ is bytes per stored element.
 
 Here $B$ is bytes, not elements. For `[2,3,4]` in `f32`, $N=24$ elements and
 $B=24\times4=96$ bytes. Both products can overflow independently.
@@ -244,21 +246,22 @@ the view reaches offsets 0, 1, 100, and 101. Four backing elements are nowhere
 near enough.
 
 For nonempty v1 views with non-negative strides, the largest reachable offset
-is
+and required storage length are
 
 $$
-o_{\max}=b+\sum_{a=0}^{r-1}(d_a-1)s_a.
-$$
-
-The required storage length is
-
-$$
-L_{\min}=o_{\max}+1.
+\begin{aligned}
+o_{\max}&=b+\sum_{a=0}^{r-1}(d_a-1)s_a,\\
+L_{\min}&=o_{\max}+1
+=1+b+\sum_{a=0}^{r-1}(d_a-1)s_a
+\quad[\mathrm{elements}].
+\end{aligned}
 $$
 
 Every multiply and add is checked. The constructor requires
 $L_{\min}\le L_{\text{storage}}$. For a zero-element view there is no reachable
 offset, so the rule becomes $b\le L_{\text{storage}}$.
+The [storage-extent diagram](../../diagrams/tensor/storage-extent.txt) shows the
+smallest counterexample to validating a view by element count alone.
 
 This formula relies on non-negative strides. V1 uses `usize` and does not
 support reverse traversal through negative strides. It accepts zero strides for
@@ -352,6 +355,8 @@ It then derives canonical strides for the new shape and borrows the same
 storage. Shape `[4,2]` fails because it asks six values to become eight. A
 non-contiguous transpose fails with `NonContiguous`; v1 does not copy as a
 fallback.
+The canonical [reshape view](../../diagrams/tensor/reshape-view.txt) makes the
+shared owner and changed grouping explicit.
 
 PyTorch's `view` supports a broader compatibility condition based on adjacent
 stride relationships, while `reshape` may choose a view or copy. That is useful
@@ -505,7 +510,10 @@ with shape `[V,D]` and strides `[D,1]`. The scalar forward loop remains visible:
 
 $$
 z_i=b_i+\sum_{j=0}^{D-1}W_{i,j}h_j,
-\qquad z\in\mathbb{R}^{V}.
+\qquad
+\mathbf{W}\in\mathbb{R}^{V_{\mathrm{vocab}}\times D},
+\quad \mathbf{h}\in\mathbb{R}^{D},
+\quad \mathbf{z}\in\mathbb{R}^{V_{\mathrm{vocab}}}.
 $$
 
 The model owns $W$ with shape `[V,D]`, the request owns $h$ with shape `[D]`,
@@ -948,7 +956,7 @@ cannot masquerade as valid arithmetic.
 We can represent matrices correctly. We still need to compute
 
 $$
-C = AB
+\mathbf{C}=\mathbf{A}\mathbf{B}
 $$
 
 without treating the equation as an execution plan. It does not say where
