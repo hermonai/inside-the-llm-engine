@@ -14,7 +14,7 @@ Last updated: 2026-09-03.
 | Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–6 request/tokenizer/logit/sampling/tensor/kernel boundaries verified at `hermon` commit `472a44c` |
 | Manuscript part indexes | COMPLETE | 15 part contracts plus appendices scaffolded |
 | Diagram system | COMPLETE | Sixty-three inventoried canonical Unicode diagrams; shared grammar plus automated style and display-width gates |
-| Diagram/math retrofit | COMPLETE | Chapters 1–6 audited; 11 diagrams added, 2 redesigned, 47 equation blocks standardized, and 20 explicit shape declarations added |
+| Diagram/math retrofit | COMPLETE | Chapters 1–6 audited; 11 diagrams added, 2 redesigned, 47 equation blocks standardized, and 18 explicit shape declarations added |
 | Research system | COMPLETE | Inventories and note templates established |
 | Code project | COMPLETE | ENGINE-2 adds dependency-free checked reference and blocked scalar kernels over Tensor Substrate v1; 133 tests pass |
 | Initial CI | COMPLETE | Structure, links, diagram style/width, math structure, Rust format/check/test/Clippy workflow added |

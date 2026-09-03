@@ -49,13 +49,13 @@ missing inventories/purpose statements.
   sampling, two tensor, and one linear-kernel gate.
 - Substantially redesigned two existing canonical diagrams:
   `model/token-id-to-logits.txt` and `sampling/autoregressive-state.txt`.
-- Normalized eight additional existing canonical diagrams for connectors,
+- Normalized nine additional existing canonical diagrams for connectors,
   arithmetic marks, or `V_vocab` shape labels.
 - Replaced the most important legacy manuscript embeds in Chapters 1–4 with
   Unicode box drawing and consistent arrows.
 - Standardized 47 added or materially changed display-equation blocks; all 79
-  display blocks in Chapters 1–6 were reviewed. Added 20 explicit
-  `\mathbb{R}` shape declarations.
+  display blocks in Chapters 1–6 were reviewed. Added 18 explicit
+  `\mathbb{R}` shape declarations (2 existed before; 20 now remain).
 - Added automated diagram inventory/style and math-structure checks, and made
   the width check report its maximum observed line.
 
@@ -75,7 +75,7 @@ missing inventories/purpose statements.
 
 ## Verification and exceptions
 
-The four Python oracles contain 22 explicit assertion sites and are rerun as
+The four Python oracles contain 26 explicit assertion sites and are rerun as
 part of this retrofit. Rust format/check/test/Clippy, structure, links, diagram
 style/width, credential, large-file, and research/status checks are also
 required before completion.
