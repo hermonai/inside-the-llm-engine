@@ -1,9 +1,9 @@
 STRUCTURED CHAT TO MODEL INPUT
 
-[messages] --render--> [Text | Special segments] --encode/insert--> [token IDs]
-    |                         |                                      |
-    | app owns roles/content  | template owns ordering              | request owns
-    v                         v                                      v
+[messages] ──render──▶ [Text │ Special segments] ──encode/insert──▶ [token IDs]
+    │                         │                                      │
+    │ app owns roles/content  │ template owns ordering              │ request owns
+    ▼                         ▼                                      ▼
  system, user          BOS USER text END_TURN                 exact model input
 
 Raw completion bypasses message rendering. A literal marker in Text stays text.

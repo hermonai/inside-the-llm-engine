@@ -3,13 +3,13 @@ CATEGORICAL SELECTION WITH p = [0.20, 0.30, 0.50]
 draw r is in [0,1); choose first cumulative boundary strictly greater than r
 
 0.0                 0.2                         0.5                    1.0
- |------ token 0 -----|----------- token 1 -------|------- token 2 -----|
+ │────── token 0 ─────│─────────── token 1 ───────│─────── token 2 ─────│
  [                    )[                          )[                    )
 
 Examples:
-  r = 0.000000 -> token 0
-  r = 0.199999 -> token 0
-  r = 0.200000 -> token 1
-  r = 0.499999 -> token 1
-  r = 0.500000 -> token 2
-  r = 0.999999 -> token 2
+  r = 0.000000 ─▶ token 0
+  r = 0.199999 ─▶ token 0
+  r = 0.200000 ─▶ token 1
+  r = 0.499999 ─▶ token 1
+  r = 0.500000 ─▶ token 2
+  r = 0.999999 ─▶ token 2

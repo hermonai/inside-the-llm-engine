@@ -17,9 +17,7 @@ jobs:
       - name: Check relative Markdown links
         run: python3 scripts/check-links.py
       - name: Check canonical diagram width
-        run: >-
-          awk 'length($0) > 100 { print FILENAME ":" FNR ": line exceeds 100 columns"; bad=1 }
-          END { exit bad }' diagrams/**/*.txt
+        run: python3 scripts/check-diagram-width.py
       - name: Check Rust formatting
         working-directory: code/mini-engine
         run: cargo fmt --all -- --check

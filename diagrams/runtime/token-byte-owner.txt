@@ -1,33 +1,33 @@
 FOLLOW THE TOKEN, THE BYTE, AND THE OWNER
 
-Legend: --> control/identity   ==> byte movement   [owner: X] mutable lifetime
+Legend: ──▶ control/identity   ══▶ byte movement   [owner: X] mutable lifetime
 
  FOLLOW THE TOKEN
- prompt text --> prompt token ids --> model candidates --> selected token id
-                                                           |
-                                                           v
-                                               decoded output piece --> stream
+ prompt text ──▶ prompt token ids ──▶ model candidates ──▶ selected token id
+                                                           │
+                                                           ▼
+                                               decoded output piece ──▶ stream
 
  FOLLOW THE BYTE
- (artifact bytes) ==> resident weight bytes ==> model operation
-                                                   |
-                                                   v
+ (artifact bytes) ══▶ resident weight bytes ══▶ model operation
+                                                   │
+                                                   ▼
                                             candidate scores
-                                                   |
- token text bytes <== detokenize <== selected token id
+                                                   │
+ token text bytes ◀══ detokenize ◀══ selected token id
 
  FOLLOW THE OWNER
  application owns request input
-           |
-           v
+           │
+           ▼
  runtime owns [admission + GenerationState + timing]
-           |
-           +--> running model borrows input/state for one model step
-           |
-           +--> sink receives immutable event values in order
-           |
-           v
- terminal outcome --> runtime releases request state exactly once
+           │
+           ├──▶ running model borrows input/state for one model step
+           │
+           ├──▶ sink receives immutable event values in order
+           │
+           ▼
+ terminal outcome ──▶ runtime releases request state exactly once
 
 ENGINE-0 fakes tokenization, detokenization, and numerical model work. The
 ownership and terminal path are real executable contracts that later chapters

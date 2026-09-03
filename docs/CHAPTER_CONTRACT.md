@@ -9,7 +9,7 @@ may not omit the underlying obligations without recording why.
 1. An opening problem and why it matters to an inference engine.
 2. A concrete mental model before advanced formalism.
 3. A first-principles derivation and consistent core terminology.
-4. At least one meaningful ASCII system/data/ownership diagram.
+4. At least one meaningful Unicode text system/data/ownership diagram.
 5. Mathematical treatment where relevant, including dimensions and cost.
 6. A reference implementation or explicitly labeled pseudocode.
 7. A walkthrough that follows data, token, byte, or owner.

@@ -6,42 +6,41 @@ visible than ordinary drafting.
 
 ```text
                     BOOK ROADMAP
-                         |
-                         v
+                         │
+                         ▼
                     CHAPTER SPEC
-                         |
-                         v
+                         │
+                         ▼
                   SOURCE DISCOVERY
-                         |
-                         v
+                         │
+                         ▼
                   RESEARCH NOTES
-                         |
-                         v
+                         │
+                         ▼
                 FACT / STATUS CHECK
-                         |
-                         v
+                         │
+                         ▼
                    CHAPTER DRAFT
-                         |
-             +-----------+-----------+
-             |                       |
-             v                       v
-       CODE / EXPERIMENT        ASCII DIAGRAMS
-             |                       |
-             +-----------+-----------+
-                         |
-                         v
+                         │
+             ┌───────────┴───────────┐
+             ▼                       ▼
+       CODE / EXPERIMENT      UNICODE TEXT DIAGRAMS
+             │                       │
+             └───────────┬───────────┘
+                         │
+                         ▼
                   CORRECTNESS CHECK
-                         |
-                         v
+                         │
+                         ▼
                     TECH REVIEW
-                         |
-                         v
+                         │
+                         ▼
                    EDITORIAL PASS
-                         |
-                         v
+                         │
+                         ▼
                   CROSS-LINK CHECK
-                         |
-                         v
+                         │
+                         ▼
                        DONE
 ```
 

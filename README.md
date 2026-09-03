@@ -16,56 +16,54 @@ runtime.
 standard-library-only [ENGINE-1](code/mini-engine/README.md) are complete. They
 establish the request-to-terminal lifecycle, tokenizer/chat contract,
 byte-safe output, a real token-ID-to-logits model, request-owned sampling, and
-the complete autoregressive feedback loop. Part II begins next with tensors.
+the complete autoregressive feedback loop. Part II is now in progress:
+[Chapter 5](manuscript/part-02/chapter-05-tensors-without-magic.md) adds the
+checked Tensor Substrate v1, and Chapter 6 begins matrix multiplication next.
 
 ```text
                          INSIDE THE LLM ENGINE
 
   "Explain quantum computing."                         immutable model data
-              |                                                ||
-              v                                                \/
-       +-------------+      token ids                  +----------------+
-       |  TOKENIZER  | ------------------------------> | GGUF / WEIGHTS |
-       +-------------+                                 | packed / quant |
-              |                                        +--------+-------+
-              v                                                 ||
-       +-------------+       request state                      ||
-       | API / STREAM| ----------------------------------+      ||
-       +------+------+                                   |      ||
-              |                                          v      \/
-              |                                  +----------------------+
-              +--------------------------------> | REQUEST RUNTIME      |
-                                                 | admission / scheduler|
-                                                 | prefix / KV ownership|
-                                                 +----------+-----------+
-                                                            |
+              │                                                ║
+              ▼                                                ▼
+       ┌─────────────┐      token IDs                  ┌────────────────┐
+       │  TOKENIZER  │ ──────────────────────────────▶ │ GGUF / WEIGHTS │
+       └─────────────┘                                 │ packed / quant │
+              │                                        └────────┬───────┘
+              ▼                                                 ║
+       ┌─────────────┐       request state                      ║
+       │ API / STREAM│ ──────────────────────────────────┐      ║
+       └──────┬──────┘                                  │      ║
+              │                                         ▼      ▼
+              │                                  ┌──────────────────────┐
+              └────────────────────────────────▶ │ REQUEST RUNTIME      │
+                                                 │ admission / scheduler│
+                                                 │ prefix / KV ownership│
+                                                 └──────────┬───────────┘
+                                                            │
                                                physical token batch
-                                                            |
-                                                            v
-                                                 +----------------------+
-                                                 | MODEL FORWARD PASS   |
-                                                 | tensors / attention  |
-                                                 +----------+-----------+
-                                                            |
+                                                            ▼
+                                                 ┌──────────────────────┐
+                                                 │ MODEL FORWARD PASS   │
+                                                 │ tensors / attention  │
+                                                 └──────────┬───────────┘
+                                                            │
                                                  execution plan + state
-                                                            |
-                                     +----------------------+----------------+
-                                     |                      |                |
-                                     v                      v                v
-                                +----------+           +----------+     +----------+
-                                | CPU SIMD |           |  Metal   |     |CUDA/ROCm |
-                                +-----+----+           +----+-----+     +----+-----+
-                                      |                     |                |
-                                      +----------+----------+----------------+
-                                                 |
+                                                            ▼
+                                     ┌──────────────────────┼────────────────┐
+                                     ▼                      ▼                ▼
+                                ┌──────────┐           ┌──────────┐     ┌──────────┐
+                                │ CPU SIMD │           │  Metal   │     │CUDA/ROCm │
+                                └─────┬────┘           └────┬─────┘     └────┬─────┘
+                                      └──────────┬──────────┴────────────────┘
+                                                 │
                                               logits
-                                                 |
-                                                 v
-                                         sampler -> token
-                                                 |
-                                  decode bytes -> stream -> repeat
+                                                 ▼
+                                         sampler ──▶ token
+                                                 │
+                                  decode bytes ──▶ stream ──▶ repeat
 
-  Legend:  --> control flow    ==> bulk data    [state] mutable ownership
+  Legend:  ──▶ control flow    ══▶ bulk data    [state] mutable ownership
 ```
 
 ## Why this book exists
@@ -86,16 +84,16 @@ The curriculum advances through eleven named milestones:
 
 ```text
 ENGINE-0  token generator
-    -> ENGINE-1  tiny neural language model
-    -> ENGINE-2  tiny Transformer
-    -> ENGINE-3  real GGUF model runner
-    -> ENGINE-4  KV-cached decoder
-    -> ENGINE-5  concurrent inference server
-    -> ENGINE-6  continuous-batched runtime
-    -> ENGINE-7  paged-KV runtime
-    -> ENGINE-8  native kernel runtime
-    -> ENGINE-9  hardware-accelerated runtime
-    -> ENGINE-10 production-class inference system
+    └──▶ ENGINE-1  tiny neural language model
+          └──▶ ENGINE-2  tiny Transformer
+                └──▶ ENGINE-3  real GGUF model runner
+                      └──▶ ENGINE-4  KV-cached decoder
+                            └──▶ ENGINE-5  concurrent inference server
+                                  └──▶ ENGINE-6  continuous-batched runtime
+                                        └──▶ ENGINE-7  paged-KV runtime
+                                              └──▶ ENGINE-8  native kernel runtime
+                                                    └──▶ ENGINE-9  accelerated runtime
+                                                          └──▶ ENGINE-10 production system
 ```
 
 Labs move through four levels: **CHECK** a concept, **BUILD** it, **BREAK** it
@@ -172,9 +170,9 @@ Contributors and AI agents should also read [AGENTS.md](AGENTS.md),
 ## Status
 
 Phase 0 established the repository and editorial architecture. Phase 1 is
-complete: Chapters 1–4, ENGINE-0/1, Labs 1–15, and their source-verified
-research, oracles, diagrams, and measurements pass their gates. Chapter 5 is
-next. See
+complete. Phase 2 is in progress: Chapter 5, Tensor Substrate v1, Labs 16–21,
+and their source-verified research, oracle, Unicode diagrams, and traversal
+measurement pass their gates. Chapter 6 is next. See
 [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license

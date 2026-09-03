@@ -29,6 +29,10 @@ and how dense versus paged layouts alter access without altering semantics.
 ## Notation
 
 - Define symbols at first use and maintain `GLOSSARY.md`/Appendix K.
+- Use Markdown display math (`$$ ... $$`) for central derivations and align
+  multi-line reasoning cleanly. Keep executable syntax in code fences and add a
+  plain-text form when terminal-only readers need it; do not force dense
+  equations into monospaced ASCII art.
 - Put units on byte, bandwidth, time, and throughput formulas.
 - Distinguish logical tokens from physical batch entries and logical blocks
   from physical block identifiers.

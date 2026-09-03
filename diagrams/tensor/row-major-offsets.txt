@@ -1,0 +1,19 @@
+ROW-MAJOR OFFSET DERIVATION
+
+ shape d = [2, 3, 4]
+
+                               right-to-left product
+                                      │
+               ┌──────────────────────┴──────────────────────┐
+               ▼                      ▼                      ▼
+ axis          0                      1                      2
+ dimension     2                      3                      4
+ stride       12                      4                      1
+
+ logical index i = [1, 2, 3]
+
+              offset(i) = 1 × 12 + 2 × 4 + 3 × 1
+                        =   12   +   8   +   3
+                        = 23 elements
+
+For `f32`, byte displacement = 23 elements × 4 bytes/element = 92 bytes.

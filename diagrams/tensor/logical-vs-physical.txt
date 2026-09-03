@@ -1,0 +1,21 @@
+LOGICAL TENSOR VERSUS PHYSICAL STORAGE
+
+ logical matrix A      shape = [2, 3]       canonical strides = [3, 1]
+
+        axis 1 →            logical index             physical offset
+        0   1   2
+      ┌───┬───┬───┐
+  0   │ A │ B │ C │        [0, 2]          ─────────▶       2
+      ├───┼───┼───┤
+  1   │ D │ E │ F │        [1, 1]          ─────────▶       4
+      └───┴───┴───┘
+       axis 0 ↓
+
+ physical `Vec<f32>`
+
+ offset     0     1     2     3     4     5
+         ┌─────┬─────┬─────┬─────┬─────┬─────┐
+ data    │  A  │  B  │  C  │  D  │  E  │  F  │
+         └─────┴─────┴─────┴─────┴─────┴─────┘
+
+Shape names logical positions. Strides map those positions into storage.

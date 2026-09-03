@@ -1,0 +1,21 @@
+PART II — FOLLOW THE OWNER
+
+              OwnedTensor
+      shape + canonical strides + data
+                    │
+        ┌───────────┼────────────┐
+        │           │            │
+        ▼           ▼            ▼
+     view()     transpose()   slice_axis()
+        │           │            │
+        └───────────┴────────────┘
+                    ▼
+          borrowed TensorView<'a>
+          owns metadata, not data
+                    │
+        ┌───────────┴────────────┐
+        ▼                        ▼
+ view ends first         to_contiguous copies
+ owner may then drop     new owner may outlive source
+
+`view_mut()` instead takes one exclusive borrow of the canonical owner.

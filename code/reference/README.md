@@ -11,3 +11,6 @@ baselines unless measured under the benchmark policy.
 - [`chapter04_sampling_oracle.py`](python/chapter04_sampling_oracle.py)
   independently computes stable softmax, temperature, top-k/top-p,
   renormalization, and fixed-draw categorical selection.
+- [`chapter05_tensor_oracle.py`](python/chapter05_tensor_oracle.py)
+  independently derives canonical strides, exact offsets, transpose logical
+  order, reshape offsets, and contiguous materialization order.

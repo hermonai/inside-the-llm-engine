@@ -2,32 +2,32 @@ ENGINE-1 AUTOREGRESSIVE STATE
 
 solid arrow = data/state transition       dotted arrow = control check
 
- +------------------------------------------------------------------+
- | GenerationState (one request)                                    |
- | prompt tokens | committed generated tokens | sampler RNG | budget|
- +------------------------------+-----------------------------------+
-                                |
-                                v history = prompt + committed tokens
-                         +--------------+
-              cancel ....| model.forward|.... model failure
-                         +------+-------+
-                                v
+ ┌──────────────────────────────────────────────────────────────────┐
+ │ GenerationState (one request)                                    │
+ │ prompt tokens │ committed generated tokens │ sampler RNG │ budget│
+ └──────────────────────────────┬───────────────────────────────────┘
+                                │
+                                ▼ history = prompt + committed tokens
+                         ┌──────────────┐
+              cancel ....│ model.forward│.... model failure
+                         └──────────────┘
+                                ▼
                            raw logits [V]
-                                |
-                                v
-                         +--------------+
-              cancel ....| sample       |.... sampling failure
-                         +------+-------+
-                                v
+                                │
+                                ▼
+                         ┌──────────────┐
+              cancel ....│ sample       │.... sampling failure
+                         └──────────────┘
+                                ▼
                               token
-                 +--------------+--------------+
-                 | EOS                         | non-EOS
-                 v                             v
+                 ┌─────────────────────────────┐
+                 │ EOS                         │ non-EOS
+                 ▼                             ▼
           complete once              commit to GenerationState
-                                               |
-                                               v
-                                   decode bytes -> UTF-8 -> stream
-                                               |
+                                               │
+                                               ▼
+                                   decode bytes ─▶ UTF-8 ─▶ stream
+                                               │
                                     budget .....+..... next step
 
 EOS is neither committed as visible output nor decoded. One Lifecycle owns

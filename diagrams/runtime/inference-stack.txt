@@ -1,25 +1,25 @@
 INFERENCE STACK: EMBEDDED CALL TO OPERATED SERVICE
 
-Legend: --> invokes/routes   - - > optional deployment boundary
+Legend: ──▶ invokes/routes   ┄┄▶ optional deployment boundary
 
   application
-      |
-      v
-  library API  -------------------- direct/offline generation
-      |
-      v
+      │
+      ▼
+  library API  ──────────────────── direct/offline generation
+      │
+      ▼
   inference engine
-      |  request lifecycle, scheduling, model execution, stream contract
-      |
-      +--> provider choice  --> local | remote | managed capability
-      |
-      +--> hardware backend --> scalar CPU | SIMD CPU | Metal | CUDA | ...
-      |
-      v
-  server  - - > protocol validation, HTTP/gRPC/SSE, multi-client boundary
-      |
-      v
-  service - - > deployment, replicas, auth, quotas, SLOs, operations
+      │  request lifecycle, scheduling, model execution, stream contract
+      │
+      ├──▶ provider choice  ──▶ local │ remote │ managed capability
+      │
+      ├──▶ hardware backend ──▶ scalar CPU │ SIMD CPU │ Metal │ CUDA │ ...
+      │
+      ▼
+  server  ┄┄▶ protocol validation, HTTP/gRPC/SSE, multi-client boundary
+      │
+      ▼
+  service ┄┄▶ deployment, replicas, auth, quotas, SLOs, operations
 
 These labels are roles, not mandatory processes. A command-line tool can embed
 the library and engine in one process. A production system can split the API,

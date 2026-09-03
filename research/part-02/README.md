@@ -6,7 +6,7 @@ at a time.
 
 | Chapter | Research question | Status |
 | ---: | --- | --- |
-| [5](chapter-05-tensors-without-magic.md) | How do logical tensor indices map safely to owned physical storage? | RESEARCHING |
+| [5](chapter-05-tensors-without-magic.md) | How do logical tensor indices map safely to owned physical storage? | COMPLETE |
 | 6 | How should reference and blocked matrix multiplication expose work and traffic? | NEXT |
 | 7 | How do embedding lookup and RMSNorm transform typed tensors? | PLANNED |
 | 8 | How do Q/K/V projections create head-shaped activations? | PLANNED |

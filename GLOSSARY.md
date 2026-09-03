@@ -645,9 +645,20 @@ order still do not specify a physical storage layout.
 
 **Short:** The element type used to store or compute numerical values.
 **Precise:** A dtype determines representation and precision; storage and
-accumulation dtypes may differ. ENGINE-1 uses contiguous `f32` for both. First
-introduced: Chapter 3. Related: tensor, quantization. Common confusion: shape
-does not imply dtype.
+accumulation dtypes may differ. Tensor Substrate v1 implements `f32` while
+keeping dtype explicit. First introduced: Chapter 3; formalized Chapter 5.
+Related: tensor, quantization. Common confusion: shape does not imply dtype,
+and equal byte widths do not imply equal interpretations.
+
+### Element count / storage extent
+
+**Short:** Element count is the product of shape dimensions; storage extent is
+the physical span reachable through a view's base offset and strides.
+**Precise:** Both use checked `usize` arithmetic; a strided view may require a
+larger backing slice than its logical element count, while any zero dimension
+makes the logical count zero. First introduced: Chapter 5. Related: shape,
+stride, bounds. Common confusion: logical count, required storage length, and
+byte count are three different quantities.
 
 ### Forward pass
 
@@ -665,6 +676,17 @@ index relationships, while dtype, layout, and owner define physical execution.
 First introduced: Chapter 3. Related: tensor, dot product. Common confusion:
 matrix notation alone does not specify row-major bytes.
 
+### Ownership / aliasing
+
+**Short:** Ownership controls a storage lifetime; aliasing means two logical
+objects can reach overlapping storage.
+**Precise:** An `OwnedTensor` owns its `Vec<f32>`, immutable views may overlap
+through shared borrows, and mutable access in Tensor Substrate v1 is restricted
+to one exclusive canonical owner view. First introduced: Chapter 5. Related:
+view, copy, lifetime. Common confusion: sharing storage does not transfer its
+ownership, and physical overlap is safe for reads but dangerous for
+uncontrolled mutation.
+
 ### Output projection
 
 **Short:** The model operation that produces one score per vocabulary token.
@@ -680,12 +702,35 @@ construction and read immutably during inference. First introduced: Chapter 3.
 Related: activation, model artifact. Common confusion: parameters do not
 normally change during an inference forward pass.
 
+### Rank / axis / dimension
+
+**Short:** Tensor rank counts axes; a dimension is an axis's length.
+**Precise:** Shape `[2,3,4]` has tensor rank 3 and dimension lengths 2, 3, and
+4. First introduced: Chapter 5. Related: shape, tensor. Common confusion:
+tensor rank is unrelated to the linear-algebra rank of a matrix.
+
 ### Row-major layout
 
 **Short:** Matrix rows occupy contiguous physical storage. **Precise:** For a
 `[V,D]` ENGINE-1 matrix, logical element `(i,j)` has flat offset `i*D+j`.
 First introduced: Chapter 3. Related: layout, matrix, tensor. Common confusion:
 logical shape does not force row-major layout.
+
+### Scalar
+
+**Short:** One numerical value, represented as a rank-0 tensor with shape `[]`.
+**Precise:** The empty product gives a scalar tensor one logical element and
+canonical empty strides. First introduced: Chapter 5. Related: vector, matrix,
+tensor, rank. Common confusion: shape `[]` is a scalar, while shape `[1]` is a
+one-element vector.
+
+### Slice
+
+**Short:** A bounded view over part of a tensor along an axis.
+**Precise:** Tensor Substrate v1 slicing changes a view's base offset and one
+dimension while retaining its storage and strides. First introduced: Chapter
+5. Related: view, stride, base offset. Common confusion: a slice need not copy
+elements or become contiguous.
 
 ### Shape
 
@@ -695,6 +740,16 @@ counts that do not match `[V,D]` and `[V]`. First introduced: Chapter 3.
 Related: tensor, dimension. Common confusion: shape is an executable contract,
 not merely documentation.
 
+### Stride / base offset
+
+**Short:** A stride is the storage step for incrementing one axis; the base
+offset is where a view's logical origin begins.
+**Precise:** Tensor Substrate v1 uses element strides and computes physical
+offset as the checked base plus the dot product of logical indices and strides.
+First introduced: Chapter 5. Related: shape, layout, view. Common confusion:
+frameworks such as NumPy and GGML expose byte strides, so units must never be
+assumed.
+
 ### Tensor
 
 **Short:** Numerical data interpreted with shape, dtype, layout, and ownership.
@@ -702,6 +757,36 @@ not merely documentation.
 Chapter 3 uses only contiguous row-major CPU `f32` arrays. First introduced:
 Chapter 3; formalized Chapter 5. Related: shape, dtype, layout. Common
 confusion: a raw `Vec<f32>` does not by itself say which tensor it represents.
+
+### Tensor layout / contiguity
+
+**Short:** Layout maps logical indices to physical storage; contiguity is one
+specific layout property.
+**Precise:** Tensor Substrate v1 calls a view contiguous only when its strides
+exactly equal canonical row-major strides for its shape. First introduced:
+Chapter 5. Related: stride, row-major layout, view. Common confusion: a valid
+strided view is not necessarily contiguous, and contiguous is not a universal
+performance claim.
+
+### Transpose / reshape
+
+**Short:** Transpose permutes axes; reshape changes dimensions while preserving
+logical element order.
+**Precise:** A rank-2 transpose in Tensor Substrate v1 swaps shape and stride
+metadata without moving values. `reshape_view` is allocation-free and accepts
+only a canonical contiguous source with the same checked element count. First
+introduced: Chapter 5. Related: view, copy, contiguity. Common confusion: a
+transpose is not a reshape, and a reshape operation must not conceal a copy.
+
+### View / copy
+
+**Short:** A view borrows existing element storage; a copy owns newly
+materialized elements.
+**Precise:** A `TensorView` owns shape, stride, and base-offset metadata but
+borrows its payload. `to_contiguous` traverses logical order into a new
+canonical `OwnedTensor`. First introduced: Chapter 5. Related: ownership,
+aliasing, transpose. Common confusion: metadata allocation does not mean the
+element payload was copied.
 
 ### Workspace
 

@@ -1,0 +1,16 @@
+PART II — FOLLOW THE BYTE
+
+ OwnedTensor
+ owns contiguous Vec<f32>
+          │
+          ├──────────────▶ TensorView metadata ──▶ same bytes, new interpretation
+          │
+          ├──────────────▶ transpose metadata ───▶ same bytes, strided order
+          │
+          └──────────────▶ to_contiguous
+                                   │
+                                   ▼
+                          new Vec<f32> allocation
+                          logical values copied
+
+V1 storage is local CPU `f32`. Alignment, devices, and packed dtype blocks wait.

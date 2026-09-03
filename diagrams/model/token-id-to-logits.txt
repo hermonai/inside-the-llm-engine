@@ -1,22 +1,22 @@
 TOKEN ID TO VOCABULARY LOGITS
 
-Legend: ==> bulk numerical data    --> control / selection
+Legend: ══▶ bulk numerical data    ──▶ control / selection
 
-text "I like" ==> tokenizer ==> [TokenId(1), TokenId(2)]
-                                             |
-                                             | final id x = 2
-                                             v
-                                  +---------------------+
-                       (E [V,D]) ==> EMBEDDING LOOKUP    |
-                                  +----------+----------+
-                                             | h [D]
-                                             v
-                                  +---------------------+
-                       (W [V,D]) ==> OUTPUT PROJECTION   |
-                          (b [V]) ==> z = W h + b         |
-                                  +----------+----------+
-                                             | z [V]
-                                             v
+text "I like" ══▶ tokenizer ══▶ [TokenId(1), TokenId(2)]
+                                             │
+                                             │ final id x = 2
+                                             ▼
+                                  ┌─────────────────────┐
+                       (E [V,D]) ══▶ EMBEDDING LOOKUP    │
+                                  └──────────┬──────────┘
+                                             │ h [D]
+                                             ▼
+                                  ┌─────────────────────┐
+                       (W [V,D]) ══▶ OUTPUT PROJECTION   │
+                          (b [V]) ══▶ z = W h + b         │
+                                  └──────────┬──────────┘
+                                             │ z [V]
+                                             ▼
                               [-0.7, 0.1, 0.4, 2.2]
-                                             |
+                                             │
                                   Chapter 4 begins here

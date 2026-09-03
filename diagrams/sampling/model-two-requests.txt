@@ -2,10 +2,10 @@ SHARED MODEL, INDEPENDENT REQUEST STATE
 
                          MODEL
                  immutable weights [shared]
-                             |
-                +------------+------------+
-                |                         |
-                v                         v
+                             │
+                ┌────────────┴────────────┐
+                │                         │
+                ▼                         ▼
           Request A                   Request B
       prompt/history A             prompt/history B
        sampler config A             sampler config B

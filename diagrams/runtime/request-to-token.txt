@@ -1,39 +1,39 @@
 REQUEST TO TOKEN — ENGINE-0 LIFECYCLE
 
-Legend: --> control transition   ==> emitted data   [X] mutable runtime state
+Legend: ──▶ control transition   ══▶ emitted data   [X] mutable runtime state
         (X) immutable/configured data              {*} terminal outcome
 
- (Request) --> validate --invalid--------------------------> {* Failed }
-                  |
+ (Request) ──▶ validate ──invalid──────────────────────────▶ {* Failed }
+                  │
                 valid
-                  v
-             admit request --> start execution
-                  |                 |
-                  |                 v
-                  |          [GenerationState]
-                  |                 |
-                  |       cancel? --yes--------------------> {* Cancelled }
-                  |                 |
-                  |                no
-                  |                 v
-                  |          (Model) --> candidates
-                  |                         |
-                  |                         v
-                  |                    (Selector)
-                  |                         |
-                  |             +-----------+-----------+
-                  |             |           |           |
-                  |            text        EOS        error
-                  |             |           |           |
-                  |             v           |           +--> {* Failed }
-                  |       append [state]     +--------------> {* Completed: EOS }
-                  |             |
-                  |             v
-                  |       ==> Token event
-                  |             |
-                  |       max tokens? --yes---------------> {* Completed: limit }
-                  |             |
-                  +-------------no
+                  ▼
+             admit request ──▶ start execution
+                  │                 │
+                  │                 ▼
+                  │          [GenerationState]
+                  │                 │
+                  │       cancel? ──yes────────────────────▶ {* Cancelled }
+                  │                 │
+                  │                no
+                  │                 ▼
+                  │          (Model) ──▶ candidates
+                  │                         │
+                  │                         ▼
+                  │                    (Selector)
+                  │                         │
+                  │             ┌───────────┼───────────┐
+                  │             │           │           │
+                  │            text        EOS        error
+                  │             │           │           │
+                  │             ▼           │           └──▶ {* Failed }
+                  │       append [state]     └──────────────▶ {* Completed: EOS }
+                  │             │
+                  │             ▼
+                  │       ══▶ Token event
+                  │             │
+                  │       max tokens? ──yes───────────────▶ {* Completed: limit }
+                  │             │
+                  └─────────────no
 
 Invariant: one submitted request emits exactly one terminal outcome, and no
 token or trace transition is emitted after that outcome.

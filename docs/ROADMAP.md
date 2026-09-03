@@ -24,7 +24,7 @@ The phases describe curriculum and software maturity, not release dates.
 
 A fresh agent must be able to locate the mission, audience, build progression,
 chapter sequence and contract, current Hermon boundary, source and benchmark
-rules, ASCII policy, code layout, current status, and next task without chat
+rules, Unicode text-diagram policy, code layout, current status, and next task without chat
 history. The planning documents must not contradict one another.
 
 ## Dependency chain

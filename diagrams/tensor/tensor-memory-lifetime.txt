@@ -1,0 +1,20 @@
+BORROWED VIEW LIFETIME
+
+ time ───────────────────────────────────────────────────────────────▶
+
+ owner       created ●══════════════════════════════════════● drops
+                      │                                    ▲
+ immutable view       └─────────●══════════════●───────────┘
+                                borrows       ends
+
+ valid nesting: the borrowed view ends before its owner.
+
+ forbidden
+
+ owner       created ●════════════════● drops
+                      │                └──────────────╳ view used
+                      └─────● borrows                 ▲
+                                                      │
+                                           Rust rejects this lifetime
+
+The lifetime `'a` links `TensorView<'a>` to storage that must remain valid.

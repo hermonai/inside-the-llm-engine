@@ -1,0 +1,24 @@
+VIEW VERSUS COPY
+
+                    OWNED STORAGE
+          ┌─────┬─────┬─────┬─────┐
+          │  A  │  B  │  C  │  D  │
+          └─────┴─────┴─────┴─────┘
+             ▲                    ▲
+             └─────────┬──────────┘
+                       │ borrows elements
+                       ▼
+                ┌──────────────┐
+                │ TensorView   │  owns metadata
+                │ allocation: 0│  aliases owner
+                └──────────────┘
+
+                    explicit copy
+                          │
+                          ▼
+                 NEW OWNED STORAGE
+          ┌─────┬─────┬─────┬─────┐
+          │  A  │  B  │  C  │  D  │  independent lifetime
+          └─────┴─────┴─────┴─────┘
+
+View operations never hide an element copy; `to_contiguous` names the copy.

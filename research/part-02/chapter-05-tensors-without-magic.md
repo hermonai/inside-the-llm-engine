@@ -21,7 +21,7 @@ malformed metadata must fail before indexing or allocation?
 Chapter 5 establishes Tensor Substrate v1 and migrates ENGINE-1's embedding and
 output projection without changing its equations or generated tokens. It covers
 rank, shape, element count, one implemented dtype, row-major layout,
-element-strides, positive-stride read-only views, base offsets, strict canonical
+element-strides, non-negative-stride read-only views, base offsets, strict canonical
 contiguity, reshape, rank-2 transpose, bounded slices, explicit contiguous
 copies, Rust ownership, bounds, and checked arithmetic.
 
@@ -101,7 +101,7 @@ performance claim; column-major is a valid different layout.
 
 ## Storage extent and zero dimensions
 
-For nonempty positive-stride metadata, the greatest reachable offset is:
+For nonempty non-negative-stride metadata, the greatest reachable offset is:
 
 ```text
 max_offset = b + sum((d_a - 1) * s_a).
@@ -176,7 +176,7 @@ change rank across operators and the book should discuss runtime metadata
 directly. `OwnedTensor` stores its canonical strides even though they are
 derivable, so repeated checked access does not allocate/recompute them and
 debugging exposes one complete layout contract. Constructors validate that
-redundancy once. General positive-stride immutable views were selected over
+redundancy once. General non-negative-stride immutable views were selected over
 transpose-only types because one extent/indexing implementation remains small
 and makes the real contract visible.
 
@@ -278,26 +278,27 @@ metadata. GGML uses fixed maximum rank and byte strides; v1 uses dynamic rank
 and element strides. The conceptual correspondence is evidence, not API
 compatibility.
 
-## Planned diagrams and presentation decision
+## Diagrams and presentation decision
 
-Canonical diagrams will cover logical versus physical storage, row-major
+Eleven Chapter 5 diagrams cover logical versus physical storage, row-major
 offsets, shape/strides, transpose, view/copy, ownership, lifetime, contiguity,
 and the three Part II journeys. At the user's direction, Chapter 5 changes the
 book convention from plain ASCII punctuation to polished Unicode box-drawing
-text. Diagrams remain monospaced `.txt`, color-free, printable, linkable, and
-under 100 columns; no renderer-specific Mermaid dependency is introduced.
+text. All thirty-six current canonical diagrams now follow that convention and
+pass a Unicode-aware 100-column gate; no renderer-specific dependency is used.
 
 Important equations in manuscript Markdown will use display-math delimiters,
 with a nearby plain-text/code form where executability or terminal portability
 matters. Each equation defines symbols, units, shapes, and checked-code mapping.
 
-## Potential experiment
+## Recorded experiment
 
-Traverse one contiguous square `f32` tensor in row-major and column-wise logical
-order, keeping the arithmetic and checksum equal. Record median release timings
-over repeated warmed runs on the actual machine. The observation is local: it
-illustrates that layout changes access order and cost, not a universal ratio or
-a matrix-multiplication benchmark.
+The committed harness traverses one contiguous `[2048,2048]` `f32` tensor in
+row-major and column-wise logical order while keeping the arithmetic and exact
+`f64` checksum equal. Seven warmed release repetitions on the recorded Apple M1
+produced medians of 4,163,875 ns and 13,692,583 ns respectively. The durable
+benchmark record contains the complete environment and controls. This local
+observation is not a universal ratio or a matrix-multiplication benchmark.
 
 ## Failure cases
 

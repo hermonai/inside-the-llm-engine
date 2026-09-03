@@ -1,0 +1,15 @@
+CANONICAL CONTIGUOUS VERSUS STRIDED
+
+ same physical storage: [ A ][ B ][ C ][ D ][ E ][ F ]
+
+ canonical [2, 3]                    transpose [3, 2]
+ strides   [3, 1]                    strides   [1, 3]
+
+ logical walk offsets                logical walk offsets
+ ┌────────────────────┐              ┌────────────────────┐
+ │ 0, 1, 2, 3, 4, 5   │              │ 0, 3, 1, 4, 2, 5   │
+ └────────────────────┘              └────────────────────┘
+           ▼                                   ▼
+ uninterrupted expected order          valid, but non-canonical order
+
+Tensor Substrate v1 calls only exact canonical row-major strides contiguous.

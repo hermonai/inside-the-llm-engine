@@ -19,23 +19,23 @@ documents.
 
 ```text
 wire client
-    |
-    v
-hermon-api  -- protocol validation, SSE/NDJSON framing
-    |
-    +--> hermon-core -- config, persistence, cloud/provider routing
-    |
-    v
-hermon-runtime::Dispatcher -- one selected runtime per model path
-    |
-    +--> pool     [compatibility] llama.cpp, one context per slot
-    +--> batched  [CURRENT default] one multi-sequence llama.cpp context
-    `--> paged    [PREVIEW] Hermon-owned blocks/radix + packed GGML math
-                       |
-                       +--> hermon-gguf      validated metadata/index
-                       +--> hermon-paged-kv  F32 reference pool/oracle
-                       +--> hermon-kernels   optional native attention A/B
-                       `--> hermon-llamacpp  packed tensor bridge
+    │
+    ▼
+hermon-api  ── protocol validation, SSE/NDJSON framing
+    │
+    ├──▶ hermon-core ── config, persistence, cloud/provider routing
+    │
+    ▼
+hermon-runtime::Dispatcher ── one selected runtime per model path
+    │
+    ├──▶ pool     [compatibility] llama.cpp, one context per slot
+    ├──▶ batched  [CURRENT default] one multi-sequence llama.cpp context
+    └──▶ paged    [PREVIEW] Hermon-owned blocks/radix + packed GGML math
+                       │
+                       ├──▶ hermon-gguf      validated metadata/index
+                       ├──▶ hermon-paged-kv  F32 reference pool/oracle
+                       ├──▶ hermon-kernels   optional native attention A/B
+                       └──▶ hermon-llamacpp  packed tensor bridge
 ```
 
 ### Workspace crates
@@ -179,13 +179,13 @@ summary:
 
 ```text
 hermon-api::chat_completions_openai
-  -> ProviderRouter::resolve
-  -> resolve_local_gguf + hermon_engine::is_linked
-  -> engine_route::stream_with_options
-  -> Dispatcher::stream_with_options
-  -> BatchedRuntime::stream_with_options            [CURRENT default]
-  -> BatchedWorker admission / shared llama_batch
-  -> Piece* -> Done(metrics) | EngineError
+  └──▶ ProviderRouter::resolve
+        └──▶ resolve_local_gguf + hermon_engine::is_linked
+              └──▶ engine_route::stream_with_options
+                    └──▶ Dispatcher::stream_with_options
+                          └──▶ BatchedRuntime::stream_with_options [CURRENT]
+                                └──▶ BatchedWorker / shared llama_batch
+                                      └──▶ Piece* │ Done(metrics) │ EngineError
 ```
 
 Verified boundaries:
@@ -264,3 +264,26 @@ The Hermon-owned paged GGUF path remains **PREVIEW** and locally uses greedy
 argmax. It must not be described as having the CURRENT path's stochastic
 sampler coverage. Exact paths, line ranges, and pinned llama.cpp behavior are in
 [`research/part-01/chapter-04-logits-sampling-autoregressive-loop.md`](../part-01/chapter-04-logits-sampling-autoregressive-loop.md).
+
+## Chapter 5 refresh — 2026-09-03
+
+Hermon remains at `472a44c`, with llama.cpp pinned at `389ff61d`. The CURRENT
+llama.cpp boundary keeps unsafe code inside `hermon-llamacpp`: its safe
+`ModelTensorInfo` copies rank, four dimensions, and tensor type, while a
+borrowed `Model` remains the lifetime owner. Reading a tensor row materializes
+an owned `Vec<f32>` only after the C shim validates the tensor, requested row,
+CPU residency, layout, conversion support, and caller capacity.
+
+The separate `hermon-gguf` parser is **LIBRARY** code. It exposes dimensions,
+dtype, checked byte offsets and lengths, and bounded tensor readers without
+proving that the default runtime uses that path. The Hermon-owned paged GGUF
+model is still **PREVIEW** and combines those descriptors with the llama.cpp
+bridge behind its existing gates. The pinned GGML structure records element
+type, dimensions, byte strides, data, and view/source metadata; these are
+evidence for explicit tensor contracts, not an API copied into the book.
+
+Tensor Substrate v1 deliberately remains narrower: safe Rust only, owned
+canonical `f32` storage, general non-negative-stride immutable views, and an
+exclusive mutable view only over the complete canonical owner. Exact paths,
+line ranges, boundary classifications, and rejected extrapolations are in
+[`research/part-02/chapter-05-tensors-without-magic.md`](../part-02/chapter-05-tensors-without-magic.md).

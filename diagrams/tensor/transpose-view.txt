@@ -1,0 +1,24 @@
+TRANSPOSE CHANGES METADATA, NOT BYTES
+
+ owned storage
+      ┌───┬───┬───┬───┬───┬───┐
+      │ A │ B │ C │ D │ E │ F │
+      └───┴───┴───┴───┴───┴───┘
+        ▲                       ▲
+        └───────────┬───────────┘
+                    │ shared storage
+          ┌─────────┴─────────┐
+          ▼                   ▼
+ original view          transpose view
+ shape   [2, 3]         shape   [3, 2]
+ strides [3, 1]         strides [1, 3]
+
+ ┌───┬───┬───┐         ┌───┬───┐
+ │ A │ B │ C │         │ A │ D │
+ ├───┼───┼───┤         ├───┼───┤
+ │ D │ E │ F │         │ B │ E │
+ └───┴───┴───┘         ├───┼───┤
+                       │ C │ F │
+                       └───┴───┘
+
+No element allocation. The transpose is non-canonical until copied explicitly.

@@ -38,6 +38,27 @@ entry before a chapter reaches TECH-REVIEW.
   prefix whose cumulative mass reaches the threshold.
 - A **seed** initializes a particular PRNG contract. It does not promise
   identical output across engine versions, numerical backends, or models.
+- **Tensor rank** is the number of logical axes. It is not the linear-algebra
+  rank of a matrix. An **axis** names a logical direction; a **dimension** is
+  that axis's length.
+- **Shape** is the ordered list of logical dimension lengths. **Layout** maps
+  legal logical indices to physical storage; equal shapes do not imply equal
+  layouts.
+- A **stride** is the storage step for incrementing one axis. Always name its
+  unit: Tensor Substrate v1 uses element strides, while NumPy and GGML expose
+  byte strides.
+- **Contiguous** means canonical row-major strides in Tensor Substrate v1. It
+  does not mean merely addressable, dense-looking, or fast on every traversal.
+- A **view** borrows existing element storage with its own shape/layout
+  metadata. A **copy** owns newly materialized elements. Never describe an
+  operation as a view if it may silently allocate element storage.
+- **Aliasing** means two logical objects can reach overlapping storage.
+  Immutable aliasing is allowed; mutable access requires exclusive ownership
+  in the Chapter 5 API.
+- **Transpose** permutes axes and may be metadata-only. **Reshape** changes the
+  logical dimensions without changing element order and is a no-copy view only
+  when its layout contract permits. **Slicing** narrows an axis and may change
+  the base offset.
 - **EOS** is a sampled control token that ends generation; `max_new_tokens`
   counts committed generated tokens. Keep both distinct from prompt length and
   future text stop-string handling.

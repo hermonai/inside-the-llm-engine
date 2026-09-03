@@ -1,0 +1,20 @@
+FOLLOW ONE LOGICAL ELEMENT
+
+ logical index [1, 2, 3]
+            │
+            ▼
+ shape [2, 3, 4] validates bounds
+            │
+            ▼
+ strides [12, 4, 1] map axes to storage
+            │
+            ▼
+ checked offset = 1 × 12 + 2 × 4 + 3 × 1 = 23 elements
+            │
+            ▼
+ storage[23]
+            │
+            ▼
+ one `f32` value
+
+Every multiply and add is checked before the storage lookup.

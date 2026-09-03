@@ -1,0 +1,18 @@
+TENSOR OWNERSHIP
+
+                   MODEL LIFETIME
+        ┌────────────────────────────────┐
+        │ OwnedTensor                    │
+        │ owns shape + strides + Vec<f32>│
+        └───────────────┬────────────────┘
+                        │ immutable borrows
+               ┌────────┴────────┐
+               ▼                 ▼
+        ┌────────────┐     ┌────────────┐
+        │ View A     │     │ View B     │
+        │ metadata A │     │ metadata B │
+        │ no storage │     │ no storage │
+        └────────────┘     └────────────┘
+
+Multiple immutable views may overlap. An exclusive mutable view cannot coexist
+with either immutable borrow; Rust checks that ownership rule at compile time.

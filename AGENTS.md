@@ -47,7 +47,7 @@ Hermon statements in the manuscript.
 5. Draft the mental model and derivation before optimization detail.
 6. Implement the chapter milestone and independent oracle where required.
 7. Add correctness tests before performance measurements.
-8. Add or revise canonical ASCII diagrams.
+8. Add or revise canonical Unicode text diagrams.
 9. Run technical, editorial, cross-link, and terminology passes.
 10. Update `docs/STATUS.md`. Use only: PLANNED, RESEARCHING, OUTLINED,
     DRAFTING, CODE-COMPLETE, TECH-REVIEW, EDIT-REVIEW, COMPLETE.
@@ -69,9 +69,9 @@ truth.
 
 ## Diagrams, code, math, and benchmarks
 
-- Prefer plain-text diagrams. Arrows need defined meaning; distinguish control
-  from bulk data; show mutable ownership, concurrency, and residency. Keep
-  reusable diagrams in `diagrams/`.
+- Prefer polished Unicode text diagrams. Arrows need defined meaning;
+  distinguish control from bulk data; show mutable ownership, concurrency, and
+  residency. Keep reusable diagrams in `diagrams/`.
 - Main teaching code is Rust. Use Python for independent numerical clarity and C
   for explicit kernel/ABI lessons. Label pseudocode. Each milestone must run,
   test, and remain understandable.
@@ -100,14 +100,13 @@ paths. Never push unless the user explicitly authorizes it.
 
 ## Current state and next task
 
-Phase 0 repository architecture and Phase 1 are complete: Chapters 1–4,
-ENGINE-0/1, Labs 1–15, twenty-five canonical diagrams, and the current Hermon
-request/token/logit/sampling refresh are complete. The authoritative state and
-next task are in `docs/STATUS.md`.
+Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
+progress: Chapter 5, Tensor Substrate v1, Labs 16–21, thirty-six canonical
+Unicode text diagrams, and the current Hermon tensor-boundary refresh are
+complete. The authoritative state and next task are in `docs/STATUS.md`.
 
-The next bounded task is Chapter 5 — Tensors Without Magic. Establish scalar,
-vector, matrix, tensor, rank, shape, dtype, element count, row-major layout,
-stride, contiguity, offset calculation, view/copy/alias semantics, ownership,
-bounds, and overflow-safe size arithmetic. Evolve ENGINE-1's ad hoc arrays into
-a small checked tensor/view substrate without beginning attention or building
-a PyTorch-like framework.
+The next bounded task is Chapter 6 — Matrix Multiplication: The Engine Room.
+Derive dot product, matrix-vector and matrix-matrix multiplication, loop order,
+operation count, memory traffic, arithmetic intensity, tiling, a scalar oracle,
+and blocked scalar kernels over Tensor Substrate v1. Do not begin embeddings,
+RMSNorm, attention, SIMD, BLAS, or accelerator execution.

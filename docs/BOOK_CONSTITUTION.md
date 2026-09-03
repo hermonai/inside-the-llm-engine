@@ -42,10 +42,10 @@ use the others to keep invention visibly separate from implementation.
 Major concepts should normally progress through:
 
 ```text
-question -> why the problem exists -> mental model -> mathematical model
-         -> reference implementation -> failure at scale -> systems design
-         -> optimized implementation -> Hermon evidence -> correctness proof
-         -> benchmark -> limits and next generation
+question ──▶ why the problem exists ──▶ mental model ──▶ mathematical model
+         ──▶ reference implementation ──▶ failure at scale ──▶ systems design
+         ──▶ optimized implementation ──▶ Hermon evidence ──▶ correctness proof
+         ──▶ benchmark ──▶ limits and next generation
 ```
 
 Show the naive design before the optimization. Do not start with an equation
@@ -55,12 +55,12 @@ be shorter. Completeness controls length, not a quota.
 
 ## Three recurring journeys
 
-- **Follow the token:** text -> tokenizer -> id -> embedding -> layers ->
-  logits -> sampler -> new id -> bytes -> stream.
-- **Follow the byte:** GGUF -> mapped/loaded tensor -> packed execution -> KV
-  write -> host/device residency -> attention read -> output.
-- **Follow the owner:** creation -> mutation rights -> references -> pinning ->
-  eviction -> release -> cancellation/failure behavior.
+- **Follow the token:** text → tokenizer → ID → embedding → layers → logits →
+  sampler → new ID → bytes → stream.
+- **Follow the byte:** GGUF → mapped/loaded tensor → packed execution → KV
+  write → host/device residency → attention read → output.
+- **Follow the owner:** creation → mutation rights → references → pinning →
+  eviction → release → cancellation/failure behavior.
 
 These journeys keep logical semantics, physical representation, and lifetime
 rules connected.
@@ -91,9 +91,11 @@ template, then pass equivalence tests.
 ## Diagrams and prose
 
 Core architecture must remain understandable in plain Markdown, terminals,
-editors, AI context windows, and print. Prefer ASCII; define arrow meanings and
-show state, ownership, concurrency, and residency. The voice is technical,
-direct, concrete, curious, and never mystical or condescending.
+editors, AI context windows, and print. Prefer polished Unicode box-drawing
+text with defined arrow meanings; show state, ownership, concurrency, and
+residency. Keep a monospaced, color-free representation that needs no external
+renderer. The voice is technical, direct, concrete, curious, and never
+mystical or condescending.
 
 ## Completion
 

@@ -8,3 +8,15 @@ causal attention, FFN, one layer, and the decoder stack.
 **Code milestone:** ENGINE-2 produces verified next-token logits.
 **Conceptual milestone:** account for every tensor shape and operation.
 **Later parts:** provides the semantics that formats, caches, and kernels preserve.
+
+| Chapter | Question | Status |
+| ---: | --- | --- |
+| [5. Tensors Without Magic](chapter-05-tensors-without-magic.md) | How are logical tensors represented safely in physical memory? | COMPLETE |
+| 6. Matrix Multiplication: The Engine Room | How do we multiply them correctly and efficiently? | NEXT |
+| 7. Embeddings and RMSNorm | How do lookup and normalization transform them? | PLANNED |
+| 8. Queries, Keys, and Values | How do projections create head-shaped activations? | PLANNED |
+| 9. Position: RoPE From First Principles | How does position enter Q/K geometry? | PLANNED |
+| 10. Causal Self-Attention | How do scores, masking, softmax, and values combine? | PLANNED |
+| 11. The Feed-Forward Network | How does the token-wise nonlinear path work? | PLANNED |
+| 12. One Complete Transformer Layer | How do the operations compose safely? | PLANNED |
+| 13. The Decoder Stack and Next-Token Generation | How do layers produce verified logits? | PLANNED |

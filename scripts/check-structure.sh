@@ -31,11 +31,44 @@ research/part-01/chapter-02-from-text-to-tokens.md
 research/part-01/chapter-03-the-smallest-possible-language-model.md
 research/part-01/chapter-04-logits-sampling-autoregressive-loop.md
 research/part-01/tokenizer-comparison.md
+research/part-02/README.md
+research/part-02/chapter-05-tensors-without-magic.md
 diagrams/README.md'
 
 printf '%s\n' "$required" | while IFS= read -r file; do
     if [ ! -s "$file" ]; then
         echo "missing or empty required file: $file" >&2
+        exit 1
+    fi
+done
+
+for file in \
+    manuscript/part-02/chapter-05-tensors-without-magic.md \
+    code/mini-engine/crates/engine0/src/tensor.rs \
+    code/mini-engine/crates/engine0/tests/tensor.rs \
+    code/mini-engine/crates/engine0/examples/chapter05_traversal.rs \
+    code/reference/python/chapter05_tensor_oracle.py \
+    research/benchmarks/chapter-05-traversal-order.md \
+    labs/lab-16-offset-by-hand.md \
+    labs/lab-17-transpose-without-copy.md \
+    labs/lab-18-reshape-view.md \
+    labs/lab-19-non-contiguous-copy.md \
+    labs/lab-20-break-shape-arithmetic.md \
+    labs/lab-21-mutation-and-aliasing.md \
+    diagrams/tensor/logical-vs-physical.txt \
+    diagrams/tensor/row-major-offsets.txt \
+    diagrams/tensor/shape-and-strides.txt \
+    diagrams/tensor/transpose-view.txt \
+    diagrams/tensor/view-vs-copy.txt \
+    diagrams/tensor/tensor-ownership.txt \
+    diagrams/tensor/tensor-memory-lifetime.txt \
+    diagrams/tensor/contiguous-vs-strided.txt \
+    diagrams/tensor/follow-the-element.txt \
+    diagrams/tensor/follow-the-byte.txt \
+    diagrams/tensor/follow-the-owner.txt
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 5 artifact: $file" >&2
         exit 1
     fi
 done
@@ -205,4 +238,10 @@ if [ "$chapter_four_words" -lt 6000 ] || [ "$chapter_four_words" -gt 10000 ]; th
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 specifications, Chapters 1-4 artifacts present"
+chapter_five_words=$(wc -w < manuscript/part-02/chapter-05-tensors-without-magic.md)
+if [ "$chapter_five_words" -lt 6000 ] || [ "$chapter_five_words" -gt 10000 ]; then
+    echo "Chapter 5 must contain 6,000-10,000 words, found $chapter_five_words" >&2
+    exit 1
+fi
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-5 artifacts present"

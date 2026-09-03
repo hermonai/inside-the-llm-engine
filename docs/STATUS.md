@@ -10,12 +10,12 @@ Last updated: 2026-09-03.
 | Book constitution and policies | COMPLETE | Core editorial/source/code/math/style/benchmark contracts created |
 | Master outline | OUTLINED | 15 parts, 94 chapter authoring specifications; review again before each phase |
 | Public README and BOOK | COMPLETE | Launch-facing overview and table of contents agree |
-| Glossary and terminology | IN PROGRESS | Chapters 1–4 system, token, numerical model, sampling, tensor, and streaming terms added; expand with each chapter |
-| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–4 request/tokenizer/logit/sampling paths verified at `hermon` commit `472a44c` |
+| Glossary and terminology | IN PROGRESS | Chapters 1–5 system, token, numerical model, sampling, tensor-memory, and streaming terms added; expand with each chapter |
+| Hermon reconnaissance | COMPLETE | Initial map plus Chapters 1–5 request/tokenizer/logit/sampling/tensor boundaries verified at `hermon` commit `472a44c` |
 | Manuscript part indexes | COMPLETE | 15 part contracts plus appendices scaffolded |
-| Diagram system | COMPLETE | Policy and area indexes created; canonical diagrams begin with chapters |
+| Diagram system | COMPLETE | Thirty-six canonical Unicode text diagrams plus an automated display-width gate |
 | Research system | COMPLETE | Inventories and note templates established |
-| Code project | COMPLETE | Dependency-free ENGINE-1 produces logits and runs a request-owned autoregressive sampler; 83 tests pass |
+| Code project | COMPLETE | ENGINE-1 plus dependency-free checked Tensor Substrate v1; 108 tests pass |
 | Initial CI | COMPLETE | Structure, links, diagrams, Rust format/check/test/Clippy workflow added |
 | License | PLANNED | Maintainers must choose prose and code licensing; no license inferred from Hermon |
 
@@ -32,18 +32,27 @@ tracked separately below.
 | Chapter 3 — The Smallest Possible Language Model | COMPLETE | 6,508-word reviewed chapter, primary-source research, seven canonical diagrams, full-vector Python oracle |
 | Chapter 4 — Logits, Sampling, and the Autoregressive Loop | COMPLETE | 6,258-word reviewed chapter, primary-source research, seven canonical diagrams, fixed-draw Python oracle |
 | ENGINE-0 | COMPLETE | Dependency-free tokenized request/runtime/stream lifecycle; byte oracle, BPE, chat/template contract, strict UTF-8 framing; 37 tests and full Rust gate pass |
-| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; current suite 83 tests |
+| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 108 in the current full suite |
 | Lab 1 — Generate One Token Manually | COMPLETE | Independent candidate oracle plus CHECK/BUILD/BREAK/EXTEND exercise |
 | Labs 2–4 — Tokenization / UTF-8 / chat template | COMPLETE | Hand BPE, split-byte streaming, malformed terminal policy, and wrong-template experiments |
 | Labs 5–8 — Numerical forward / causality / context / shape | COMPLETE | Full hand logits, one-weight intervention, same-last-token proof, and typed malformed-shape failures |
 | Labs 9–15 — Sampling / feedback / failure | COMPLETE | Stable softmax, temperature, fixed-draw categorical selection, top-k/top-p, full-loop tracing, seeded reproduction, and typed sampler failures |
+
+## Phase 2 ledger
+
+| Scope | Status | Evidence / next gate |
+| --- | --- | --- |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapter 5 complete; Chapter 6 is next |
+| Chapter 5 — Tensors Without Magic | COMPLETE | 6,049-word reviewed chapter, primary-source research, eleven canonical diagrams, traversal record, and independent offset oracle |
+| Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
+| Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
 
 ## Curriculum status
 
 | Scope | Status | Milestone |
 | --- | --- | --- |
 | Part I (Ch. 1–4) | COMPLETE | ENGINE-1 is the smallest complete autoregressive inference engine |
-| Part II (Ch. 5–13) | PLANNED / NEXT | Chapter 5 begins the checked tensor substrate for ENGINE-2 |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapter 5 and Tensor Substrate v1 complete; Chapter 6 is next |
 | Part III (Ch. 14–18) | PLANNED | ENGINE-3 |
 | Part IV (Ch. 19–22) | PLANNED | ENGINE-4 |
 | Part V (Ch. 23–27) | PLANNED | ENGINE-5 / ENGINE-6 |
@@ -69,9 +78,8 @@ tracked separately below.
 
 ## Next recommended task
 
-Execute only Chapter 5 — Tensors Without Magic. Establish scalar, vector,
-matrix, tensor, rank, shape, dtype, element count, row-major layout, stride,
-contiguous storage, offset calculation, views, copies, aliasing, ownership,
-bounds, and overflow-safe size arithmetic. Evolve the mini-engine's ad hoc
-vectors and matrices into a small checked tensor/view layer without beginning
-attention, RMSNorm, RoPE, KV caching, GGUF, or GPU execution.
+Execute only Chapter 6 — Matrix Multiplication: The Engine Room. Begin with a
+clear scalar reference kernel, derive shape and arithmetic-work contracts, then
+introduce cache-aware loop ordering and blocked CPU multiplication with an
+independent oracle. Do not begin RMSNorm, attention, RoPE, KV caching, GGUF,
+quantization, SIMD intrinsics, GPU execution, or autograd.
