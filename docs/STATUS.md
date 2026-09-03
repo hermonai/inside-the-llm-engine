@@ -43,13 +43,14 @@ tracked separately below.
 
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–6 complete; Chapter 7 is next |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–6 complete; Chapter 7 implementation and research are in progress |
 | Chapter 5 — Tensors Without Magic | COMPLETE | 6,083-word reviewed chapter, primary-source research, thirteen canonical diagrams, traversal record, and independent offset oracle |
 | Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
 | Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
 | Chapter 6 — Matrix Multiplication: The Engine Room | COMPLETE | 7,480-word reviewed chapter, primary-source research, seventeen canonical diagrams, three performance records, and independent numerical oracle |
 | ENGINE-2 / Linear Algebra Kernel Layer v1 | COMPLETE | Strided dot/GEMV/GEMM reference kernels, canonical-only blocked scalar GEMM, explicit layout/ownership/error contracts, and ENGINE-1 projection migration |
 | Labs 22–29 — Linear algebra kernels | COMPLETE | Hand dot/GEMV/GEMM, loop-order offsets, tile tails, typed failures, deterministic equivalence, and GEMV/GEMM measurement |
+| Chapter 7 — Embeddings and Normalization | RESEARCHING | Primary-source and Hermon/llama.cpp trace complete; checked operators and chapter artifacts in progress |
 
 ## Curriculum status
 
@@ -82,8 +83,8 @@ tracked separately below.
 
 ## Next recommended task
 
-Execute only Chapter 7 — Embeddings and RMSNorm. Preserve the explicit
-embedding row lookup and ENGINE-2 kernel boundary, derive RMSNorm with an
-independent oracle, and keep storage, accumulation, epsilon, ownership, and
-failure semantics visible. Do not begin attention, Q/K/V, RoPE, KV caching,
-GGUF, quantization, SIMD intrinsics, GPU execution, or autograd.
+Complete only Chapter 7 — Embeddings and Normalization. The source trace and
+operator contracts are established; finish the independent oracle, experiments,
+labs, diagrams, manuscript, review, and completion gates. Do not begin
+attention, Q/K/V, RoPE, KV caching, GGUF, quantization, SIMD intrinsics, GPU
+execution, or autograd.
