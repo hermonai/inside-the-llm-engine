@@ -21,8 +21,8 @@ fn assert_close(actual: &[f32], expected: &[f32]) {
 #[test]
 fn dot_matches_a_hand_computed_example() {
     let left = tensor(&[3], &[1.0, 2.0, 3.0]);
-    let right = tensor(&[3], &[4.0, -5.0, 6.0]);
-    assert_eq!(dot_reference(&left.view(), &right.view()).unwrap(), 12.0);
+    let right = tensor(&[3], &[4.0, 5.0, 6.0]);
+    assert_eq!(dot_reference(&left.view(), &right.view()).unwrap(), 32.0);
 }
 
 #[test]

@@ -1,0 +1,23 @@
+MATRIX-KERNEL OPTIMIZATION LADDER
+
+ equation-shaped scalar loops
+             │
+             ▼
+ contiguous-friendly loop order
+             │
+             ▼
+ cache blocking                     ◀── ENGINE-2 STOPS HERE
+             │
+             ▼
+ packing and register blocking
+             │
+             ▼
+ SIMD / architecture microkernels
+             │
+             ▼
+ threading / NUMA placement
+             │
+             ▼
+ accelerator kernels and fusion
+
+Each rung adds a new contract, cost model, and verification burden.

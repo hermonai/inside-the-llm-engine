@@ -287,3 +287,25 @@ canonical `f32` storage, general non-negative-stride immutable views, and an
 exclusive mutable view only over the complete canonical owner. Exact paths,
 line ranges, boundary classifications, and rejected extrapolations are in
 [`research/part-02/chapter-05-tensors-without-magic.md`](../part-02/chapter-05-tensors-without-magic.md).
+
+## Chapter 6 refresh — 2026-09-03
+
+Hermon remains at `472a44c`, with llama.cpp pinned at `389ff61d`. The CURRENT
+default path remains the batched llama.cpp runtime; the Hermon-owned paged path
+remains PREVIEW behind explicit dispatch and real-GGUF gates.
+
+The safe `hermon-llamacpp` linked facade validates rank, matrix/vector or
+matrix/matrix dimensions, destination length, and packed tensor availability
+before entering its native tensor bridge. The bridge constructs GGML views and
+`ggml_mul_mat` graph nodes; `TensorSession` owns native execution state. The
+row-major `f32` multiplication in `paged.rs` is oracle/test support, not the
+CURRENT production model kernel. Packed GGUF projection calls belong to the
+gated PREVIEW path.
+
+The pinned GGML CPU implementation dispatches by tensor type to vector-dot
+functions, checks layout/stride support, and partitions matrix work into
+tiles/chunks; architecture-specific CPU code and separate Metal/CUDA operation
+paths are LIBRARY capabilities. Their presence does not prove selection by a
+Hermon request. Exact paths, line ranges, kernel-contract findings, and primary
+external sources are in
+[`research/part-02/chapter-06-matrix-multiplication-the-engine-room.md`](../part-02/chapter-06-matrix-multiplication-the-engine-room.md).

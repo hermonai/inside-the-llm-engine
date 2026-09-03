@@ -1,0 +1,12 @@
+ROW-MAJOR GEMM ACCESS
+
+ A [M,K] rows              B [K,N] rows              C [M,N] rows
+ ┌───────────────┐         ┌───────────────┐         ┌───────────────┐
+ │ Aᵢ₀ … Aᵢ,K−1 │         │ B₀₀ … B₀,N−1 │         │ Cᵢ₀ … Cᵢ,N−1 │
+ └───────────────┘         ├───────────────┤         └───────────────┘
+       contiguous          │ B₁₀ … B₁,N−1 │               contiguous
+                            └───────────────┘
+
+ i,j,k inner access to B:  B₀ⱼ ┄┄▶ B₁ⱼ ┄┄▶ B₂ⱼ   (stride N)
+ i,k,j inner access to B:  Bₖ₀ ──▶ Bₖ₁ ──▶ Bₖ₂   (stride 1)
+ i,k,j update of C:        Cᵢ₀ ──▶ Cᵢ₁ ──▶ Cᵢ₂   (stride 1)

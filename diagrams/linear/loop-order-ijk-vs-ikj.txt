@@ -1,0 +1,15 @@
+SAME EQUATION, DIFFERENT TRAVERSAL
+
+ i,j,k                                  i,k,j
+ ┌──────────────┐                       ┌──────────────┐
+ │ choose Cᵢⱼ   │                       │ choose Aᵢₖ   │
+ └──────┬───────┘                       └──────┬───────┘
+        ▼                                      ▼
+ walk A row ───────▶                    stream B row ───────▶
+ walk B column  ┆                       update C row ───────▶
+                ┆ stride N
+                ▼
+
+ both compute:  Cᵢⱼ ← Cᵢⱼ + Aᵢₖ Bₖⱼ
+
+Loop order changes byte reuse and address progression, not the shape contract.

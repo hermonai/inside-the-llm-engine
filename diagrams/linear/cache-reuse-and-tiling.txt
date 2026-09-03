@@ -1,0 +1,16 @@
+CACHE REUSE THROUGH TILING
+
+ A tile [Bₘ,Bₖ]       B tile [Bₖ,Bₙ]       C tile [Bₘ,Bₙ]
+ ┌────────────┐        ┌────────────┐        ┌────────────┐
+ │            │ ═════▶ │            │ ═════▶ │ accumulate │
+ └────────────┘        └────────────┘        └────────────┘
+        ▲                     ▲                     │
+        └───────── reused across inner work ────────┘
+
+ whole matrices                         active working set
+ ┌──────────────────────┐              ┌──────────────┐
+ │  □ □ □ □ □ □ □ □ □  │  ──▶ tile ──▶│ A□  B□  C□  │
+ │  □ □ □ □ □ □ □ □ □  │              └──────────────┘
+ └──────────────────────┘
+
+Tail tiles shrink at the M, K, or N edge; no dimension must divide evenly.

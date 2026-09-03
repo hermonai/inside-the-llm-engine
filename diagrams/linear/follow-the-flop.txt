@@ -1,0 +1,17 @@
+FOLLOW ONE FLOATING-POINT CONTRIBUTION
+
+ Aᵢₖ                  Bₖⱼ
+  │                    │
+  └──────────┬─────────┘
+             ▼
+        f32 multiply
+             │
+             ▼
+     contribution AᵢₖBₖⱼ
+             │
+             ▼
+ previous Cᵢⱼ ──▶ f32 add ──▶ next Cᵢⱼ
+                                  │
+                                  └── one step in the K reduction
+
+Changing reduction order can change low floating-point bits.

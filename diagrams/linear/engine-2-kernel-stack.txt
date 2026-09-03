@@ -1,0 +1,17 @@
+ENGINE-2 LINEAR ALGEBRA KERNEL LAYER v1
+
+ TinyLanguageModel::forward
+             │
+             ├── embedding row lookup ──▶ request-owned hidden [D]
+             │                                      │
+             │                                      ▼
+             └──────────────────────────────▶ gemv_reference(W, h)
+                                                    │
+                                                    ▼
+                                            add model bias b
+                                                    │
+                                                    ▼
+                                               logits [V]
+
+ Public kernel layer: dot_reference │ gemv_reference │ matmul_reference │ matmul_blocked
+ Substrate below: OwnedTensor │ TensorView │ checked shape/stride/offset semantics

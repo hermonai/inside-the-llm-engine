@@ -1,0 +1,18 @@
+WEIGHT ORIENTATION FOR THE ENGINE-1 PROJECTION
+
+ Each row of W belongs to one vocabulary candidate.
+
+                 hidden h [D]
+                       │
+                       ▼
+ W [V,D]       ┌─────────────────┐       logits z [V]
+ token 0 row   │ w₀ · h          │ ───▶  z₀
+ token 1 row   │ w₁ · h          │ ───▶  z₁
+      ⋮         │      ⋮          │        ⋮
+ token V−1 row │ wᵥ₋₁ · h        │ ───▶  zᵥ₋₁
+               └─────────────────┘
+                       │
+                       ▼
+                    z = W h + b
+
+No transpose is implied by the API or hidden in the kernel.

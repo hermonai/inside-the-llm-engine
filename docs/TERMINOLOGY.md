@@ -59,6 +59,24 @@ entry before a chapter reaches TECH-REVIEW.
   logical dimensions without changing element order and is a no-copy view only
   when its layout contract permits. **Slicing** narrows an axis and may change
   the base offset.
+- A **dot product** reduces equal-length vectors. **GEMV** contracts `[M,K] ×
+  [K]` into `[M]`; **GEMM** contracts `[M,K] × [K,N]` into `[M,N]`. The shared
+  **inner dimension** must agree; equal element counts are insufficient.
+- **FLOP** is an amount of floating-point work; **FLOP/s** and **GFLOP/s** are
+  rates. Do not equate the conventional `2MKN` GEMM work model with retired
+  instructions.
+- **Arithmetic intensity** is FLOPs per byte at a named boundary. Mark
+  compulsory-payload calculations as ideal models, not measured traffic or
+  memory bandwidth.
+- **Spatial locality** concerns nearby addresses; **temporal locality** concerns
+  reuse over time. **Loop order** and **blocking/tiling** can expose locality,
+  but neither term promises a cache hit or speedup for every workload.
+- A **reference kernel** prioritizes transparent semantics. An **optimized
+  kernel** may narrow layout or shape support only through an explicit contract
+  and must pass an **equivalence gate** before a performance gate.
+- **Packing** changes layout and costs movement/storage. A **microkernel** is a
+  small register-oriented compute core. Chapter 6 previews both terms but
+  ENGINE-2 implements neither.
 - **EOS** is a sampled control token that ends generation; `max_new_tokens`
   counts committed generated tokens. Keep both distinct from prompt length and
   future text stop-string handling.

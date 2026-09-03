@@ -1,0 +1,15 @@
+ROOFLINE CONCEPT: TWO POSSIBLE CEILINGS
+
+ performance
+ FLOP/s  ▲                         ───────── compute ceiling
+         │                       ╱
+         │                     ╱
+         │                   ╱
+         │                 ╱     attainable performance
+         │               ╱       ≤ min(compute, bandwidth × intensity)
+         │             ╱
+         │           ╱ memory-bandwidth ceiling
+         └─────────┴────────────────────────────────────▶ arithmetic intensity
+                   FLOP/byte
+
+The bend is a model boundary, not a universal measured constant.

@@ -8,5 +8,5 @@ stay outside Git with checksums and retrieval instructions.
 - [Chapter 4 sampling cost](chapter-04-sampling-cost.md)
 - [Chapter 5 traversal order](chapter-05-traversal-order.md)
 - [Chapter 6 loop-order comparison](chapter-06-loop-order.md)
-- [Chapter 6 tile sweep and crossover](chapter-06-blocking-crossover.md)
-- [Chapter 6 GEMV/GEMM reuse](chapter-06-gemv-gemm-reuse.md)
+- [Chapter 6 tile sweep and crossover](chapter-06-blocked-matmul.md)
+- [Chapter 6 GEMV/GEMM reuse](chapter-06-gemv-vs-gemm.md)

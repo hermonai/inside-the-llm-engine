@@ -1,0 +1,16 @@
+DOT PRODUCT: MULTIPLY, THEN ACCUMULATE
+
+ a = [ a₀   a₁   a₂   …   aₖ₋₁ ]
+       │    │    │         │
+       ×    ×    ×         ×
+       │    │    │         │
+ b = [ b₀   b₁   b₂   …   bₖ₋₁ ]
+       │    │    │         │
+       ▼    ▼    ▼         ▼
+      a₀b₀ a₁b₁ a₂b₂  …  aₖ₋₁bₖ₋₁
+       └────┴────┴──── ⋯ ───┘
+                    │ f32 additions
+                    ▼
+             s = Σₚ aₚbₚ
+
+K = 0 uses the additive identity: s = 0.

@@ -1,0 +1,18 @@
+REFERENCE AND BLOCKED KERNEL CONTRACTS
+
+                         TensorView inputs
+                               │
+                 ┌─────────────┴─────────────┐
+                 ▼                           ▼
+        reference path                 blocked path
+      ┌────────────────┐             ┌────────────────┐
+      │ logical get     │             │ layout check   │
+      │ any valid view  │             │ canonical only │
+      │ i,j,k           │             │ tiled i,k,j    │
+      └────────┬───────┘             └────────┬───────┘
+               │                              │
+               └──────────────┬───────────────┘
+                              ▼
+                 new canonical OwnedTensor
+
+Non-canonical blocked input ──▶ typed error; never an implicit copy.

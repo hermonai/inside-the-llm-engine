@@ -26,19 +26,27 @@ expected artifact, oracle, failure injection, measurement (if any), and cleanup.
 | [19. Copy a non-contiguous view](../labs/lab-19-non-contiguous-copy.md) | 5 | Materialize logical order canonically | Prove the new owner is independent |
 | [20. Break shape arithmetic](../labs/lab-20-break-shape-arithmetic.md) | 5 | Exercise checked size and extent paths | Reject overflow, short storage, and bad strides |
 | [21. Mutation and aliasing](../labs/lab-21-mutation-and-aliasing.md) | 5 | Mutate through one exclusive canonical borrow | Demonstrate compiler rejection of conflicting borrows |
-| 22. Implement naive attention | 10 | Dense causal scalar attention | Expose mask and stability failures |
-| 23. Decode with and without KV | 21 | Add per-layer KV reuse | Greedy logits agree across both paths |
-| 24. Parse a GGUF tensor directory | 15 | Bounds-checked metadata/tensor index | Reject truncation, overflow, and invalid alignment |
-| 25. Measure quantized matvec bandwidth | 17 | Packed matvec benchmark | Separate bytes, dequantization, compute, and control |
-| 26. Build a continuous batching simulator | 26 | Iteration scheduler | Inject skew, cancellation, and head-of-line blocking |
-| 27. Implement a block allocator | 30 | Allocate/incref/decref/free | Boundary, exhaustion, and concurrent lifetime tests |
-| 28. Demonstrate prefix COW corruption | 32 | Share aligned prefix pages | Disable COW on partial tail and reproduce corruption |
-| 29. Compare scalar and SIMD attention | 42–44 | ISA-specialized microkernel | Differential shapes, dispatch fallback, sanitizer |
-| 30. Measure CPU/GPU attention crossover | 48 | Shape-gated provider A/B | Find the launch/transfer break-even, including losing cases |
-| 31. Build an expert pager | 56–57 | Pack, acquire, pin, prefetch, evict | Inject short reads, queue pressure, and pin leaks |
-| 32. Cancel during decode | 27/69/71 | End-to-end cancellation propagation | Prove leases, slots, and streams release exactly once |
-| 33. Run model equivalence tests | 66 | Compare real-model token logits | Vary context, GQA, quantization, and reduction tolerance |
-| 34. Benchmark without cache contamination | 73 | Reproducible warm/cold harness | Detect accidental prefix/model/OS-cache leakage |
+| [22. Dot product](../labs/lab-22-dot-product.md) | 6 | Expand and execute one rank-1 dot | Reject wrong rank/length; prove empty identity |
+| [23. GEMV by hand](../labs/lab-23-gemv-by-hand.md) | 6 | Derive an asymmetric matrix-vector output | Compare contiguous and strided logical views |
+| [24. GEMM by hand](../labs/lab-24-gemm-by-hand.md) | 6 | Trace all cells of `[2,3] × [3,2]` | Expose orientation and inner-dimension errors |
+| [25. Loop order](../labs/lab-25-loop-order.md) | 6 | Compare `ijk` and `ikj` offset sequences | Separate locality reasoning from timing |
+| [26. Blocked GEMM](../labs/lab-26-blocked-gemm.md) | 6 | Tile `[5,7] × [7,3]` with three tails | Catch missing/clobbered tail work |
+| [27. Break the kernel](../labs/lab-27-break-the-kernel.md) | 6 | Map malformed calls to typed failures | Prove optimized layout rejection and no hidden copy |
+| [28. Kernel equivalence](../labs/lab-28-kernel-equivalence.md) | 6 | Compare deterministic shape/tile grids | Measure numerical error and justify tolerance |
+| [29. GEMV versus GEMM](../labs/lab-29-gemv-vs-gemm.md) | 6 | Measure 1, 8, and 64 right-hand columns | Separate potential reuse, overhead, and observed throughput |
+| 30. Implement naive attention | 10 | Dense causal scalar attention | Expose mask and stability failures |
+| 31. Decode with and without KV | 21 | Add per-layer KV reuse | Greedy logits agree across both paths |
+| 32. Parse a GGUF tensor directory | 15 | Bounds-checked metadata/tensor index | Reject truncation, overflow, and invalid alignment |
+| 33. Measure quantized matvec bandwidth | 17 | Packed matvec benchmark | Separate bytes, dequantization, compute, and control |
+| 34. Build a continuous batching simulator | 26 | Iteration scheduler | Inject skew, cancellation, and head-of-line blocking |
+| 35. Implement a block allocator | 30 | Allocate/incref/decref/free | Boundary, exhaustion, and concurrent lifetime tests |
+| 36. Demonstrate prefix COW corruption | 32 | Share aligned prefix pages | Disable COW on partial tail and reproduce corruption |
+| 37. Compare scalar and SIMD attention | 42–44 | ISA-specialized microkernel | Differential shapes, dispatch fallback, sanitizer |
+| 38. Measure CPU/GPU attention crossover | 48 | Shape-gated provider A/B | Find the launch/transfer break-even, including losing cases |
+| 39. Build an expert pager | 56–57 | Pack, acquire, pin, prefetch, evict | Inject short reads, queue pressure, and pin leaks |
+| 40. Cancel during decode | 27/69/71 | End-to-end cancellation propagation | Prove leases, slots, and streams release exactly once |
+| 41. Run model equivalence tests | 66 | Compare real-model token logits | Vary context, GQA, quantization, and reduction tolerance |
+| 42. Benchmark without cache contamination | 73 | Reproducible warm/cold harness | Detect accidental prefix/model/OS-cache leakage |
 
 Every lab evolves through CHECK, BUILD, BREAK, and EXTEND prompts. Performance
 labs follow `BENCHMARK_POLICY.md`; numerical labs use independent oracles.

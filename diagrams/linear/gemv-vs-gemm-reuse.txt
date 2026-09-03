@@ -1,0 +1,14 @@
+GEMV VERSUS GEMM WEIGHT REUSE
+
+ GEMV: one vector                         GEMM: N columns
+       x                                         X
+       │                                  ┌──┬──┬──┬──┐
+       ▼                                  │x₀│x₁│… │xₙ│
+ W ══▶ y                                  └──┴──┴──┴──┘
+ │ weights serve one column                     ▲
+ └───────────────────────────────┐               │
+                                 ▼               │
+                         W ══════════════════════▶Y
+                         weights serve N columns
+
+Potential reuse grows with N; realized speed still depends on the kernel and shape.

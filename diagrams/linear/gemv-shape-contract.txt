@@ -1,0 +1,16 @@
+GEMV SHAPE CONTRACT
+
+              x [K]                 y [M]
+                │                     ▲
+                │                     │
+ A [M,K] ═══════╪══════▶ GEMV ═══════╡
+                │                     │
+                ▼                     │
+       inner dimensions agree         │
+             A.shape[1] = x.shape[0] ─┘
+
+For every output row i:
+
+                   K−1
+          yᵢ  =     Σ   Aᵢₖ xₖ
+                   k=0

@@ -22,3 +22,5 @@ Chapter 4's sampling and autoregressive ownership diagrams are indexed under
 [`sampling/`](sampling/README.md).
 Chapter 5's tensor layout and lifetime diagrams are indexed under
 [`tensor/`](tensor/README.md).
+Chapter 6's dot-product, GEMV, GEMM, locality, and kernel-boundary diagrams are
+indexed under [`linear/`](linear/README.md).

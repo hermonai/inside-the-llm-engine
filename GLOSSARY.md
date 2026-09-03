@@ -29,6 +29,14 @@ First introduced: Chapter 1. Related: running model, GGUF, weights. Common
 confusion: an artifact is inert representation, not a process that can answer a
 request.
 
+### Arithmetic intensity
+
+**Short:** Floating-point work divided by bytes moved across a named memory
+boundary. **Precise:** Chapter 6 uses ideal compulsory-payload FLOP/byte models
+to reason about potential reuse; actual cache or DRAM traffic requires separate
+measurement. First introduced: Chapter 6. Related: FLOP, working set, Roofline
+model. Common confusion: ideal logical bytes are not measured hardware traffic.
+
 ### Batch / continuous batching
 
 **Short:** A batch is work executed together; continuous batching rebuilds that
@@ -56,6 +64,15 @@ blocks.
 length, interpreted by paged attention and lifetime management. First
 introduced: Chapter 29. Related: logical block, physical block, KV block.
 Common confusion: it does not contain the KV vectors themselves.
+
+### Blocking / tiling
+
+**Short:** Partitioning an operation into bounded subproblems intended to
+improve data reuse. **Precise:** ENGINE-2 tiles the M, K, and N axes of canonical
+row-major GEMM and clamps every tail while accumulating into a fresh output.
+First introduced: Chapter 6. Related: working set, cache locality, matrix
+multiplication. Common confusion: a tile size is workload- and machine-specific,
+not a universally faster constant.
 
 ### Context
 
@@ -135,6 +152,23 @@ weight residency, I/O, batching, and failure economics. First introduced:
 Chapter 54. Common confusion: sparse expert activation does not imply the whole
 model or its storage is sparse.
 
+### FLOP / FLOP/s / GFLOP/s
+
+**Short:** FLOP counts floating-point work; FLOP/s and GFLOP/s are rates.
+**Precise:** Chapter 6 models GEMM as approximately $2MKN$ FLOPs and reports an
+effective rate from elapsed time; one GFLOP/s is $10^9$ FLOP/s. First
+introduced: Chapter 6. Related: arithmetic intensity, benchmark. Common
+confusion: operation estimates, retired instructions, and elapsed time are not
+interchangeable.
+
+### GEMV / GEMM / matrix multiplication
+
+**Short:** GEMV multiplies a matrix by a vector; GEMM multiplies two matrices.
+**Precise:** ENGINE-2 defines GEMV as `[M,K] × [K] -> [M]` and GEMM as `[M,K] ×
+[K,N] -> [M,N]`, with contracts narrower than full BLAS. First introduced:
+Chapter 6. Related: dot product, inner dimension, kernel. Common confusion:
+single-vector and multi-column workloads offer different weight reuse.
+
 ### GGML / GGUF
 
 **Short:** GGUF is a model container format associated with the GGML ecosystem.
@@ -191,8 +225,8 @@ does not include the initial wait for the first token.
 **Short:** A bounded numerical or data-movement operation.
 **Precise:** A kernel has explicit input/output layouts, dtype, workspace,
 provider constraints, error behavior, and correctness contract. First
-introduced: Chapter 35. Related: provider, ABI. Common confusion: kernels can
-run on scalar CPU, SIMD CPU, or accelerators.
+introduced: Chapter 6; native boundary formalized Chapter 35. Related: provider,
+ABI. Common confusion: kernels can run on scalar CPU, SIMD CPU, or accelerators.
 
 ### Latency
 
@@ -636,10 +670,11 @@ though ML libraries often call it a linear layer.
 ### Dot product
 
 **Short:** A sum of pairwise products between equal-length vectors. **Precise:**
-For vectors of length `D`, ENGINE-1 computes `sum_j W[i,j]h[j]` as the score
-contribution for one vocabulary row. First introduced: Chapter 3. Related:
-matrix, projection. Common confusion: equal shape and a declared accumulation
-order still do not specify a physical storage layout.
+ENGINE-2 reduces rank-1 `f32` views in ascending logical index order into an
+`f32` accumulator; the empty dot product is zero. ENGINE-1 uses the operation
+inside each projection row. First introduced: Chapter 3; formalized Chapter 6.
+Related: GEMV, GEMM, projection. Common confusion: different lengths are an
+error, not an invitation to truncate or broadcast.
 
 ### Dtype
 
@@ -787,6 +822,99 @@ borrows its payload. `to_contiguous` traverses logical order into a new
 canonical `OwnedTensor`. First introduced: Chapter 5. Related: ownership,
 aliasing, transpose. Common confusion: metadata allocation does not mean the
 element payload was copied.
+
+### Data reuse / spatial locality / temporal locality
+
+**Short:** Reuse performs more useful work with data already nearby; spatial
+locality visits nearby addresses, while temporal locality revisits data soon.
+**Precise:** Chapter 6's `ikj` walk streams row-major B/C rows and reuses one A
+scalar; blocking bounds A/B/C regions to encourage reuse in a memory hierarchy.
+First introduced: Chapter 6. Related: working set, arithmetic intensity, loop
+order. Common confusion: favorable source access does not prove a particular
+cache-hit count.
+
+### Equivalence gate / performance gate
+
+**Short:** Equivalence proves acceptable results; a performance gate tests a
+correct candidate under a declared workload. **Precise:** ENGINE-2 compares
+blocked GEMM with hand fixtures, an independent oracle, typed edge cases, and a
+documented tolerance before release timing. First introduced: Chapter 6.
+Related: oracle, differential test, benchmark. Common confusion: faster output
+is irrelevant when semantic equivalence has not passed.
+
+### Inner dimension
+
+**Short:** The shared dimension contracted by a linear algebra product.
+**Precise:** For `[M,K] × [K,N]`, both K dimensions must agree and each output
+cell reduces K pairwise products. First introduced: Chapter 6. Related: GEMM,
+shape. Common confusion: equal total element counts do not establish compatible
+inner dimensions.
+
+### Loop order
+
+**Short:** The nesting order in which a multidimensional computation visits
+indices. **Precise:** `ijk` and `ikj` implement the same GEMM equation but expose
+different row-major operand and output access patterns. First introduced:
+Chapter 6. Related: spatial locality, blocking. Common confusion: equal FLOP
+counts do not imply equal byte movement or elapsed time.
+
+### Memory bandwidth
+
+**Short:** The rate at which bytes cross a named memory boundary. **Precise:**
+Bandwidth must identify the level, direction, workload, and measurement; the
+Chapter 6 compulsory-byte model is not a bandwidth measurement. First
+introduced: Chapter 6. Related: arithmetic intensity, Roofline model. Common
+confusion: storage size and transfer rate are different quantities.
+
+### Microkernel / packing
+
+**Short:** Packing rearranges data for execution; a microkernel computes a
+small register-oriented core tile. **Precise:** They are production GEMM
+optimization rungs previewed but not implemented by scalar ENGINE-2. First
+introduced: Chapter 6. Related: blocking, SIMD, kernel. Common confusion:
+packing has allocation/movement cost and is not hidden free speed.
+
+### Multiply-accumulate (MAC)
+
+**Short:** Multiply two operands and add the product into an accumulator.
+**Precise:** Dot, GEMV, and GEMM are reductions of MAC contributions; storage,
+product, and accumulator dtype plus ordering define numerical behavior. First
+introduced: Chapter 6. Related: dot product, FMA, reduction. Common confusion:
+a source MAC expression does not guarantee one fused hardware instruction.
+
+### Reference kernel / optimized kernel
+
+**Short:** A reference kernel prioritizes transparent semantics; an optimized
+kernel changes execution under a proved contract. **Precise:** ENGINE-2's
+reference GEMM accepts valid strided views, while blocked GEMM accepts only
+canonical row-major views and must pass equivalence before measurement. First
+introduced: Chapter 6. Related: equivalence gate, kernel, oracle. Common
+confusion: reference does not mean disposable, and optimized does not mean
+universally faster.
+
+### Roofline model
+
+**Short:** A model bounding performance by compute peak and bandwidth times
+arithmetic intensity. **Precise:** $P\le\min(P_{peak},BI)$ previews whether a
+workload may be compute- or movement-constrained at a named boundary. First
+introduced: Chapter 6. Related: arithmetic intensity, memory bandwidth. Common
+confusion: an uncalibrated diagram is not a measurement of the machine.
+
+### Tile
+
+**Short:** One bounded subrange used by a blocked computation. **Precise:** An
+ENGINE-2 GEMM tile has positive M, K, and N extents; final tail tiles are
+clamped when dimensions are not divisible. First introduced: Chapter 6.
+Related: blocking, working set. Common confusion: a tile is not necessarily a
+physical storage allocation.
+
+### Working set
+
+**Short:** Data actively needed during a region of execution. **Precise:**
+Blocking attempts to keep useful A, B, and accumulating C regions reusable in
+faster memory, without promising residency in a specific cache. First
+introduced: Chapter 6. Related: tile, locality, cache. Common confusion: a
+formula for tile payload does not prove the hardware retains it.
 
 ### Workspace
 

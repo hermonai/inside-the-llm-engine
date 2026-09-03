@@ -1,0 +1,16 @@
+FOLLOW THE BYTES THROUGH BLOCKED GEMM
+
+ (A storage)         (B storage)               [C storage]
+      │                    │                         │
+      ▼                    ▼                         ▼
+ canonical slice      canonical slice          zero-filled owner
+      │                    │                         │
+      └────────┬───────────┘                         │
+               ▼                                     │
+       load one Aᵢₖ and a contiguous Bₖ tile         │
+               │                                     │
+               └════════ multiply-accumulate ═══════▶│
+                                                     ▼
+                                              returned OwnedTensor
+
+Metadata may be cloned; input element storage is neither copied nor mutated.

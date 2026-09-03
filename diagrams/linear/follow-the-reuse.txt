@@ -1,0 +1,15 @@
+FOLLOW THE REUSE INSIDE ONE TILE
+
+ load Aᵢₖ once
+       │
+       ├──× Bₖ,j     ──▶ Cᵢ,j
+       ├──× Bₖ,j+1   ──▶ Cᵢ,j+1
+       ├──× Bₖ,j+2   ──▶ Cᵢ,j+2
+       └──× Bₖ,j+3   ──▶ Cᵢ,j+3
+
+             one scalar A value
+                      │
+                      ▼
+             reused across Bₙ columns
+
+At a higher level, A and B tiles remain active while many C cells accumulate.
