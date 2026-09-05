@@ -1,0 +1,20 @@
+FIG-TENSOR-STRIDE-001
+A tensor is a map into storage
+EDUCATIONAL MODEL
+
+logical A[1,2] ──▶ offset 3×1+2 = 5 ──▶ byte offset 20
+owner [1 2 3 4 5 6] ◁── immutable TensorView
+
+Trace logical coordinate [1,2] to element 5 and byte 20.
+
+shape [2,3] • rank 2 • F32
+
+strides [3,1] • base 0 • contiguous
+
+offset(i,j) = 3i + j; byte = 4 × offset
+
+Fixture: {"shape": [2, 3], "strides": [3, 1], "values": [1, 2, 3, 4, 5, 6], "index": [1, 2],
+"element_offset": 5, "byte_offset": 20}
+
+Source: figures/src/tensor.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/tensor.rs

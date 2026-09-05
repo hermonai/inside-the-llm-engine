@@ -1,5 +1,12 @@
 # Repository Operating Guide
 
+Visual regeneration is now a separate bounded workstream. Read
+`ASTRA_REGENERATION_PLAN.md` and `figures/VISUAL_LANGUAGE.md` before visual
+changes. The first milestone establishes prototypes and builds; it does not
+complete Chapter 8 or regenerate all chapters. Preserve the pre-existing
+Chapter 8 research and working-tree status changes. Next regeneration pilot:
+Chapter 5, then 6 and 7, before completing Chapter 8.
+
 Read this file, `docs/STATUS.md`, `docs/ROADMAP.md`, and `git status` before
 working. This repository is the open book **Inside the LLM Engine: From First
 Token to Production-Grade Inference**. Its mission is to take a programmer from

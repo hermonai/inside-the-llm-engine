@@ -1,0 +1,65 @@
+{
+  "id": "FIG-ATTENTION-STEPS-001",
+  "chapter": 10,
+  "kind": "attention",
+  "title": "Compatibility becomes a weighted value",
+  "purpose": "One query scores two visible keys, normalizes scores and combines corresponding value rows.",
+  "contract": [
+    "q [2], K [3,2], V [3,2]; query position t = 1",
+    "scores = Kq / √2; future position 2 is masked",
+    "α = softmax(scores + mask); output = Σⱼ αⱼVⱼ"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "research/astra/source-map.md",
+  "legacy": null,
+  "animate": false,
+  "caption": "One query scores two visible keys, normalizes scores and combines corresponding value rows. q [2], K [3,2], V [3,2]; query position t = 1. scores = Kq / √2; future position 2 is masked. α = softmax(scores + mask); output = Σⱼ αⱼVⱼ.",
+  "alt": "One query scores two visible keys, normalizes scores and combines corresponding value rows. q [2], K [3,2], V [3,2]; query position t = 1; scores = Kq / √2; future position 2 is masked; α = softmax(scores + mask); output = Σⱼ αⱼVⱼ",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "query": [
+      1.4142135623730951,
+      0
+    ],
+    "keys": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        9,
+        9
+      ]
+    ],
+    "values": [
+      [
+        2,
+        0
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        99,
+        99
+      ]
+    ],
+    "position": 1,
+    "probabilities": [
+      0.2689414213699951,
+      0.7310585786300049,
+      0
+    ],
+    "output": [
+      0.5378828427399902,
+      2.9242343145200196
+    ]
+  }
+}

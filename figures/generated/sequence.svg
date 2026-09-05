@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">One worker owns the context</title><desc id="desc">Requests enter a queue; the worker builds a mixed batch, invokes decode, samples and streams results. CURRENT default path; simplified successful iteration; Worker owns Context and Batch; API does not call kernels directly; Error/cancel: finalize affected request; no later token emission</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-RUNTIME-SEQUENCE-001  /  CURRENT</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">One worker owns the context</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Requests enter a queue; the worker builds a mixed batch, invokes decode, samples and</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">streams results.</text>
+<rect x="41" y="196" width="148" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="55" y="225" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">API</text>
+<line x1="115" y1="244" x2="115" y2="577" stroke="#152b3c" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="271" y="196" width="148" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="285" y="225" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Submit queue</text>
+<line x1="345" y1="244" x2="345" y2="577" stroke="#152b3c" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="551" y="196" width="148" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="565" y="225" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Worker</text>
+<line x1="625" y1="244" x2="625" y2="577" stroke="#152b3c" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="801" y="196" width="148" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="815" y="225" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Context</text>
+<line x1="875" y1="244" x2="875" y2="577" stroke="#152b3c" stroke-width="1.5" stroke-dasharray="6 5"/>
+<line x1="115" y1="285" x2="345" y2="285" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="345.00,285.00 336.00,289.35 336.00,280.65"/>
+<text x="125" y="273" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">submit(request)</text>
+<line x1="345" y1="337" x2="625" y2="337" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="625.00,337.00 616.00,341.35 616.00,332.65"/>
+<text x="355" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">admit / drain</text>
+<line x1="625" y1="398" x2="875" y2="398" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="875.00,398.00 866.00,402.35 866.00,393.65"/>
+<text x="635" y="386" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">decode_batch</text>
+<line x1="875" y1="454" x2="625" y2="454" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="625.00,454.00 634.00,449.65 634.00,458.35"/>
+<text x="635" y="442" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">logits / status</text>
+<line x1="625" y1="520" x2="115" y2="520" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="115.00,520.00 124.00,515.65 124.00,524.35"/>
+<text x="125" y="508" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">sample → stream</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">CURRENT default path; simplified successful iteration</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Worker owns Context and Batch; API does not call kernels directly</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Error/cancel: finalize affected request; no later token emission</text>
+</svg>

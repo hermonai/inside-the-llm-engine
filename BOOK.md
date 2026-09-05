@@ -5,6 +5,9 @@
 This is the reader-facing table of contents. The authoring specification for
 each chapter lives in [docs/OUTLINE.md](docs/OUTLINE.md).
 
+Companion: [visual prototype atlas](figures/ATLAS.md). Build the current seven
+chapters as PDF/HTML using the [publication instructions](docs/FIGURE_BUILD.md).
+
 ### Part I — What Actually Happens When an LLM Answers?
 
 1. [The Missing Half of AI](manuscript/part-01/chapter-01-the-missing-half-of-ai.md)

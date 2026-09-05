@@ -1,0 +1,26 @@
+{
+  "id": "FIG-ENGINE-ARCHITECTURE-001",
+  "chapter": 74,
+  "kind": "architecture",
+  "title": "Follow data, decisions and persistent state",
+  "purpose": "The default runtime reaches llama.cpp through a bridge. Optional providers execute backend kernels.",
+  "contract": [
+    "CURRENT: API → Dispatcher → BatchedRuntime → llama.cpp",
+    "PREVIEW: paged runtime; LIBRARY: native components",
+    "Provider availability is build-dependent, not a performance claim"
+  ],
+  "status": "CURRENT / PREVIEW / LIBRARY",
+  "code": "research/astra/source-map.md",
+  "legacy": "diagrams/runtime/inference-stack.txt",
+  "animate": false,
+  "caption": "The default runtime reaches llama.cpp through a bridge. Optional providers execute backend kernels. CURRENT: API → Dispatcher → BatchedRuntime → llama.cpp. PREVIEW: paged runtime; LIBRARY: native components. Provider availability is build-dependent, not a performance claim.",
+  "alt": "The default runtime reaches llama.cpp through a bridge. Optional providers execute backend kernels. CURRENT: API → Dispatcher → BatchedRuntime → llama.cpp; PREVIEW: paged runtime; LIBRARY: native components; Provider availability is build-dependent, not a performance claim",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "model_dimension": 4,
+    "heads": 2,
+    "head_dimension": 2
+  }
+}

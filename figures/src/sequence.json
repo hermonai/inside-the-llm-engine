@@ -1,0 +1,26 @@
+{
+  "id": "FIG-RUNTIME-SEQUENCE-001",
+  "chapter": 78,
+  "kind": "sequence",
+  "title": "One worker owns the context",
+  "purpose": "Requests enter a queue; the worker builds a mixed batch, invokes decode, samples and streams results.",
+  "contract": [
+    "CURRENT default path; simplified successful iteration",
+    "Worker owns Context and Batch; API does not call kernels directly",
+    "Error/cancel: finalize affected request; no later token emission"
+  ],
+  "status": "CURRENT",
+  "code": "research/astra/source-map.md",
+  "legacy": "diagrams/runtime/hermon-current-request-path.txt",
+  "animate": false,
+  "caption": "Requests enter a queue; the worker builds a mixed batch, invokes decode, samples and streams results. CURRENT default path; simplified successful iteration. Worker owns Context and Batch; API does not call kernels directly. Error/cancel: finalize affected request; no later token emission.",
+  "alt": "Requests enter a queue; the worker builds a mixed batch, invokes decode, samples and streams results. CURRENT default path; simplified successful iteration; Worker owns Context and Batch; API does not call kernels directly; Error/cancel: finalize affected request; no later token emission",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "model_dimension": 4,
+    "heads": 2,
+    "head_dimension": 2
+  }
+}

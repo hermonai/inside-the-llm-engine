@@ -1,0 +1,21 @@
+FIG-BATCH-TIMELINE-001
+The active set changes between iterations
+EDUCATIONAL MODEL
+
+iteration   0   1   2   3
+Request A   P   D   D   ·
+Request B   ·   P   D   D
+Request C   ·   ·   P   D
+
+A completes while B and C continue. Admission and removal happen at iteration boundaries.
+
+P = prompt chunk; D = one decode input; · = absent
+
+Columns are scheduler iterations, not equal time spans
+
+A: P D D ·; B: · P D D; C: · · P D
+
+Fixture: {"rows": [["P", "D", "D", "·"], ["·", "P", "D", "D"], ["·", "·", "P", "D"]]}
+
+Source: figures/src/batch.json
+Implementation/evidence: research/astra/source-map.md

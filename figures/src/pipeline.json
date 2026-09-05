@@ -1,0 +1,26 @@
+{
+  "id": "FIG-TRANSFORMER-PIPELINE-001",
+  "chapter": 7,
+  "kind": "pipeline",
+  "title": "From identity to three learned views",
+  "purpose": "Lookup copies a selected row; normalization rescales it; three projections produce distinct activations.",
+  "contract": [
+    "E [3,4], token 1 selects x [4]",
+    "x̂ᵢ = xᵢwᵢ / √(Σⱼxⱼ²/4 + ε)",
+    "Q [2,2], K [2,2], V [2,2]; no position yet"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": "diagrams/transformer/chapter07-engine-architecture.txt",
+  "animate": false,
+  "caption": "Lookup copies a selected row; normalization rescales it; three projections produce distinct activations. E [3,4], token 1 selects x [4]. x̂ᵢ = xᵢwᵢ / √(Σⱼxⱼ²/4 + ε). Q [2,2], K [2,2], V [2,2]; no position yet.",
+  "alt": "Lookup copies a selected row; normalization rescales it; three projections produce distinct activations. E [3,4], token 1 selects x [4]; x̂ᵢ = xᵢwᵢ / √(Σⱼxⱼ²/4 + ε); Q [2,2], K [2,2], V [2,2]; no position yet",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "model_dimension": 4,
+    "heads": 2,
+    "head_dimension": 2
+  }
+}

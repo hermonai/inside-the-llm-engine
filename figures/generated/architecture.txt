@@ -1,0 +1,26 @@
+FIG-ENGINE-ARCHITECTURE-001
+Follow data, decisions and persistent state
+CURRENT / PREVIEW / LIBRARY
+
+Client ┄┄▶ API ┄┄▶ Dispatcher ┄┄▶ Batched worker [CURRENT]
+                                   │
+                                   ▼
+parameters ══▶ llama.cpp graph ◀── context / KV state
+                     │
+                     ▼
+             backend ──▶ configured CPU / GPU
+PREVIEW: paged runtime; LIBRARY: native components; separate integration gates.
+
+The default runtime reaches llama.cpp through a bridge. Optional providers execute backend
+kernels.
+
+CURRENT: API → Dispatcher → BatchedRuntime → llama.cpp
+
+PREVIEW: paged runtime; LIBRARY: native components
+
+Provider availability is build-dependent, not a performance claim
+
+Fixture: {"model_dimension": 4, "heads": 2, "head_dimension": 2}
+
+Source: figures/src/architecture.json
+Implementation/evidence: research/astra/source-map.md

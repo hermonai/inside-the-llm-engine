@@ -10,7 +10,7 @@ from urllib.parse import unquote
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
+LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 SKIP_PREFIXES = ("#", "http://", "https://", "mailto:", "data:")
 
 

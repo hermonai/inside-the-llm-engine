@@ -1,0 +1,245 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cache growth preserves the prefix</title><style>body{font:18px system-ui;margin:1rem auto;max-width:1000px;color:#152b3c}svg{width:100%;height:auto}button,input{font:inherit;min-height:44px}button:focus-visible,input:focus-visible{outline:3px solid #163d70}p{line-height:1.5}</style><main><h1>Cache growth preserves the prefix</h1><button id="play" type="button">Play</button> <button id="prev" type="button">Previous</button> <button id="next" type="button">Next</button> <label>Frame <input id="step" type="range" min="0" max="3" value="0"></label><output id="state" aria-live="polite">Frame 1 of 4</output><section class="frame" ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title0 desc0"><title id="title0">Cache growth preserves the prefix</title><desc id="desc0">A single layer stores one K and V row for each processed token; each append extends the valid prefix. L = 1, Hkv = 1, Dₕ = 2, F32; payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes; T = 1,2,3,4 → 16,32,48,64 bytes</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-KVCACHE-GROWTH-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Cache growth preserves the prefix</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A single layer stores one K and V row for each processed token; each append extends the</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">valid prefix.</text>
+<text x="45" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 1</text>
+<rect x="165" y="202" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="590" y="202" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<text x="165" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">16 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<line x1="43" y1="280" x2="960" y2="280" stroke="#152b3c" stroke-width="3"/>
+<text x="45" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 2</text>
+<rect x="165" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="590" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<text x="165" y="368" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">32 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 3</text>
+<rect x="165" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="590" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<text x="165" y="462" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">48 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 4</text>
+<rect x="165" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="465" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="479" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K3</text>
+<rect x="590" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<rect x="845" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="859" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V3</text>
+<text x="165" y="556" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">64 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">L = 1, Hkv = 1, Dₕ = 2, F32</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">T = 1,2,3,4 → 16,32,48,64 bytes</text>
+</svg>
+</section><section class="frame" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title1 desc1"><title id="title1">Cache growth preserves the prefix</title><desc id="desc1">A single layer stores one K and V row for each processed token; each append extends the valid prefix. L = 1, Hkv = 1, Dₕ = 2, F32; payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes; T = 1,2,3,4 → 16,32,48,64 bytes</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-KVCACHE-GROWTH-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Cache growth preserves the prefix</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A single layer stores one K and V row for each processed token; each append extends the</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">valid prefix.</text>
+<text x="45" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 1</text>
+<rect x="165" y="202" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="590" y="202" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<text x="165" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">16 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 2</text>
+<rect x="165" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="590" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<text x="165" y="368" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">32 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<line x1="43" y1="374" x2="960" y2="374" stroke="#152b3c" stroke-width="3"/>
+<text x="45" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 3</text>
+<rect x="165" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="590" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<text x="165" y="462" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">48 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 4</text>
+<rect x="165" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="465" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="479" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K3</text>
+<rect x="590" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<rect x="845" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="859" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V3</text>
+<text x="165" y="556" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">64 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">L = 1, Hkv = 1, Dₕ = 2, F32</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">T = 1,2,3,4 → 16,32,48,64 bytes</text>
+</svg>
+</section><section class="frame" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title2 desc2"><title id="title2">Cache growth preserves the prefix</title><desc id="desc2">A single layer stores one K and V row for each processed token; each append extends the valid prefix. L = 1, Hkv = 1, Dₕ = 2, F32; payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes; T = 1,2,3,4 → 16,32,48,64 bytes</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-KVCACHE-GROWTH-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Cache growth preserves the prefix</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A single layer stores one K and V row for each processed token; each append extends the</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">valid prefix.</text>
+<text x="45" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 1</text>
+<rect x="165" y="202" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="590" y="202" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<text x="165" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">16 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 2</text>
+<rect x="165" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="590" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<text x="165" y="368" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">32 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 3</text>
+<rect x="165" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="590" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<text x="165" y="462" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">48 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<line x1="43" y1="468" x2="960" y2="468" stroke="#152b3c" stroke-width="3"/>
+<text x="45" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 4</text>
+<rect x="165" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="465" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="479" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K3</text>
+<rect x="590" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<rect x="845" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="859" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V3</text>
+<text x="165" y="556" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">64 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">L = 1, Hkv = 1, Dₕ = 2, F32</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">T = 1,2,3,4 → 16,32,48,64 bytes</text>
+</svg>
+</section><section class="frame" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title3 desc3"><title id="title3">Cache growth preserves the prefix</title><desc id="desc3">A single layer stores one K and V row for each processed token; each append extends the valid prefix. L = 1, Hkv = 1, Dₕ = 2, F32; payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes; T = 1,2,3,4 → 16,32,48,64 bytes</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-KVCACHE-GROWTH-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Cache growth preserves the prefix</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A single layer stores one K and V row for each processed token; each append extends the</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">valid prefix.</text>
+<text x="45" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 1</text>
+<rect x="165" y="202" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="590" y="202" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="231" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<text x="165" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">16 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 2</text>
+<rect x="165" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="296" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="590" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="296" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="325" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<text x="165" y="368" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">32 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 3</text>
+<rect x="165" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="390" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="590" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="390" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<text x="165" y="462" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">48 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<text x="45" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">T = 4</text>
+<rect x="165" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="179" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K0</text>
+<rect x="265" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="279" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K1</text>
+<rect x="365" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K2</text>
+<rect x="465" y="484" width="100" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="479" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K3</text>
+<rect x="590" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="604" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V0</text>
+<rect x="675" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="689" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V1</text>
+<rect x="760" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="774" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V2</text>
+<rect x="845" y="484" width="85" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="859" y="513" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V3</text>
+<text x="165" y="556" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">64 bytes valid • each cell holds Dₕ=2 F32 elements</text>
+<line x1="43" y1="562" x2="960" y2="562" stroke="#152b3c" stroke-width="3"/>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">L = 1, Hkv = 1, Dₕ = 2, F32</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">T = 1,2,3,4 → 16,32,48,64 bytes</text>
+</svg>
+</section><p>A single layer stores one K and V row for each processed token; each append extends the valid prefix. L = 1, Hkv = 1, Dₕ = 2, F32. payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes. T = 1,2,3,4 → 16,32,48,64 bytes.</p><p><a href="cache.svg">Complete static explanation</a> · EDUCATIONAL MODEL</p></main><script src="player.js"></script></html>

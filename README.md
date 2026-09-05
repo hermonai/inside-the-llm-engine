@@ -197,3 +197,11 @@ Apache-2.0 license transfers to this separate repository.
 This book is under active development. Its manuscript, APIs, code, diagrams,
 and curriculum may evolve as implementations are tested and reviewed. Current
 engine behavior and frontier proposals are kept visibly separate.
+
+## Visual regeneration workstream
+
+The first visual-regeneration milestone adds an [illustrated atlas](figures/ATLAS.md),
+editable SVG sources, three step animations, and PDF/HTML build infrastructure.
+See the [book audit](ASTRA_BOOK_AUDIT.md), [visual audit](ASTRA_VISUAL_AUDIT.md),
+and [bounded regeneration plan](ASTRA_REGENERATION_PLAN.md). Seven chapters are
+written; later prototype diagrams do not imply completed implementations.

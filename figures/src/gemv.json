@@ -1,0 +1,44 @@
+{
+  "id": "FIG-GEMV-ROW-001",
+  "chapter": 6,
+  "kind": "gemv",
+  "title": "One row becomes one output",
+  "purpose": "Match each reduction index, multiply, then accumulate in increasing index order.",
+  "contract": [
+    "W [2,3] × x [3] = y [2]",
+    "row 0: 1×2 + 2×(-1) + 3×0.5 = 1.5",
+    "row 1: 4×2 + 5×(-1) + 6×0.5 = 6"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "code/mini-engine/crates/engine0/src/linear.rs",
+  "legacy": "diagrams/linear/gemv-shape-contract.txt",
+  "animate": false,
+  "caption": "Match each reduction index, multiply, then accumulate in increasing index order. W [2,3] × x [3] = y [2]. row 0: 1×2 + 2×(-1) + 3×0.5 = 1.5. row 1: 4×2 + 5×(-1) + 6×0.5 = 6.",
+  "alt": "Match each reduction index, multiply, then accumulate in increasing index order. W [2,3] × x [3] = y [2]; row 0: 1×2 + 2×(-1) + 3×0.5 = 1.5; row 1: 4×2 + 5×(-1) + 6×0.5 = 6",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "weight": [
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        4,
+        5,
+        6
+      ]
+    ],
+    "input": [
+      2,
+      -1,
+      0.5
+    ],
+    "output": [
+      1.5,
+      6
+    ]
+  }
+}

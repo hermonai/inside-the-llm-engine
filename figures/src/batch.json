@@ -1,0 +1,46 @@
+{
+  "id": "FIG-BATCH-TIMELINE-001",
+  "chapter": 26,
+  "kind": "batch",
+  "title": "The active set changes between iterations",
+  "purpose": "A completes while B and C continue. Admission and removal happen at iteration boundaries.",
+  "contract": [
+    "P = prompt chunk; D = one decode input; · = absent",
+    "Columns are scheduler iterations, not equal time spans",
+    "A: P D D ·; B: · P D D; C: · · P D"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "research/astra/source-map.md",
+  "legacy": null,
+  "animate": true,
+  "caption": "A completes while B and C continue. Admission and removal happen at iteration boundaries. P = prompt chunk; D = one decode input; · = absent. Columns are scheduler iterations, not equal time spans. A: P D D ·; B: · P D D; C: · · P D.",
+  "alt": "A completes while B and C continue. Admission and removal happen at iteration boundaries. P = prompt chunk; D = one decode input; · = absent; Columns are scheduler iterations, not equal time spans; A: P D D ·; B: · P D D; C: · · P D",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "fixture": {
+    "rows": [
+      [
+        "P",
+        "D",
+        "D",
+        "·"
+      ],
+      [
+        "·",
+        "P",
+        "D",
+        "D"
+      ],
+      [
+        "·",
+        "·",
+        "P",
+        "D"
+      ]
+    ]
+  }
+}

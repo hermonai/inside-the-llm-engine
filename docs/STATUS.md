@@ -1,5 +1,16 @@
 # Project Status
 
+## Visual regeneration milestone — 2026-09-06
+
+The bounded first regeneration milestone is COMPLETE: audits of seven chapters,
+78 legacy diagrams and 112 display equations; ten semantic visual prototypes;
+three playable sequences; verified PDF/HTML builds; and expanded figure/math/link
+checks. See [validation](../research/astra/validation.md) and the
+[regeneration plan](../ASTRA_REGENERATION_PLAN.md). The next regeneration task
+is the Chapter 5 tensor pilot, followed by Chapters 6–7 and completion of Chapter 8.
+The curriculum ledger below retains its existing chapter statuses; this visual
+milestone does not mark any unwritten chapter complete.
+
 Last updated: 2026-09-04.
 
 ## Phase 0 ledger

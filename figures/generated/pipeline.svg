@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">From identity to three learned views</title><desc id="desc">Lookup copies a selected row; normalization rescales it; three projections produce distinct activations. E [3,4], token 1 selects x [4]; x̂ᵢ = xᵢwᵢ / √(Σⱼxⱼ²/4 + ε); Q [2,2], K [2,2], V [2,2]; no position yet</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-TRANSFORMER-PIPELINE-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">From identity to three learned views</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Lookup copies a selected row; normalization rescales it; three projections produce</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">distinct activations.</text>
+<rect x="45" y="223" width="260" height="92" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="59" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">01  Lookup E[1,:]</text>
+<text x="59" y="277" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">x = [1, −1, 2, 0.5]</text>
+<line x1="305" y1="270" x2="380" y2="270" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="380.00,270.00 371.00,274.35 371.00,265.65"/>
+<rect x="390" y="223" width="260" height="92" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="404" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">02  RMSNorm</text>
+<text x="404" y="277" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">w [4], ε = 10⁻⁵</text>
+<text x="690" y="244" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Implemented through</text>
+<text x="690" y="272" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Chapter 7</text>
+<line x1="520" y1="315" x2="520" y2="355" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="520.00,355.00 515.65,346.00 524.35,346.00"/>
+<line x1="180" y1="355" x2="820" y2="355" stroke="#152b3c" stroke-width="1.5" stroke-dasharray="6 5"/>
+<line x1="180" y1="355" x2="180" y2="405" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="180.00,405.00 175.65,396.00 184.35,396.00"/>
+<rect x="60" y="410" width="240" height="118" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="439" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">03  WQ [4,4]</text>
+<text x="74" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Q flat [4]</text>
+<text x="74" y="489" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Q heads [2,2]</text>
+<line x1="500" y1="355" x2="500" y2="405" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="500.00,405.00 495.65,396.00 504.35,396.00"/>
+<rect x="380" y="410" width="240" height="118" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="394" y="439" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">03  WK [4,4]</text>
+<text x="394" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K flat [4]</text>
+<text x="394" y="489" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">K heads [2,2]</text>
+<line x1="820" y1="355" x2="820" y2="405" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="820.00,405.00 815.65,396.00 824.35,396.00"/>
+<rect x="700" y="410" width="240" height="118" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="714" y="439" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">03  WV [4,4]</text>
+<text x="714" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V flat [4]</text>
+<text x="714" y="489" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">V heads [2,2]</text>
+<text x="60" y="574" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">QKV is a planned Chapter 8 operator; arrows below RMSNorm are a specification.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">E [3,4], token 1 selects x [4]</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">x̂ᵢ = xᵢwᵢ / √(Σⱼxⱼ²/4 + ε)</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Q [2,2], K [2,2], V [2,2]; no position yet</text>
+</svg>

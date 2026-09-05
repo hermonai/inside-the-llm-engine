@@ -1,0 +1,21 @@
+FIG-GEMV-ROW-001
+One row becomes one output
+EDUCATIONAL MODEL
+
+W row [1 2 3] × x [2 −1 0.5]
+          ║ matched-index products
+          ▼
+       [2 −2 1.5] ──▶ sum in order ──▶ y₀ = 1.5
+
+Match each reduction index, multiply, then accumulate in increasing index order.
+
+W [2,3] × x [3] = y [2]
+
+row 0: 1×2 + 2×(-1) + 3×0.5 = 1.5
+
+row 1: 4×2 + 5×(-1) + 6×0.5 = 6
+
+Fixture: {"weight": [[1, 2, 3], [4, 5, 6]], "input": [2, -1, 0.5], "output": [1.5, 6]}
+
+Source: figures/src/gemv.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/linear.rs

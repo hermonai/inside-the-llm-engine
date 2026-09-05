@@ -1,0 +1,19 @@
+FIG-QKV-HEADS-001
+Heads regroup values without moving them
+EDUCATIONAL MODEL
+
+flat [−1.5 3.5 −1 3] ──▷ same storage, new metadata
+head 0 [−1.5 3.5]       head 1 [−1 3]
+
+A canonical flat vector [4] becomes [2,2]; head coordinates map to the same four elements.
+
+D = 4, H = 2, Dₕ = 2
+
+offset(h,j) = h × 2 + j
+
+No arithmetic, allocation or transpose is implied by this view
+
+Fixture: {"flat": [-1.5, 3.5, -1, 3], "heads": 2, "head_dimension": 2}
+
+Source: figures/src/heads.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/tensor.rs

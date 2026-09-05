@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Compatibility becomes a weighted value</title><desc id="desc">One query scores two visible keys, normalizes scores and combines corresponding value rows. q [2], K [3,2], V [3,2]; query position t = 1; scores = Kq / √2; future position 2 is masked; α = softmax(scores + mask); output = Σⱼ αⱼVⱼ</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-ATTENTION-STEPS-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Compatibility becomes a weighted value</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">One query scores two visible keys, normalizes scores and combines corresponding value</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">rows.</text>
+<rect x="40" y="204" width="300" height="145" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="54" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">01  Query and keys</text>
+<text x="54" y="258" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">q = [√2, 0]</text>
+<text x="54" y="283" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">K = [[0,1],[1,0],[9,9]]</text>
+<rect x="360" y="204" width="300" height="145" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="374" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">02  Dot and scale</text>
+<text x="374" y="258" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Kq / √2</text>
+<text x="374" y="283" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">[0, 1, 9]</text>
+<rect x="680" y="204" width="300" height="145" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="694" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">03  Causal visibility</text>
+<text x="694" y="258" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">t = 1: positions 0,1 visible</text>
+<text x="694" y="283" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">[0, 1, −∞]</text>
+<rect x="40" y="391" width="300" height="145" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="54" y="420" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">04  Softmax</text>
+<text x="54" y="445" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">subtract max, exp, divide</text>
+<text x="54" y="470" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">α ≈ [0.269, 0.731, 0]</text>
+<rect x="360" y="391" width="300" height="145" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="374" y="420" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">05  Weight V rows</text>
+<text x="374" y="445" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">0.269[2,0] + 0.731[0,4]</text>
+<text x="374" y="470" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">future [99,99] contributes 0</text>
+<rect x="680" y="391" width="300" height="145" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="694" y="420" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">06  One head output</text>
+<text x="694" y="445" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">o ≈ [0.538, 2.924]</text>
+<text x="694" y="470" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">output shape [2]</text>
+<text x="40" y="582" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">Order: left to right, then next row. One head; output projection and residual follow later.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">q [2], K [3,2], V [3,2]; query position t = 1</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">scores = Kq / √2; future position 2 is masked</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">α = softmax(scores + mask); output = Σⱼ αⱼVⱼ</text>
+</svg>

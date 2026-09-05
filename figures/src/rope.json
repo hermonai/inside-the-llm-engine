@@ -1,0 +1,37 @@
+{
+  "id": "FIG-ROPE-ROTATION-001",
+  "chapter": 9,
+  "kind": "rope",
+  "title": "Position becomes a rotation",
+  "purpose": "One pair rotates by pω while its length stays one. Apply the positional transform to Q and K.",
+  "contract": [
+    "one pair x = (1,0); ω = π/6",
+    "R(θ)x = (x₀ cosθ − x₁ sinθ, x₀ sinθ + x₁ cosθ)",
+    "θ = pω; p = 0,1,2,3; V is unchanged"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "research/astra/source-map.md",
+  "legacy": null,
+  "animate": true,
+  "caption": "One pair rotates by pω while its length stays one. Apply the positional transform to Q and K. one pair x = (1,0); ω = π/6. R(θ)x = (x₀ cosθ − x₁ sinθ, x₀ sinθ + x₁ cosθ). θ = pω; p = 0,1,2,3; V is unchanged.",
+  "alt": "One pair rotates by pω while its length stays one. Apply the positional transform to Q and K. one pair x = (1,0); ω = π/6; R(θ)x = (x₀ cosθ − x₁ sinθ, x₀ sinθ + x₁ cosθ); θ = pω; p = 0,1,2,3; V is unchanged",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "fixture": {
+    "pair": [
+      1,
+      0
+    ],
+    "omega": 0.5235987755982988,
+    "positions": [
+      0,
+      1,
+      2,
+      3
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+FIG-ROPE-ROTATION-001
+Position becomes a rotation
+EDUCATIONAL MODEL
+
+p=0 (1,0) ──▶ p=1 (.866,.5) ──▶ p=2 (.5,.866) ──▶ p=3 (0,1)
+Each state applies R(pω) to the original pair; arrows order positions.
+
+One pair rotates by pω while its length stays one. Apply the positional transform to Q and K.
+
+one pair x = (1,0); ω = π/6
+
+R(θ)x = (x₀ cosθ − x₁ sinθ, x₀ sinθ + x₁ cosθ)
+
+θ = pω; p = 0,1,2,3; V is unchanged
+
+Fixture: {"pair": [1, 0], "omega": 0.5235987755982988, "positions": [0, 1, 2, 3]}
+
+Source: figures/src/rope.json
+Implementation/evidence: research/astra/source-map.md

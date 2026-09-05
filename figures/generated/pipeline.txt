@@ -1,0 +1,22 @@
+FIG-TRANSFORMER-PIPELINE-001
+From identity to three learned views
+EDUCATIONAL MODEL
+
+token 1 ──▶ E[1,:] ══▶ x [4] ══▶ RMSNorm ══▶ x̂ [4]
+                                                 ├┄┄▶ Wq ══▶ Q [2,2]
+                                                 ├┄┄▶ Wk ══▶ K [2,2]
+                                                 └┄┄▶ Wv ══▶ V [2,2]
+
+Lookup copies a selected row; normalization rescales it; three projections produce distinct
+activations.
+
+E [3,4], token 1 selects x [4]
+
+x̂ᵢ = xᵢwᵢ / √(Σⱼxⱼ²/4 + ε)
+
+Q [2,2], K [2,2], V [2,2]; no position yet
+
+Fixture: {"model_dimension": 4, "heads": 2, "head_dimension": 2}
+
+Source: figures/src/pipeline.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/normalization.rs

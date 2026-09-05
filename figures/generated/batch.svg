@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">The active set changes between iterations</title><desc id="desc">A completes while B and C continue. Admission and removal happen at iteration boundaries. P = prompt chunk; D = one decode input; · = absent; Columns are scheduler iterations, not equal time spans; A: P D D ·; B: · P D D; C: · · P D</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-BATCH-TIMELINE-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">The active set changes between iterations</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A completes while B and C continue. Admission and removal happen at iteration</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">boundaries.</text>
+<text x="235" y="211" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">iteration 0</text>
+<text x="409" y="211" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">iteration 1</text>
+<text x="583" y="211" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">iteration 2</text>
+<text x="757" y="211" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">iteration 3</text>
+<text x="55" y="289" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Request A</text>
+<rect x="228" y="257" width="150" height="61" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="242" y="286" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">P</text>
+<rect x="402" y="257" width="150" height="61" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="416" y="286" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">D</text>
+<rect x="576" y="257" width="150" height="61" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="590" y="286" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">D</text>
+<rect x="750" y="257" width="150" height="61" fill="#f2f4f5" stroke="#152b3c" stroke-width="1.4"/>
+<text x="764" y="286" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">·</text>
+<text x="55" y="374" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Request B</text>
+<rect x="228" y="342" width="150" height="61" fill="#f2f4f5" stroke="#152b3c" stroke-width="1.4"/>
+<text x="242" y="371" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">·</text>
+<rect x="402" y="342" width="150" height="61" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="416" y="371" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">P</text>
+<rect x="576" y="342" width="150" height="61" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="590" y="371" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">D</text>
+<rect x="750" y="342" width="150" height="61" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="764" y="371" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">D</text>
+<text x="55" y="459" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Request C</text>
+<rect x="228" y="427" width="150" height="61" fill="#f2f4f5" stroke="#152b3c" stroke-width="1.4"/>
+<text x="242" y="456" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">·</text>
+<rect x="402" y="427" width="150" height="61" fill="#f2f4f5" stroke="#152b3c" stroke-width="1.4"/>
+<text x="416" y="456" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">·</text>
+<rect x="576" y="427" width="150" height="61" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="590" y="456" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">P</text>
+<rect x="750" y="427" width="150" height="61" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="764" y="456" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">D</text>
+<rect x="55" y="524" width="873" height="60" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="69" y="553" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">At iteration 3: A released; B and C each contribute one decode token.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">P = prompt chunk; D = one decode input; · = absent</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Columns are scheduler iterations, not equal time spans</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">A: P D D ·; B: · P D D; C: · · P D</text>
+</svg>

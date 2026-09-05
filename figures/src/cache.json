@@ -1,0 +1,36 @@
+{
+  "id": "FIG-KVCACHE-GROWTH-001",
+  "chapter": 21,
+  "kind": "cache",
+  "title": "Cache growth preserves the prefix",
+  "purpose": "A single layer stores one K and V row for each processed token; each append extends the valid prefix.",
+  "contract": [
+    "L = 1, Hkv = 1, Dₕ = 2, F32",
+    "payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes",
+    "T = 1,2,3,4 → 16,32,48,64 bytes"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "research/astra/source-map.md",
+  "legacy": null,
+  "animate": true,
+  "caption": "A single layer stores one K and V row for each processed token; each append extends the valid prefix. L = 1, Hkv = 1, Dₕ = 2, F32. payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes. T = 1,2,3,4 → 16,32,48,64 bytes.",
+  "alt": "A single layer stores one K and V row for each processed token; each append extends the valid prefix. L = 1, Hkv = 1, Dₕ = 2, F32; payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes; T = 1,2,3,4 → 16,32,48,64 bytes",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "fixture": {
+    "layers": 1,
+    "kv_heads": 1,
+    "head_dimension": 2,
+    "bytes_per_element": 4,
+    "lengths": [
+      1,
+      2,
+      3,
+      4
+    ]
+  }
+}

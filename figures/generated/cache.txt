@@ -1,0 +1,23 @@
+FIG-KVCACHE-GROWTH-001
+Cache growth preserves the prefix
+EDUCATIONAL MODEL
+
+T=1  K0             V0
+T=2  K0 K1          V0 V1
+T=3  K0 K1 K2       V0 V1 V2
+T=4  K0 K1 K2 K3    V0 V1 V2 V3
+
+A single layer stores one K and V row for each processed token; each append extends the valid
+prefix.
+
+L = 1, Hkv = 1, Dₕ = 2, F32
+
+payload(T) = 2 × L × T × Hkv × Dₕ × 4 bytes
+
+T = 1,2,3,4 → 16,32,48,64 bytes
+
+Fixture: {"layers": 1, "kv_heads": 1, "head_dimension": 2, "bytes_per_element": 4, "lengths":
+[1, 2, 3, 4]}
+
+Source: figures/src/cache.json
+Implementation/evidence: research/astra/source-map.md

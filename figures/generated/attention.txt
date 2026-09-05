@@ -1,0 +1,21 @@
+FIG-ATTENTION-STEPS-001
+Compatibility becomes a weighted value
+EDUCATIONAL MODEL
+
+Q,K ══▶ dot / √2 ──▶ causal mask ──▶ softmax ──▶ weighted V
+        [0,1,9]      [0,1,−∞]       [.269,.731,0]   [.538,2.924]
+
+One query scores two visible keys, normalizes scores and combines corresponding value rows.
+
+q [2], K [3,2], V [3,2]; query position t = 1
+
+scores = Kq / √2; future position 2 is masked
+
+α = softmax(scores + mask); output = Σⱼ αⱼVⱼ
+
+Fixture: {"query": [1.4142135623730951, 0], "keys": [[0, 1], [1, 0], [9, 9]], "values": [[2,
+0], [0, 4], [99, 99]], "position": 1, "probabilities": [0.2689414213699951,
+0.7310585786300049, 0], "output": [0.5378828427399902, 2.9242343145200196]}
+
+Source: figures/src/attention.json
+Implementation/evidence: research/astra/source-map.md

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Heads regroup values without moving them</title><desc id="desc">A canonical flat vector [4] becomes [2,2]; head coordinates map to the same four elements. D = 4, H = 2, Dₕ = 2; offset(h,j) = h × 2 + j; No arithmetic, allocation or transpose is implied by this view</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-QKV-HEADS-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Heads regroup values without moving them</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A canonical flat vector [4] becomes [2,2]; head coordinates map to the same four</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">elements.</text>
+<text x="60" y="211" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">01  Flat activation • contiguous [4]</text>
+<rect x="60" y="239" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">-1.5</text>
+<rect x="190" y="239" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="204" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3.5</text>
+<rect x="320" y="239" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="334" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">-1</text>
+<rect x="450" y="239" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="464" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3</text>
+<text x="60" y="344" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">02  Change metadata only</text>
+<line x1="550" y1="306" x2="550" y2="384" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="550.00,384.00 545.65,375.00 554.35,375.00"/>
+<rect x="60" y="384" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="413" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">-1.5</text>
+<rect x="190" y="384" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="204" y="413" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3.5</text>
+<rect x="60" y="432" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="461" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">-1</text>
+<rect x="190" y="432" width="130" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="204" y="461" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3</text>
+<text x="354" y="415" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">head 0: elements 0,1</text>
+<text x="354" y="466" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">head 1: elements 2,3</text>
+<rect x="60" y="510" width="870" height="65" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="539" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Same buffer • [4] stride [1] becomes [2,2] strides [2,1]</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">D = 4, H = 2, Dₕ = 2</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">offset(h,j) = h × 2 + j</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">No arithmetic, allocation or transpose is implied by this view</text>
+</svg>

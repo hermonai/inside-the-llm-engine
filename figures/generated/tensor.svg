@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">A tensor is a map into storage</title><desc id="desc">Trace logical coordinate [1,2] to element 5 and byte 20. shape [2,3] • rank 2 • F32; strides [3,1] • base 0 • contiguous; offset(i,j) = 3i + j; byte = 4 × offset</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-TENSOR-STRIDE-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">A tensor is a map into storage</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Trace logical coordinate [1,2] to element 5 and byte 20.</text>
+<text x="60" y="207" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">01  Logical A [2,3]</text>
+<rect x="90" y="235" width="72" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="104" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">1</text>
+<rect x="162" y="235" width="72" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="176" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">2</text>
+<rect x="234" y="235" width="72" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="248" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3</text>
+<rect x="90" y="283" width="72" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="104" y="312" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">4</text>
+<rect x="162" y="283" width="72" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="176" y="312" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">5</text>
+<rect x="234" y="283" width="72" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="248" y="312" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">6</text>
+<text x="58" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">0</text>
+<text x="58" y="316" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">1</text>
+<text x="355" y="275" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A[1,2] = 6</text>
+<line x1="422" y1="300" x2="610" y2="397" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="610.00,397.00 600.00,396.74 603.99,389.01"/>
+<text x="60" y="377" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">02  Physical F32 storage • one owner</text>
+<rect x="60" y="402" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="431" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">1</text>
+<rect x="160" y="402" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="174" y="431" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">2</text>
+<rect x="260" y="402" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="274" y="431" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3</text>
+<rect x="360" y="402" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="374" y="431" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">4</text>
+<rect x="460" y="402" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="474" y="431" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">5</text>
+<rect x="560" y="402" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="574" y="431" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">6</text>
+<text x="75" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">0 / 0</text>
+<text x="175" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">1 / 4</text>
+<text x="275" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">2 / 8</text>
+<text x="375" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">3 / 12</text>
+<text x="475" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">4 / 16</text>
+<text x="575" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">5 / 20</text>
+<text x="60" y="509" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">element offset / byte offset</text>
+<rect x="695" y="210" width="255" height="140" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="709" y="239" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">«struct» OwnedTensor</text>
+<text x="709" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shape, strides</text>
+<text x="709" y="289" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">storage: Vec&lt;f32&gt;</text>
+<rect x="695" y="424" width="255" height="115" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="709" y="453" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">«struct» TensorView</text>
+<text x="709" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shape, strides, base</text>
+<text x="709" y="503" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">borrowed &amp;[f32]</text>
+<line x1="820" y1="424" x2="820" y2="350" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="820.00,350.00 824.35,359.00 815.65,359.00"/>
+<text x="696" y="383" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">borrows storage</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">shape [2,3] • rank 2 • F32</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">strides [3,1] • base 0 • contiguous</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">offset(i,j) = 3i + j; byte = 4 × offset</text>
+</svg>

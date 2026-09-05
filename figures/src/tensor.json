@@ -1,0 +1,45 @@
+{
+  "id": "FIG-TENSOR-STRIDE-001",
+  "chapter": 5,
+  "kind": "tensor",
+  "title": "A tensor is a map into storage",
+  "purpose": "Trace logical coordinate [1,2] to element 5 and byte 20.",
+  "contract": [
+    "shape [2,3] • rank 2 • F32",
+    "strides [3,1] • base 0 • contiguous",
+    "offset(i,j) = 3i + j; byte = 4 × offset"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "code/mini-engine/crates/engine0/src/tensor.rs",
+  "legacy": "diagrams/tensor/row-major-offsets.txt",
+  "animate": false,
+  "caption": "Trace logical coordinate [1,2] to element 5 and byte 20. shape [2,3] • rank 2 • F32. strides [3,1] • base 0 • contiguous. offset(i,j) = 3i + j; byte = 4 × offset.",
+  "alt": "Trace logical coordinate [1,2] to element 5 and byte 20. shape [2,3] • rank 2 • F32; strides [3,1] • base 0 • contiguous; offset(i,j) = 3i + j; byte = 4 × offset",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "shape": [
+      2,
+      3
+    ],
+    "strides": [
+      3,
+      1
+    ],
+    "values": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "index": [
+      1,
+      2
+    ],
+    "element_offset": 5,
+    "byte_offset": 20
+  }
+}
