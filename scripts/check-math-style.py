@@ -6,14 +6,7 @@ import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CHAPTERS = [
-    ROOT / "manuscript" / "part-01" / "chapter-01-the-missing-half-of-ai.md",
-    ROOT / "manuscript" / "part-01" / "chapter-02-from-text-to-tokens.md",
-    ROOT / "manuscript" / "part-01" / "chapter-03-the-smallest-possible-language-model.md",
-    ROOT / "manuscript" / "part-01" / "chapter-04-logits-sampling-autoregressive-loop.md",
-    ROOT / "manuscript" / "part-02" / "chapter-05-tensors-without-magic.md",
-    ROOT / "manuscript" / "part-02" / "chapter-06-matrix-multiplication-the-engine-room.md",
-]
+CHAPTERS = sorted((ROOT / "manuscript").glob("part-*/chapter-*.md"))
 REQUIRED_IDS = {
     "LATENCY-TOTAL",
     "TOKEN-ROUNDTRIP",
@@ -29,6 +22,11 @@ blocks = 0
 shape_blocks = 0
 for path in CHAPTERS:
     text = path.read_text(encoding="utf-8")
+    for number, line in enumerate(text.split("\n"), 1):
+        if any(ord(char) < 32 and char != "\t" for char in line):
+            failures.append(f"{path.relative_to(ROOT)}:{number}: unexpected control character")
+        if re.search(r"\$(?:mathbf|mathbb|frac|sqrt)\b", line):
+            failures.append(f"{path.relative_to(ROOT)}:{number}: math command missing backslash")
     fences = [match.start() for match in re.finditer(r"(?m)^\$\$\s*$", text)]
     if len(fences) % 2:
         failures.append(f"{path.relative_to(ROOT)}: unmatched display-math fence")
@@ -42,7 +40,7 @@ for equation_id in sorted(REQUIRED_IDS):
     if f"`{equation_id}`" not in index:
         failures.append(f"docs/MATH_INDEX.md: missing {equation_id}")
 
-if "F_{\\mathrm{GEMM}}=2MKN" in CHAPTERS[-1].read_text(encoding="utf-8"):
+if any("F_{\\mathrm{GEMM}}=2MKN" in path.read_text(encoding="utf-8") for path in CHAPTERS):
     failures.append("Chapter 6: GEMM work estimate uses equality instead of approximation")
 
 if failures:

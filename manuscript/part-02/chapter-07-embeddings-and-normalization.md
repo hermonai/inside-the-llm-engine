@@ -73,7 +73,7 @@ x_j=E_{t,j},
 $$
 
 This equation specifies selection, not arithmetic over every table row. A
-one-hot vector times $mathbf{E}$ is a mathematically equivalent description,
+one-hot vector times $\mathbf{E}$ is a mathematically equivalent description,
 but constructing that mostly-zero vector and performing a dense product would
 be a perverse implementation. The engine already has the row index.
 
@@ -210,7 +210,7 @@ traffic: cache lines, write allocation, allocator metadata, and warm data can
 change physical transfers. It is a useful statement of the policy's payload
 cost.
 
-In exchange, downstream mutation cannot alter $mathbf{E}$, the activation can
+In exchange, downstream mutation cannot alter $\mathbf{E}$, the activation can
 outlive the lookup borrow, and request cleanup has one obvious owner. The
 [view-versus-copy diagram](../../diagrams/transformer/embedding-view-vs-copy.txt)
 records both options rather than presenting the copy as free.
@@ -270,7 +270,7 @@ need separate semantic and ownership work.
 
 ## The residual-stream invariant
 
-Once lookup produces $mathbf{x}_0\in\mathbb{R}^{D}$ for a token, $D$ becomes
+Once lookup produces $\mathbf{x}_0\in\mathbb{R}^{D}$ for a token, $D$ becomes
 one of the decoder's central dimensional invariants. Transformer sublayers can
 create internal tensors with other shapes, but a value added back into the
 residual stream must return to model width $D$.
@@ -337,10 +337,10 @@ First square each component. Squaring makes every contribution nonnegative,
 so opposite signs cannot cancel. Next take the arithmetic mean:
 
 $$
-m_2(\mathbf{x})=rac{1}{D}\sum_{i=0}^{D-1}x_i^2.
+m_2(\mathbf{x})=\frac{1}{D}\sum_{i=0}^{D-1}x_i^2.
 $$
 
-The quantity $m_2$ has squared units relative to $mathbf{x}$. Taking the
+The quantity $m_2$ has squared units relative to $\mathbf{x}$. Taking the
 square root restores the original units:
 
 $$
@@ -408,7 +408,7 @@ $$
 $$
 
 The operator has two different kinds of multiplication. The reciprocal RMS
-$r$ is one scalar derived from all of $mathbf{x}$. The learned scale
+$r$ is one scalar derived from all of $\mathbf{x}$. The learned scale
 $\mathbf{w}$ is element-wise: coordinate $i$ uses $w_i$. The symbol $\odot$
 denotes that element-wise product, not a dot product.
 
@@ -548,7 +548,7 @@ not converted into a tensor-shape error by this small teaching API.
 
 ## Epsilon is semantic metadata
 
-For $mathbf{x}=\mathbf{0}$ and positive finite epsilon,
+For $\mathbf{x}=\mathbf{0}$ and positive finite epsilon,
 
 $$
 r=\frac{1}{\sqrt{\epsilon}}
