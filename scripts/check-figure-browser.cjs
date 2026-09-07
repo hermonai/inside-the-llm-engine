@@ -30,5 +30,17 @@ const fs = require('node:fs');
     await page.screenshot({path:'build/browser/'+name+'.png',fullPage:true});
     if(errors.length) throw Error(errors.join('\n'));
   }
-  await browser.close(); console.log('Browser QA passed: frames, keyboard, reduced motion, 1024/768/390px, no console errors');
+  // The publication must remain readable offline with all eight SVGs embedded.
+  const failures=[];
+  page.on('requestfailed', request => failures.push(request.url()));
+  await page.goto('file://'+path.resolve('build/publication/chapter05.html'));
+  if (await page.locator('img').count() !== 8) throw Error('chapter figure count');
+  if (await page.locator('math').count() === 0) throw Error('missing native math');
+  if (!(await page.locator('img').evaluateAll(images => images.every(img => img.complete && img.naturalWidth > 0 && img.src.startsWith('data:image/svg+xml'))))) throw Error('chapter SVG not embedded/loaded');
+  for (const width of [1024,768,390]) {
+    await page.setViewportSize({width,height:900});
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw Error('chapter horizontal overflow '+width);
+  }
+  if(failures.length) throw Error(failures.join('\n'));
+  await browser.close(); console.log('Browser QA passed: frames, keyboard, reduced motion, offline Chapter 5 SVG/MathML, 1024/768/390px');
 })().catch(error => {console.error(error); process.exit(1);});

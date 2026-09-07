@@ -1,0 +1,25 @@
+{
+  "id": "FIG-TENSOR-PRODUCTION-001",
+  "chapter": 5,
+  "kind": "tensor-production",
+  "title": "Keep units and owners across the production boundary",
+  "purpose": "Educational tensors and production metadata carry related facts, but their units and storage are different.",
+  "contract": [
+    "Teaching: F32, element strides, owned Vec; GGML: typed blocks and byte strides",
+    "Hermon row conversion returns owned F32 values; packed model storage remains model-owned",
+    "CURRENT default: batched llama.cpp; PREVIEW: paged path; tensor bridge API: LIBRARY"
+  ],
+  "status": "CURRENT / PREVIEW / LIBRARY",
+  "code": "research/astra/chapter05-regeneration.md",
+  "legacy": null,
+  "animate": false,
+  "caption": "Educational tensors and production metadata carry related facts, but their units and storage are different. Teaching: F32, element strides, owned Vec; GGML: typed blocks and byte strides.",
+  "alt": "Educational tensors and production metadata carry related facts, but their units and storage are different.",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "source": "code/reference/fixtures/chapter05-visual.json"
+  },
+  "publication_status": "canonical"
+}

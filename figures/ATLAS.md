@@ -1,6 +1,9 @@
 # LLM engine visual atlas
 
-Ten prototype plates share one visual language and explicit evidence status.
+Seventeen plates share one visual language and explicit evidence status.
+Eight Chapter 5 plates are now canonical and appear inside the rewritten
+chapter; the remaining nine are regeneration prototypes. Start with the
+[Chapter 5 reading atlas](chapter05-atlas.md) for the complete tensor sequence.
 The seven written chapters remain the current book; future mechanisms below
 are educational specifications. See [visual language](VISUAL_LANGUAGE.md),
 [storyboards](storyboards.md), and [build instructions](../docs/FIGURE_BUILD.md).

@@ -2,7 +2,16 @@
 
 **Chapter:** 5. **Level:** BUILD.
 
-## Prerequisites
+## Visual contract checkpoint
+
+Study the [canonical plate](../figures/generated/tensor-copy.svg) and its
+[text equivalent](../figures/generated/tensor-copy.txt).
+Materialize the transpose into [1,4,2,5,3,6]. Predict 24 payload bytes read plus 24 written. Mutate the copy and prove the source is unchanged; the byte count excludes allocation, metadata and cache-line effects.
+
+From the repository root, run `python3 scripts/check-tensor-visual-parity.py`.
+This supplements, rather than replaces, the original exercise and oracle.
+
+## Reading prerequisite
 
 Lab 17 and the view/copy allocation table.
 

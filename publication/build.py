@@ -43,7 +43,7 @@ def main():
         for child in getattr(node,'contents',[]): set_vector_font(child)
     manifest=json.loads((ROOT/'figures/manifest.json').read_text())
     atlas=canvas.Canvas(str(OUT/'visual-atlas.pdf'),pagesize=(720,610),invariant=1)
-    atlas.setTitle('Inside the LLM Engine - Visual Prototype Atlas')
+    atlas.setTitle('Inside the LLM Engine - Visual Atlas')
     for entry in manifest['figures']:
         svg=ROOT/entry['generated'][0]; drawing=svg2rlg(str(svg))
         if drawing is None: raise RuntimeError('Cannot parse '+str(svg))
@@ -54,12 +54,14 @@ def main():
         atlas.setFont('DejaVu Sans',9)
         for i,line in enumerate(textwrap.wrap(entry['caption'],112)):
             atlas.drawString(30,95-13*i,line)
-        atlas.drawString(30,22,'Prototype / '+entry['id']+' / source: '+entry['source'])
+        scene=json.loads((ROOT/entry['source']).read_text())
+        atlas.drawString(30,22,scene.get('publication_status','prototype').title()+' / '+entry['id']+' / source: '+entry['source'])
         atlas.showPage()
     atlas.save()
     # Resolve source links against the branch; do not leave machine paths in publications.
     host='https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/'
-    parts=['# Inside the LLM Engine\n\nFrom First Token to Production-Grade Inference\n\nWorking edition: seven completed chapters. Visual regeneration prototype milestone.\n\n']
+    introduction='# Inside the LLM Engine\n\nFrom First Token to Production-Grade Inference\n\nWorking edition: seven completed chapters. Chapter 5 visual regeneration pilot complete. Later visual atlas mechanisms remain prototypes.\n\n'
+    parts=[introduction]; print_parts=[introduction]; chapter_parts={}
     for path in sorted((ROOT/'manuscript').glob('part-*/chapter-*.md')):
         content=path.read_text()
         def link(m):
@@ -69,19 +71,40 @@ def main():
             try: relative=target.relative_to(ROOT)
             except ValueError: return m.group(0)
             return '['+m.group(1)+']('+host+str(relative)+')'
-        content=re.sub(r'\[([^\]]+)\]\(([^)]+)\)',link,content)
-        parts.append(content)
+        content=re.sub(r'(?<!!)\[([^\]]+)\]\(([^)]+)\)',link,content)
+        def figure(m,print_version=False):
+            target=(path.parent/m.group(2)).resolve()
+            # Only repository-owned vector assets belong in the print pipeline.
+            target.relative_to(ROOT/'figures/generated')
+            if not target.is_file() or target.suffix!='.svg':
+                raise ValueError('Unsupported manuscript figure: '+str(target))
+            resolved=BUILD/(target.stem+'.pdf') if print_version else target
+            if not resolved.is_file(): raise ValueError('Unbuilt figure: '+str(resolved))
+            return '!['+m.group(1)+']('+str(resolved)+')'
+        html_content=re.sub(r'!\[([^\]]+)\]\(([^)]+)\)',figure,content)
+        pdf_content=re.sub(r'!\[([^\]]+)\]\(([^)]+)\)',lambda m:figure(m,True),content)
+        pdf_content='```{=latex}\n\\clearpage\n```\n\n'+pdf_content
+        # Reserve room for the small synthesis table, without changing Markdown
+        # reading order or allowing a single orphaned row on the following page.
+        pdf_content=pdf_content.replace('| Representation | Shape | Element strides | Logical values | Owner |',
+            '```{=latex}\n\\Needspace{12\\baselineskip}\n```\n\n| Representation | Shape | Element strides | Logical values | Owner |')
+        parts.append(html_content); print_parts.append(pdf_content)
+        if path.name.startswith('chapter-05-'):
+            chapter_parts={'html':html_content,'pdf':pdf_content}
     manuscript='\n\n'.join(parts)
     source=BUILD/'book.md'; source.write_text(manuscript)
     pdf_source=BUILD/'book-print.md'
     # Preserve the joined emoji grapheme as a vector glyph in print. XeTeX's
     # monochrome fallback cannot shape the modifier/ZWJ sequence correctly.
-    print_text=manuscript.replace('`👩🏽‍💻🚀`',r'`\texttwemoji{1f469-1f3fd-200d-1f4bb}\texttwemoji{1f680}`{=latex}').replace('`👩🏽‍💻`',r'`\texttwemoji{1f469-1f3fd-200d-1f4bb}`{=latex}')
+    print_text='\n\n'.join(print_parts).replace('`👩🏽‍💻🚀`',r'`\texttwemoji{1f469-1f3fd-200d-1f4bb}\texttwemoji{1f680}`{=latex}').replace('`👩🏽‍💻`',r'`\texttwemoji{1f469-1f3fd-200d-1f4bb}`{=latex}')
     print_text+='\n\n## Publication colophon\n\nComposite emoji graphics in this PDF use Twemoji (Twitter and contributors), CC BY 4.0, through the TeX Live twemojis package. The source and HTML preserve the original Unicode sequences.\n'
     pdf_source.write_text(print_text)
     # fvextra wraps long code; a small mono font preserves 100-column Unicode figures.
     header=BUILD/'header.tex'
     header.write_text(r'''\usepackage{fvextra}
+\usepackage{float}
+\floatplacement{figure}{H}
+\usepackage{needspace}
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines=true,fontsize=\scriptsize}
 \fvset{breaklines=true,fontsize=\scriptsize}
 \usepackage[AutoFallBack=true]{xeCJK}
@@ -93,15 +116,27 @@ def main():
 \xeCJKDeclareCharClass{CJK}{"1F300 -> "1FAFF, "200D}
 \xeCJKDeclareCharClass{Default}{"2018, "2019, "201C, "201D}
 ''')
-    common=['pandoc',str(source),'--standalone','--toc','--metadata','title=Inside the LLM Engine','--syntax-highlighting=none']
+    common=['pandoc',str(source),'--standalone','--toc','--toc-depth=2','--metadata','title=Inside the LLM Engine','--syntax-highlighting=none']
     pdf_command=common.copy(); pdf_command[1]=str(pdf_source)
     result=subprocess.run(pdf_command+['--pdf-engine=xelatex','-V','mainfont=DejaVuSerif.ttf','-V','monofont=DejaVuSansMono.ttf','-V','mathfont=latinmodern-math.otf','-V','geometry:margin=18mm','-V','fontsize=10pt','-H',str(header),'-o',str(OUT/'inside-the-llm-engine.pdf')],check=True,capture_output=True,text=True)
     if 'Missing character:' in result.stderr:
         raise RuntimeError('PDF glyph coverage failure:\n'+result.stderr)
     if result.stderr: print(result.stderr)
     # MathML is local/offline and accessible; no CDN renderer is required.
-    subprocess.run(common+['--mathml','--embed-resources','-o',str(BUILD/'book.html')],check=True)
-    gallery=['<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual atlas</title><style>body{font:18px system-ui;max-width:1000px;margin:2rem auto;padding:1rem;color:#152b3c}svg{width:100%;height:auto}figure{margin:2rem 0}figcaption{line-height:1.5}</style><h1>Inside the LLM Engine: visual atlas</h1><p>Ten prototypes. Educational mechanisms beyond Chapter 7 are specifications, not implemented mini-engine features.</p>']
+    html_flags=['--mathml','--css',str(ROOT/'publication/ebook.css'),'--embed-resources']
+    subprocess.run(common+html_flags+['-o',str(BUILD/'book.html')],check=True)
+    # A standalone pilot is useful for reviewing every figure in its prose context.
+    for mode,content in chapter_parts.items():
+        chapter_source=BUILD/('chapter05-'+mode+'.md'); chapter_source.write_text(content)
+        if mode=='pdf':
+            command=pdf_command.copy(); command[1]=str(chapter_source)
+            result=subprocess.run(command+['--pdf-engine=xelatex','-V','mainfont=DejaVuSerif.ttf','-V','monofont=DejaVuSansMono.ttf','-V','mathfont=latinmodern-math.otf','-V','geometry:margin=18mm','-V','fontsize=10pt','-H',str(header),'-o',str(OUT/'chapter05-tensors-without-magic.pdf')],check=True,capture_output=True,text=True)
+            if 'Missing character:' in result.stderr: raise RuntimeError(result.stderr)
+            if result.stderr: print(result.stderr)
+        else:
+            command=common.copy(); command[1]=str(chapter_source)
+            subprocess.run(command+html_flags+['-o',str(BUILD/'chapter05.html')],check=True)
+    gallery=['<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual atlas</title><style>body{font:18px system-ui;max-width:1000px;margin:2rem auto;padding:1rem;color:#152b3c}svg{width:100%;height:auto}figure{margin:2rem 0}figcaption{line-height:1.5}</style><h1>Inside the LLM Engine: visual atlas</h1><p>'+str(len(manifest['figures']))+' plates: Chapter 5 canonical figures and regeneration prototypes. Educational mechanisms beyond Chapter 7 are specifications, not implemented mini-engine features.</p>']
     for entry in manifest['figures']:
         gallery+=['<figure>',(ROOT/entry['generated'][0]).read_text(),'<figcaption>'+html.escape(entry['caption'])+'</figcaption>']
         if entry['animation']:
@@ -112,7 +147,7 @@ def main():
             gallery.append('<p><a href="'+Path(entry['animation']).name+'">Play the step sequence</a></p>')
         gallery.append('</figure>')
     (BUILD/'atlas.html').write_text('\n'.join(gallery)+'</html>')
-    print('Built full seven-chapter PDF/HTML and ten-plate vector PDF/HTML atlas')
+    print('Built full seven-chapter PDF/HTML, standalone Chapter 5 PDF/HTML, and '+str(len(manifest['figures']))+'-plate vector PDF/HTML atlas')
 
 
 if __name__=='__main__': main()

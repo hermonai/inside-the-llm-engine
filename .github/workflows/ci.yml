@@ -24,6 +24,8 @@ jobs:
         run: python3 scripts/check-math-style.py
       - name: Check deterministic figures and numerical scene contracts
         run: python3 figures/build.py --check
+      - name: Check Chapter 5 Rust, oracle, and visual parity
+        run: python3 scripts/check-tensor-visual-parity.py
       - name: Check Rust formatting
         working-directory: code/mini-engine
         run: cargo fmt --all -- --check

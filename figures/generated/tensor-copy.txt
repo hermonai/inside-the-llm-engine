@@ -1,0 +1,28 @@
+FIG-TENSOR-COPY-001
+Materialization creates a new owner
+EDUCATIONAL MODEL
+
+TRANSPOSE: shape [3, 2]; strides [1, 3]; base 0
+  logical values [1, 4, 2, 5, 3, 6]
+  storage offsets [0, 3, 1, 4, 2, 5]
+
+COPY: shape [3, 2]; strides [2, 1]; base 0
+  logical values [1, 4, 2, 5, 3, 6]
+  storage offsets [0, 1, 2, 3, 4, 5]
+
+source allocation [1,2,3,4,5,6] remains shared by the views
+Only COPY owns a newly materialized payload.
+
+Visit the transposed view in logical order and copy each value to consecutive destination
+slots.
+
+Source Aᵀ [3,2] uses strides [1,3]; destination C [3,2] uses [2,1]
+
+Read offsets [0,3,1,4,2,5]; write offsets [0,1,2,3,4,5]
+
+Six F32 reads + six F32 writes = 48 payload bytes; analytical, not measured traffic
+
+Fixture: {"source": "code/reference/fixtures/chapter05-visual.json"}
+
+Source: figures/src/tensor-copy.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/tensor.rs

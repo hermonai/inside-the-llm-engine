@@ -15,9 +15,14 @@ manifest validation, an atlas, and PDF/HTML builds. Commit on
 
 ## Chapter regeneration order
 
+Pass B is COMPLETE (2026-09-07): eight embedded canonical plates, executable
+Rust/Python/fixture parity, actual ownership UML, six added Rust checks,
+updated Labs 16-21 and vector PDF/offline HTML publication. See the
+[Chapter 5 review](research/astra/chapter05-regeneration.md). Pass C is next.
+
 | Pass | Work | Exit gate |
 | --- | --- | --- |
-| B | Chapter 5 tensor pilot | One matrix survives logical/physical/transpose/copy sequence; actual Rust UML; five parity tests; static PDF complete |
+| B | Chapter 5 tensor pilot — COMPLETE | One matrix survives logical/physical/transpose/copy sequence; actual Rust UML; five parity reviews; static PDF complete |
 | C | Chapter 6 matrix pilot | Fix three misleading diagrams; numerical row sequence; locality comparison with source-backed costs |
 | D | Chapter 7 normalization | Two-pass numerical sequence, epsilon/overflow plates; unchanged oracle and stress tests |
 | E | Complete Chapter 8 | Reuse preserved research; checked QKV/head API, independent oracle, tests, labs, prose and figures; no attention yet |

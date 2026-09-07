@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Keep units and owners across the production boundary</title><desc id="desc">Educational tensors and production metadata carry related facts, but their units and storage are different.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-TENSOR-PRODUCTION-001  /  CURRENT / PREVIEW / LIBRARY</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Keep units and owners across the production boundary</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Educational tensors and production metadata carry related facts, but their units and</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">storage are different.</text>
+<rect x="40" y="205" width="430" height="238" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="54" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">EDUCATIONAL / Tensor Substrate</text>
+<text x="54" y="259" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shape [2,3], element strides [3,1]</text>
+<text x="54" y="284" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">base measured in F32 elements</text>
+<text x="54" y="309" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">OwnedTensor owns Vec&lt;f32&gt;</text>
+<text x="54" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">TensorView borrows the allocation</text>
+<text x="54" y="359" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">transpose changes metadata</text>
+<text x="54" y="384" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">materialize creates owned F32</text>
+<rect x="530" y="205" width="430" height="238" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="544" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">GGML / pinned representation</text>
+<text x="544" y="259" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">ne[]: dimension lengths</text>
+<text x="544" y="284" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">nb[]: byte strides, type/block aware</text>
+<text x="544" y="309" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">buffer and data describe storage</text>
+<text x="544" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">view_src / view_offs describe views</text>
+<text x="544" y="359" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">packed dtype is not one F32 per slot</text>
+<text x="544" y="384" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">backend residency constrains access</text>
+<rect x="40" y="475" width="920" height="101" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="54" y="504" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Hermon tensor_row_f32: validate host tensor → convert row → owned Vec&lt;f32&gt;</text>
+<text x="54" y="529" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">The model keeps packed weights; the caller owns only the converted row.</text>
+<text x="54" y="554" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">TensorSession owns mutable scratch; exclusive calls serialize its access.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Teaching: F32, element strides, owned Vec; GGML: typed blocks and byte strides</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Hermon row conversion returns owned F32 values; packed model storage remains model-owned</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">CURRENT default: batched llama.cpp; PREVIEW: paged path; tensor bridge API: LIBRARY</text>
+</svg>

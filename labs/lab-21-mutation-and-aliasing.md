@@ -2,7 +2,16 @@
 
 **Chapter:** 5. **Level:** EXTEND.
 
-## Prerequisites
+## Visual contract checkpoint
+
+Study the [canonical plate](../figures/generated/tensor-lifetime.svg) and its
+[text equivalent](../figures/generated/tensor-lifetime.txt).
+Read value 6 through a shared view, end its last use, write 60 through the exclusive view, and read 60 afterward. Run cargo test --doc from code/mini-engine to prove the two invalid borrow examples are rejected. OwnedTensor::clone copies payload; TensorView::clone copies metadata and a borrow.
+
+From the repository root, run `python3 scripts/check-tensor-visual-parity.py`.
+This supplements, rather than replaces, the original exercise and oracle.
+
+## Reading prerequisite
 
 Rust shared/exclusive borrowing and Chapter 5 ownership diagrams.
 

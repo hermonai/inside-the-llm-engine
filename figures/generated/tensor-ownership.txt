@@ -1,0 +1,22 @@
+FIG-TENSOR-OWNERSHIP-001
+Rust ownership is part of the tensor contract
+EDUCATIONAL MODEL
+
+OwnedTensor ◆── data: Vec<f32> ── owns allocation
+TensorView<'a> ┄┄▷ shared &[f32]; owns shape/stride/base metadata
+TensorViewMut<'a> ┄┄▷ exclusive &mut [f32]; owns shape/stride metadata
+Views are alternatives when exclusive use overlaps; no inheritance.
+
+The owner contains its buffer. Immutable and exclusive views borrow that buffer and own their
+metadata.
+
+Filled diamond: composition; dashed dependency: borrowed element storage
+
+Each view owns shape/stride metadata; only TensorView has a base offset
+
+Shared and exclusive views shown as alternatives; overlapping live access is forbidden
+
+Fixture: {"source": "code/reference/fixtures/chapter05-visual.json"}
+
+Source: figures/src/tensor-ownership.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/tensor.rs

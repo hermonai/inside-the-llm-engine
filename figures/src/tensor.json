@@ -2,6 +2,7 @@
   "id": "FIG-TENSOR-STRIDE-001",
   "chapter": 5,
   "kind": "tensor",
+  "publication_status": "canonical",
   "title": "A tensor is a map into storage",
   "purpose": "Trace logical coordinate [1,2] to element 5 and byte 20.",
   "contract": [

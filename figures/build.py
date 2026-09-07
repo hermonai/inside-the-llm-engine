@@ -13,6 +13,7 @@ import math
 import re
 import textwrap
 import xml.etree.ElementTree as ET
+import chapter05
 
 ROOT = Path(__file__).resolve().parents[1]
 INK, MUTED, BLUE, TEAL, GOLD = '#152b3c', '#465c6b', '#dcecf7', '#dcefe7', '#f4ead2'
@@ -62,7 +63,9 @@ class Drawing:
 
 def render(s, frame=None):
     d, f, k = Drawing(s), s['fixture'], s['kind']
-    if k == 'tensor':
+    if k.startswith('tensor-'):
+        chapter05.render(s,d,ROOT)
+    elif k == 'tensor':
         d.text(60, 207, '01  Logical A [2,3]')
         d.cells(90, 235, f['values'][:3]); d.cells(90, 283, f['values'][3:])
         d.text(58, 268, '0'); d.text(58, 316, '1')
@@ -72,7 +75,7 @@ def render(s, frame=None):
         d.cells(60, 402, f['values'], 100)
         for i in range(6): d.text(75+100*i, 478, f'{i} / {4*i}', 16)
         d.text(60, 509, 'element offset / byte offset', 16)
-        d.box(695, 210, 255, 140, '«struct» OwnedTensor\nshape, strides\nstorage: Vec<f32>', GOLD, 18)
+        d.box(695, 210, 255, 140, '«struct» OwnedTensor\nshape, strides\ndata: Vec<f32>', GOLD, 18)
         d.box(695, 424, 255, 115, '«struct» TensorView\nshape, strides, base\nborrowed &[f32]', TEAL, 18)
         d.arrow(820, 424, 820, 350, True)
         d.text(696, 383, 'borrows storage', 16)
@@ -157,7 +160,9 @@ def render(s, frame=None):
 
 def validate_fixture(s):
     f,k=s['fixture'],s['kind']
-    if k=='tensor':
+    if k.startswith('tensor-'):
+        chapter05.fixture(s,ROOT)
+    elif k=='tensor':
         assert sum(i*j for i,j in zip(f['index'],f['strides']))==f['element_offset']
         assert f['byte_offset']==4*f['element_offset']
     elif k=='gemv':
@@ -211,7 +216,8 @@ def main():
             'batch':['iteration   0   1   2   3', 'Request A   P   D   D   ·', 'Request B   ·   P   D   D', 'Request C   ·   ·   P   D'],
             'sequence':['API ──▶ submit queue ──▶ worker ──▶ Context::decode_batch', 'API ◀┄┄ sample/stream ◀┄┄ worker ◀┄┄ logits/status', 'Legend: solid call; dashed return; worker owns Context and Batch.'],
             'architecture':['Client ┄┄▶ API ┄┄▶ Dispatcher ┄┄▶ Batched worker [CURRENT]', '                                   │', '                                   ▼', 'parameters ══▶ llama.cpp graph ◀── context / KV state', '                     │', '                     ▼', '             backend ──▶ configured CPU / GPU', 'PREVIEW: paged runtime; LIBRARY: native components; separate integration gates.']}
-        lines=[s['id'],s['title'],s['status'],'',*maps[s['kind']],'']
+        diagram_lines=chapter05.text_lines(s,ROOT) if s['kind'].startswith('tensor-') else maps[s['kind']]
+        lines=[s['id'],s['title'],s['status'],'',*diagram_lines,'']
         for label in [s['purpose'],*s['contract'],'Fixture: '+json.dumps(s['fixture'],ensure_ascii=False)]:
             lines.extend(textwrap.wrap(label,94)); lines.append('')
         lines+=['Source: '+entry['source'],'Implementation/evidence: '+s['code']]

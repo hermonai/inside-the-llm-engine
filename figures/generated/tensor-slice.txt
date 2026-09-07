@@ -1,0 +1,27 @@
+FIG-TENSOR-SLICE-001
+Four values can require six storage slots
+EDUCATIONAL MODEL
+
+SOURCE: shape [2, 3]; strides [3, 1]; base 0
+  logical values [1, 2, 3, 4, 5, 6]
+  storage offsets [0, 1, 2, 3, 4, 5]
+
+SLICE: shape [2, 2]; strides [3, 1]; base 1
+  logical values [2, 3, 5, 6]
+  storage offsets [1, 2, 4, 5]
+
+source allocation [1,2,3,4,5,6] remains shared by the views
+Only COPY owns a newly materialized payload.
+
+Selecting columns one and two preserves row stride three and moves the base to element one.
+
+S [2,2], strides [3,1], base 1; values [2,3,5,6]
+
+offset(i,j) = 1 + 3i + j; reachable offsets [1,2,4,5]
+
+Four logical F32 values = 16 bytes; required backing length = 6 elements
+
+Fixture: {"source": "code/reference/fixtures/chapter05-visual.json"}
+
+Source: figures/src/tensor-slice.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/tensor.rs

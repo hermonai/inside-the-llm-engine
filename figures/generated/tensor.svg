@@ -45,7 +45,7 @@
 <rect x="695" y="210" width="255" height="140" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
 <text x="709" y="239" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">«struct» OwnedTensor</text>
 <text x="709" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shape, strides</text>
-<text x="709" y="289" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">storage: Vec&lt;f32&gt;</text>
+<text x="709" y="289" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">data: Vec&lt;f32&gt;</text>
 <rect x="695" y="424" width="255" height="115" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
 <text x="709" y="453" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">«struct» TensorView</text>
 <text x="709" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shape, strides, base</text>

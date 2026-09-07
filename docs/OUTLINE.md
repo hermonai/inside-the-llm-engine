@@ -66,7 +66,7 @@ of scope, not forgotten.
 - **Concepts:** Rank, dimension, element count, contiguous/strided layout, row-major convention, view versus copy, dtype, broadcast as an explicit rule.
 - **Mathematics / systems / hardware:** Index-to-offset formulas and checked shape products; allocation/lifetime and aliasing; cache-line/coalescing preview.
 - **Implementation / Hermon / external:** Add a small checked tensor/view layer and Labs 16–21 to `mini-engine`; relate to Hermon's safe tensor facade and packed bridge without copying it; compare NumPy/PyTorch semantics from official docs.
-- **Diagrams / experiments:** Unicode text shape/stride memory map and view ownership; transpose/view/copy a tiny matrix, inspect offsets, and measure traversal order.
+- **Diagrams / experiments:** Eight canonical SVG/Unicode text plates carry one matrix through storage, ownership, copy, reshape, transpose, slice, borrowing and production representation; Rust/Python/fixture parity proves the values and offsets. Retain the original higher-rank oracle and traversal-order measurement.
 - **Correctness / benchmark:** Overflow, bounds, zero dimensions, non-contiguous rejection/support; compare iteration orders for locality without generalizing.
 - **Misconceptions / failures / deliverable / next:** Shape does not define physical layout, views do not own bytes, and dtype affects storage and arithmetic; deliver tensor contract; Chapter 6 assumes reliable 2-D access.
 

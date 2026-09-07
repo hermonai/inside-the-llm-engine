@@ -180,6 +180,139 @@
       "alt": "The default runtime reaches llama.cpp through a bridge. Optional providers execute backend kernels. CURRENT: API → Dispatcher → BatchedRuntime → llama.cpp; PREVIEW: paged runtime; LIBRARY: native components; Provider availability is build-dependent, not a performance claim",
       "evidence": "research/astra/source-map.md",
       "animation": null
+    },
+    {
+      "id": "FIG-TENSOR-TRANSPOSE-001",
+      "chapter": 5,
+      "title": "Transpose changes the logical walk",
+      "purpose": "The original and transposed views read one allocation with different coordinate maps.",
+      "concepts": [
+        "tensor-transpose"
+      ],
+      "source": "figures/src/tensor-transpose.json",
+      "generated": [
+        "figures/generated/tensor-transpose.svg",
+        "figures/generated/tensor-transpose.txt"
+      ],
+      "caption": "The original and transposed views read one allocation with different coordinate maps. A [2,3], strides [3,1] → Aᵀ [3,2], strides [1,3].",
+      "alt": "The original and transposed views read one allocation with different coordinate maps.",
+      "evidence": "code/mini-engine/crates/engine0/src/tensor.rs",
+      "animation": null,
+      "publication_status": "canonical"
+    },
+    {
+      "id": "FIG-TENSOR-COPY-001",
+      "chapter": 5,
+      "title": "Materialization creates a new owner",
+      "purpose": "Visit the transposed view in logical order and copy each value to consecutive destination slots.",
+      "concepts": [
+        "tensor-copy"
+      ],
+      "source": "figures/src/tensor-copy.json",
+      "generated": [
+        "figures/generated/tensor-copy.svg",
+        "figures/generated/tensor-copy.txt"
+      ],
+      "caption": "Visit the transposed view in logical order and copy each value to consecutive destination slots. Source Aᵀ [3,2] uses strides [1,3]; destination C [3,2] uses [2,1].",
+      "alt": "Visit the transposed view in logical order and copy each value to consecutive destination slots.",
+      "evidence": "code/mini-engine/crates/engine0/src/tensor.rs",
+      "animation": null,
+      "publication_status": "canonical"
+    },
+    {
+      "id": "FIG-TENSOR-RESHAPE-001",
+      "chapter": 5,
+      "title": "Equal shape does not mean equal values",
+      "purpose": "Reshape groups the physical sequence; transpose swaps the axes. Both can have shape three by two.",
+      "concepts": [
+        "tensor-reshape"
+      ],
+      "source": "figures/src/tensor-reshape.json",
+      "generated": [
+        "figures/generated/tensor-reshape.svg",
+        "figures/generated/tensor-reshape.txt"
+      ],
+      "caption": "Reshape groups the physical sequence; transpose swaps the axes. Both can have shape three by two. R [3,2], strides [2,1]; Aᵀ [3,2], strides [1,3].",
+      "alt": "Reshape groups the physical sequence; transpose swaps the axes. Both can have shape three by two.",
+      "evidence": "code/mini-engine/crates/engine0/src/tensor.rs",
+      "animation": null,
+      "publication_status": "canonical"
+    },
+    {
+      "id": "FIG-TENSOR-SLICE-001",
+      "chapter": 5,
+      "title": "Four values can require six storage slots",
+      "purpose": "Selecting columns one and two preserves row stride three and moves the base to element one.",
+      "concepts": [
+        "tensor-slice"
+      ],
+      "source": "figures/src/tensor-slice.json",
+      "generated": [
+        "figures/generated/tensor-slice.svg",
+        "figures/generated/tensor-slice.txt"
+      ],
+      "caption": "Selecting columns one and two preserves row stride three and moves the base to element one. S [2,2], strides [3,1], base 1; values [2,3,5,6].",
+      "alt": "Selecting columns one and two preserves row stride three and moves the base to element one.",
+      "evidence": "code/mini-engine/crates/engine0/src/tensor.rs",
+      "animation": null,
+      "publication_status": "canonical"
+    },
+    {
+      "id": "FIG-TENSOR-OWNERSHIP-001",
+      "chapter": 5,
+      "title": "Rust ownership is part of the tensor contract",
+      "purpose": "The owner contains its buffer. Immutable and exclusive views borrow that buffer and own their metadata.",
+      "concepts": [
+        "tensor-ownership"
+      ],
+      "source": "figures/src/tensor-ownership.json",
+      "generated": [
+        "figures/generated/tensor-ownership.svg",
+        "figures/generated/tensor-ownership.txt"
+      ],
+      "caption": "The owner contains its buffer. Immutable and exclusive views borrow that buffer and own their metadata. Filled diamond: composition; dashed dependency: borrowed element storage.",
+      "alt": "The owner contains its buffer. Immutable and exclusive views borrow that buffer and own their metadata.",
+      "evidence": "code/mini-engine/crates/engine0/src/tensor.rs",
+      "animation": null,
+      "publication_status": "canonical"
+    },
+    {
+      "id": "FIG-TENSOR-LIFETIME-001",
+      "chapter": 5,
+      "title": "A last use makes room for mutation",
+      "purpose": "A shared read ends before an exclusive write. A subsequent shared view observes the updated owner.",
+      "concepts": [
+        "tensor-lifetime"
+      ],
+      "source": "figures/src/tensor-lifetime.json",
+      "generated": [
+        "figures/generated/tensor-lifetime.svg",
+        "figures/generated/tensor-lifetime.txt"
+      ],
+      "caption": "A shared read ends before an exclusive write. A subsequent shared view observes the updated owner. Before: A[1,2] = 6; exclusive write sets it to 60; after: A[1,2] = 60.",
+      "alt": "A shared read ends before an exclusive write. A subsequent shared view observes the updated owner.",
+      "evidence": "code/mini-engine/crates/engine0/src/tensor.rs",
+      "animation": null,
+      "publication_status": "canonical"
+    },
+    {
+      "id": "FIG-TENSOR-PRODUCTION-001",
+      "chapter": 5,
+      "title": "Keep units and owners across the production boundary",
+      "purpose": "Educational tensors and production metadata carry related facts, but their units and storage are different.",
+      "concepts": [
+        "tensor-production"
+      ],
+      "source": "figures/src/tensor-production.json",
+      "generated": [
+        "figures/generated/tensor-production.svg",
+        "figures/generated/tensor-production.txt"
+      ],
+      "caption": "Educational tensors and production metadata carry related facts, but their units and storage are different. Teaching: F32, element strides, owned Vec; GGML: typed blocks and byte strides.",
+      "alt": "Educational tensors and production metadata carry related facts, but their units and storage are different.",
+      "evidence": "research/astra/chapter05-regeneration.md",
+      "animation": null,
+      "publication_status": "canonical"
     }
   ]
 }

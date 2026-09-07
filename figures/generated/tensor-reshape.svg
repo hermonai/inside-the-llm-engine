@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Equal shape does not mean equal values</title><desc id="desc">Reshape groups the physical sequence; transpose swaps the axes. Both can have shape three by two.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-TENSOR-RESHAPE-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Equal shape does not mean equal values</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Reshape groups the physical sequence; transpose swaps the axes. Both can have shape</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">three by two.</text>
+<text x="60" y="205" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">01  Reshape [3,2]</text>
+<rect x="60" y="235" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">1</text>
+<rect x="128" y="235" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="142" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">2</text>
+<rect x="60" y="283" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="312" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3</text>
+<rect x="128" y="283" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="142" y="312" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">4</text>
+<rect x="60" y="331" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="360" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">5</text>
+<rect x="128" y="331" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="142" y="360" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">6</text>
+<text x="550" y="205" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">02  Transpose [3,2]</text>
+<rect x="550" y="235" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="564" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">1</text>
+<rect x="618" y="235" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="632" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">4</text>
+<rect x="550" y="283" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="564" y="312" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">2</text>
+<rect x="618" y="283" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="632" y="312" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">5</text>
+<rect x="550" y="331" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="564" y="360" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">3</text>
+<rect x="618" y="331" width="68" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="632" y="360" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">6</text>
+<text x="235" y="270" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">R[0,1] = 2</text>
+<text x="725" y="270" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">Aᵀ[0,1] = 4</text>
+<text x="60" y="420" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">strides [2,1]</text>
+<text x="550" y="420" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">strides [1,3]</text>
+<rect x="60" y="461" width="870" height="100" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="490" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">03  Transpose → reshape_view([6])</text>
+<text x="74" y="515" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">NonContiguous: the API rejects this request; it does not copy.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">R [3,2], strides [2,1]; Aᵀ [3,2], strides [1,3]</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">R[0,1] = 2; Aᵀ[0,1] = 4; both alias the original owner</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">reshape_view requires canonical strides and equal checked element count</text>
+</svg>

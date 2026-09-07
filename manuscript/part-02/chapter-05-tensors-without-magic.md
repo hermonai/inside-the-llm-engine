@@ -20,6 +20,34 @@ rest of Part II can reason honestly about memory.
 > Mathematics tells us *what* value we need. Tensor layout tells the machine
 > *where* that value lives.
 
+## Where we are: from a model equation to six stored values
+
+Follow the engine downward: a request invokes a model; the model asks an
+operator to read tensors; the operator must find the right bytes. This chapter
+works at that final representation boundary. Chapter 6 will put arithmetic on
+top of it. The current repository already contains later chapters, but this
+chapter's executable contract remains Tensor Substrate v1.
+
+![Logical coordinates reach physical storage through explicit strides and a base offset.](../../figures/generated/tensor.svg)
+
+Our recurring matrix is $\mathbf{A}\in\mathbb{R}^{2\times3}$, with first row
+`[1,2,3]` and second row `[4,5,6]`. Its owner holds six F32 elements, or 24
+payload bytes. The first plate connects the logical coordinate `[1,2]` to
+element offset 5 and byte displacement 20. Neither number is an allocator
+address. The actual allocation may live anywhere suitable for `f32`.
+
+Watch three things separately as the chapter proceeds: which logical value a
+coordinate selects, which storage slot supplies it, and which object owns that
+slot. Transpose changes the first relationship without moving the payload.
+Materialization creates a second owner. Reshape can have the same output shape
+as transpose while selecting different values. Those differences are the
+mechanism, not details to hide under a framework method name.
+
+The plates have [plain-text equivalents](../../figures/chapter05-atlas.md)
+and a [shared executable fixture](../../code/reference/fixtures/chapter05-visual.json).
+The original letter-valued and higher-rank exercises remain useful independent
+checks. The main visual journey now uses the same six numbers throughout.
+
 ## The vector that could not tell the truth
 
 Suppose a loader hands us twelve `f32` values. What tensor did it load?
@@ -147,30 +175,30 @@ future code from treating `size_of::<f32>()` as the whole semantic contract.
 Consider this logical matrix:
 
 $$
-A =
+\mathbf{A} =
 \begin{bmatrix}
-A & B & C \\
-D & E & F
+1 & 2 & 3 \\
+4 & 5 & 6
 \end{bmatrix},
-\qquad \operatorname{shape}(A)=[2,3].
+\qquad \mathbf{A}\in\mathbb{R}^{2\times3}.
 $$
 
 A canonical row-major representation places each row consecutively:
 
 ```text
          ┌─────┬─────┬─────┬─────┬─────┬─────┐
-storage  │  A  │  B  │  C  │  D  │  E  │  F  │
+storage  │  1  │  2  │  3  │  4  │  5  │  6  │
          └─────┴─────┴─────┴─────┴─────┴─────┘
 offset      0     1     2     3     4     5
 ```
 
 The complete canonical diagram is
 [logical tensor versus physical storage](../../diagrams/tensor/logical-vs-physical.txt).
-The logical coordinate `[1,1]` names $E$; the layout maps it to physical offset
+The logical coordinate `[1,1]` names value 5; the layout maps it to physical offset
 4. **Shape** determines whether `[1,1]` is a legal coordinate. **Strides**
 determine how that coordinate moves through storage.
 
-Column-major storage is another valid convention. It would place $A,D,B,E,C,F$
+Column-major storage is another valid convention. It would place `1,4,2,5,3,6`
 consecutively for the same logical matrix. Row-major is v1's chosen owner
 layout, not a claim that one convention is universally faster.
 
@@ -315,6 +343,23 @@ storage regions overlap. The
 [lifetime](../../diagrams/tensor/tensor-memory-lifetime.txt) diagrams make those
 relationships explicit.
 
+![Owned fields and borrowed slices have different relationships in the actual Rust structs.](../../figures/generated/tensor-ownership.svg)
+
+The filled diamond is UML composition: `OwnedTensor` contains a `Vec<f32>`
+that owns initialized element storage. The dashed dependencies are borrows of
+that storage, not inheritance. Each view also owns its shape and stride
+vectors; `TensorView` additionally stores a base offset. `TensorViewMut` has no
+arbitrary-stride constructor and no base-offset field because v1 limits it to
+the complete canonical slice. The drawing shows the two borrowing alternatives,
+not permission to use an overlapping shared view during exclusive access.
+
+Rust lifetimes describe permitted use, not an obligation to keep a borrow
+active until the end of a lexical block. The last use of a shared view can
+precede a mutable borrow even when its variable remains in scope. A surviving
+reference to one of its elements still counts as a use of the same borrow.
+Ownership is therefore about the whole reference chain, not merely the name
+of the view object. [Text/UML source](../../figures/generated/tensor-ownership.txt).
+
 ## Copy means a new owner
 
 A copy creates new element storage. It has a separate lifetime, separate
@@ -330,10 +375,40 @@ V1 names that boundary `to_contiguous`.
 | `transpose` | no | no |
 | `slice_axis` | no | no |
 | `to_contiguous` | yes | yes |
+| `OwnedTensor::clone` | yes for nonempty payload | yes; clones the owned vector |
+| `TensorView::clone` | no | no; retains the storage borrow |
 
 The distinction is shown in [view versus copy](../../diagrams/tensor/view-vs-copy.txt).
 Metadata allocation is intentionally separated from element allocation in this
 table because model payload dominates later memory costs.
+
+The derived `Clone` implementation deserves explicit attention. Cloning an
+owner duplicates its vectors, including the element payload; it does not create
+a cheap shared handle. Cloning a view duplicates metadata and the immutable
+reference, so both views still read the same allocation. The operation's type
+determines which contract applies. A review that searches only for calls named
+`copy` would miss the owner's clone cost.
+
+![Materialization reads a strided logical sequence and writes a new canonical allocation.](../../figures/generated/tensor-copy.svg)
+
+For the transposed six-value view, `to_contiguous` reads source offsets
+`[0,3,1,4,2,5]` and writes destination offsets `[0,1,2,3,4,5]`. The new physical
+buffer is `[1,4,2,5,3,6]`. Its logical values equal the transposed source even
+though its physical order and owner differ. Changing the copy's `[0,1]` from
+4 to 40 must leave the original matrix's `[1,0]` equal to 4.
+
+For $N$ F32 elements, the analytical payload movement of this explicit copy is
+
+$$
+Q_{\mathrm{copy,payload}}=N\times4+N\times4=8N\quad[\mathrm{bytes}].
+$$
+
+Here the two terms count logical element reads and writes. For our example,
+$N=6$ gives 48 payload bytes. This is not a measurement of DRAM traffic:
+cache lines, write allocation, metadata, allocator bookkeeping and validation
+are outside the count. The function also allocates coordinate vectors while
+enumerating logical indices. Its clarity-first implementation is not a promise
+of a production memcpy cost. [Text sequence](../../figures/generated/tensor-copy.txt).
 
 > **FIRST PRINCIPLE**
 > Allocation and copying must be visible operations. A convenient-looking
@@ -342,7 +417,7 @@ table because model payload dominates later memory costs.
 ## Reshape changes grouping
 
 A no-copy reshape changes how one contiguous sequence is grouped into axes. The
-six physical values `A,B,C,D,E,F` can be viewed as `[2,3]`, `[3,2]`, `[6]`, or
+six physical values `1,2,3,4,5,6` can be viewed as `[2,3]`, `[3,2]`, `[6]`, or
 `[1,6]`. Logical row-major iteration remains physical offsets
 `0,1,2,3,4,5`.
 
@@ -358,6 +433,15 @@ fallback.
 The canonical [reshape view](../../diagrams/tensor/reshape-view.txt) makes the
 shared owner and changed grouping explicit.
 
+![Reshape and transpose both produce three-by-two views but disagree at the same coordinate.](../../figures/generated/tensor-reshape.svg)
+
+Let $\mathbf{R}$ be the `[3,2]` reshape of our original owner. Its strides are
+`[2,1]`, and $R_{0,1}=2$. The transpose has shape `[3,2]` too, but its strides
+are `[1,3]`, so $(A^{\mathsf T})_{0,1}=4$. Both results are valid aliases.
+Checking only the shape would not reveal their different mathematical values.
+An operator contract must therefore state whether it honors general strides,
+requires canonical input, or performs an explicit conversion.
+
 PyTorch's `view` supports a broader compatibility condition based on adjacent
 stride relationships, while `reshape` may choose a view or copy. That is useful
 framework behavior. It is too implicit for our first substrate, where the
@@ -369,9 +453,9 @@ Transpose is not reshape. For the original `[2,3]` matrix:
 
 ```text
 ┌───┬───┬───┐
-│ A │ B │ C │
+│ 1 │ 2 │ 3 │
 ├───┼───┼───┤
-│ D │ E │ F │
+│ 4 │ 5 │ 6 │
 └───┴───┴───┘
 ```
 
@@ -379,11 +463,11 @@ the rank-2 transpose is logically:
 
 ```text
 ┌───┬───┐
-│ A │ D │
+│ 1 │ 4 │
 ├───┼───┤
-│ B │ E │
+│ 2 │ 5 │
 ├───┼───┤
-│ C │ F │
+│ 3 │ 6 │
 └───┴───┘
 ```
 
@@ -391,6 +475,22 @@ No bytes move. Shape `[2,3]` becomes `[3,2]`; strides `[3,1]` become `[1,3]`.
 Logical row-major traversal now visits physical offsets `[0,3,1,4,2,5]`.
 The canonical [transpose view](../../diagrams/tensor/transpose-view.txt) shows
 both interpretations over one owner.
+
+![Transpose swaps shape and stride axes while both views borrow the original six values.](../../figures/generated/tensor-transpose.svg)
+
+The coordinate identity is
+
+$$
+(A^{\mathsf T})_{j,i}=A_{i,j},\qquad
+\operatorname{offset}_{A^{\mathsf T}}(j,i)=j+3i
+=\operatorname{offset}_A(i,j).
+$$
+
+For example, the transposed coordinate `[0,1]` and original coordinate `[1,0]`
+both reach element 3, whose value is 4. The Rust visual-contract test compares
+the returned references, not only the numbers. Value equality could survive an
+accidental copy; reference identity proves this particular view aliases the
+owner. [Text sequence](../../figures/generated/tensor-transpose.txt).
 
 > **ENGINEERING FAILURE — TRANSPOSE ASSUMED CONTIGUOUS**
 > A kernel receives the transposed shape but ignores its strides. It reads
@@ -421,6 +521,24 @@ diagnostics explicit for later model-file views. A subslice representation
 could encode part of the bound in Rust's slice length, but would hide the
 original storage-relative offset we want to teach.
 
+![A column slice retains gaps in storage and needs a larger backing range than its logical element count.](../../figures/generated/tensor-slice.svg)
+
+Return to the six-value matrix and select columns `1..3` using
+`slice_axis(1,1,3)`. The result is `[[2,3],[5,6]]`. Its shape is `[2,2]`, its
+strides remain `[3,1]`, and its base is 1. The offset formula becomes
+
+$$
+o_S(i,j)=1+3i+j,\qquad 0\le i<2,\quad 0\le j<2.
+$$
+
+The four coordinates reach offsets `[1,2,4,5]`. The logical payload is four F32
+values, or 16 bytes, but a borrowed storage slice addressed from its own index
+zero must have length at least 6. It must include the preceding element and the
+gap, even though those elements are never logically read by this view. This is
+why “four values” and “six backing slots” are compatible facts. The test passes
+a five-element backing slice with the same metadata and requires
+`InvalidViewExtent` before any value can be read.
+
 ## Mutable aliasing is a numerical hazard
 
 Two overlapping immutable views are safe. Two overlapping writable views can
@@ -441,6 +559,16 @@ let mut tensor = OwnedTensor::zeros(vec![2, 3])?;
 }
 assert_eq!(*tensor.view().get(&[1, 2])?, 7.0);
 ```
+
+![Shared reads end before exclusive mutation, and a later shared view observes the new value.](../../figures/generated/tensor-lifetime.svg)
+
+In the recurring fixture, a shared read sees 6, its last use ends, an exclusive
+view writes 60, and a later shared view sees 60. The successful transition is
+covered by a normal Rust test. Two `compile_fail` documentation tests verify
+the forbidden cases: using a shared view after requesting overlapping mutable
+access, and returning a view of a local owner. These failures are checked by
+the compiler as part of `cargo test --doc`; no intentionally broken file is
+placed in a normal test target. [Text lifetime trace](../../figures/generated/tensor-lifetime.txt).
 
 A future safe split operation could prove that two canonical ranges do not
 overlap before returning two mutable borrows. Chapter 5 does not need it. It
@@ -612,9 +740,11 @@ X=
 \end{bmatrix}.
 $$
 
-`OwnedTensor::from_vec([4,3], data)` first calculates 12 elements and 48 bytes,
-checks the data length, derives strides `[3,1]`, and takes ownership of the
-caller's vector. The logical coordinate `[2,1]` passes bounds
+`OwnedTensor::from_vec([4,3], data)` calculates 12 elements, checks the data
+length, derives strides `[3,1]`, and takes ownership of the caller's vector.
+The separate `checked_byte_count` helper establishes the 48-byte payload;
+`from_vec` does not call that helper. Its input is already an initialized Rust
+vector, not an unchecked external byte range. The logical coordinate `[2,1]` passes bounds
 $2<4$ and $1<3$, then maps to
 
 $$
@@ -782,11 +912,12 @@ data instead of shrinking into framework vocabulary.
 
 ## Inside Hermon
 
-The following findings are pinned to Hermon commit `472a44c` and its llama.cpp
+The following findings were re-verified on 2026-09-06 at Hermon commit `5e908d7` and its llama.cpp
 submodule `389ff61d`; they are not claims about an uninspected future revision.
 
-> **INSIDE HERMON — CURRENT**
-> `hermon-llamacpp` is the project's single allowed unsafe crate. Its safe
+> **INSIDE HERMON — LIBRARY CONTRACT**
+> `hermon-llamacpp` contains one of the project's unsafe FFI boundaries;
+> `hermon-kernels` also contains native FFI code. The bridge's safe
 > `Model::tensor_info` copies a tensor's GGML dimensions, rank, and type across
 > the FFI boundary. `tensor_row_f32` borrows the model handle for the call and
 > returns one newly owned decoded row. The shim validates tensor existence,
@@ -816,6 +947,49 @@ dimensions `ne`, byte strides `nb`, storage/buffer information, and view/source
 metadata because operations cannot assume contiguity. GGML fixes a maximum rank
 and has packed dtype concerns that v1 excludes. The shared principle is not API
 identity: kernels need shape, layout, type, and lifetime facts together.
+
+![Educational element strides and production byte-stride metadata require an explicit representation boundary.](../../figures/generated/tensor-production.svg)
+
+This comparison preserves the useful commonality without implying identical
+APIs. Multiplying an F32 element stride by four gives a byte displacement, but
+the same shortcut cannot describe arbitrary packed quantized blocks. Similarly,
+a returned F32 row is a caller-owned conversion result, not a Rust slice into
+packed model storage. The [dated source review](../../research/astra/chapter05-regeneration.md)
+records the exact wrapper and runtime gates. Source availability establishes
+these contracts; it does not establish a new hardware benchmark or real-model
+equivalence result.
+
+## Run the same tensor through every representation
+
+The chapter's visual fixture is a contract that can fail independently of the
+renderer. From the repository root, run:
+
+```sh
+python3 scripts/check-tensor-visual-parity.py
+cd code/mini-engine
+cargo test -p engine0 --test tensor_visual_contract
+cargo test -p engine0 --doc
+```
+
+The parity script asks a Rust example to construct the real owner and call
+`transpose`, `to_contiguous`, `reshape_view` and `slice_axis`. It compares their
+reported shapes, strides, bases, logical values and offsets with independent
+Python row/column enumeration and the shared figure fixture. A hand-edited
+caption cannot make an incorrect trace pass. Pointer and mutation tests then
+verify what numbers alone cannot: aliases remain aliases, and copied/cloned
+owners remain independent.
+
+| Representation | Shape | Element strides | Logical values | Owner |
+| --- | --- | --- | --- | --- |
+| Original A | `[2,3]` | `[3,1]` | `[1,2,3,4,5,6]` | original |
+| Transpose | `[3,2]` | `[1,3]` | `[1,4,2,5,3,6]` | borrows original |
+| Reshape | `[3,2]` | `[2,1]` | `[1,2,3,4,5,6]` | borrows original |
+| Materialized transpose | `[3,2]` | `[2,1]` | `[1,4,2,5,3,6]` | new independent owner |
+| Column slice, base 1 | `[2,2]` | `[3,1]` | `[2,3,5,6]` | borrows original |
+
+This table is the chapter's synthesis: what entered was one allocation; what
+we built was several checked interpretations and one explicit copy. The next
+operator can now receive a truthful description of every input it reads.
 
 ## Common mistakes
 
@@ -982,5 +1156,5 @@ the first chapter that deliberately thinks like a performance engineer.
 - The Rust Project. [`usize::checked_mul`](https://doc.rust-lang.org/std/primitive.usize.html#method.checked_mul).
 - ggml-org. Pinned [`ggml.h`](https://github.com/ggml-org/llama.cpp/blob/389ff61d77b5c71cec0cf92fe4e5d01ace80b797/ggml/include/ggml.h).
 - Hermon source at commit
-  [`472a44c`](https://github.com/hermonai/hermon/commit/472a44cdb511b2dae6c9569e59543db8f8350b25),
+  [`5e908d7`](https://github.com/hermonai/hermon/commit/5e908d75e4d5ee102f97f6a880ed4d0968d949df),
   especially `hermon-llamacpp`, `hermon-gguf`, and the paged runtime boundary.

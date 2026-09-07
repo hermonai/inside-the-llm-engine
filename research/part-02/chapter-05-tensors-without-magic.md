@@ -2,6 +2,11 @@
 
 Research date: 2026-09-03.
 
+Historical implementation note. The [2026-09-06 visual regeneration review](../astra/chapter05-regeneration.md)
+records the newer Hermon pin, corrected clone/FFI claims, eight canonical plates
+and executable visual parity checks. Original experiments and source history
+below are retained, not silently re-dated.
+
 Starting book commit: `326f268b87fc537e7b8e3feed24c590253dd28ee`.
 
 Hermon commit: `472a44cdb511b2dae6c9569e59543db8f8350b25`.

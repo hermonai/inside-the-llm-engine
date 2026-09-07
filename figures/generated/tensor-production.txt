@@ -1,0 +1,21 @@
+FIG-TENSOR-PRODUCTION-001
+Keep units and owners across the production boundary
+CURRENT / PREVIEW / LIBRARY
+
+F32 element strides ── unit boundary ──▷ GGML byte/block-aware strides
+packed model row ══ convert ══▶ caller-owned F32 row
+CURRENT default: batched; PREVIEW: paged; bridge API: LIBRARY
+
+Educational tensors and production metadata carry related facts, but their units and storage
+are different.
+
+Teaching: F32, element strides, owned Vec; GGML: typed blocks and byte strides
+
+Hermon row conversion returns owned F32 values; packed model storage remains model-owned
+
+CURRENT default: batched llama.cpp; PREVIEW: paged path; tensor bridge API: LIBRARY
+
+Fixture: {"source": "code/reference/fixtures/chapter05-visual.json"}
+
+Source: figures/src/tensor-production.json
+Implementation/evidence: research/astra/chapter05-regeneration.md

@@ -20,6 +20,8 @@ The identifiers are semantic and stable even if manuscript line numbers move.
 | `TENSOR-ELEMENT-COUNT` | $N(\mathbf d)=\prod d_a$ | 5 | Counts logical elements with checked arithmetic. |
 | `TENSOR-OFFSET` | $o(\mathbf i)=b+\sum i_as_a$ | 5 | Maps a logical index to physical element offset. |
 | `TENSOR-STORAGE-EXTENT` | $L_{min}=1+b+\sum(d_a-1)s_a$ | 5 | Bounds storage for a nonnegative-stride view. |
+| `TENSOR-TRANSPOSE` | $A^{\mathsf T}_{ij}=A_{ji}$ | 5 | Swaps coordinates without copying values; [plate](../figures/generated/tensor-transpose.svg). |
+| `TENSOR-COPY-PAYLOAD` | $Q_{\mathrm{copy,payload}}=8N$ bytes | 5 | One F32 read and write per element, excluding metadata/cache effects; [plate](../figures/generated/tensor-copy.svg). |
 | `GEMM-CONTRACTION` | $C_{ij}=\sum_k A_{ik}B_{kj}$ | 6 | Defines matrix multiplication and its contracted dimension. |
 | `GEMM-WORK` | $F_{GEMM}\approx2MKN$ | 6 | Counts multiply-add work under the stated FLOP convention. |
 | `ARITHMETIC-INTENSITY` | $I=F/Q$ | 6 | Relates arithmetic work to bytes moved. |

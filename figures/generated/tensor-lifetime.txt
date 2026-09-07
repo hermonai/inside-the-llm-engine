@@ -1,0 +1,22 @@
+FIG-TENSOR-LIFETIME-001
+A last use makes room for mutation
+EDUCATIONAL MODEL
+
+shared read 6 ──▶ last shared use ──▶ exclusive write 60
+                                           │
+                                           ▼
+                               later shared read observes 60
+
+A shared read ends before an exclusive write. A subsequent shared view observes the updated
+owner.
+
+Before: A[1,2] = 6; exclusive write sets it to 60; after: A[1,2] = 60
+
+Rust checks borrow use, not merely the position of closing braces
+
+A cloned owner has separate element storage; a cloned view retains its borrow
+
+Fixture: {"source": "code/reference/fixtures/chapter05-visual.json"}
+
+Source: figures/src/tensor-lifetime.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/tensor.rs

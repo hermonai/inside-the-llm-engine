@@ -27,8 +27,9 @@ impl DType {
 /// Contiguous, row-major `f32` storage with checked shape metadata.
 ///
 /// `from_vec` moves the input allocation into the tensor. Views borrow that
-/// allocation; only `zeros` and an explicit view materialization allocate new
-/// element storage inside this module.
+/// allocation. `zeros`, explicit view materialization, and the derived owner
+/// `Clone` allocate element storage. Cloning a view only clones metadata.
+/// See FIG-TENSOR-OWNERSHIP-001 and FIG-TENSOR-COPY-001 in the book atlas.
 #[derive(Clone, PartialEq)]
 pub struct OwnedTensor {
     shape: Vec<usize>,
@@ -96,6 +97,15 @@ impl OwnedTensor {
         self.data
     }
 
+    /// Borrow the payload; a view cannot escape a local owner's lifetime.
+    ///
+    /// ```compile_fail
+    /// use engine0::tensor::{OwnedTensor, TensorView};
+    /// fn escape<'a>() -> TensorView<'a> {
+    ///     let owner = OwnedTensor::from_vec(vec![1], vec![1.]).unwrap();
+    ///     owner.view()
+    /// }
+    /// ```
     pub fn view(&self) -> TensorView<'_> {
         TensorView {
             storage: &self.data,
@@ -109,6 +119,15 @@ impl OwnedTensor {
     ///
     /// V1 intentionally provides no arbitrary-stride mutable constructor. This
     /// keeps overlapping mutable layouts out of the safe API.
+    ///
+    /// ```compile_fail
+    /// use engine0::tensor::OwnedTensor;
+    /// let mut owner = OwnedTensor::from_vec(vec![1], vec![1.]).unwrap();
+    /// let shared = owner.view();
+    /// let mut exclusive = owner.view_mut();
+    /// *exclusive.get_mut(&[0]).unwrap() = 2.;
+    /// assert_eq!(*shared.get(&[0]).unwrap(), 1.);
+    /// ```
     pub fn view_mut(&mut self) -> TensorViewMut<'_> {
         TensorViewMut {
             storage: &mut self.data,

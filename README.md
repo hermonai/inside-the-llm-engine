@@ -24,6 +24,14 @@ migrates the existing projection through GEMV. [Chapter 7](manuscript/part-02/ch
 adds checked single/sequence embedding and RMSNorm as Transformer Primitives
 v1 while preserving the original tiny-model regression. Chapter 8 is next.
 
+The [Chapter 5 visual pilot](figures/chapter05-atlas.md) carries one matrix
+through storage, transpose, reshape, slicing, copying and Rust ownership.
+Eight embedded vector figures, formatted equations and an executable
+Rust/Python/figure parity check connect the explanation to the implementation.
+Use the [publication build](docs/FIGURE_BUILD.md) for the complete ebook and
+standalone chapter PDF. Chapter 6 is the next visual regeneration milestone;
+Chapter 8 remains the next new curriculum chapter.
+
 ```text
                          INSIDE THE LLM ENGINE
 

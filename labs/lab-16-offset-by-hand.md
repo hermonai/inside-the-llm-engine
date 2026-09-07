@@ -2,7 +2,16 @@
 
 **Chapter:** 5. **Level:** CHECK.
 
-## Prerequisites
+## Visual contract checkpoint
+
+Study the [canonical plate](../figures/generated/tensor.svg) and its
+[text equivalent](../figures/generated/tensor.txt).
+For the visual fixture A = [[1,2,3],[4,5,6]], derive element offset 5 and byte offset 20 for A[1,2]. Then return to the rank-3 exercise above.
+
+From the repository root, run `python3 scripts/check-tensor-visual-parity.py`.
+This supplements, rather than replaces, the original exercise and oracle.
+
+## Reading prerequisite
 
 Read Chapter 5 through canonical row-major strides.
 

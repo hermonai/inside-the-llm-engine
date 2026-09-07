@@ -2,7 +2,16 @@
 
 **Chapter:** 5. **Level:** BUILD.
 
-## Prerequisites
+## Visual contract checkpoint
+
+Study the [canonical plate](../figures/generated/tensor-transpose.svg) and its
+[text equivalent](../figures/generated/tensor-transpose.txt).
+Predict offsets [0,3,1,4,2,5] and logical values [1,4,2,5,3,6] for the transpose. The shape is [3,2], the strides [1,3], and its storage pointer still equals the source pointer.
+
+From the repository root, run `python3 scripts/check-tensor-visual-parity.py`.
+This supplements, rather than replaces, the original exercise and oracle.
+
+## Reading prerequisite
 
 Lab 16 and the distinction between shape and strides.
 

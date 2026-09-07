@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">A last use makes room for mutation</title><desc id="desc">A shared read ends before an exclusive write. A subsequent shared view observes the updated owner.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-TENSOR-LIFETIME-001  /  EDUCATIONAL MODEL</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">A last use makes room for mutation</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A shared read ends before an exclusive write. A subsequent shared view observes the</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">updated owner.</text>
+<text x="60" y="205" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">01  Shared phase</text>
+<rect x="60" y="223" width="875" height="75" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">let shared = owner.view();</text>
+<text x="74" y="277" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">read shared[1,2] → 6; this is the last use of shared</text>
+<text x="60" y="327" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">02  Exclusive phase</text>
+<rect x="60" y="345" width="875" height="75" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="374" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">let writable = owner.view_mut();</text>
+<text x="74" y="399" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">write writable[1,2] = 60; end the exclusive use</text>
+<text x="60" y="449" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">03  Shared phase again</text>
+<rect x="60" y="467" width="875" height="75" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="496" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">owner.view()[1,2] → 60</text>
+<text x="74" y="521" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Using the old shared view after the write request would be rejected.</text>
+<line x1="500" y1="298" x2="500" y2="333" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="500.00,333.00 495.65,324.00 504.35,324.00"/>
+<line x1="500" y1="420" x2="500" y2="455" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="500.00,455.00 495.65,446.00 504.35,446.00"/>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Before: A[1,2] = 6; exclusive write sets it to 60; after: A[1,2] = 60</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Rust checks borrow use, not merely the position of closing braces</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">A cloned owner has separate element storage; a cloned view retains its borrow</text>
+</svg>

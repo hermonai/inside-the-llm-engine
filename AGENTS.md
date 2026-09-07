@@ -2,10 +2,10 @@
 
 Visual regeneration is now a separate bounded workstream. Read
 `ASTRA_REGENERATION_PLAN.md` and `figures/VISUAL_LANGUAGE.md` before visual
-changes. The first milestone establishes prototypes and builds; it does not
-complete Chapter 8 or regenerate all chapters. Preserve the pre-existing
-Chapter 8 research and working-tree status changes. Next regeneration pilot:
-Chapter 5, then 6 and 7, before completing Chapter 8.
+changes. The first milestone established prototypes and builds; the Chapter 5
+visual pilot is now complete. Neither completes Chapter 8 or regenerates all
+chapters. Preserve the pre-existing Chapter 8 research and working-tree status
+changes. Next regeneration pilot: Chapter 6, then 7, before completing Chapter 8.
 
 Read this file, `docs/STATUS.md`, `docs/ROADMAP.md`, and `git status` before
 working. This repository is the open book **Inside the LLM Engine: From First
@@ -113,10 +113,16 @@ Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
 progress: Chapters 5–7, Tensor Substrate v1, ENGINE-2's checked reference and
 blocked scalar kernels, Transformer Primitives v1, Labs 16–38, 78 canonical
 Unicode text diagrams, and the Chapter 1–6 diagram/math retrofit are complete.
-The full suite contains 163 tests. The authoritative state and next task are in
+The full suite contains 167 unit/integration tests and two compile-fail doctests.
+The authoritative state and next task are in
 `docs/STATUS.md`.
 
-The next bounded task is Chapter 8 — Queries, Keys, and Values. Start from the
+The active visual workstream's next bounded task is the Chapter 6 matrix pilot:
+correct D049/D050/D054's operand edges, carry one numerical GEMV/GEMM sequence
+through source and physical access, and preserve existing numerical/benchmark
+contracts. Follow pass C in `ASTRA_REGENERATION_PLAN.md`.
+
+The next new curriculum chapter is Chapter 8 — Queries, Keys, and Values. Start from the
 ENGINE-2 GEMM/GEMV layer and Chapter 7's residual-width activations; derive and
 build checked Q/K/V projections and head-shape transformations without
 beginning attention scores, masking, attention softmax, value aggregation,

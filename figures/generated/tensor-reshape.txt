@@ -1,0 +1,28 @@
+FIG-TENSOR-RESHAPE-001
+Equal shape does not mean equal values
+EDUCATIONAL MODEL
+
+RESHAPE: shape [3, 2]; strides [2, 1]; base 0
+  logical values [1, 2, 3, 4, 5, 6]
+  storage offsets [0, 1, 2, 3, 4, 5]
+
+TRANSPOSE: shape [3, 2]; strides [1, 3]; base 0
+  logical values [1, 4, 2, 5, 3, 6]
+  storage offsets [0, 3, 1, 4, 2, 5]
+
+source allocation [1,2,3,4,5,6] remains shared by the views
+Only COPY owns a newly materialized payload.
+
+Reshape groups the physical sequence; transpose swaps the axes. Both can have shape three by
+two.
+
+R [3,2], strides [2,1]; Aᵀ [3,2], strides [1,3]
+
+R[0,1] = 2; Aᵀ[0,1] = 4; both alias the original owner
+
+reshape_view requires canonical strides and equal checked element count
+
+Fixture: {"source": "code/reference/fixtures/chapter05-visual.json"}
+
+Source: figures/src/tensor-reshape.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/tensor.rs

@@ -86,6 +86,7 @@ cargo run -p engine0 -- --trace --sample --temperature 1 --top-k 3 \
   --top-p .9 --seed 42 'I like'
 cargo run -p engine0 -- tokenize lower
 cargo run -p engine0 -- decode 259
+cargo run -p engine0 --example chapter05_visual_trace
 cargo run --release -p engine0 --example chapter06_bench
 cargo run --release -p engine0 --example chapter07_scale_and_stress
 cargo test --workspace
@@ -96,6 +97,13 @@ Chapter 2 teaching BPE. The default generation path uses the paired ENGINE-1
 four-token tokenizer, so its accepted prompt domain is intentionally tiny.
 
 Independent references:
+
+The Chapter 5 visual trace is checked against an independent Python enumeration
+and the shared figure fixture by `python3 scripts/check-tensor-visual-parity.py`
+from the repository root. Four additional contract tests cover view identity,
+slice extent, independent copies and borrow phases; two compile-fail doctests
+prove dangling and overlapping borrows are rejected. The current suite has
+167 unit/integration tests plus two doctests.
 
 - [`chapter03_oracle.py`](../reference/python/chapter03_oracle.py) implements
   the equations separately in plain Python;

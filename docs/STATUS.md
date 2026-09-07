@@ -1,5 +1,21 @@
 # Project Status
 
+## Chapter 5 visual regeneration — 2026-09-07
+
+COMPLETE: the 7,468-word tensor pilot now embeds eight canonical vector figures,
+formatted mathematics, actual Rust ownership UML and a five-state executable
+Rust/Python/fixture contract. Labs 16-21 retain their original exercises and add
+visual checkpoints. The current suite passes 167 unit/integration tests and two
+compile-fail doctests; all five existing oracles and historical generation pass.
+The complete ebook is 123 pages, the standalone chapter 23, and the visual atlas
+17. Offline HTML passes desktop/tablet/phone checks. See the
+[review record](../research/astra/chapter05-regeneration.md) and
+[chapter atlas](../figures/chapter05-atlas.md).
+
+Next active regeneration task: Chapter 6's matrix pilot, then Chapter 7, before
+completing Chapter 8. The older curriculum ledger and in-progress Chapter 8
+work below are preserved; this milestone does not complete any unwritten chapter.
+
 ## Visual regeneration milestone — 2026-09-06
 
 The bounded first regeneration milestone is COMPLETE: audits of seven chapters,
@@ -7,7 +23,7 @@ The bounded first regeneration milestone is COMPLETE: audits of seven chapters,
 three playable sequences; verified PDF/HTML builds; and expanded figure/math/link
 checks. See [validation](../research/astra/validation.md) and the
 [regeneration plan](../ASTRA_REGENERATION_PLAN.md). The next regeneration task
-is the Chapter 5 tensor pilot, followed by Chapters 6–7 and completion of Chapter 8.
+was the Chapter 5 tensor pilot, now complete; Chapters 6–7 and completion of Chapter 8 follow.
 The curriculum ledger below retains its existing chapter statuses; this visual
 milestone does not mark any unwritten chapter complete.
 
@@ -27,7 +43,7 @@ Last updated: 2026-09-04.
 | Diagram system | COMPLETE | Seventy-eight inventoried canonical Unicode diagrams; shared grammar plus automated style and display-width gates |
 | Diagram/math retrofit | COMPLETE | Chapters 1–6 audited; 11 diagrams added, 2 redesigned, 47 equation blocks standardized, and 18 explicit shape declarations added |
 | Research system | COMPLETE | Inventories and note templates established |
-| Code project | COMPLETE | ENGINE-2 plus Transformer Primitives v1 provide dependency-free checked kernels, embedding lookup, and RMSNorm over Tensor Substrate v1; 163 tests pass |
+| Code project | COMPLETE | ENGINE-2 plus Transformer Primitives v1 provide dependency-free checked kernels, embedding lookup, and RMSNorm over Tensor Substrate v1; 167 unit/integration tests plus two doctests pass |
 | Initial CI | COMPLETE | Structure, links, diagram style/width, math structure, Rust format/check/test/Clippy workflow added |
 | License | PLANNED | Maintainers must choose prose and code licensing; no license inferred from Hermon |
 
@@ -44,7 +60,7 @@ tracked separately below.
 | Chapter 3 — The Smallest Possible Language Model | COMPLETE | 6,373-word reviewed chapter, primary-source research, eight canonical diagrams, full-vector Python oracle |
 | Chapter 4 — Logits, Sampling, and the Autoregressive Loop | COMPLETE | 6,306-word reviewed chapter, primary-source research, nine canonical diagrams, fixed-draw Python oracle |
 | ENGINE-0 | COMPLETE | Dependency-free tokenized request/runtime/stream lifecycle; byte oracle, BPE, chat/template contract, strict UTF-8 framing; 37 tests and full Rust gate pass |
-| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 163 in the current full suite |
+| ENGINE-1 | COMPLETE | Immutable model logits; separate greedy and stochastic selection; stable softmax, temperature, top-k/top-p, categorical sampling, request-owned seeded RNG, feedback, and single terminal owner; 83 tests at the Phase 1 boundary, 167 unit/integration tests plus two doctests in the current full suite |
 | Lab 1 — Generate One Token Manually | COMPLETE | Independent candidate oracle plus CHECK/BUILD/BREAK/EXTEND exercise |
 | Labs 2–4 — Tokenization / UTF-8 / chat template | COMPLETE | Hand BPE, split-byte streaming, malformed terminal policy, and wrong-template experiments |
 | Labs 5–8 — Numerical forward / causality / context / shape | COMPLETE | Full hand logits, one-weight intervention, same-last-token proof, and typed malformed-shape failures |
@@ -55,7 +71,7 @@ tracked separately below.
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
 | Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–7 complete; Chapter 8 is next |
-| Chapter 5 — Tensors Without Magic | COMPLETE | 6,083-word reviewed chapter, primary-source research, thirteen canonical diagrams, traversal record, and independent offset oracle |
+| Chapter 5 — Tensors Without Magic | COMPLETE | 7,468-word regenerated chapter, eight embedded vector plates, thirteen retained legacy diagrams, fresh production source review, traversal record and independent visual/offset oracles |
 | Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
 | Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
 | Chapter 6 — Matrix Multiplication: The Engine Room | COMPLETE | 7,480-word reviewed chapter, primary-source research, seventeen canonical diagrams, three performance records, and independent numerical oracle |

@@ -1,0 +1,25 @@
+{
+  "id": "FIG-TENSOR-SLICE-001",
+  "chapter": 5,
+  "kind": "tensor-slice",
+  "title": "Four values can require six storage slots",
+  "purpose": "Selecting columns one and two preserves row stride three and moves the base to element one.",
+  "contract": [
+    "S [2,2], strides [3,1], base 1; values [2,3,5,6]",
+    "offset(i,j) = 1 + 3i + j; reachable offsets [1,2,4,5]",
+    "Four logical F32 values = 16 bytes; required backing length = 6 elements"
+  ],
+  "status": "EDUCATIONAL MODEL",
+  "code": "code/mini-engine/crates/engine0/src/tensor.rs",
+  "legacy": "diagrams/tensor/storage-extent.txt",
+  "animate": false,
+  "caption": "Selecting columns one and two preserves row stride three and moves the base to element one. S [2,2], strides [3,1], base 1; values [2,3,5,6].",
+  "alt": "Selecting columns one and two preserves row stride three and moves the base to element one.",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "source": "code/reference/fixtures/chapter05-visual.json"
+  },
+  "publication_status": "canonical"
+}
