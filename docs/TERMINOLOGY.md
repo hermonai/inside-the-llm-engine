@@ -87,6 +87,14 @@ entry before a chapter reaches TECH-REVIEW.
 - **Packing** changes layout and costs movement/storage. A **microkernel** is a
   small register-oriented compute core. Chapter 6 previews both terms but
   ENGINE-2 implements neither.
+- **SIMD** applies an instruction to several data lanes; it is not whole-matrix
+  simultaneity. A lane reduction can change floating-point grouping.
+- **FMA** is fused multiply-add: the product plus addend is rounded once,
+  unlike separately rounded multiplication and addition. State whether the
+  implementation selects it; ENGINE-2 does not call explicit FMA.
+- **Quantized storage** encodes approximate logical values with fewer bits and
+  format metadata. Logical matrix dimensions and packed byte size are distinct;
+  storage precision does not by itself specify accumulation precision.
 - **EOS** is a sampled control token that ends generation; `max_new_tokens`
   counts committed generated tokens. Keep both distinct from prompt length and
   future text stop-string handling.

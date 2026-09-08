@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Two inspected paths, distinct status</title><desc id="desc">Trace the default runtime and the optional host tensor bridge without blending them. Hermon 2a3fd521: CURRENT batched default; paged runtime PREVIEW. llama.cpp 389ff61d: graph operator and CPU/Metal/CUDA kernel families. Optional tensor_bridge.cpp requires host weights; it is not the default GPU path.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-SOURCE-PATH  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Two inspected paths, distinct status</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Trace the default runtime and the optional host tensor bridge without blending them.</text>
+<rect x="50" y="204" width="430" height="103" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">CURRENT default Hermon</text>
+<text x="64" y="258" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Dispatcher → BatchedRuntime</text>
+<text x="64" y="283" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Context::decode_batch → llama_decode</text>
+<rect x="530" y="204" width="415" height="103" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="544" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">PREVIEW / LIBRARY bridge</text>
+<text x="544" y="258" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">paged → matmul_bundle_with_session</text>
+<text x="544" y="283" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">checked Rust → tensor_bridge.cpp</text>
+<line x1="265" y1="307" x2="265" y2="348" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="265.00,348.00 260.65,339.00 269.35,339.00"/>
+<line x1="735" y1="307" x2="735" y2="348" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="735.00,348.00 730.65,339.00 739.35,339.00"/>
+<rect x="50" y="350" width="895" height="95" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="379" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Pinned llama.cpp / GGML: graph node is not an executed kernel</text>
+<text x="64" y="404" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Default: model graph → ggml_mul_mat → configured CPU / Metal / CUDA</text>
+<text x="64" y="429" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Optional host bridge: ggml_mul_mat → session_compute (CPU only)</text>
+<rect x="50" y="475" width="895" height="112" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="504" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Separate verification pattern: ENGINE-2 never calls the production kernels</text>
+<text x="64" y="529" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">candidate result → finite elementwise error → tolerance</text>
+<text x="64" y="554" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">pass → benchmark; fail → reject. No speed claim without workload evidence.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Hermon 2a3fd521: CURRENT batched default; paged runtime PREVIEW.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">llama.cpp 389ff61d: graph operator and CPU/Metal/CUDA kernel families.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Optional tensor_bridge.cpp requires host weights; it is not the default GPU path.</text>
+</svg>

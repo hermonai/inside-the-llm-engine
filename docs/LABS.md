@@ -59,3 +59,9 @@ expected artifact, oracle, failure injection, measurement (if any), and cleanup.
 
 Every lab evolves through CHECK, BUILD, BREAK, and EXTEND prompts. Performance
 labs follow `BENCHMARK_POLICY.md`; numerical labs use independent oracles.
+
+Labs 22–29 preserve their original numbering and exercises, with Chapter 6
+visual checkpoints added in the 2026-09-08 regeneration. Expected products,
+GEMV/GEMM outputs, offsets, tails and rounding examples are tied to
+`scripts/check-linear-visual-parity.py`. Historical benchmark checkpoints retain
+losing cases and distinguish observations from proposed causes.

@@ -1,0 +1,38 @@
+FIG-CH06-CROSSOVER
+Blocking can lose on small matrices
+CANONICAL / CHAPTER 6
+
+Read the recorded size sweep, including the points below parity.
+Historical Apple M1 F32 CPU record, 2026-09-03; block dimensions 32.
+Bars derive from recorded medians, not a newly collected benchmark.
+Repetitions vary by size; allocation is included; no universal threshold.
+
+W [3,4] = [1, -2, 3, 0, 0, 1, -1, 2, 2, 0, 1, -1]
+x [4] = [2, 1, -1, 0.5]
+y [3] = [-3.0, 3.0, 2.5]
+B [4,2] = [2, 1, 1, -1, -1, 2, 0.5, 0]
+C [3,2] = [-3.0, 9.0, 3.0, -3.0, 2.5, 4.0]
+row 0 products = [2.0, -2.0, -3.0, 0.0]
+row 0 partial sums = [2.0, 0.0, -3.0, -3.0]
+{'size': '8', 'repetitions': '31', 'ijk_ns': '333', 'blocked_ns': '1000', 'speedup': '0.33x'}
+{'size': '16', 'repetitions': '31', 'ijk_ns': '2459', 'blocked_ns': '2834', 'speedup':
+'0.87x'}
+{'size': '32', 'repetitions': '21', 'ijk_ns': '19375', 'blocked_ns': '12500', 'speedup':
+'1.55x'}
+{'size': '64', 'repetitions': '15', 'ijk_ns': '178333', 'blocked_ns': '93125', 'speedup':
+'1.91x'}
+{'size': '128', 'repetitions': '9', 'ijk_ns': '1668500', 'blocked_ns': '755625', 'speedup':
+'2.21x'}
+
+Read the recorded size sweep, including the points below parity.
+
+Historical Apple M1 F32 CPU record, 2026-09-03; block dimensions 32.
+
+Bars derive from recorded medians, not a newly collected benchmark.
+
+Repetitions vary by size; allocation is included; no universal threshold.
+
+Fixture: {"source": "code/reference/fixtures/chapter06-visual.json"}
+
+Source: figures/src/ch06-crossover.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/linear.rs

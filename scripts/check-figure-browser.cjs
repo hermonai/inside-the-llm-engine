@@ -5,7 +5,7 @@ const fs = require('node:fs');
 (async () => {
   const browser = await chromium.launch({headless:true, executablePath:process.env.CHROME_PATH || undefined});
   const page = await browser.newPage({viewport:{width:1024,height:900}});
-  for (const name of ['rope','cache','batch']) {
+  for (const name of ['rope','cache','batch','ch06-row','ch06-loops']) {
     const errors=[]; page.on('pageerror', e => errors.push(e.message));
     await page.goto('file://'+path.resolve('figures/generated/'+name+'.html'));
     if (await page.locator('.frame:visible').count() !== 1) throw Error('frame visibility');
@@ -30,17 +30,24 @@ const fs = require('node:fs');
     await page.screenshot({path:'build/browser/'+name+'.png',fullPage:true});
     if(errors.length) throw Error(errors.join('\n'));
   }
-  // The publication must remain readable offline with all eight SVGs embedded.
+  // Both canonical chapters must remain readable offline with embedded vectors.
   const failures=[];
   page.on('requestfailed', request => failures.push(request.url()));
-  await page.goto('file://'+path.resolve('build/publication/chapter05.html'));
-  if (await page.locator('img').count() !== 8) throw Error('chapter figure count');
+  for (const [chapter,count] of [['05',8],['06',14]]) {
+  await page.goto('file://'+path.resolve('build/publication/chapter'+chapter+'.html'));
+  if (await page.locator('img').count() !== count) throw Error('chapter figure count');
   if (await page.locator('math').count() === 0) throw Error('missing native math');
   if (!(await page.locator('img').evaluateAll(images => images.every(img => img.complete && img.naturalWidth > 0 && img.src.startsWith('data:image/svg+xml'))))) throw Error('chapter SVG not embedded/loaded');
   for (const width of [1024,768,390]) {
     await page.setViewportSize({width,height:900});
     if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw Error('chapter horizontal overflow '+width);
   }
+  }
   if(failures.length) throw Error(failures.join('\n'));
-  await browser.close(); console.log('Browser QA passed: frames, keyboard, reduced motion, offline Chapter 5 SVG/MathML, 1024/768/390px');
+  for (const entry of JSON.parse(fs.readFileSync('figures/manifest.json')).figures.filter(e=>e.id.startsWith('FIG-CH06-'))) {
+    await page.goto('file://'+path.resolve(entry.generated[0]));
+    const outside=await page.locator('text').evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBBox();return r.x<0 || r.y<0 || r.x+r.width>1000 || r.y+r.height>720;}).map(n=>n.textContent));
+    if(outside.length) throw Error(entry.id+' text outside canvas: '+outside.join('; '));
+  }
+  await browser.close(); console.log('Browser QA passed: five animations, keyboard, reduced motion, offline Chapters 5/6 SVG/MathML, 1024/768/390px, Chapter 6 SVG bounds');
 })().catch(error => {console.error(error); process.exit(1);});

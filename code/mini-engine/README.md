@@ -103,7 +103,14 @@ and the shared figure fixture by `python3 scripts/check-tensor-visual-parity.py`
 from the repository root. Four additional contract tests cover view identity,
 slice extent, independent copies and borrow phases; two compile-fail doctests
 prove dangling and overlapping borrows are rejected. The current suite has
-167 unit/integration tests plus two doctests.
+173 unit/integration tests plus two doctests.
+
+Chapter 6 adds an input-only JSON fixture, the `chapter06_visual_trace` example
+and six visual/numerical contract tests; no operator implementation changes.
+`python3 scripts/check-linear-visual-parity.py` compares the real kernels to
+the independent Python visual oracle, checks addresses and loop/tail coverage,
+and detects drift in four manuscript source excerpts and fourteen scene links.
+The historical Chapter 6 oracle and benchmark records remain separate regressions.
 
 - [`chapter03_oracle.py`](../reference/python/chapter03_oracle.py) implements
   the equations separately in plain Python;

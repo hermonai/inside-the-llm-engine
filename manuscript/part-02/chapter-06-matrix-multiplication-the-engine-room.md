@@ -34,6 +34,15 @@ place with correctness gates and measurements.
 > kernel specifies the order in which arithmetic and byte movement realize
 > that answer.
 
+![From equation through addresses, reference loops, reuse, and hardware to model output.](../../figures/generated/ch06-engine.svg)
+
+Read this chapter in three passes: first determine **which values** contribute;
+then trace **which addresses** the implementation visits; finally ask **what the
+measurements justify**. A fast wrong answer fails the first pass. A plausible
+cache story without timing evidence fails the third. The production comparison
+at the end translates these same questions into Hermon and GGML, without adding
+a production backend to the teaching engine.
+
 ## The most important loop in AI
 
 Language-model inference repeatedly applies learned linear transformations.
@@ -96,8 +105,8 @@ Follow one contribution in the canonical
  previous Cᵢⱼ ──▶ f32 add ──▶ next Cᵢⱼ
 ```
 
-The floating-point representation makes the update finite and fast, not exact
-over real numbers. If large positive and negative contributions nearly cancel,
+The floating-point representation makes the update bounded in precision, not
+exact over real numbers; overflow can produce infinity. If large positive and negative contributions nearly cancel,
 rounding error can be visible. If an optimized kernel changes the reduction
 order, its final low bits may change as well.
 
@@ -110,14 +119,21 @@ $$
 =\sum_{k=0}^{K-1}a_kb_k.
 $$
 
-With $\mathbf{a}=[1,2,3]$ and $\mathbf{b}=[4,5,6]$,
+For the chapter's canonical example, take
+$\mathbf{a}=[1,-2,3,0]$ and $\mathbf{x}=[2,1,-1,0.5]$:
 
 $$
-\mathbf{a}\cdot\mathbf{b}
-=1\times4+2\times5+3\times6
-=4+10+18
-=32.
+\mathbf{a}\cdot\mathbf{x}
+=1(2)+(-2)(1)+3(-1)+0(0.5)
+=2-2-3+0=-3.
 $$
+
+![Four matched-index products reduce to one scalar, minus three.](../../figures/generated/ch06-dot.svg)
+
+The two operands enter each multiplication independently. The product at index
+2 is $3(-1)$, never $3(0.5)$: matching the reduction index is the operation's
+identity. A visually pleasing crossing arrow that pairs the wrong indices
+would teach a different computation.
 
 The [multiply-accumulate diagram](../../diagrams/linear/dot-product-multiply-accumulate.txt)
 shows the reduction visually. The shape contract is strict: both operands have
@@ -168,35 +184,50 @@ The shared $K$ dimension is contracted. The $M$ row dimension survives into
 the output. The complete [GEMV shape diagram](../../diagrams/linear/gemv-shape-contract.txt)
 makes that flow explicit.
 
-For
+Use one rectangular fixture throughout the numerical plates. We call the
+weight matrix $W$ here and use $A=W$ when discussing generic GEMM:
 
 $$
-A=
+W=
 \begin{bmatrix}
-1&2&3\\
-4&5&6
+1&-2&3&0\\
+0&1&-1&2\\
+2&0&1&-1
 \end{bmatrix},
 \qquad
 \mathbf{x}=
 \begin{bmatrix}
-2\\-1\\0.5
+2\\1\\-1\\0.5
 \end{bmatrix},
 $$
 
 the first row produces
 
 $$
-y_0=1(2)+2(-1)+3(0.5)=1.5,
+y_0=1(2)+(-2)(1)+3(-1)+0(0.5)=-3,
 $$
 
-and the second produces
+while the remaining rows produce
 
 $$
-y_1=4(2)+5(-1)+6(0.5)=6.
+\begin{aligned}
+y_1&=0(2)+1(1)+(-1)(-1)+2(0.5)=3,\\
+y_2&=2(2)+0(1)+1(-1)+(-1)(0.5)=2.5.
+\end{aligned}
 $$
 
-Thus $\mathbf{y}=[1.5,6]$. The rectangular matrix and mixed signs help expose
+Thus $\mathbf{y}=[-3,3,2.5]$. The rectangular matrix and mixed signs help expose
 orientation errors that square, all-positive fixtures can conceal.
+
+![Four increasing-k accumulator states end at y zero equals minus three.](../../figures/generated/ch06-row.svg)
+
+The partial sums are $2,0,-3,-3$, starting from zero before the first product.
+The final zero product still occupies a legitimate reduction index. The
+[step-through row animation](../../figures/generated/ch06-row.html) highlights
+each update; this static plate contains every state and loses no information
+in print. Nothing starts moving automatically.
+
+![The same x contributes independently to three row dot products and three output values.](../../figures/generated/ch06-gemv.svg)
 
 ## Build it: GEMV
 
@@ -213,7 +244,19 @@ contract simple:
 ```text
  borrowed A ─┐
              ├──▶ GEMV ──▶ new OwnedTensor y
- borrowed x ─┘
+borrowed x ─┘
+```
+
+The numerical body is the existing kernel, not a diagram-only implementation:
+
+```rust
+for (row, value) in output.iter_mut().enumerate() {
+    let mut sum = 0.0_f32;
+    for k in 0..inner {
+        sum += *matrix.get2(row, k)? * *vector.get(&[k])?;
+    }
+    *value = sum;
+}
 ```
 
 For shape `[M,0] × [0]`, the result is an owned `[M]` vector of zeros. For
@@ -223,6 +266,37 @@ path is needed.
 > **BUILD IT**
 > Complete [Lab 23](../../labs/lab-23-gemv-by-hand.md), including the strided
 > fixture. Physical padding must not affect the logical result.
+
+## From a weight coordinate to a loaded F32
+
+Chapter 5's address contract remains active inside every multiply. For a valid
+rank-2 view with element strides $s_0,s_1$ and base offset $o$,
+
+$$
+\operatorname{offset}_W(i,k)=o+i s_0+k s_1.
+$$
+
+Our canonical $W:[3,4]$ has strides `[4,1]` and base zero. Therefore
+$W_{1,2}$ lives at element $1(4)+2=6$, whose displacement from the allocation's
+start is $4(6)=24$ bytes for F32. The loaded value is $-1$. An element index,
+a byte displacement, and the value at that location are three different things.
+
+![Logical W maps to twelve F32 storage cells; index one comma two is offset six and byte twenty-four.](../../figures/generated/ch06-memory.svg)
+
+The reference calls checked view access; it does not replace that mapping with
+`i*K+k` for arbitrary inputs. A transposed view changes strides without moving
+values. A zero-stride immutable view may reuse one storage cell at several
+logical positions. Both can be valid reference operands. The blocked kernel
+later requires canonical row-major slices so its simplified arithmetic is
+justified by an explicit boundary check, not by an assumption hidden in a loop.
+
+The canonical [fixture](../../code/reference/fixtures/chapter06-visual.json)
+stores inputs only. The independent
+[Python visual oracle](../../code/reference/python/chapter06_visual_oracle.py)
+derives outputs, addresses, contribution traces, and tile ranges. The
+[Rust visual example](../../code/mini-engine/crates/engine0/examples/chapter06_visual_trace.rs)
+uses the real tensor and linear APIs. A parity script compares the results;
+neither a manually typed answer nor the artwork alone is the specification.
 
 ## Matrix times matrix
 
@@ -239,14 +313,8 @@ Every output cell is the dot product of row $i$ from $A$ and column $j$ from
 $B$. The inner dimensions must agree. There is no requirement that $M$, $K$,
 and $N$ equal one another.
 
-```text
-       A [M,K]          B [K,N]                 C [M,N]
-    ┌──────────┐     ┌──────────┐            ┌──────────┐
- M  │          │  K  │          │       M    │          │
-    │          │ ═══▶│          │  ────────▶ │          │
-    └──────────┘     └──────────┘            └──────────┘
-          K                N                       N
-```
+The two matrices are independent inputs to one contraction. An arrow from
+$A$ into $B$ would incorrectly suggest that the first produces the second.
 
 See the canonical [GEMM shape contract](../../diagrams/linear/gemm-shape-contract.txt)
 and [one-output-cell diagram](../../diagrams/linear/gemm-one-output-cell.txt).
@@ -296,32 +364,22 @@ contract failed without reconstructing it from a generic bounds error.
 
 ## One output cell by hand
 
-Use
+Keep $A=W$ from GEMV, and place two input vectors into the columns of $B$:
 
 $$
-A=
-\begin{bmatrix}
-1&2&3\\
-4&5&6
-\end{bmatrix},
-\qquad
 B=
 \begin{bmatrix}
-7&8\\
-9&10\\
-11&12
+2&1\\
+1&-1\\
+-1&2\\
+0.5&0
 \end{bmatrix}.
 $$
 
-The four output cells are
+The selected output cell follows row 0 and column 1, matching the same $k$:
 
 $$
-\begin{aligned}
-C_{00}&=1(7)+2(9)+3(11)=58,\\
-C_{01}&=1(8)+2(10)+3(12)=64,\\
-C_{10}&=4(7)+5(9)+6(11)=139,\\
-C_{11}&=4(8)+5(10)+6(12)=154.
-\end{aligned}
+C_{01}=1(1)+(-2)(-1)+3(2)+0(0)=9.
 $$
 
 Therefore
@@ -329,12 +387,35 @@ Therefore
 $$
 C=
 \begin{bmatrix}
-58&64\\
-139&154
+-3&9\\
+3&-3\\
+2.5&4
 \end{bmatrix}.
 $$
 
-Tracing all four cells matters. A test that checks only $C_{00}$ can miss a
+![Selected row and column independently feed the dot product for C zero comma one, with column and outer-product interpretations.](../../figures/generated/ch06-gemm.svg)
+
+The same contraction has two other useful interpretations. First, each column
+of $B$ is a GEMV input:
+
+$$
+C_{:,j}=A B_{:,j},\qquad B_{:,0}=\mathbf{x},\qquad C_{:,0}=\mathbf{y}.
+$$
+
+Second, one reduction index contributes a whole rank-one matrix:
+
+$$
+C=\sum_{k=0}^{K-1} A_{:,k}B_{k,:}.
+$$
+
+Here $A_{:,k}$ is a column of length $M$ and $B_{k,:}$ a row of length $N$;
+their outer product has shape `[M,N]`. For $k=0$, the contribution is
+$[1,0,2]^{\mathsf T}[2,1]$, giving rows `[2,1]`, `[0,0]`, `[4,2]`.
+Adding all four outer products yields the same $C$. Row-dot-column explains a
+cell, repeated GEMV explains columns, and outer products explain reuse across
+cells. None changes the mathematical result over real numbers.
+
+Tracing all six cells matters. A test that checks only $C_{00}$ can miss a
 wrong output-row stride. A square-only test can let code confuse $K$ with $N$
 without crossing a bound. ENGINE-2 includes asymmetric fixtures and a grid of
 rectangular shapes for exactly this reason.
@@ -468,6 +549,8 @@ permutation make the intended reuse easier to realize?
 
 ## Working set and the memory hierarchy
 
+![Conceptual memory-to-execution hierarchy with spatial and temporal locality distinguished.](../../figures/generated/ch06-hierarchy.svg)
+
 A processor does not generally load every scalar directly from main memory on
 every use. Registers sit closest to arithmetic. Several cache levels retain
 recently accessed lines. Main memory is larger and usually more expensive to
@@ -552,10 +635,20 @@ old storage rather than matrix multiplication.
 
 ## Performance lab: loop order
 
+![IJK strides down B while IKJ sweeps adjacent B and C elements, preserving all contributions.](../../figures/generated/ch06-loops.svg)
+
+For the fixture, canonical strides are `A:[4,1]`, `B:[2,1]`, `C:[2,1]`.
+At `i=0,j=0`, IJK reads B offsets `0,2,4,6`; IKJ at `i=0,k=0` reads
+offsets `0,1` and updates C offsets `0,1` using the same A scalar. The
+[loop-order animation](../../figures/generated/ch06-loops.html) advances $k$;
+its static plate shows all four states. The parity gate verifies that the full
+IJK and IKJ traces contain the identical set of 24 `(i,j,k)` contributions.
+This proves traversal coverage, not a cache-hit count or a speedup.
+
 The release harness compares direct scalar row-major `ijk` and `ikj` loops.
 Both allocate and zero their result, use deterministic `f32` inputs, and pass a
 per-element correctness gate. On the recorded Apple M1 run at code commit
-`03e08a877be445d70a211996a8eb735a982e5c0f`, median results were:
+`03e08a87` (full pin in the record), median results were:
 
 | Square size | Repetitions | `ijk` | `ikj` | Observed ratio |
 | ---: | ---: | ---: | ---: | ---: |
@@ -733,17 +826,24 @@ machine truth.
 ## Build it: blocked scalar GEMM
 
 The blocked path uses outer tile loops `ii,kk,jj` and inner scalar loops
-`i,k,j`. Conceptually:
+`i,k,j`. This is the actual loop body from `linear.rs`, after validation and
+zero-initialized output allocation:
 
 ```rust
-for ii in (0..M).step_by(BM) {
-    for kk in (0..K).step_by(BK) {
-        for jj in (0..N).step_by(BN) {
-            for i in ii..min(ii + BM, M) {
-                for k in kk..min(kk + BK, K) {
-                    let a = A[i, k];
-                    for j in jj..min(jj + BN, N) {
-                        C[i, j] += a * B[k, j];
+for ii in (0..rows).step_by(block.m) {
+    let i_end = ii.saturating_add(block.m).min(rows);
+    for kk in (0..inner).step_by(block.k) {
+        let k_end = kk.saturating_add(block.k).min(inner);
+        for jj in (0..columns).step_by(block.n) {
+            let j_end = jj.saturating_add(block.n).min(columns);
+            for i in ii..i_end {
+                let output_row = i * columns;
+                let left_row = i * inner;
+                for k in kk..k_end {
+                    let left_value = left_data[left_row + k];
+                    let right_row = k * columns;
+                    for j in jj..j_end {
+                        output[output_row + j] += left_value * right_data[right_row + j];
                     }
                 }
             }
@@ -765,6 +865,16 @@ divisible by the block size can report a fast but incomplete kernel.
 > compares every result cell with the reference path.
 
 ## Separate checked boundary from hot loop
+
+![Rectangular tile offsets and clipped edge regions in a five-by-seven times seven-by-three product.](../../figures/generated/ch06-tiles.svg)
+
+The tail fixture deliberately uses a different shape from the small numerical
+spine: `[5,7] × [7,3]` with blocks `[4,4,2]`. The last tile covers
+`i=4..5`, `k=4..7`, `j=2..3`, all half-open. Its three scalar contributions
+are as real as those in a full tile. There are eight tile combinations;
+clipping bounds avoids padding requirements and dropping remainders. The
+test compares every output against the general reference. Tile diagrams show
+flat offsets here, not invented matrix values.
 
 The blocked kernel does not call checked multidimensional indexing for each
 multiply. It validates rank, inner dimensions, output size, block size, and
@@ -873,6 +983,32 @@ can discard information that a different grouping preserves. A simple
 reduction order is therefore part of a reproducibility story even when it is
 not part of the abstract linear algebra.
 
+An executable binary32 example uses $a=2^{24}$, $b=1$, $c=-2^{24}$:
+
+$$
+\operatorname{fl}(\operatorname{fl}(a+b)+c)=0,
+\qquad
+\operatorname{fl}(a+\operatorname{fl}(b+c))=1.
+$$
+
+At that positive magnitude, the first grouping loses the unit before
+cancellation; the second preserves it. The new test evaluates both groupings
+as `f32`, with black-box inputs. This is rounding, not an indexing defect.
+
+Fusing also changes the rounding points. Set $u=1+2^{-13}$ and
+$v=1-2^{-13}$. Both are exactly representable binary32 inputs. Their exact
+product is $1-2^{-26}$, which rounds to 1 when stored as F32:
+
+$$
+\operatorname{fl}(\operatorname{fl}(uv)-1)=0,
+\qquad \operatorname{fma}(u,v,-1)=-2^{-26}.
+$$
+
+The test uses explicit `mul_add` only to demonstrate this distinction. The
+teaching kernels do not call it. A vector reduction may create several partial
+sums and combine them later, adding another reason to state numerical policy
+separately from the real-number equation.
+
 The reference kernel visits K in ascending order for each cell. The blocked
 kernel visits K tiles in ascending order and K within each tile in ascending
 order. Its interleaving across different output cells changes, but the sequence
@@ -919,7 +1055,7 @@ teaching default of 32 was not the measured winner.
 
 A second experiment held the 32 tile fixed and varied square size:
 
-| Size | Direct `ijk` | Blocked 32 | Observed blocked/direct speedup |
+| Size | Direct `ijk` | Blocked 32 | Speedup: direct time / blocked time |
 | ---: | ---: | ---: | ---: |
 | 8 | 333 ns | 1,000 ns | 0.33× |
 | 16 | 2,459 ns | 2,834 ns | 0.87× |
@@ -927,8 +1063,11 @@ A second experiment held the 32 tile fixed and varied square size:
 | 64 | 178,333 ns | 93,125 ns | 1.91× |
 | 128 | 1,668,500 ns | 755,625 ns | 2.21× |
 
-For sizes 8 and 16, tile/control bookkeeping cost more than the reuse benefit
-on this run. Blocking began winning somewhere between the tested sizes 16 and
+![Historical direct-time over blocked-time ratios retain the two losses below parity.](../../figures/generated/ch06-crossover.svg)
+
+For sizes 8 and 16, the blocked call lost on this run. Extra tile/control work
+is a plausible explanation, but no experiment isolated that cause. Blocking
+began winning somewhere between the tested sizes 16 and
 32; that bracket is workload- and machine-specific. See the
 [blocked-matmul record](../../research/benchmarks/chapter-06-blocked-matmul.md)
 for raw results and full limitations.
@@ -948,11 +1087,13 @@ blocked GEMM.
 | 8 | blocked GEMM | 3,294,459 ns | 1.273 | 3.879 |
 | 64 | blocked GEMM | 6,217,167 ns | 5.397 | 25.600 |
 
+![Measured GEMV and blocked GEMM throughput beside separately modeled ideal intensity.](../../figures/generated/ch06-throughput.svg)
+
 The analytic reuse opportunity rises monotonically. The observed scalar rate
 did not. The narrow `N=8` blocked workload achieved less effective throughput
 than the GEMV case, while `N=64` exceeded both. Short inner row segments, tile
-overhead, and this untuned kernel can prevent theoretical reuse from becoming
-speed. The [GEMV/GEMM record](../../research/benchmarks/chapter-06-gemv-vs-gemm.md)
+overhead, and cache behavior are hypotheses for this untuned kernel, not
+measured causes. The [GEMV/GEMM record](../../research/benchmarks/chapter-06-gemv-vs-gemm.md)
 contains the reproducer and caveats; the
 [reuse comparison diagram](../../diagrams/linear/gemv-vs-gemm-reuse.txt) shows
 only opportunity, not guaranteed performance.
@@ -962,6 +1103,14 @@ only opportunity, not guaranteed performance.
 > effective throughput, ideal bytes, and measured bytes conceptually separate.
 
 ## ENGINE-2: replace the projection loop
+
+All three performance sections above retain the **2026-09-03 historical
+record**, pinned to `03e08a87` (full hash in each linked record).
+The regenerated charts parse those records directly. Running the examples
+during this edition's verification does not replace the published medians.
+The historical benchmark helper accepts absolute/relative tolerances
+`1e-4/1e-5`; the bounded unit fixtures use `1e-5/1e-5`. They are deliberately
+reported as separate gates. Neither permits NaN to pass by a comparison trick.
 
 The ENGINE-1 model now creates a rank-1 borrowed view over its request-owned
 hidden activation and calls
@@ -1035,7 +1184,7 @@ silently changes shape or layout.
 ## Inside Hermon
 
 Hermon is the book's industrial reference, not the source of ENGINE-2's API.
-At inspected commit `472a44cdb511b2dae6c9569e59543db8f8350b25`, its safe Rust
+At freshly inspected commit `2a3fd521` (full pin in the source ledger), its safe Rust
 surface validates matrix/vector and matrix/matrix dimensions before crossing a
 foreign-function boundary. The linked runtime routes packed weights into a
 native tensor bridge. That bridge constructs GGML tensors and an operation
@@ -1060,10 +1209,35 @@ specialization, threads, and accelerators. It also validates the architectural
 lesson that layout and shape checks belong before the hot native execution
 boundary.
 
+The current default route is concrete: `dispatch.rs` selects the batched
+runtime; `batched.rs` calls `Context::decode_batch`; `linked.rs` crosses
+`hermon_llama_decode_batch`; `shim.c` invokes `llama_decode`. The model graph
+then reaches GGML operations and configured backends. This is not the same
+route as the optional packed tensor bundle API.
+
+For that separate API, `matvec_f32` delegates to `matmul_f32` with one input
+row. The bundle call validates one through eight weight names, positive input
+rows, compatible rank/dimensions and shared width, checked element counts and
+native integer conversions. A mutable `TensorSession` supplies exclusive access
+to reusable context/threadpool state. The C++ bridge checks host weight
+residency, copies the F32 input into a GGML tensor, creates one `ggml_mul_mat`
+node per weight, computes the graph, and copies results into Rust-owned output
+vectors. It is a **host CPU bridge**, not evidence that this helper dispatches
+to the default model's GPU backend. `paged.rs` uses the bundle interface on the
+gated PREVIEW path; library availability alone does not make it the default.
+
+![Default batched execution and optional host bridge converge on GGML semantics, with independent ENGINE-2 verification below.](../../figures/generated/ch06-source.svg)
+
+The [dated source ledger](../../research/astra/chapter06-regeneration.md) records
+the exact files, symbols, commits, and status of these findings. Local source
+inspection establishes available paths and checks, not a claim that a particular
+GPU ran a particular request. This chapter did not launch an industrial model
+or benchmark Hermon.
+
 ## Inside llama.cpp and GGML
 
 Hermon's pinned llama.cpp submodule was inspected at
-`389ff61d77b5c71cec0cf92fe4e5d01ace80b797`. GGML's public `ggml_mul_mat`
+`389ff61d` (full pin in the source ledger). GGML's public `ggml_mul_mat`
 contract uses its own dimension conventions and supports selected type pairs.
 CPU dispatch selects type-specific vector-dot functions. The CPU kernel
 examines strides and contiguity, partitions work into tiles/chunks, and can
@@ -1081,6 +1255,99 @@ GGML also demonstrates the optimization rungs beyond this chapter: type-driven
 dot kernels, packing assumptions, register-scale work, parallel scheduling,
 and accelerator dispatch. Those mechanisms are real, but introducing them
 before a scalar oracle would make failures harder to localize.
+
+![Teaching tensor contracts compared with GGML axis, byte-stride, and packed-type conventions.](../../figures/generated/ch06-production.svg)
+
+Make the orientation translation explicit. The teaching equation uses
+$W:[M,K]$, $B:[K,N]$, and $C:[M,N]$. The bundle bridge instead receives
+row-batched $X=B^{\mathsf T}:[N,K]$ and returns
+$Y=XW^{\mathsf T}=C^{\mathsf T}:[N,M]$. In GGML's dimension order the
+weight has `ne=[K,M]`, the input `ne=[K,N]`, and the result `ne=[M,N]`:
+
+$$
+Y_{ji}=\sum_{k=0}^{K-1} X_{jk}W_{ik}=C_{ij}.
+$$
+
+These are coordinate correspondences, not permission to pass the teaching
+$B$ buffer unchanged. Canonical teaching $B$ interleaves columns; canonical
+row-batched $X$ stores each input vector together. For the fixture, $X$ has
+rows `[2,1,-1,0.5]` and `[1,-1,2,0]`, and $Y$ has rows `[-3,3,2.5]`
+and `[9,-3,4]`. Preparing that layout is an explicit boundary responsibility.
+An axis label may look reversed while the contraction is correct; a copied
+buffer with the wrong order can have correct dimensions and wrong values.
+
+GGML's `ne[]` describes logical extents and `nb[]` byte strides. For a packed
+quantized type, a storage block may hold multiple logical weights plus scale
+metadata. Its byte size is not four times its logical element count. The CPU
+type traits choose a compatible vector-dot function and right-hand dot type;
+the implementation may convert the right operand into work storage before
+computing. This previews representation-dependent kernels, not a quantization
+format, accuracy result, or implemented ENGINE-2 feature.
+
+## From scalar tiles to CPU microkernels
+
+Blocking the cache working set is not the last reuse opportunity. A CPU
+microkernel can hold a small output rectangle in registers while stepping
+through K. One loaded A value can be broadcast across vector lanes; a vector
+of adjacent B values contributes to several output columns. This is the IKJ
+reuse idea at register scale. A dot-oriented kernel instead builds several
+partial sums and eventually reduces them horizontally. SIMD does not mean one
+instruction completes the entire matrix; the finite register set, vector width,
+dependency chains, and edge handling still constrain the schedule.
+
+The pinned `ggml-cpu/vec.cpp` makes the distinction observable in source:
+`ggml_vec_dot_f32` has a `GGML_SIMD` path, vector loads, FMA macro operations,
+multiple accumulator vectors and a final reduction. `ggml-cpu.c` selects
+`vec_dot` and `vec_dot_type` from CPU type traits and partitions matrix work
+into chunks. This is inspected implementation evidence, not a promise that
+every build enables the same instruction set or that every shape takes that
+path. The book's scalar Rust loops remain a separate reference.
+
+Packing can arrange input panels for such a microkernel, replacing awkward
+strides with its preferred address pattern. It adds a copy, storage, and lifetime
+cost. Persistent model weights can amortize preparation across calls, while a
+small transient matrix may never repay it. Threading adds another independent
+dimension: output regions can be partitioned, but placement, shared-cache use,
+and synchronization influence performance. BLIS documents loop-level thread
+partitioning around a microkernel and separates build-time thread support from
+runtime selection; the presence of a threaded library is not proof that a call
+used several cores. [BLIS threading documentation](https://github.com/flame/blis/blob/master/docs/Multithreading.md)
+
+## GPU execution is a different schedule, not a different equation
+
+![Conceptual CPU vector work and GPU cooperative tile work, explicitly outside ENGINE-2 implementation scope.](../../figures/generated/ch06-hardware.svg)
+
+A GPU assigns pieces of an output tile to cooperating groups of threads. A
+common tiled design loads operand regions from device/global memory, stages
+reusable data in shared or threadgroup storage, and keeps partial outputs in
+registers. Thread indexing must make collective memory accesses efficient;
+barriers order cooperative reuse where required. NVIDIA's worked matrix
+multiplication examples distinguish improved global access from eliminating
+redundant loads. These are distinct benefits, not evidence collected by this
+chapter. [CUDA Best Practices, shared-memory matrix multiplication](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-in-matrix-multiplication-c-ab)
+
+CUTLASS explains a hierarchy of thread-block, warp, and thread tiles, with
+register accumulators inside the larger tile. Specialized matrix
+multiply-accumulate instructions can consume matrix fragments, including
+mixed-precision combinations, rather than one scalar product per source
+statement. Storage, multiplication, and accumulation types must then be
+specified independently. This is a conceptual preview, not a claim that all
+GPU kernels use one staging scheme or numerical type. [NVIDIA's CUTLASS explanation](https://developer.nvidia.com/blog/cutlass-linear-algebra-cuda/)
+
+At the pinned GGML revision, CUDA has distinct floating-point/quantized
+matrix-vector and matrix-matrix branches and a cuBLAS route. Metal's
+`ggml_metal_op_mul_mat` examines dimensions, operand types and eligibility;
+its small-batch branches differ from its matrix-matrix paths. The literal
+thresholds in that source belong to that implementation, not to ENGINE-2's
+Apple M1 crossover experiment. A CUDA warp and Metal SIMD group are not a
+portable synonym for the chapter's four drawn lanes.
+
+The scheduling problem includes launch cost, data residency, transfers when
+needed, occupancy, register pressure, tails, and synchronization. More nominal
+arithmetic capacity cannot rescue every tiny or skinny workload. Conversely,
+large regular work can amortize costs and exploit reuse unavailable to one
+isolated vector. Neither statement supplies a speedup number. Measure the
+actual shape, representation, backend, precision and end-to-end boundary.
 
 ## Why this is still not production GEMM
 
@@ -1168,6 +1435,36 @@ harness uses a warm process but does not fully randomize or control cache state;
 the records disclose this limitation. Serving claims would require a stronger
 protocol and distributions, not just medians from this microbenchmark.
 
+## Common misconceptions, checked against this chapter
+
+- **“GEMV is trivial.”** Its equation is compact; the physical GEMV trace still
+  requires correct orientation, checked offsets, ownership and a reduction.
+- **“GEMM is just more GEMV.”** Repeated columns prove mathematical equivalence;
+  the outer-product view exposes a different opportunity to reuse each weight.
+- **“More FLOPs means slower.”** The historical N sweep separates total work,
+  latency and attained throughput. None alone predicts the other two.
+- **“Asymptotic complexity selects the fastest loop.”** IJK and IKJ have the
+  same contribution count, yet their recorded medians differ. Constants and
+  address order remain observable below the asymptotic notation.
+- **“Blocking always helps.”** The crossover record includes losses at sizes
+  8 and 16, and the tile sweep includes a losing tile 8.
+- **“The default block size is optimal.”** Tile 64, not the default 32, won the
+  recorded 192-cube sweep. One sweep cannot establish a portable default.
+- **“SIMD changes the equation.”** The same contributions can occupy vector
+  lanes; scheduling and F32 grouping change, not the intended contraction.
+- **“Matrix multiplication is one instruction.”** The source-to-kernel map
+  distinguishes a graph node from loads, arithmetic, stores and dispatch.
+- **“A GPU multiplies everything at once.”** The hardware plate shows finite
+  tiles, registers and cooperative groups; launch and data movement still cost.
+- **“Equivalent kernels must be bit-identical.”** The executable reassociation
+  and FMA examples show why numerical equivalence needs a stated policy.
+- **“Transpose always copies.”** Chapter 5's metadata view remains valid for
+  the reference; blocked layout rejection makes any later copy explicit.
+- **“Quantization changes matrix shape.”** GGML's logical extents survive a
+  representation change; bytes and approximation error require separate rules.
+- **“llama.cpp defines multiplication.”** The equation precedes the library.
+  The source comparison translates its axes and dispatch, not the mathematics.
+
 ## Labs and exercises
 
 The chapter's executable sequence is:
@@ -1204,7 +1501,8 @@ Further exercises:
 
 ## What we still have not built
 
-ENGINE-2 is a linear algebra kernel layer, not a Transformer. It has no
+At the Chapter 6 curriculum boundary, ENGINE-2 is a linear algebra kernel layer,
+not a Transformer. This milestone adds no
 normalization, learned Transformer block, attention, Q/K/V projections, causal
 mask, RoPE, KV cache, GGUF loader, quantized storage, SIMD, BLAS integration,
 threading, GPU provider, autograd, or distributed execution.
@@ -1250,6 +1548,26 @@ opportunity did not automatically become throughput.
 
 ## Chapter 7 preview
 
+The completed boundary can be read as a compact execution map:
+
+```text
+ Ch. 5: explicit tensor storage and ownership
+                        │
+                        ▼
+ Ch. 6: reference semantics ──▶ verified candidate ──▶ measured evidence
+                        │
+                        ▼
+ ENGINE-2: checked educational linear-algebra execution layer
+                        │
+                        ▼
+ Next: embedding and normalization, then Q/K/V projection roles
+```
+
+ENGINE-2 means transparent reference semantics over explicit tensor storage,
+an independently verified blocked candidate, and bounded measurements of
+locality-sensitive work. It is more than four function names and less than a
+production backend.
+
 We can now store tensors honestly and apply checked linear transformations.
 The next missing primitive is normalization. Chapter 7 will build RMSNorm from
 first principles: squares, mean square, epsilon, reciprocal square root,
@@ -1258,6 +1576,12 @@ learned scale, precision, and its place around model blocks.
 That chapter will reuse ENGINE-2's discipline—reference semantics before
 optimization—but it does not begin here. Matrix multiplication remains the
 only new numerical operator family in this milestone.
+
+In the book's progression, Chapter 5 establishes where values live; Chapter 6
+shows how computation walks them; Chapter 7 uses parameters and activations in
+embedding and normalization; Chapter 8 will give learned projections Q/K/V
+roles. The existing Chapter 7 code remains a regression, not newly regenerated
+work in this edition.
 
 ## References
 

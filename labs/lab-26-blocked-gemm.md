@@ -28,6 +28,14 @@ overrun or missing-tail defect.
 Try the bounded tile sweep in the release harness. Explain the observed winner
 as specific to this shape, compiler, and CPU.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+For [5,7] times [7,3] and blocks [4,4,2], enumerate eight tile combinations. Show the final half-open bounds i=4..5,k=4..7,j=2..3 and its three products. Compare all output cells against the reference.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Restore checked endpoints and remove the deliberately broken branch.

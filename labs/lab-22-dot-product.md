@@ -28,6 +28,14 @@ panic. Also prove the dot product of two length-zero vectors is `0`.
 Construct a stride-2 vector view and predict which physical elements its three
 logical indices read before executing it.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+Expand row 0 of the canonical visual fixture: products [2,-2,-3,0], ordered sums [2,0,-3,-3]. Explain why the result is one scalar, and retain the original dot fixture as a separate regression.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Keep useful tests; remove ad hoc print statements.

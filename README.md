@@ -29,7 +29,11 @@ through storage, transpose, reshape, slicing, copying and Rust ownership.
 Eight embedded vector figures, formatted equations and an executable
 Rust/Python/figure parity check connect the explanation to the implementation.
 Use the [publication build](docs/FIGURE_BUILD.md) for the complete ebook and
-standalone chapter PDF. Chapter 6 is the next visual regeneration milestone;
+standalone chapter PDFs. The [Chapter 6 visual edition](figures/chapter06-atlas.md)
+now follows one executable dot/GEMV/GEMM fixture through addresses, loop order,
+tiling, numerical equivalence and production source. Fourteen canonical plates
+and two step sequences retain all three historical benchmark records, including
+losses. Chapter 7 is the next bounded visual regeneration milestone;
 Chapter 8 remains the next new curriculum chapter.
 
 ```text

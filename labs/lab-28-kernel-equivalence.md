@@ -34,6 +34,14 @@ when both algorithms implement the same real-number equation.
 Report exact equality separately from tolerance equality. Do not loosen the
 tolerance merely to silence an unexplained discrepancy.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+Run the new F32 reassociation and explicit FMA tests. Explain zero versus one in the associativity example and zero versus -2^-26 for separate versus fused rounding. Do not change production accumulation or widen tolerances.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Restore ascending K traversal and retain any small diagnostic fixture that

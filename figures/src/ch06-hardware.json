@@ -1,0 +1,22 @@
+{
+  "id": "FIG-CH06-SIMD-GPU",
+  "chapter": 6,
+  "kind": "ch06-hardware",
+  "title": "More arithmetic needs organized data",
+  "purpose": "Compare conceptual CPU vectors and cooperative GPU tile execution.",
+  "contract": [
+    "SIMD lanes can hold several products; reduction order may change rounding.",
+    "GPU groups organize loads and reuse; not every product executes at once.",
+    "CPU/GPU explanation only; ENGINE-2 remains scalar, safe and single-threaded."
+  ],
+  "status": "CANONICAL / CHAPTER 6",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/linear.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Compare conceptual CPU vectors and cooperative GPU tile execution. SIMD lanes can hold several products; reduction order may change rounding. GPU groups organize loads and reuse; not every product executes at once. CPU/GPU explanation only; ENGINE-2 remains scalar, safe and single-threaded.",
+  "alt": "Compare conceptual CPU vectors and cooperative GPU tile execution. SIMD lanes can hold several products; reduction order may change rounding. GPU groups organize loads and reuse; not every product executes at once. CPU/GPU explanation only; ENGINE-2 remains scalar, safe and single-threaded.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter06-visual.json"
+  }
+}

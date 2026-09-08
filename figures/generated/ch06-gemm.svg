@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">One contraction, three ways to see it</title><desc id="desc">Relate row-dot-column, repeated GEMV columns, and summed outer products. A [3,4] times B [4,2] produces C [3,2]; A is W. B[:,0]=x; C[:,0]=y; selected cell C[0,1]=9. A and B are independent inputs; neither is the output of the other.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-GEMM-THREE-VIEWS  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">One contraction, three ways to see it</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Relate row-dot-column, repeated GEMV columns, and summed outer products.</text>
+<text x="50" y="209" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">A = W [3,4]</text>
+<rect x="50" y="233" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<line x1="55" y1="272" x2="109" y2="272" stroke="#152b3c" stroke-width="3"/>
+<rect x="114" y="233" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="128" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-2</text>
+<line x1="119" y1="272" x2="173" y2="272" stroke="#152b3c" stroke-width="3"/>
+<rect x="178" y="233" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="192" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">3</text>
+<line x1="183" y1="272" x2="237" y2="272" stroke="#152b3c" stroke-width="3"/>
+<rect x="242" y="233" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="256" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<line x1="247" y1="272" x2="301" y2="272" stroke="#152b3c" stroke-width="3"/>
+<rect x="50" y="277" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<rect x="114" y="277" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="128" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="178" y="277" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="192" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<rect x="242" y="277" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="256" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<rect x="50" y="321" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<rect x="114" y="321" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="128" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<rect x="178" y="321" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="192" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="242" y="321" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="256" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<text x="402" y="209" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">B [4,2]</text>
+<rect x="405" y="233" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="419" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<rect x="469" y="233" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="483" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<line x1="474" y1="272" x2="528" y2="272" stroke="#152b3c" stroke-width="3"/>
+<rect x="405" y="277" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="419" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="469" y="277" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="483" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<line x1="474" y1="316" x2="528" y2="316" stroke="#152b3c" stroke-width="3"/>
+<rect x="405" y="321" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="419" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<rect x="469" y="321" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="483" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<line x1="474" y1="360" x2="528" y2="360" stroke="#152b3c" stroke-width="3"/>
+<rect x="405" y="365" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="419" y="394" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0.5</text>
+<rect x="469" y="365" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="483" y="394" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<line x1="474" y1="404" x2="528" y2="404" stroke="#152b3c" stroke-width="3"/>
+<text x="754" y="209" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">C [3,2]</text>
+<rect x="755" y="233" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="769" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-3</text>
+<rect x="819" y="233" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="833" y="262" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">9</text>
+<line x1="824" y1="272" x2="878" y2="272" stroke="#152b3c" stroke-width="3"/>
+<rect x="755" y="277" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="769" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">3</text>
+<rect x="819" y="277" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="833" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-3</text>
+<rect x="755" y="321" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="769" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2.5</text>
+<rect x="819" y="321" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="833" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">4</text>
+<line x1="50" y1="255" x2="35" y2="255" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="35" y1="255" x2="35" y2="414" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="35" y1="414" x2="178" y2="414" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="178" y1="414" x2="178" y2="430" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="178.00,430.00 173.65,421.00 182.35,421.00"/>
+<line x1="501" y1="410" x2="501" y2="430" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="501.00,430.00 496.65,421.00 505.35,421.00"/>
+<rect x="50" y="432" width="885" height="57" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="461" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">C[0,1] = 1×1 + (-2)×(-1) + 3×2 + 0×0 = 9</text>
+<text x="64" y="486" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<text x="60" y="508" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Column view: C[:,j] = A B[:,j]; B[:,0] is the same x as GEMV.</text>
+<text x="60" y="548" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Outer-product view: sum A[:,k] B[k,:] over k = 0,1,2,3.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">A [3,4] times B [4,2] produces C [3,2]; A is W.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">B[:,0]=x; C[:,0]=y; selected cell C[0,1]=9.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">A and B are independent inputs; neither is the output of the other.</text>
+</svg>

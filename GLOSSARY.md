@@ -487,7 +487,8 @@ related but not identical.
 
 **Short:** Single instruction, multiple data execution within a CPU core.
 **Precise:** ISA-specific vector lanes, alignment, tails, dispatch, reduction
-order, and memory access define a SIMD kernel. First introduced: Chapter 42.
+order, and memory access define a SIMD kernel. Previewed: Chapter 6;
+implemented later in Chapter 42.
 Common confusion: compiler auto-vectorization is one route, not the definition.
 
 ### Speculative decoding
@@ -910,6 +911,15 @@ packing has allocation/movement cost and is not hidden free speed.
 product, and accumulator dtype plus ordering define numerical behavior. First
 introduced: Chapter 6. Related: dot product, FMA, reduction. Common confusion:
 a source MAC expression does not guarantee one fused hardware instruction.
+
+### Fused multiply-add (FMA)
+
+**Short:** Multiply and add with one final rounding. **Precise:** FMA computes
+the exact product plus addend before rounding to the result format; a separately
+rounded product followed by an addition can differ. Chapter 6 tests zero versus
+`-2^-26` for the same binary32 inputs under separate versus fused evaluation.
+First introduced: Chapter 6. Related: MAC, SIMD, reduction. Common confusion:
+an F32 storage type alone does not specify reduction grouping or contraction.
 
 ### Reference kernel / optimized kernel
 

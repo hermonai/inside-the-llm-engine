@@ -1,14 +1,13 @@
 GEMV VERSUS GEMM WEIGHT REUSE
 
- GEMV: one vector                         GEMM: N columns
-       x                                         X
-       │                                  ┌──┬──┬──┬──┐
-       ▼                                  │x₀│x₁│… │xₙ│
- W ══▶ y                                  └──┴──┴──┴──┘
- │ weights serve one column                     ▲
- └───────────────────────────────┐               │
-                                 ▼               │
-                         W ══════════════════════▶Y
-                         weights serve N columns
+ GEMV: one input vector              GEMM: N input columns
 
-Potential reuse grows with N; realized speed still depends on the kernel and shape.
+ W [M,K] ──┐                         W [M,K] ──┐
+            ├──▶ GEMV ──▶ y [M]                 ├──▶ GEMM ──▶ Y [M,N]
+ x [K] ────┘                         X [K,N] ──┘
+
+One W element contributes to          One W element can contribute across
+one output vector.                   N output columns before reloading.
+
+Potential reuse grows with N; realized speed depends on the kernel and shape.
+The recorded N=8 scalar blocked case lost throughput to N=1 GEMV.

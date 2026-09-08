@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Reuse is a data-movement strategy</title><desc id="desc">Separate adjacent-address consumption from reuse before eviction. Spatial locality concerns nearby addresses; temporal locality concerns reuse. Cache behavior is a hardware/workload property, not a shape guarantee. No cache counters were collected for the historical chapter measurements.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-MEMORY-HIERARCHY  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Reuse is a data-movement strategy</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Separate adjacent-address consumption from reuse before eviction.</text>
+<rect x="60" y="204" width="490" height="53" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Main memory: whole problem</text>
+<text x="74" y="258" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="305" y1="257" x2="305" y2="275" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="305.00,275.00 300.65,266.00 309.35,266.00"/>
+<rect x="60" y="277" width="490" height="53" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="306" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Last-level cache: shared working regions</text>
+<text x="74" y="331" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="305" y1="330" x2="305" y2="348" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="305.00,348.00 300.65,339.00 309.35,339.00"/>
+<rect x="60" y="350" width="490" height="53" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="379" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Private cache: nearby rows / tiles</text>
+<text x="74" y="404" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="305" y1="403" x2="305" y2="421" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="305.00,421.00 300.65,412.00 309.35,412.00"/>
+<rect x="60" y="423" width="490" height="53" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="452" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Registers: A scalar + partial C</text>
+<text x="74" y="477" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="305" y1="476" x2="305" y2="494" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="305.00,494.00 300.65,485.00 309.35,485.00"/>
+<rect x="60" y="496" width="490" height="53" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="74" y="525" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Execution units: multiply / add</text>
+<text x="74" y="550" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<rect x="600" y="218" width="345" height="140" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="614" y="247" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Spatial locality</text>
+<text x="614" y="272" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">IKJ consumes adjacent</text>
+<text x="614" y="297" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">B / C addresses before</text>
+<text x="614" y="322" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">advancing the row.</text>
+<rect x="600" y="389" width="345" height="140" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="614" y="418" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Temporal locality</text>
+<text x="614" y="443" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">One A scalar feeds j values.</text>
+<text x="614" y="468" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Tiling seeks to reuse data</text>
+<text x="614" y="493" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">before eviction.</text>
+<text x="60" y="593" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">Conceptual hierarchy; cache topology and transfer costs depend on the actual processor.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Spatial locality concerns nearby addresses; temporal locality concerns reuse.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Cache behavior is a hardware/workload property, not a shape guarantee.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">No cache counters were collected for the historical chapter measurements.</text>
+</svg>

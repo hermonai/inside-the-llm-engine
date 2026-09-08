@@ -1,0 +1,22 @@
+{
+  "id": "FIG-CH06-TEACHING-PRODUCTION",
+  "chapter": 6,
+  "kind": "ch06-production",
+  "title": "Translate the representation, keep the meaning",
+  "purpose": "Compare explicit F32 teaching tensors with typed GGML graph operands.",
+  "contract": [
+    "Teaching W [M,K] corresponds to GGML weight ne=[K,M].",
+    "The Hermon bridge uses row-batched input [N,K] and returns [N,M].",
+    "GGML nb[] uses bytes; packed types cannot be indexed as flat F32 weights."
+  ],
+  "status": "CANONICAL / CHAPTER 6",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/linear.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Compare explicit F32 teaching tensors with typed GGML graph operands. Teaching W [M,K] corresponds to GGML weight ne=[K,M]. The Hermon bridge uses row-batched input [N,K] and returns [N,M]. GGML nb[] uses bytes; packed types cannot be indexed as flat F32 weights.",
+  "alt": "Compare explicit F32 teaching tensors with typed GGML graph operands. Teaching W [M,K] corresponds to GGML weight ne=[K,M]. The Hermon bridge uses row-batched input [N,K] and returns [N,M]. GGML nb[] uses bytes; packed types cannot be indexed as flat F32 weights.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter06-visual.json"
+  }
+}

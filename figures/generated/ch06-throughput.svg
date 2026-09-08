@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Potential reuse is not attained throughput</title><desc id="desc">Compare the recorded N=1,8,64 workloads with the same [512,512] weights. Historical effective GFLOP/s: 2.739, 1.273, 5.397 respectively. Ideal arithmetic intensity is a traffic model, not measured memory traffic. N=8 is a retained negative result; overhead/cache causes remain hypotheses.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-THROUGHPUT  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Potential reuse is not attained throughput</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare the recorded N=1,8,64 workloads with the same [512,512] weights.</text>
+<text x="50" y="210" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Recorded effective GFLOP/s, fixed weights [512,512]</text>
+<text x="50" y="277" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">N=1</text>
+<rect x="175" y="248" width="287.59499999999997" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="189" y="277" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="477.59499999999997" y="278" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">2.739</text>
+<text x="175" y="319" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">ideal 0.498 FLOP/byte; median 191416 ns</text>
+<text x="50" y="366" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">N=8</text>
+<rect x="175" y="337" width="133.665" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="189" y="366" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="323.66499999999996" y="367" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">1.273</text>
+<text x="175" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">ideal 3.879 FLOP/byte; median 3294459 ns</text>
+<text x="50" y="455" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">N=64</text>
+<rect x="175" y="426" width="566.6850000000001" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="189" y="455" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="756.6850000000001" y="456" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">5.397</text>
+<text x="175" y="497" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">ideal 25.600 FLOP/byte; median 6217167 ns</text>
+<rect x="50" y="531" width="895" height="60" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="560" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">N=8 lost throughput despite more potential reuse; causes were not isolated.</text>
+<text x="64" y="585" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Historical effective GFLOP/s: 2.739, 1.273, 5.397 respectively.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Ideal arithmetic intensity is a traffic model, not measured memory traffic.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">N=8 is a retained negative result; overhead/cache causes remain hypotheses.</text>
+</svg>

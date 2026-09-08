@@ -1,16 +1,10 @@
 GEMV SHAPE CONTRACT
 
-              x [K]                 y [M]
-                │                     ▲
-                │                     │
- A [M,K] ═══════╪══════▶ GEMV ═══════╡
-                │                     │
-                ▼                     │
-       inner dimensions agree         │
-             A.shape[1] = x.shape[0] ─┘
+ A [M,K] ──┐
+            ├──▶ GEMV: one row dot x per i ──▶ y [M]
+ x [K] ────┘
 
-For every output row i:
-
-                   K−1
-          yᵢ  =     Σ   Aᵢₖ xₖ
-                   k=0
+Require A.shape[1] = x.shape[0]. Reduce K; preserve M.
+Both operands are independent, immutable views; y is a fresh owner.
+For each output i: yᵢ = Σₖ Aᵢₖ xₖ, increasing k from 0 through K−1.
+Empty K yields zeros; empty M yields an empty output.

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">From equation to engine</title><desc id="desc">Follow the six decisions between a mathematical projection and its model output. Shape is a contract; strides map logical indices to storage. ENGINE-2 preserves a reference alongside the blocked candidate. CPU/GPU kernel families are previews, not new teaching-engine backends.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-ENGINE-MAP  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">From equation to engine</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Follow the six decisions between a mathematical projection and its model output.</text>
+<rect x="50" y="205" width="425" height="91" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">01  Equation</text>
+<text x="64" y="259" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">y = W x</text>
+<line x1="475" y1="250" x2="515" y2="250" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="515.00,250.00 506.00,254.35 506.00,245.65"/>
+<rect x="520" y="205" width="425" height="91" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="534" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">02  Representation</text>
+<text x="534" y="259" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shape → strides → offsets</text>
+<rect x="50" y="329" width="425" height="91" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="358" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">03  Reference loop</text>
+<text x="64" y="383" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">loads → products → sum → store</text>
+<line x1="475" y1="374" x2="515" y2="374" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="515.00,374.00 506.00,378.35 506.00,369.65"/>
+<rect x="520" y="329" width="425" height="91" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="534" y="358" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">04  Reuse</text>
+<text x="534" y="383" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">loop order → tiles</text>
+<rect x="50" y="453" width="425" height="91" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="482" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">05  Kernel / hardware</text>
+<text x="64" y="507" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">scalar today; CPU/GPU later</text>
+<line x1="475" y1="498" x2="515" y2="498" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="515.00,498.00 506.00,502.35 506.00,493.65"/>
+<rect x="520" y="453" width="425" height="91" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="534" y="482" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">06  Model output</text>
+<text x="534" y="507" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">projection → bias → logits</text>
+<text x="50" y="590" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Ch. 5 tensor storage → Ch. 6 operators → Ch. 7 embedding / normalization</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Shape is a contract; strides map logical indices to storage.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">ENGINE-2 preserves a reference alongside the blocked candidate.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">CPU/GPU kernel families are previews, not new teaching-engine backends.</text>
+</svg>

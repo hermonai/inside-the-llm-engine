@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">A multiplication begins with an address</title><desc id="desc">Connect logical W[1,2] to its flat element and byte displacement. Canonical W shape [3,4], element strides [4,1], base offset 0. offset(1,2)=6; byte displacement 24; loaded value -1. For general views use base + sum(index times stride), not iK+k.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-GEMV-MEMORY  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">A multiplication begins with an address</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Connect logical W[1,2] to its flat element and byte displacement.</text>
+<text x="50" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">01  Logical W [3,4], strides [4,1], base 0</text>
+<rect x="50" y="232" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="261" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="114" y="232" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="128" y="261" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-2</text>
+<rect x="178" y="232" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="192" y="261" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">3</text>
+<rect x="242" y="232" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="256" y="261" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<rect x="50" y="276" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="305" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<line x1="55" y1="315" x2="109" y2="315" stroke="#152b3c" stroke-width="3"/>
+<rect x="114" y="276" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="128" y="305" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<line x1="119" y1="315" x2="173" y2="315" stroke="#152b3c" stroke-width="3"/>
+<rect x="178" y="276" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="192" y="305" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<line x1="183" y1="315" x2="237" y2="315" stroke="#152b3c" stroke-width="3"/>
+<rect x="242" y="276" width="64" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="256" y="305" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<line x1="247" y1="315" x2="301" y2="315" stroke="#152b3c" stroke-width="3"/>
+<rect x="50" y="320" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="349" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<rect x="114" y="320" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="128" y="349" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<rect x="178" y="320" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="192" y="349" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="242" y="320" width="64" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="256" y="349" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<rect x="420" y="238" width="515" height="115" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="434" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">02  Follow W[1,2]</text>
+<text x="434" y="292" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">element offset = 1×4 + 2 = 6</text>
+<text x="434" y="317" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">byte displacement = 4×6 = 24; value = -1</text>
+<text x="50" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">03  Physical storage (each cell is one F32 element)</text>
+<rect x="50" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="124" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="138" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-2</text>
+<rect x="198" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="212" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">3</text>
+<rect x="272" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="286" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<rect x="346" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="360" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<rect x="420" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="434" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="494" y="435" width="74" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="508" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<line x1="499" y1="474" x2="563" y2="474" stroke="#152b3c" stroke-width="3"/>
+<rect x="568" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="582" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<rect x="642" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="656" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">2</text>
+<rect x="716" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="730" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0</text>
+<rect x="790" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="804" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">1</text>
+<rect x="864" y="435" width="74" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="878" y="464" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">-1</text>
+<text x="58" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">0 / 0</text>
+<text x="132" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">1 / 4</text>
+<text x="206" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">2 / 8</text>
+<text x="280" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">3 / 12</text>
+<text x="354" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">4 / 16</text>
+<text x="428" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">5 / 20</text>
+<text x="502" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">6 / 24</text>
+<text x="576" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">7 / 28</text>
+<text x="650" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">8 / 32</text>
+<text x="724" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">9 / 36</text>
+<text x="798" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">10 / 40</text>
+<text x="872" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">11 / 44</text>
+<text x="50" y="552" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Labels below cells: element offset / byte displacement; not allocator addresses.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Canonical W shape [3,4], element strides [4,1], base offset 0.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">offset(1,2)=6; byte displacement 24; loaded value -1.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">For general views use base + sum(index times stride), not iK+k.</text>
+</svg>

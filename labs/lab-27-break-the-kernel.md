@@ -30,6 +30,14 @@ blocked call becomes valid because the caller chose the copy.
 Add an error assertion for an empty shape whose prospective `[M,N]` output
 overflows `usize`, without allocating a huge buffer.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+Read the original 192-cube sweep without overwriting it. Explain why tile 8 lost, why tile 64 winning does not make it universal, and which proposed causes remain hypotheses. Report the fixed-tile crossover losses at sizes 8 and 16.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Keep failure tests deterministic and allocation-free.

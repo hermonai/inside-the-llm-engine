@@ -1,0 +1,35 @@
+FIG-CH06-THROUGHPUT
+Potential reuse is not attained throughput
+CANONICAL / CHAPTER 6
+
+Compare the recorded N=1,8,64 workloads with the same [512,512] weights.
+Historical effective GFLOP/s: 2.739, 1.273, 5.397 respectively.
+Ideal arithmetic intensity is a traffic model, not measured memory traffic.
+N=8 is a retained negative result; overhead/cache causes remain hypotheses.
+
+W [3,4] = [1, -2, 3, 0, 0, 1, -1, 2, 2, 0, 1, -1]
+x [4] = [2, 1, -1, 0.5]
+y [3] = [-3.0, 3.0, 2.5]
+B [4,2] = [2, 1, 1, -1, -1, 2, 0.5, 0]
+C [3,2] = [-3.0, 9.0, 3.0, -3.0, 2.5, 4.0]
+row 0 products = [2.0, -2.0, -3.0, 0.0]
+row 0 partial sums = [2.0, 0.0, -3.0, -3.0]
+{'n': '1', 'repetitions': '15', 'kernel': 'gemv', 'median_ns': '191416', 'gflops': '2.739',
+'ideal_flop_per_byte': '0.498'}
+{'n': '8', 'repetitions': '9', 'kernel': 'blocked_gemm', 'median_ns': '3294459', 'gflops':
+'1.273', 'ideal_flop_per_byte': '3.879'}
+{'n': '64', 'repetitions': '5', 'kernel': 'blocked_gemm', 'median_ns': '6217167', 'gflops':
+'5.397', 'ideal_flop_per_byte': '25.600'}
+
+Compare the recorded N=1,8,64 workloads with the same [512,512] weights.
+
+Historical effective GFLOP/s: 2.739, 1.273, 5.397 respectively.
+
+Ideal arithmetic intensity is a traffic model, not measured memory traffic.
+
+N=8 is a retained negative result; overhead/cache causes remain hypotheses.
+
+Fixture: {"source": "code/reference/fixtures/chapter06-visual.json"}
+
+Source: figures/src/ch06-throughput.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/linear.rs

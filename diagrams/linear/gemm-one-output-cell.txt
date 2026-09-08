@@ -1,15 +1,13 @@
 ONE GEMM OUTPUT CELL
 
- A row i                                      B column j
- ┌────┬────┬────┬────┐                      ┌────┐
- │ aᵢ₀│ aᵢ₁│ aᵢ₂│ aᵢ₃│                      │b₀ⱼ │
- └─┬──┴─┬──┴─┬──┴─┬──┘                      ├────┤
-   │    │    │    │                         │b₁ⱼ │
-   │    │    │    └───────────────────────×─┼────┤
-   │    │    └────────────────────────────×─│b₂ⱼ │
-   │    └─────────────────────────────────×─┼────┤
-   └──────────────────────────────────────×─│b₃ⱼ │
-                                            └────┘
-                       │
-                       ▼
-           cᵢⱼ = aᵢ₀b₀ⱼ + aᵢ₁b₁ⱼ + aᵢ₂b₂ⱼ + aᵢ₃b₃ⱼ
+ reduction index k     A row i      B column j       paired product
+        0                aᵢ₀           b₀ⱼ             aᵢ₀ b₀ⱼ
+        1                aᵢ₁           b₁ⱼ             aᵢ₁ b₁ⱼ
+        2                aᵢ₂           b₂ⱼ             aᵢ₂ b₂ⱼ
+        3                aᵢ₃           b₃ⱼ             aᵢ₃ b₃ⱼ
+                                                          │
+                                                          ▼
+                         cᵢⱼ = aᵢ₀b₀ⱼ + aᵢ₁b₁ⱼ + aᵢ₂b₂ⱼ + aᵢ₃b₃ⱼ
+
+Each row pairs exactly the same k. Products reduce into one output cell.
+Canonical chapter fixture: C[0,1] = 1×1 + (-2)×(-1) + 3×2 + 0×0 = 9.

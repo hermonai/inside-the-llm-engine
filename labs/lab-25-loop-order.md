@@ -29,6 +29,14 @@ Run the release loop-order benchmark. Report the machine, commit, repetitions,
 median, and correctness gate; do not turn one host's ratio into a universal
 claim.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+Trace all 24 (i,j,k) contributions for the visual fixture. Show IJK B offsets 0,2,4,6 and IKJ B offsets 0,1 for their respective first reductions/row sweeps. Equal coverage is not a measured cache-hit rate.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Remove temporary offset logging if it would contaminate timing.

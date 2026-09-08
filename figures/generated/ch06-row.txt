@@ -1,0 +1,29 @@
+FIG-CH06-GEMV-ONE-ROW
+Watch one row accumulate
+CANONICAL / CHAPTER 6
+
+Four ordered updates produce y[0] from row 0 of W and the shared x.
+W [3,4] times x [4] produces a fresh y [3].
+The row-0 accumulator starts at zero and ends at -3.
+Read-only inputs; the output is stored after the reduction.
+
+W [3,4] = [1, -2, 3, 0, 0, 1, -1, 2, 2, 0, 1, -1]
+x [4] = [2, 1, -1, 0.5]
+y [3] = [-3.0, 3.0, 2.5]
+B [4,2] = [2, 1, 1, -1, -1, 2, 0.5, 0]
+C [3,2] = [-3.0, 9.0, 3.0, -3.0, 2.5, 4.0]
+row 0 products = [2.0, -2.0, -3.0, 0.0]
+row 0 partial sums = [2.0, 0.0, -3.0, -3.0]
+
+Four ordered updates produce y[0] from row 0 of W and the shared x.
+
+W [3,4] times x [4] produces a fresh y [3].
+
+The row-0 accumulator starts at zero and ends at -3.
+
+Read-only inputs; the output is stored after the reduction.
+
+Fixture: {"source": "code/reference/fixtures/chapter06-visual.json"}
+
+Source: figures/src/ch06-row.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/linear.rs

@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Change visits, preserve contributions</title><style>body{font:18px system-ui;margin:1rem auto;max-width:1000px;color:#152b3c}svg{width:100%;height:auto}button,input{font:inherit;min-height:44px}button:focus-visible,input:focus-visible{outline:3px solid #163d70}p{line-height:1.5}</style><main><h1>Change visits, preserve contributions</h1><button id="play" type="button">Play</button> <button id="prev" type="button">Previous</button> <button id="next" type="button">Next</button> <label>Frame <input id="step" type="range" min="0" max="3" value="0"></label><output id="state" aria-live="polite">Frame 1 of 4</output><section class="frame" ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title0 desc0"><title id="title0">Change visits, preserve contributions</title><desc id="desc0">Compare canonical IJK and IKJ addresses for the same contraction. IJK visits a B column; IKJ visits adjacent B and C row elements. Every (i,j,k) contribution occurs once in each trace: 24 in this fixture. Interleaving changes; each cell still sees increasing k in these loops.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-LOOP-ORDER  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Change visits, preserve contributions</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare canonical IJK and IKJ addresses for the same contraction.</text>
+<text x="50" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IJK: keep C[0,0], vary k</text>
+<text x="525" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IKJ: keep A[0,k], sweep j</text>
+<rect x="50" y="235" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=0: A offset 0; B offset 0</text>
+<rect x="525" y="235" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=0: B offsets 0,1; C offsets 0,1</text>
+<rect x="50" y="307" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=1: A offset 1; B offset 2</text>
+<rect x="525" y="307" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=1: B offsets 2,3; C offsets 0,1</text>
+<rect x="50" y="379" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=2: A offset 2; B offset 4</text>
+<rect x="525" y="379" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=2: B offsets 4,5; C offsets 0,1</text>
+<rect x="50" y="451" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=3: A offset 3; B offset 6</text>
+<rect x="525" y="451" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=3: B offsets 6,7; C offsets 0,1</text>
+<rect x="50" y="541" width="895" height="55" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="570" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Same 24 contributions; different visitation and immediate reuse</text>
+<text x="64" y="595" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">IJK visits a B column; IKJ visits adjacent B and C row elements.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Every (i,j,k) contribution occurs once in each trace: 24 in this fixture.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Interleaving changes; each cell still sees increasing k in these loops.</text>
+</svg>
+</section><section class="frame" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title1 desc1"><title id="title1">Change visits, preserve contributions</title><desc id="desc1">Compare canonical IJK and IKJ addresses for the same contraction. IJK visits a B column; IKJ visits adjacent B and C row elements. Every (i,j,k) contribution occurs once in each trace: 24 in this fixture. Interleaving changes; each cell still sees increasing k in these loops.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-LOOP-ORDER  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Change visits, preserve contributions</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare canonical IJK and IKJ addresses for the same contraction.</text>
+<text x="50" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IJK: keep C[0,0], vary k</text>
+<text x="525" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IKJ: keep A[0,k], sweep j</text>
+<rect x="50" y="235" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=0: A offset 0; B offset 0</text>
+<rect x="525" y="235" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=0: B offsets 0,1; C offsets 0,1</text>
+<rect x="50" y="307" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=1: A offset 1; B offset 2</text>
+<rect x="525" y="307" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=1: B offsets 2,3; C offsets 0,1</text>
+<rect x="50" y="379" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=2: A offset 2; B offset 4</text>
+<rect x="525" y="379" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=2: B offsets 4,5; C offsets 0,1</text>
+<rect x="50" y="451" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=3: A offset 3; B offset 6</text>
+<rect x="525" y="451" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=3: B offsets 6,7; C offsets 0,1</text>
+<rect x="50" y="541" width="895" height="55" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="570" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Same 24 contributions; different visitation and immediate reuse</text>
+<text x="64" y="595" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">IJK visits a B column; IKJ visits adjacent B and C row elements.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Every (i,j,k) contribution occurs once in each trace: 24 in this fixture.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Interleaving changes; each cell still sees increasing k in these loops.</text>
+</svg>
+</section><section class="frame" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title2 desc2"><title id="title2">Change visits, preserve contributions</title><desc id="desc2">Compare canonical IJK and IKJ addresses for the same contraction. IJK visits a B column; IKJ visits adjacent B and C row elements. Every (i,j,k) contribution occurs once in each trace: 24 in this fixture. Interleaving changes; each cell still sees increasing k in these loops.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-LOOP-ORDER  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Change visits, preserve contributions</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare canonical IJK and IKJ addresses for the same contraction.</text>
+<text x="50" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IJK: keep C[0,0], vary k</text>
+<text x="525" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IKJ: keep A[0,k], sweep j</text>
+<rect x="50" y="235" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=0: A offset 0; B offset 0</text>
+<rect x="525" y="235" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=0: B offsets 0,1; C offsets 0,1</text>
+<rect x="50" y="307" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=1: A offset 1; B offset 2</text>
+<rect x="525" y="307" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=1: B offsets 2,3; C offsets 0,1</text>
+<rect x="50" y="379" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=2: A offset 2; B offset 4</text>
+<rect x="525" y="379" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=2: B offsets 4,5; C offsets 0,1</text>
+<rect x="50" y="451" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=3: A offset 3; B offset 6</text>
+<rect x="525" y="451" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=3: B offsets 6,7; C offsets 0,1</text>
+<rect x="50" y="541" width="895" height="55" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="570" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Same 24 contributions; different visitation and immediate reuse</text>
+<text x="64" y="595" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">IJK visits a B column; IKJ visits adjacent B and C row elements.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Every (i,j,k) contribution occurs once in each trace: 24 in this fixture.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Interleaving changes; each cell still sees increasing k in these loops.</text>
+</svg>
+</section><section class="frame" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title3 desc3"><title id="title3">Change visits, preserve contributions</title><desc id="desc3">Compare canonical IJK and IKJ addresses for the same contraction. IJK visits a B column; IKJ visits adjacent B and C row elements. Every (i,j,k) contribution occurs once in each trace: 24 in this fixture. Interleaving changes; each cell still sees increasing k in these loops.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-LOOP-ORDER  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Change visits, preserve contributions</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare canonical IJK and IKJ addresses for the same contraction.</text>
+<text x="50" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IJK: keep C[0,0], vary k</text>
+<text x="525" y="208" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IKJ: keep A[0,k], sweep j</text>
+<rect x="50" y="235" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=0: A offset 0; B offset 0</text>
+<rect x="525" y="235" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=0: B offsets 0,1; C offsets 0,1</text>
+<rect x="50" y="307" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=1: A offset 1; B offset 2</text>
+<rect x="525" y="307" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="336" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=1: B offsets 2,3; C offsets 0,1</text>
+<rect x="50" y="379" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=2: A offset 2; B offset 4</text>
+<rect x="525" y="379" width="420" height="57" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="408" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=2: B offsets 4,5; C offsets 0,1</text>
+<rect x="50" y="451" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">k=3: A offset 3; B offset 6</text>
+<rect x="525" y="451" width="420" height="57" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="539" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">k=3: B offsets 6,7; C offsets 0,1</text>
+<rect x="50" y="541" width="895" height="55" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="570" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Same 24 contributions; different visitation and immediate reuse</text>
+<text x="64" y="595" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start"></text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">IJK visits a B column; IKJ visits adjacent B and C row elements.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Every (i,j,k) contribution occurs once in each trace: 24 in this fixture.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Interleaving changes; each cell still sees increasing k in these loops.</text>
+</svg>
+</section><p>Compare canonical IJK and IKJ addresses for the same contraction. IJK visits a B column; IKJ visits adjacent B and C row elements. Every (i,j,k) contribution occurs once in each trace: 24 in this fixture. Interleaving changes; each cell still sees increasing k in these loops.</p><p><a href="ch06-loops.svg">Complete static explanation</a> · CANONICAL / CHAPTER 6</p></main><script src="player.js"></script></html>

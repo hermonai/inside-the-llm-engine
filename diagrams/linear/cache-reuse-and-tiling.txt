@@ -1,16 +1,15 @@
 CACHE REUSE THROUGH TILING
 
- A tile [Bₘ,Bₖ]       B tile [Bₖ,Bₙ]       C tile [Bₘ,Bₙ]
- ┌────────────┐        ┌────────────┐        ┌────────────┐
- │            │ ═════▶ │            │ ═════▶ │ accumulate │
- └────────────┘        └────────────┘        └────────────┘
-        ▲                     ▲                     │
-        └───────── reused across inner work ────────┘
+ A tile [Bₘ,Bₖ] ──┐
+                  ├──▶ tile products ──┐
+ B tile [Bₖ,Bₙ] ──┘                     │
+                                        ▼
+ previous C tile [Bₘ,Bₙ] ───────────▶ accumulate ──▶ updated C tile
 
- whole matrices                         active working set
- ┌──────────────────────┐              ┌──────────────┐
- │  □ □ □ □ □ □ □ □ □  │  ──▶ tile ──▶│ A□  B□  C□  │
- │  □ □ □ □ □ □ □ □ □  │              └──────────────┘
- └──────────────────────┘
+A and B are read-only independent operands. C alone accumulates.
+Outer loops ii,kk,jj select regions; inner i,k,j visits contributions.
+Reusing A across j and B across i seeks to avoid repeated slow-memory loads.
+Actual cache residency depends on hardware, competing data and tile extents.
 
 Tail tiles shrink at the M, K, or N edge; no dimension must divide evenly.
+Example: [5,7] × [7,3], blocks [4,4,2]; last i=4..5,k=4..7,j=2..3.

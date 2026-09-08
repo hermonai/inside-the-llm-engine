@@ -29,6 +29,14 @@ recorded `N=8` negative result rather than hiding it.
 Vary a bounded set of rectangular shapes. Form a hypothesis about weight reuse
 and kernel overhead, then distinguish the model from observations.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+Reproduce chart values from the historical CSV: GFLOP/s 2.739,1.273,5.397 for N=1,8,64. Separate recorded time, derived throughput, modeled ideal intensity, and unmeasured memory traffic. Retain the N=8 loss.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Do not commit machine-scale raw artifacts. Keep the small textual record and

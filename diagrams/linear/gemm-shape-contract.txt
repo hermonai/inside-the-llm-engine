@@ -1,12 +1,8 @@
 GEMM SHAPE CONTRACT
 
-       A [M,K]          B [K,N]                 C [M,N]
-    ┌──────────┐     ┌──────────┐            ┌──────────┐
- M  │          │  K  │          │       M    │          │
-    │          │ ═══▶│          │  ────────▶ │          │
-    └──────────┘     └──────────┘            └──────────┘
-          K                N                       N
+ A [M,K] ──┐
+            ├──▶ contract shared K ──▶ C [M,N]
+ B [K,N] ──┘
 
-                  contract K; preserve M and N
-
-                 [M,K] × [K,N]  →  [M,N]
+A and B are independent inputs. Preserve M and N, reduce K.
+No arrow means A produces B. C is a new output owner.

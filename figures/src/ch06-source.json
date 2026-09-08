@@ -1,0 +1,22 @@
+{
+  "id": "FIG-CH06-SOURCE-PATH",
+  "chapter": 6,
+  "kind": "ch06-source",
+  "title": "Two inspected paths, distinct status",
+  "purpose": "Trace the default runtime and the optional host tensor bridge without blending them.",
+  "contract": [
+    "Hermon 2a3fd521: CURRENT batched default; paged runtime PREVIEW.",
+    "llama.cpp 389ff61d: graph operator and CPU/Metal/CUDA kernel families.",
+    "Optional tensor_bridge.cpp requires host weights; it is not the default GPU path."
+  ],
+  "status": "CANONICAL / CHAPTER 6",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/linear.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Trace the default runtime and the optional host tensor bridge without blending them. Hermon 2a3fd521: CURRENT batched default; paged runtime PREVIEW. llama.cpp 389ff61d: graph operator and CPU/Metal/CUDA kernel families. Optional tensor_bridge.cpp requires host weights; it is not the default GPU path.",
+  "alt": "Trace the default runtime and the optional host tensor bridge without blending them. Hermon 2a3fd521: CURRENT batched default; paged runtime PREVIEW. llama.cpp 389ff61d: graph operator and CPU/Metal/CUDA kernel families. Optional tensor_bridge.cpp requires host weights; it is not the default GPU path.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter06-visual.json"
+  }
+}

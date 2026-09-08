@@ -279,8 +279,8 @@ equivalence gate before timing.
 A dependency-free release example records three independently interpretable
 experiments:
 
-1. `i-j-k` versus `i-k-j` on identical canonical square matrices, alternating
-   measurement order after warmup;
+1. `i-j-k` versus `i-k-j` on identical canonical square matrices, fixed
+   measurement order after warmup (corrected against the harness 2026-09-08);
 2. reference, `i-k-j`, and blocked scalar GEMM plus bounded block sizes and a
    small-matrix crossover sweep;
 3. one fixed weight matrix multiplied by 1, 8, and 64 state columns, reporting
@@ -289,11 +289,16 @@ experiments:
 
 The primary timing is end-to-end public/helper call time including equal output
 allocation and zero initialization. Input construction and correctness checks
-are outside timing. Results use one warmup, seven repetitions, median, consumed
+are outside timing. Results use warmup, workload-specific repetition counts, median, consumed
 checksums, one thread, release mode, and the exact machine/toolchain record.
 They are exploratory and do not claim production GEMM or a hardware peak.
 
 ## Hermon paths inspected
+
+Historical inspection below is preserved. The [2026-09-08 regeneration ledger](../astra/chapter06-regeneration.md)
+refreshes Hermon to `2a3fd521`, separates the host CPU bridge from the default
+backend path, and records visual/numerical evidence. The benchmark helper uses
+absolute/relative `1e-4/1e-5`; bounded unit fixtures use `1e-5/1e-5`.
 
 All classifications are reverified at Hermon `472a44c` on 2026-09-03.
 

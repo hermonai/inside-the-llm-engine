@@ -19,7 +19,11 @@ assert '\ufffd' not in text, 'replacement glyph'
 assert not any(page.images for page in chapter.pages), 'unexpected rasterized chapter figure'
 for filename in ('chapter05.html','book.html'):
     content=(ROOT/'build/publication'/filename).read_text()
-    assert content.count('data:image/svg+xml')==8, filename+' missing embedded SVG'
+    expected=8
+    if filename=='book.html':
+        import re
+        expected=sum(len(re.findall(r'!\[[^\]]*\]\([^)]*figures/generated/[^)]*\.svg\)',path.read_text())) for path in (ROOT/'manuscript').glob('part-*/chapter-*.md'))
+    assert content.count('data:image/svg+xml')==expected, filename+' missing embedded SVG'
     assert '<math ' in content, filename+' missing native MathML'
 paths=sorted((ROOT/'build').glob('ch05-final-*.png'))
 assert len(paths)==len(chapter.pages), 'render all chapter pages first'

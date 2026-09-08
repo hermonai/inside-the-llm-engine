@@ -33,6 +33,14 @@ error before numerical work.
 Store useful matrix and vector values with padding and create strided views.
 Prove GEMV follows logical indices, not adjacent physical positions.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+Use W [3,4] and x [4] from the visual fixture; derive y=[-3,3,2.5]. For W[1,2], report logical coordinate, element offset 6, byte displacement 24, and value -1. Keep the original [2,3] exercise as a separate regression.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Retain the asymmetric fixture because square, all-positive examples hide

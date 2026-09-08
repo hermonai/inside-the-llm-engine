@@ -14,6 +14,7 @@ import re
 import textwrap
 import xml.etree.ElementTree as ET
 import chapter05
+import chapter06
 
 ROOT = Path(__file__).resolve().parents[1]
 INK, MUTED, BLUE, TEAL, GOLD = '#152b3c', '#465c6b', '#dcecf7', '#dcefe7', '#f4ead2'
@@ -63,7 +64,9 @@ class Drawing:
 
 def render(s, frame=None):
     d, f, k = Drawing(s), s['fixture'], s['kind']
-    if k.startswith('tensor-'):
+    if k.startswith('ch06-'):
+        chapter06.render(s,d,frame)
+    elif k.startswith('tensor-'):
         chapter05.render(s,d,ROOT)
     elif k == 'tensor':
         d.text(60, 207, '01  Logical A [2,3]')
@@ -160,7 +163,10 @@ def render(s, frame=None):
 
 def validate_fixture(s):
     f,k=s['fixture'],s['kind']
-    if k.startswith('tensor-'):
+    if k.startswith('ch06-'):
+        assert f['source']=='code/reference/fixtures/chapter06-visual.json'
+        assert chapter06.fixture()['shape']==[3,4,2]
+    elif k.startswith('tensor-'):
         chapter05.fixture(s,ROOT)
     elif k=='tensor':
         assert sum(i*j for i,j in zip(f['index'],f['strides']))==f['element_offset']
@@ -216,7 +222,10 @@ def main():
             'batch':['iteration   0   1   2   3', 'Request A   P   D   D   ·', 'Request B   ·   P   D   D', 'Request C   ·   ·   P   D'],
             'sequence':['API ──▶ submit queue ──▶ worker ──▶ Context::decode_batch', 'API ◀┄┄ sample/stream ◀┄┄ worker ◀┄┄ logits/status', 'Legend: solid call; dashed return; worker owns Context and Batch.'],
             'architecture':['Client ┄┄▶ API ┄┄▶ Dispatcher ┄┄▶ Batched worker [CURRENT]', '                                   │', '                                   ▼', 'parameters ══▶ llama.cpp graph ◀── context / KV state', '                     │', '                     ▼', '             backend ──▶ configured CPU / GPU', 'PREVIEW: paged runtime; LIBRARY: native components; separate integration gates.']}
-        diagram_lines=chapter05.text_lines(s,ROOT) if s['kind'].startswith('tensor-') else maps[s['kind']]
+        if s['kind'].startswith('ch06-'):
+            diagram_lines=[line for raw in chapter06.text_lines(s) for line in (textwrap.wrap(raw,94) or [''])]
+        else:
+            diagram_lines=chapter05.text_lines(s,ROOT) if s['kind'].startswith('tensor-') else maps[s['kind']]
         lines=[s['id'],s['title'],s['status'],'',*diagram_lines,'']
         for label in [s['purpose'],*s['contract'],'Fixture: '+json.dumps(s['fixture'],ensure_ascii=False)]:
             lines.extend(textwrap.wrap(label,94)); lines.append('')

@@ -39,6 +39,14 @@ non-canonical strides.
 Trace one output element from logical indices through Chapter 5's stride
 equation to physical offsets.
 
+## Visual checkpoint — Chapter 6 regeneration
+
+Use A=W and the fixture B [4,2]. Derive all six C values, then recover C[:,0] using GEMV and recover the entire matrix by summing four outer products. Explain why canonical B storage differs from row-batched B transpose.
+
+Use the [shared fixture](../code/reference/fixtures/chapter06-visual.json) and
+run `python3 scripts/check-linear-visual-parity.py` from the repository root.
+Report values, shapes, address units and the evidence boundary, not only PASS.
+
 ## Cleanup
 
 Keep the full-vector assertion rather than checking only one convenient cell.

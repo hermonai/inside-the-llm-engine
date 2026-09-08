@@ -1,0 +1,29 @@
+FIG-CH06-GEMM-THREE-VIEWS
+One contraction, three ways to see it
+CANONICAL / CHAPTER 6
+
+Relate row-dot-column, repeated GEMV columns, and summed outer products.
+A [3,4] times B [4,2] produces C [3,2]; A is W.
+B[:,0]=x; C[:,0]=y; selected cell C[0,1]=9.
+A and B are independent inputs; neither is the output of the other.
+
+W [3,4] = [1, -2, 3, 0, 0, 1, -1, 2, 2, 0, 1, -1]
+x [4] = [2, 1, -1, 0.5]
+y [3] = [-3.0, 3.0, 2.5]
+B [4,2] = [2, 1, 1, -1, -1, 2, 0.5, 0]
+C [3,2] = [-3.0, 9.0, 3.0, -3.0, 2.5, 4.0]
+row 0 products = [2.0, -2.0, -3.0, 0.0]
+row 0 partial sums = [2.0, 0.0, -3.0, -3.0]
+
+Relate row-dot-column, repeated GEMV columns, and summed outer products.
+
+A [3,4] times B [4,2] produces C [3,2]; A is W.
+
+B[:,0]=x; C[:,0]=y; selected cell C[0,1]=9.
+
+A and B are independent inputs; neither is the output of the other.
+
+Fixture: {"source": "code/reference/fixtures/chapter06-visual.json"}
+
+Source: figures/src/ch06-gemm.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/linear.rs

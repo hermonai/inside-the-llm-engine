@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Translate the representation, keep the meaning</title><desc id="desc">Compare explicit F32 teaching tensors with typed GGML graph operands. Teaching W [M,K] corresponds to GGML weight ne=[K,M]. The Hermon bridge uses row-batched input [N,K] and returns [N,M]. GGML nb[] uses bytes; packed types cannot be indexed as flat F32 weights.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH06-TEACHING-PRODUCTION  /  CANONICAL / CHAPTER 6</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Translate the representation, keep the meaning</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare explicit F32 teaching tensors with typed GGML graph operands.</text>
+<rect x="50" y="205" width="425" height="214" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">TEACHING / safe Rust</text>
+<text x="64" y="259" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">OwnedTensor / TensorView</text>
+<text x="64" y="284" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">F32, element strides, explicit base</text>
+<text x="64" y="309" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">checked GEMV / GEMM</text>
+<text x="64" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">scalar products, F32 accumulation</text>
+<text x="64" y="359" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">fresh canonical output</text>
+<text x="64" y="384" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">reference or explicit blocked call</text>
+<rect x="520" y="205" width="425" height="214" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="534" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">GGML / pinned source</text>
+<text x="534" y="259" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">type + ne[] + nb[] byte strides</text>
+<text x="534" y="284" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">packed weights need type traits</text>
+<text x="534" y="309" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">ggml_mul_mat creates graph node</text>
+<text x="534" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">backend selects eligible kernel</text>
+<text x="534" y="359" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">CPU vector dot or GPU paths</text>
+<text x="534" y="384" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">result layout follows GGML axes</text>
+<rect x="50" y="464" width="895" height="113" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="493" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Invariant, not identical representation</text>
+<text x="64" y="518" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">same intended contraction after axis translation; stated numerical contract</text>
+<text x="64" y="543" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Teaching W [M,K] ↔ GGML weight ne=[K,M]; row-batched inputs [N,K].</text>
+<text x="64" y="568" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Packing and quantization change physical representation, not the logical roles.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Teaching W [M,K] corresponds to GGML weight ne=[K,M].</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">The Hermon bridge uses row-batched input [N,K] and returns [N,M].</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">GGML nb[] uses bytes; packed types cannot be indexed as flat F32 weights.</text>
+</svg>
