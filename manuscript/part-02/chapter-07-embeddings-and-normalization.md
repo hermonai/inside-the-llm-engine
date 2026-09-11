@@ -34,6 +34,21 @@ chapter.
 
 ## The first learned vector
 
+![Token identity, copied embedding and normalized activation occupy different boundaries.](../../figures/generated/ch07-journey.svg)
+
+The visual edition follows one deliberately small table through the whole
+chapter. It has three vocabulary rows and four coordinates per row; token 1
+selects the existing RMSNorm hand vector `[1,-2,3,-4]`. This is a new connecting
+fixture, not a replacement for Chapter 3's three-dimensional tiny model or the
+original Chapter 7 table tests. Keeping these identities explicit prevents a
+polished diagram from silently changing the engine being explained.
+
+Read the plate as three contracts. An integer identifies a row. Lookup copies
+that row into activation storage. RMSNorm creates another activation under a
+specified equation. The dashed next-step arrow is a curriculum boundary, not
+an implemented Q/K/V call. This is the model-semantic view; the ownership and
+physical-address views below explain what its short arrows cost.
+
 The complete boundary is visible in the
 [token-to-model-space diagram](../../diagrams/transformer/token-to-model-space.txt):
 
@@ -146,6 +161,15 @@ quietly assuming stride one.
 
 ## The checked lookup contract
 
+![Token 1 selects four F32 values at element offsets 4 through 7 and byte displacements 16 through 28.](../../figures/generated/ch07-lookup.svg)
+
+The table and activation must not share a label merely because both are
+matrices of numbers. The learned table is `[V,D]`; a sequence of selected
+activations is `[T,D]`. Here one token selects `[D]`. In the plate, the ochre
+cells remain parameters and the green cells are a new owner. The address
+labels are displacements within the canonical table, not allocator addresses
+and not offsets within the returned vector, whose own first element is zero.
+
 `embedding_lookup_reference` accepts an immutable table view and a `TokenId`.
 It requires:
 
@@ -228,6 +252,14 @@ remains tensor indexing and copying.
 
 ## From one token to a sequence
 
+![Repeated token identities produce equal rows at distinct positions in one activation allocation.](../../figures/generated/ch07-sequence.svg)
+
+Positions and identities are separate axes of reasoning. Positions 0 and 2
+can contain the same token ID without sharing mutable output cells. In this
+fixture, changing `X[0,0]` cannot change `X[2,0]`, even though lookup originally
+wrote the same value into both. An optimization that deduplicated parameter
+reads would still owe the same logical output and ownership contract.
+
 Inference begins with more than one prompt token even though later generation
 produces one new token at a time. The single-row rule generalizes without
 introducing attention.
@@ -269,6 +301,15 @@ create batches, positions, masks, Q/K/V, or a Transformer block. Those concepts
 need separate semantic and ownership work.
 
 ## The residual-stream invariant
+
+![Model parameters, immutable views and request-owned activation tensors have distinct lifetimes.](../../figures/generated/ch07-owners.svg)
+
+This diagram uses the real storage types, `OwnedTensor` and `TensorView`, not
+an imagined Transformer class hierarchy. The dashed edge points from a view
+to the owner it borrows. Solid edges represent a copy or numerical
+transformation. Neither means transferring ownership of model weights into a
+request. Model storage can serve many requests; request cleanup must release
+only its own activation owners.
 
 Once lookup produces $\mathbf{x}_0\in\mathbb{R}^{D}$ for a token, $D$ becomes
 one of the decoder's central dimensional invariants. Transformer sublayers can
@@ -422,8 +463,8 @@ function.
 Use
 
 $$
-\mathbf{x}=[1,-2,3,-4],qquad
-\mathbf{w}=[1,0.5,2,-1],qquad
+\mathbf{x}=[1,-2,3,-4],\qquad
+\mathbf{w}=[1,0.5,2,-1],\qquad
 \epsilon=10^{-5}.
 $$
 
@@ -468,6 +509,15 @@ mental arithmetic.
 > through the reference operator.
 
 ## Equation to two loops
+
+![Four squares reduce to a shared reciprocal RMS before the second pass writes output coordinates.](../../figures/generated/ch07-passes.svg)
+
+The [four-step sequence](../../figures/generated/ch07-passes.html) highlights
+the same stages, with keyboard controls and no autoplay. Its static plate is
+complete: every intermediate needed for the hand calculation remains visible
+in print. The highlighted stage changes only the explanation, not the
+reduction order. Partial sums `[1,5,14,30]` correspond to increasing logical
+index, exactly as the reference loop below.
 
 The direct lowering naturally has two logical passes:
 
@@ -548,6 +598,8 @@ not converted into a tensor-shape error by this small teaching API.
 
 ## Epsilon is semantic metadata
 
+![Positive epsilon defines zero-input behavior but breaks exact scale invariance for tiny signals.](../../figures/generated/ch07-epsilon.svg)
+
 For $\mathbf{x}=\mathbf{0}$ and positive finite epsilon,
 
 $$
@@ -592,6 +644,15 @@ Use [Lab 35](../../labs/lab-35-break-epsilon.md) to make every invalid case and
 the zero-vector result executable.
 
 ## RMSNorm is not LayerNorm
+
+![A uniform vector is preserved near unit scale by RMSNorm but becomes zero after LayerNorm centering with zero bias.](../../figures/generated/ch07-contrast.svg)
+
+The uniform-vector counterexample is more useful than a vague family
+resemblance. With unit gain and zero bias, LayerNorm removes all four equal
+coordinates by subtracting their mean. RMSNorm does not. After RMS rescaling,
+learned gain introduces another distinction: our mixed-sign fixture's output
+has RMS about `1.342`. Coordinate 3 changes sign because its gain is negative.
+There is no final operation that forces the gained vector back to unit RMS.
 
 Readers will encounter both names. They are related normalization operators,
 not spelling variants.
@@ -668,6 +729,8 @@ fixtures, not as a universal cross-backend RMSNorm rule.
 
 ## Finite input can still fail
 
+![The magnitude sweep separates accepted finite reductions from square overflow and accumulated-sum overflow.](../../figures/generated/ch07-range.svg)
+
 Checking `x.is_finite()` is necessary but insufficient. Squaring expands the
 exponent. A finite `f32` around `1e20` has a mathematical square around `1e40`,
 which exceeds the maximum finite binary32 magnitude. `x*x` becomes infinity.
@@ -723,6 +786,23 @@ $$
 so exact cancellation no longer holds. It remains a good approximation when
 $\alpha^2m_2\gg\epsilon$.
 
+The curve in the epsilon plate makes that condition visible. Keeping the
+learned gain and epsilon fixed, exact real arithmetic gives the scalar relation
+
+$$
+\mathbf{y}(\alpha\mathbf{x})=c(\alpha)\mathbf{y}(\mathbf{x}),\qquad
+c(\alpha)=\frac{\alpha\sqrt{m_2+\epsilon}}
+{\sqrt{\alpha^2m_2+\epsilon}},\quad \alpha>0.
+$$
+
+Here $c$ is the output scale relative to the unscaled input, not a latency or
+accuracy score. For the hand vector, $m_2=7.5$ and the two denominator terms
+are equal at $\alpha=\sqrt{\epsilon/7.5}\approx0.00115$. Below that crossover,
+epsilon dominates; above it, the curve approaches its nearly flat regime.
+The horizontal axis is logarithmic so both behaviors remain visible. This
+analytical curve complements the discrete executable sweep, not a new timing
+benchmark or an assertion about trained activation distributions.
+
 The committed Rust example and independent Python oracle use the hand vector,
 learned scale, and `epsilon=1e-5`. Relative to `alpha=1`, the Python oracle
 records:
@@ -755,6 +835,8 @@ running `f32` sum, exercising a different error. These are bounded numerical
 experiments, not a claim that real trained activations span this entire range.
 
 ## Work and memory behavior
+
+![Four F32 payload streams explain an analytical 16D-byte RMSNorm cost without asserting measured memory traffic.](../../figures/generated/ch07-cost.svg)
 
 Embedding lookup and RMSNorm differ from Chapter 6's matrix products.
 
@@ -857,7 +939,22 @@ changing old model graphs.
 
 ## Independent correctness
 
-The Rust suite adds 30 deterministic tests. Embedding coverage includes first,
+The visual edition adds a second, explicitly connected evidence path:
+
+```bash
+python3 scripts/check-normalization-visual-parity.py
+```
+
+An input-only JSON fixture supplies the table, token sequence, gain and epsilon.
+The Rust example calls the real operators; it does not print a stored expected
+answer. The independent Python computation supplies both a wider mathematical
+answer and an explicitly rounded F32 trace. The gate compares the entire output,
+selected addresses, squares and partial sums, then checks that all ten canonical
+scenes are embedded once. Five additional Rust tests cover the connecting
+fixture and its ownership and range claims. Existing oracle and stress tests
+remain independent regressions, not replaced by screenshots.
+
+The original operator milestone added 30 deterministic tests. Embedding coverage includes first,
 middle, and last rows; dimensions one and greater; wrong rank; empty axes;
 out-of-range IDs; strided and zero-stride views; sequence order and repetition;
 empty token sequence; and ownership isolation.
@@ -887,8 +984,11 @@ unchanged previous oracles remain part of the gate.
 
 ## Inside Hermon
 
-The following observations were verified against Hermon commit
-`472a44cdb511b2dae6c9569e59543db8f8350b25` on 2026-09-03. Status labels matter
+![Source-verified default and preview routes separate graph execution from the visible Rust normalization loop.](../../figures/generated/ch07-source.svg)
+
+The following paths were rechecked at Hermon commit `2a3fd521` on 2026-09-10;
+the full pin and original historical observations are retained in the
+[visual review record](../../research/astra/chapter07-regeneration.md). Status labels matter
 because Hermon has a release path and a separately gated engine preview.
 
 > **INSIDE HERMON — CURRENT**
@@ -1100,8 +1200,8 @@ those remain separate later chapters.
 
 - Biao Zhang and Rico Sennrich, [“Root Mean Square Layer Normalization”](https://arxiv.org/abs/1910.07467), 2019; [NeurIPS proceedings version](https://papers.neurips.cc/paper_files/paper/2019/file/1e8a19426224ca89e83cef47f1e7f53b-Paper.pdf).
 - Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E. Hinton, [“Layer Normalization”](https://arxiv.org/abs/1607.06450), 2016.
-- PyTorch, [`torch.nn.RMSNorm`](https://docs.pytorch.org/docs/stable/generated/torch.nn.RMSNorm.html) and [`torch.nn.Embedding`](https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html), accessed 2026-09-03.
+- PyTorch, [`torch.nn.RMSNorm`](https://docs.pytorch.org/docs/2.14/generated/torch.nn.RMSNorm.html), rechecked 2026-09-10, and [`torch.nn.Embedding`](https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html), accessed 2026-09-03.
 - Meta, [Llama 4 reference `model.py`](https://github.com/meta-llama/llama-models/blob/main/models/llama4/model.py), accessed 2026-09-03.
 - Netlib LAPACK, [`SLASSQ`: scaled sum of squares](https://www.netlib.org/lapack/explore-html/d8/d76/group__lassq_ga0596b4bfa745d0d1c5817d4790921cda.html), accessed 2026-09-03.
 - Rust standard library, [`f32`](https://doc.rust-lang.org/std/primitive.f32.html), accessed 2026-09-03.
-- Hermon source at `472a44cdb511b2dae6c9569e59543db8f8350b25` and its pinned llama.cpp/GGML source at `389ff61d77b5c71cec0cf92fe4e5d01ace80b797`, inspected 2026-09-03; exact paths and classifications are recorded in the [research note](../../research/part-02/chapter-07-embeddings-and-normalization.md).
+- Hermon source at `2a3fd521` and its pinned llama.cpp/GGML source at `389ff61d`, rechecked 2026-09-10; full hashes and classifications are in the [visual review](../../research/astra/chapter07-regeneration.md). The [original research note](../../research/part-02/chapter-07-embeddings-and-normalization.md) preserves the 2026-09-03 historical inspection.

@@ -1,5 +1,20 @@
 # Project Status
 
+## Chapter 7 visual regeneration — 2026-09-11
+
+COMPLETE: connect the existing lookup and RMSNorm operators with ten canonical
+vector plates, an input-only fixture, an independent oracle and a two-pass
+step sequence. The 178 unit/integration tests and two compile-fail doctests pass.
+Three Rust/Python/figure parity gates and browser/PDF checks pass. The atlas now
+has 45 plates: 32 canonical, nine prototypes and four architecture references.
+Industrial drafts are integrated; Chapter 8 research is preserved.
+Chapter 8 remains the next new curriculum chapter; no attention work is added.
+
+The paired training book owns an executable CPU core and local resume contract;
+see [the boundary](TRAINING_INFERENCE_BOUNDARY.md). A portable
+[LaTeX edition](../publication/latex/README.md) ships native TikZ plates and
+geometric legacy diagrams, without publishing character-box graphs.
+
 ## Chapter 6 industrial regeneration — 2026-09-08
 
 COMPLETE: the 9,984-word Chapter 6 now embeds fourteen canonical vector plates

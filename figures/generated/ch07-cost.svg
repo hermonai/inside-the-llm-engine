@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Count payloads before promising speed</title><desc id="desc">Account for two input reads, one gain read and one fresh output write. F32 cold-payload accounting gives approximately 16D bytes for RMSNorm. This is an analytical model, not measured physical traffic or a hardware speed claim.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH07-COST  /  CANONICAL / CHAPTER 7</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Count payloads before promising speed</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Account for two input reads, one gain read and one fresh output write.</text>
+<text x="50" y="210" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Analytical payload model / F32 / not measured HBM or RAM traffic</text>
+<rect x="50" y="245" width="430" height="100" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="275" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Read x / pass 1</text>
+<text x="68" y="309" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">4D bytes: reduce squares</text>
+<rect x="515" y="245" width="430" height="100" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="275" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Read x / pass 2</text>
+<text x="533" y="309" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">4D bytes: apply shared r</text>
+<rect x="50" y="368" width="430" height="100" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="397" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="398" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Read w / pass 2</text>
+<text x="68" y="432" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">4D bytes: learned gain</text>
+<rect x="515" y="368" width="430" height="100" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="397" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="398" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Write y / pass 2</text>
+<text x="533" y="432" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">4D bytes: new owner</text>
+<rect x="50" y="514" width="895" height="77" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="543" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="544" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Total RMSNorm payload ≈ 16D bytes; lookup alone ≈ 8D bytes.</text>
+<text x="68" y="578" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Caches, allocation, fusion and write allocation change physical transfers.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">F32 cold-payload accounting gives approximately 16D bytes for RMSNorm.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">This is an analytical model, not measured physical traffic or a hardware speed claim.</text>
+</svg>

@@ -1,0 +1,26 @@
+FIG-CH07-CONTRAST
+RMS normalization is not mean centering
+CANONICAL / CHAPTER 7
+
+Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits.
+Uniform x=[4,4,4,4], positive epsilon; both gains 1, LayerNorm bias 0.
+Mixed-sign fixture output RMS is about 1.342 after learned gain, not unity.
+token 1 ──▶ select E[1,:] ══▶ owned x [4] ══▶ RMSNorm ══▶ owned y [4]
+Model owns E and w. Request owns x and y; no output aliases parameters.
+x = [1, -2, 3, -4]
+squares = [1.0, 4.0, 9.0, 16.0]
+partial sums = [1.0, 5.0, 14.0, 30.0]
+y = [0.36514812707901, -0.36514812707901, 2.1908888816833496, 1.46059250831604]
+element offsets = [4, 5, 6, 7]
+byte displacements = [16, 20, 24, 28]
+
+Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits.
+
+Uniform x=[4,4,4,4], positive epsilon; both gains 1, LayerNorm bias 0.
+
+Mixed-sign fixture output RMS is about 1.342 after learned gain, not unity.
+
+Fixture: {"source": "code/reference/fixtures/chapter07-visual.json"}
+
+Source: figures/src/ch07-contrast.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/normalization.rs

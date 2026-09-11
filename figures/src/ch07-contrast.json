@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-CONTRAST",
+  "chapter": 7,
+  "kind": "ch07-contrast",
+  "title": "RMS normalization is not mean centering",
+  "purpose": "Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits.",
+  "contract": [
+    "Uniform x=[4,4,4,4], positive epsilon; both gains 1, LayerNorm bias 0.",
+    "Mixed-sign fixture output RMS is about 1.342 after learned gain, not unity."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits. Uniform x=[4,4,4,4], positive epsilon; both gains 1, LayerNorm bias 0. Mixed-sign fixture output RMS is about 1.342 after learned gain, not unity.",
+  "alt": "Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits. Uniform x=[4,4,4,4], positive epsilon; both gains 1, LayerNorm bias 0. Mixed-sign fixture output RMS is about 1.342 after learned gain, not unity.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

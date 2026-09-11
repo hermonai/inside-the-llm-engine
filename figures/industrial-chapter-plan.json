@@ -1,0 +1,1671 @@
+[
+  {
+    "chapter": 1,
+    "title": "The Missing Half of AI",
+    "part": 1,
+    "status": "PLAN",
+    "dependencies": [],
+    "question": "Define inference engineering and answer what lies between an API request and the first streamed token.",
+    "visual_content": "Whole-stack request map; “follow the token,” “follow the byte,” and “follow the owner” previews; trace a streamed API response without claiming model internals from wire timing.",
+    "grammar": "Request and token flow",
+    "owners": "request / sampler / decoder",
+    "failure": "invalid input, stop or disconnect",
+    "acceptance": "Check that one request has exactly one terminal outcome; measure TTFT versus full latency only as a vocabulary exercise with environment recorded.",
+    "amendment": "Use the four industrial atlas plates as optional overview/zoom references. Separate model semantics, execution and serving; revisit rather than overload the opening chapter.",
+    "existing_manifest_ids": [
+      "FIG-INDUSTRIAL-STACK-001"
+    ]
+  },
+  {
+    "chapter": 2,
+    "title": "From Text to Tokens",
+    "part": 1,
+    "status": "PLAN",
+    "dependencies": [
+      1
+    ],
+    "question": "Explain exactly how bytes become vocabulary identifiers and back, and why tokenization is model semantics.",
+    "visual_content": "Text-to-bytes-to-ids pipeline, split UTF-8 token stream, and wrong-template experiment; compare token counts for small inputs under two documented tokenizers.",
+    "grammar": "Request and token flow",
+    "owners": "request / sampler / decoder",
+    "failure": "invalid input, stop or disconnect",
+    "acceptance": "Round-trip byte fixtures, special-token rules, malformed UTF-8 policy, deterministic IDs; no speed headline, only tokens/input and allocation observations.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 3,
+    "title": "The Smallest Possible Language Model",
+    "part": 1,
+    "status": "PLAN",
+    "dependencies": [
+      2
+    ],
+    "question": "Show how a token ID can produce scores for a next token before introducing a Transformer.",
+    "visual_content": "One-ID forward path and ownership map; hand-compute logits for a three-token vocabulary, then alter one weight.",
+    "grammar": "Request and token flow",
+    "owners": "request / sampler / decoder",
+    "failure": "invalid input, stop or disconnect",
+    "acceptance": "Shape validation, exact scalar expected logits, invalid ID rejection; count operations and bytes without a performance claim.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 4,
+    "title": "Logits, Sampling, and the Autoregressive Loop",
+    "part": 1,
+    "status": "PLAN",
+    "dependencies": [
+      3
+    ],
+    "question": "Turn one forward result into repeated token generation with explicit state and stopping.",
+    "visual_content": "Logits-to-token loop and sampler-state ownership; manually generate one token, then compare greedy and seeded stochastic traces.",
+    "grammar": "Request and token flow",
+    "owners": "request / sampler / decoder",
+    "failure": "invalid input, stop or disconnect",
+    "acceptance": "Probability sum/tolerance, deterministic greedy output, reproducible seeded sequence, exactly-once terminal state; measure per-stage time only as instrumentation.",
+    "amendment": "Add a forward reference to constraint-state ownership in Chapter 67; preserve the current tested sampler API and distinguish token choice from output validity.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 5,
+    "title": "Tensors Without Magic",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      4
+    ],
+    "question": "Make shape, stride, dtype, layout, and ownership explicit enough to implement every later operation.",
+    "visual_content": "Eight canonical SVG/Unicode text plates carry one matrix through storage, ownership, copy, reshape, transpose, slice, borrowing and production representation; Rust/Python/fixture parity proves the values and offsets. Retain the original higher-rank oracle and traversal-order measurement.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Overflow, bounds, zero dimensions, non-contiguous rejection/support; compare iteration orders for locality without generalizing.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-TENSOR-STRIDE-001",
+      "FIG-TENSOR-TRANSPOSE-001",
+      "FIG-TENSOR-COPY-001",
+      "FIG-TENSOR-RESHAPE-001",
+      "FIG-TENSOR-SLICE-001",
+      "FIG-TENSOR-OWNERSHIP-001",
+      "FIG-TENSOR-LIFETIME-001",
+      "FIG-TENSOR-PRODUCTION-001"
+    ]
+  },
+  {
+    "chapter": 6,
+    "title": "Matrix Multiplication: The Engine Room",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      5
+    ],
+    "question": "Derive matmul as both linear algebra and a memory-traffic problem.",
+    "visual_content": "Row/column contraction, access order, cache-tile movement, FLOP/byte/reuse traces, and kernel stack; sweep loop order/tile size and GEMV/GEMM shapes on fixed hardware.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Hand-computable matrices, odd/tail sizes, accumulation tolerance, reference differential; record compiler/build/hardware before timing.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-GEMV-ROW-001",
+      "FIG-CH06-ENGINE-MAP",
+      "FIG-CH06-DOT",
+      "FIG-CH06-GEMV-ONE-ROW",
+      "FIG-CH06-GEMV-FULL",
+      "FIG-CH06-GEMV-MEMORY",
+      "FIG-CH06-GEMM-THREE-VIEWS",
+      "FIG-CH06-LOOP-ORDER",
+      "FIG-CH06-TILING-TAILS",
+      "FIG-CH06-MEMORY-HIERARCHY",
+      "FIG-CH06-SIMD-GPU",
+      "FIG-CH06-CROSSOVER",
+      "FIG-CH06-THROUGHPUT",
+      "FIG-CH06-TEACHING-PRODUCTION",
+      "FIG-CH06-SOURCE-PATH"
+    ]
+  },
+  {
+    "chapter": 7,
+    "title": "Embeddings and RMSNorm",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      6
+    ],
+    "question": "Build the first real decoder operations and show how normalization stabilizes scale.",
+    "visual_content": "Fifteen canonical token/table/ownership/residual/RMS/precision/source-path diagrams; scale sweep and `f32` magnitude stress without a timing benchmark.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Independent Python oracle and 30 deterministic Rust tests over IDs, shapes, layouts, ownership, epsilon, zero, underflow, and overflow; no performance claim without a candidate and controlled workload.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-CH07-JOURNEY",
+      "FIG-CH07-LOOKUP",
+      "FIG-CH07-SEQUENCE",
+      "FIG-CH07-OWNERS",
+      "FIG-CH07-PASSES",
+      "FIG-CH07-EPSILON",
+      "FIG-CH07-RANGE",
+      "FIG-CH07-COST",
+      "FIG-CH07-CONTRAST",
+      "FIG-CH07-SOURCE",
+      "FIG-TRANSFORMER-PIPELINE-001"
+    ]
+  },
+  {
+    "chapter": 8,
+    "title": "Queries, Keys, and Values",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      7
+    ],
+    "question": "Explain what Q, K, and V represent, which token owns each, and how head geometry changes storage.",
+    "visual_content": "Hidden-to-QKV fan-out and GQA head map; compare KV bytes for MHA/GQA/MQA at fixed query heads.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Shape divisibility, mapping boundaries, independent projection oracle; measure bundled versus separate only later with controls.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-QKV-HEADS-001"
+    ]
+  },
+  {
+    "chapter": 9,
+    "title": "Position: RoPE From First Principles",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      8
+    ],
+    "question": "Derive how a position-dependent rotation lets attention distinguish token order.",
+    "visual_content": "Rotating coordinate pairs and relative-position dot product; compute positions 0/1 by hand and test extrapolation settings.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Norm preservation, position zero, odd/partial rotary dimension policy, reference tolerance; compare table versus compute only under defined sequence range.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-ROPE-ROTATION-001"
+    ]
+  },
+  {
+    "chapter": 10,
+    "title": "Causal Self-Attention",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      9
+    ],
+    "question": "Derive how each query reads only permitted prior positions and produces a contextual value.",
+    "visual_content": "Causal visibility triangle and one query scanning K/V; disable mask or scaling to expose behavior.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Hand-computable masked attention, no future influence, GQA mapping, finite extreme scores; benchmark dense reference only as baseline.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-ATTENTION-STEPS-001"
+    ]
+  },
+  {
+    "chapter": 11,
+    "title": "The Feed-Forward Network",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      10
+    ],
+    "question": "Explain the token-wise parameter-heavy transform that follows attention.",
+    "visual_content": "Gated branch fan-out/rejoin; change activation or ordering and observe equivalence failure.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Hand-sized vectors, activation edge values, bundled versus separate equality; later benchmark matmul grouping with exact controls.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 12,
+    "title": "One Complete Transformer Layer",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      11
+    ],
+    "question": "Account for every operation, buffer, residual, and owner in one decoder layer.",
+    "visual_content": "Full layer data/ownership flow and activation liveness timeline; trace tiny inputs through each checkpoint.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Stage-by-stage oracle, residual aliasing tests, wrong-order negative fixture; profile stage shares without optimizing yet.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 13,
+    "title": "The Decoder Stack and Next-Token Generation",
+    "part": 2,
+    "status": "PLAN",
+    "dependencies": [
+      12
+    ],
+    "question": "Turn one layer into an end-to-end tiny Transformer that returns next-token logits.",
+    "visual_content": "End-to-end decoder stack and layer-state table; generate several tokens from fixed weights and inspect traces.",
+    "grammar": "Typed tensor and algorithm trace",
+    "owners": "weight owner / activation buffer",
+    "failure": "shape, mask or numerical mismatch",
+    "acceptance": "Full Python/scalar differential, final-position selection, tied-head equality, deterministic greedy sequence; baseline tokens/s labeled educational.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 14,
+    "title": "What Is Actually Inside a Model File?",
+    "part": 3,
+    "status": "PLAN",
+    "dependencies": [
+      13
+    ],
+    "question": "Inventory the metadata, tensors, tokenizer, templates, and provenance needed to reproduce model semantics.",
+    "visual_content": "File regions and semantic dependency map; inspect metadata/tensor names of an explicitly licensed fixture.",
+    "grammar": "Byte layout and decoding trace",
+    "owners": "mapped artifact / decoded tensor",
+    "failure": "truncation, alignment or unsupported encoding",
+    "acceptance": "Bounds/overflow/truncation threat cases, tensor byte reconciliation; measure scan I/O separately from load/compute.",
+    "amendment": "Compare a pinned safetensors specification with GGUF: metadata, tensor naming, layout, integrity and loading obligations. Do not imply container conversion guarantees model equivalence.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 15,
+    "title": "GGUF From the Bytes Up",
+    "part": 3,
+    "status": "PLAN",
+    "dependencies": [
+      14
+    ],
+    "question": "Parse a GGUF header, typed metadata, tensor directory, alignment, and bounded tensor ranges safely.",
+    "visual_content": "Byte-level container layout and tensor range resolution; mutate a minimal fixture across valid/invalid cases.",
+    "grammar": "Byte layout and decoding trace",
+    "owners": "mapped artifact / decoded tensor",
+    "failure": "truncation, alignment or unsupported encoding",
+    "acceptance": "Truncation, huge counts, overlapping/non-contiguous offsets, invalid alignment/type/block width, exact bounded reader; benchmark metadata scan only if size/control stated.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 16,
+    "title": "Quantization From F32 to Packed Weights",
+    "part": 3,
+    "status": "PLAN",
+    "dependencies": [
+      15
+    ],
+    "question": "Explain how lower-bit block representations preserve usable weight values and alter execution.",
+    "visual_content": "Packed block byte layout and widening path; quantize hand values and compare error/distribution.",
+    "grammar": "Byte layout and decoding trace",
+    "owners": "mapped artifact / decoded tensor",
+    "failure": "truncation, alignment or unsupported encoding",
+    "acceptance": "Golden bytes, tails/block divisibility, NaN/range policy, decode differential; measure effective bytes and decode cost, not a generic “4-bit speedup.”",
+    "amendment": "Separate weight-only, activation and KV quantization. Show scale groups, storage bits versus effective bytes and calibration/error budgets; keep the first packed fixture small.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 17,
+    "title": "Packed Matrix Multiplication",
+    "part": 3,
+    "status": "PLAN",
+    "dependencies": [
+      16
+    ],
+    "question": "Multiply packed weights without materializing a full F32 copy.",
+    "visual_content": "Packed row to accumulator flow; Lab 42 bandwidth/compute decomposition over sizes and formats.",
+    "grammar": "Byte layout and decoding trace",
+    "owners": "mapped artifact / decoded tensor",
+    "failure": "truncation, alignment or unsupported encoding",
+    "acceptance": "Golden packed rows, partial/invalid groups, double/F32 oracle tolerances, accumulation semantics; report build, CPU, bytes, and control.",
+    "amendment": "Trace packed load, scale application, accumulation dtype and output tolerance. Compare optimized kernels only against the scalar oracle on identical logical values.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 18,
+    "title": "Loading and Running a Real GGUF Model",
+    "part": 3,
+    "status": "PLAN",
+    "dependencies": [
+      17
+    ],
+    "question": "Prove scoped real-model support by mapping metadata/tensors to the exact Transformer semantics.",
+    "visual_content": "Metadata-to-runtime object graph and “follow the byte” real path; run a small prompt under teaching engine and oracle.",
+    "grammar": "Byte layout and decoding trace",
+    "owners": "mapped artifact / decoded tensor",
+    "failure": "truncation, alignment or unsupported encoding",
+    "acceptance": "Tokenizer/template, stage logits, greedy sequence, multiple contexts, unsupported metadata hard errors; report load, prefill, decode separately.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 19,
+    "title": "Measure First: Profiling an Inference Engine",
+    "part": 4,
+    "status": "PLAN",
+    "dependencies": [
+      18
+    ],
+    "question": "Identify where time and bytes go before choosing an optimization.",
+    "visual_content": "Timeline from tokenize/load/prefill/decode/stream and measurement boundary map; profile a fixed workload before modifying code.",
+    "grammar": "Timeline and physical byte accounting",
+    "owners": "profiler clock / retained state",
+    "failure": "wrong boundary or double-counted memory",
+    "acceptance": "Ensure instrumentation does not alter outputs; repeat/control cold versus warm; produce a complete benchmark manifest.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 20,
+    "title": "Prefill and Decode Are Different Workloads",
+    "part": 4,
+    "status": "PLAN",
+    "dependencies": [
+      19
+    ],
+    "question": "Explain why prompt processing and token-at-a-time generation favor different execution shapes.",
+    "visual_content": "Prefill/decode shape comparison and request timeline; sweep prompt/output length and record phase profiles.",
+    "grammar": "Timeline and physical byte accounting",
+    "owners": "profiler clock / retained state",
+    "failure": "wrong boundary or double-counted memory",
+    "acceptance": "Same logits across chunked/unchunked prefill, position continuity, phase-specific measurements with fixed model/cache.",
+    "amendment": "Use explicit client/server timing boundaries and workload-dependent roofline reasoning. Add the latency plate; prefill/decode names do not determine the bottleneck.",
+    "existing_manifest_ids": [
+      "FIG-INDUSTRIAL-LATENCY-001"
+    ]
+  },
+  {
+    "chapter": 21,
+    "title": "Why the KV Cache Exists",
+    "part": 4,
+    "status": "PLAN",
+    "dependencies": [
+      20
+    ],
+    "question": "Demonstrate why decoder inference should retain prior keys/values instead of recomputing past token layers.",
+    "visual_content": "Repeated no-cache layers versus append-only cached decode and per-layer layout; generate N tokens both ways.",
+    "grammar": "Timeline and physical byte accounting",
+    "owners": "profiler clock / retained state",
+    "failure": "wrong boundary or double-counted memory",
+    "acceptance": "Temperature-zero logits/token sequence agree, cache positions reset correctly, multiple sequence isolation; report prefill plus N-token decode and bytes.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-KVCACHE-GROWTH-001"
+    ]
+  },
+  {
+    "chapter": 22,
+    "title": "KV Cache Memory Mathematics",
+    "part": 4,
+    "status": "PLAN",
+    "dependencies": [
+      21
+    ],
+    "question": "Predict cache capacity and traffic from model geometry, dtype, sequence length, and concurrency.",
+    "visual_content": "Geometry-to-bytes expansion and capacity budget; sweep context/concurrency/dtype and validate against instrumentation.",
+    "grammar": "Timeline and physical byte accounting",
+    "owners": "profiler clock / retained state",
+    "failure": "wrong boundary or double-counted memory",
+    "acceptance": "Overflow/unit tests, MHA/GQA cases, allocator overhead disclosure; no tok/s claim—capacity and physical bytes only.",
+    "amendment": "Count valid, allocated and reserved bytes separately. Add dense/GQA/sliding-window applicability limits and a quantized-KV metadata budget; defer MLA to Chapter 80.",
+    "existing_manifest_ids": [
+      "FIG-INDUSTRIAL-MEMORY-001"
+    ]
+  },
+  {
+    "chapter": 23,
+    "title": "One User Is Easy",
+    "part": 5,
+    "status": "PLAN",
+    "dependencies": [
+      20,
+      21
+    ],
+    "question": "Expose assumptions hidden by a synchronous single-request loop before concurrency invalidates them.",
+    "visual_content": "Single request owner/lifetime and synchronous call timeline; disconnect a client at three phases.",
+    "grammar": "Swimlane and sequence lifecycle",
+    "owners": "scheduler / sequence / stream",
+    "failure": "starvation, cancellation or queue pressure",
+    "acceptance": "Exactly one terminal result, bounded output, resource release on disconnect/error; baseline latency only.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 24,
+    "title": "The Inference Request State Machine",
+    "part": 5,
+    "status": "PLAN",
+    "dependencies": [
+      23
+    ],
+    "question": "Define legal request transitions and who owns every resource in each state.",
+    "visual_content": "Full state graph with failure/cancel edges and resource table by state; inject error at every transition.",
+    "grammar": "Swimlane and sequence lifecycle",
+    "owners": "scheduler / sequence / stream",
+    "failure": "starvation, cancellation or queue pressure",
+    "acceptance": "Property tests for legal transitions, exactly-once terminal event, no resource leak/double release; measure queue versus execution time separately.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-INDUSTRIAL-OWNERSHIP-001"
+    ]
+  },
+  {
+    "chapter": 25,
+    "title": "Serving Multiple Users",
+    "part": 5,
+    "status": "PLAN",
+    "dependencies": [
+      24
+    ],
+    "question": "Show why independent serial loops underutilize or oversubscribe shared model/hardware resources.",
+    "visual_content": "Multiple requests sharing weights but not state; sweep concurrency and observe saturation/queueing.",
+    "grammar": "Swimlane and sequence lifecycle",
+    "owners": "scheduler / sequence / stream",
+    "failure": "starvation, cancellation or queue pressure",
+    "acceptance": "Cross-request token/KV isolation, ordering-independent outputs, failure containment; report per-request tails and aggregate throughput.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 26,
+    "title": "Continuous Batching",
+    "part": 5,
+    "status": "PLAN",
+    "dependencies": [
+      25
+    ],
+    "question": "Rebuild the physical work each iteration so active sequences share execution without waiting for request-batch completion.",
+    "visual_content": "One mixed prefill/decode iteration and sequence-slot timeline; replay staggered arrivals against serial/pool/batched baselines.",
+    "grammar": "Swimlane and sequence lifecycle",
+    "owners": "scheduler / sequence / stream",
+    "failure": "starvation, cancellation or queue pressure",
+    "acceptance": "Batched versus isolated greedy differential, positions, stop/cancel, failed-batch behavior; throughput, TTFT, ITL, tail latency, fairness with full manifest.",
+    "amendment": "Make chunked prefill a concrete scheduling policy with per-iteration token budget and decode latency tradeoff. Trace one long prompt beside short decodes.",
+    "existing_manifest_ids": [
+      "FIG-BATCH-TIMELINE-001"
+    ]
+  },
+  {
+    "chapter": 27,
+    "title": "Fairness, Backpressure, Cancellation, and Streaming",
+    "part": 5,
+    "status": "PLAN",
+    "dependencies": [
+      26
+    ],
+    "question": "Keep a busy server bounded and responsive when clients, prompts, outputs, and failures differ.",
+    "visual_content": "Backpressure propagation and cancellation across API/runtime/provider; slow consumer, long prompt, and mixed-priority replay.",
+    "grammar": "Swimlane and sequence lifecycle",
+    "owners": "scheduler / sequence / stream",
+    "failure": "starvation, cancellation or queue pressure",
+    "acceptance": "No starvation under defined policy, memory bound, valid byte stream, exactly-once release; measure tails/fairness at saturation.",
+    "amendment": "Test fairness, bounded queues, cancellation and admission under a synthetic arrival trace; do not replace tail-latency analysis with average throughput.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 28,
+    "title": "Why Flat and Slot-Bound KV Caches Fail",
+    "part": 6,
+    "status": "PLAN",
+    "dependencies": [
+      22,
+      27
+    ],
+    "question": "Make fragmentation, fixed-slot capacity, duplicated prefixes, and affinity limits measurable.",
+    "visual_content": "Slot layouts under variable requests and duplicated system prompt; replay length distribution and calculate waste.",
+    "grammar": "Logical-to-physical memory map",
+    "owners": "sequence handles / block manager",
+    "failure": "aliasing, stale handle or exhausted pool",
+    "acceptance": "Allocation accounting and isolation remain correct; report utilization/copies rather than conflating with throughput.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 29,
+    "title": "Paging Comes to AI",
+    "part": 6,
+    "status": "PLAN",
+    "dependencies": [
+      28
+    ],
+    "question": "Separate logical sequence order from physical KV placement while preserving attention semantics.",
+    "visual_content": "Logical sequence mapped to scattered physical blocks and OS analogy/breakpoints; vary block size on synthetic lengths.",
+    "grammar": "Logical-to-physical memory map",
+    "owners": "sequence handles / block manager",
+    "failure": "aliasing, stale handle or exhausted pool",
+    "acceptance": "Translation boundaries `B-1/B/B+1`, order preservation, invalid IDs; measure fragmentation versus metadata/lookups.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 30,
+    "title": "Building a Block Pool",
+    "part": 6,
+    "status": "PLAN",
+    "dependencies": [
+      29
+    ],
+    "question": "Define allocation, reference, mutation, and reuse rules for physical KV storage.",
+    "visual_content": "Pool metadata/data split and reference state machine; concurrent allocate/release stress.",
+    "grammar": "Logical-to-physical memory map",
+    "owners": "sequence handles / block manager",
+    "failure": "aliasing, stale handle or exhausted pool",
+    "acceptance": "Zero/over-allocation, double-decref defense, refcount reuse iff zero, layer/offset bounds, sanitizer; benchmark allocator ops separately from attention.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 31,
+    "title": "Prefix Indexing and Radix Trees",
+    "part": 6,
+    "status": "PLAN",
+    "dependencies": [
+      30
+    ],
+    "question": "Find the longest reusable token prefix and make cache ownership explicit.",
+    "visual_content": "Compressed radix branches with shared blocks and ownership graph; insert overlapping prompts and observe reference counts.",
+    "grammar": "Logical-to-physical memory map",
+    "owners": "sequence handles / block manager",
+    "failure": "aliasing, stale handle or exhausted pool",
+    "acceptance": "Exact/partial/no match, replacement, eviction decref, concurrent readers, model/config separation; report hit rate and tokens saved with workload.",
+    "amendment": "State every cache-key assumption: model revision, tokenization/template, adapter and relevant position/execution context. Prefix equality alone is not universal cache validity.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 32,
+    "title": "Shared Prefixes and Copy-on-Write",
+    "part": 6,
+    "status": "PLAN",
+    "dependencies": [
+      31
+    ],
+    "question": "Explain why a shared partial tail is safe to read but unsafe to extend in place.",
+    "visual_content": "Two continuations before/after COW and mutation routing surface; disable COW to produce deterministic cross-request corruption.",
+    "grammar": "Logical-to-physical memory map",
+    "owners": "sequence handles / block manager",
+    "failure": "aliasing, stale handle or exhausted pool",
+    "acceptance": "Aligned and partial prefixes, source unchanged, destination valid region equal, backend copy differential; measure copy overhead by tail length.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 33,
+    "title": "Eviction, Pressure, and Admission",
+    "part": 6,
+    "status": "PLAN",
+    "dependencies": [
+      32
+    ],
+    "question": "Decide which cached state to retain and whether a new request can safely enter under finite capacity.",
+    "visual_content": "Ownership/pin/eviction state machine and admission under pressure; replay skewed/uniform prefixes and forced exhaustion.",
+    "grammar": "Logical-to-physical memory map",
+    "owners": "sequence handles / block manager",
+    "failure": "aliasing, stale handle or exhausted pool",
+    "acceptance": "Never evict live/pinned references, atomic retry, no leaks/starvation, deterministic policy where promised; hit rate, evictions, wait, and physical bytes.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 34,
+    "title": "Paged Attention",
+    "part": 6,
+    "status": "PLAN",
+    "dependencies": [
+      33
+    ],
+    "question": "Compute causal attention directly through a block table without reconstructing dense KV.",
+    "visual_content": "Query scan across scattered blocks and dense/paged semantic equivalence; randomize physical placement and block size.",
+    "grammar": "Logical-to-physical memory map",
+    "owners": "sequence handles / block manager",
+    "failure": "aliasing, stale handle or exhausted pool",
+    "acceptance": "Dense differential across B-1/B/B+1, MHA/GQA, causal offsets, scrambled tables, shared prefixes; measure overhead/memory without claiming production speed.",
+    "amendment": "Explicitly distinguish paged KV addressing, prefix reuse and tiled attention. Add quantized-KV read/dequantization to the layout contract, without claiming every backend supports it.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 35,
+    "title": "Where the Native Boundary Belongs",
+    "part": 7,
+    "status": "PLAN",
+    "dependencies": [
+      34
+    ],
+    "question": "Decide which mechanism benefits from a native boundary without moving scheduling and ownership policy into opaque code.",
+    "visual_content": "Host/runtime versus native mechanism map and too-fine/too-broad boundary examples; measure empty-call and realistic bulk-call overhead.",
+    "grammar": "Kernel dataflow and lifetime trace",
+    "owners": "caller / native allocation / kernel",
+    "failure": "ABI mismatch, refcount or reduction failure",
+    "acceptance": "Same oracle before/after boundary, panic/error translation, no hidden thread ownership; report crossover rather than “FFI is fast.”",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 36,
+    "title": "Designing a Stable Kernel ABI",
+    "part": 7,
+    "status": "PLAN",
+    "dependencies": [
+      35
+    ],
+    "question": "Make shapes, buffers, ownership, versioning, errors, and workspace explicit across compiled components.",
+    "visual_content": "Rust-to-C ownership/lifetime diagram and version-size negotiation; compile mismatched client fixture and invalid shapes.",
+    "grammar": "Kernel dataflow and lifetime trace",
+    "owners": "caller / native allocation / kernel",
+    "failure": "ABI mismatch, refcount or reduction failure",
+    "acceptance": "Layout/size assertions, null/overflow/short-buffer rejection, error detail lifetime, fuzz boundary; measure bulk-call overhead with workspace declared.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 37,
+    "title": "Arena Allocation and Hot-Path Memory Discipline",
+    "part": 7,
+    "status": "PLAN",
+    "dependencies": [
+      36
+    ],
+    "question": "Eliminate unpredictable general allocation from kernel iterations while retaining auditable lifetime and alignment.",
+    "visual_content": "Arena regions/lifetimes and allocation timeline; stress alignment, exhaustion, reset, and repeated iterations.",
+    "grammar": "Kernel dataflow and lifetime trace",
+    "owners": "caller / native allocation / kernel",
+    "failure": "ABI mismatch, refcount or reduction failure",
+    "acceptance": "Overflow, zero size, destruction order, sanitizer, no hot-loop allocator calls; report allocation latency/high-water under controlled workload.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 38,
+    "title": "Lock-Free Block Allocation and Refcounts",
+    "part": 7,
+    "status": "PLAN",
+    "dependencies": [
+      37
+    ],
+    "question": "Move frequent block lifecycle operations native and concurrent without losing the refcount invariant.",
+    "visual_content": "Allocation state transition with linearization and contended cache lines; randomized multi-thread stress and forced exhaustion.",
+    "grammar": "Kernel dataflow and lifetime trace",
+    "owners": "caller / native allocation / kernel",
+    "failure": "ABI mismatch, refcount or reduction failure",
+    "acceptance": "No duplicate live ID, no lost block, reuse iff zero, ABA mitigation, thread-count differential, sanitizers; throughput versus safe locked oracle by contention.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 39,
+    "title": "Bulk KV Writes",
+    "part": 7,
+    "status": "PLAN",
+    "dependencies": [
+      38
+    ],
+    "question": "Replace per-element host/native crossings with one validated write over token/head ranges.",
+    "visual_content": "Q/K/V range scattered across block tails and backend mutation surface; write across B-1/B/B+1 and convert dtypes.",
+    "grammar": "Kernel dataflow and lifetime trace",
+    "owners": "caller / native allocation / kernel",
+    "failure": "ABI mismatch, refcount or reduction failure",
+    "acceptance": "Whole-range and scrambled tables, no partial mutation on invalid input, source alias policy, dense readback differential; bytes/s and call-count reduction.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 40,
+    "title": "Online Softmax",
+    "part": 7,
+    "status": "PLAN",
+    "dependencies": [
+      39
+    ],
+    "question": "Produce exact softmax-weighted values without allocating a score vector for the full history.",
+    "visual_content": "Streaming score/value update and two-chunk merge; adversarial score ranges and chunk orders.",
+    "grammar": "Kernel dataflow and lifetime trace",
+    "owners": "caller / native allocation / kernel",
+    "failure": "ABI mismatch, refcount or reduction failure",
+    "acceptance": "Dense softmax differential, overflow/underflow, empty/one position, GQA, tolerance by dtype; scratch bytes and runtime across sequence lengths.",
+    "amendment": "Connect the stable online softmax recurrence to tiled attention with an exact small oracle. Read the full FlashAttention algorithm before asserting kernel-level equivalence.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 41,
+    "title": "Split-K and Deterministic Attention Planning",
+    "part": 7,
+    "status": "PLAN",
+    "dependencies": [
+      40
+    ],
+    "question": "Parallelize long-history attention while making task completion order irrelevant to numerical reduction order.",
+    "visual_content": "Deterministic task grid and out-of-order completion into indexed slots; randomize task order/thread count around thresholds.",
+    "grammar": "Kernel dataflow and lifetime trace",
+    "owners": "caller / native allocation / kernel",
+    "failure": "ABI mismatch, refcount or reduction failure",
+    "acceptance": "Serial/parallel equality or stated tolerance, split T-1/T/T+1, workspace bounds, task uniqueness, failure fallback; speedup/tail by sequence and threads.",
+    "amendment": "Make partition merge order, partial normalization state and determinism visible. Explain when scheduling or reduction changes floating-point results.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 42,
+    "title": "SIMD From First Principles",
+    "part": 8,
+    "status": "PLAN",
+    "dependencies": [
+      41
+    ],
+    "question": "Map scalar loops to vector lanes while preserving tails, layout, and reduction semantics.",
+    "visual_content": "Scalar iterations packed into lanes and tail handling; inspect compiler output and sweep aligned/odd dimensions.",
+    "grammar": "Hardware execution and transfer diagram",
+    "owners": "host / device / completion event",
+    "failure": "dispatch mismatch or uncharged transfer",
+    "acceptance": "All tails, alignment, NaNs/infinities policy, scalar differential, sanitizer; cycles/element and bandwidth with compiler/ISA recorded.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 43,
+    "title": "ARM NEON",
+    "part": 8,
+    "status": "PLAN",
+    "dependencies": [
+      42
+    ],
+    "question": "Implement and validate the vector contract on ARM's baseline 128-bit SIMD.",
+    "visual_content": "NEON tile/register map; sweep head dimensions, contexts, and compiler flags on named hardware.",
+    "grammar": "Hardware execution and transfer diagram",
+    "owners": "host / device / completion event",
+    "failure": "dispatch mismatch or uncharged transfer",
+    "acceptance": "Scalar differential, non-multiple tails, exact dispatch, cross-compile CI plus real-hardware record; report crossover and confidence.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 44,
+    "title": "x86 AVX2 and ISA Dispatch",
+    "part": 8,
+    "status": "PLAN",
+    "dependencies": [
+      43
+    ],
+    "question": "Add a wider x86 path and select it safely at runtime without executing unsupported instructions.",
+    "visual_content": "Dispatch tree and AVX2 tile; run scalar-forced versus auto versus AVX2 on supported hardware.",
+    "grammar": "Hardware execution and transfer diagram",
+    "owners": "host / device / completion event",
+    "failure": "dispatch mismatch or uncharged transfer",
+    "acceptance": "Unsupported-host safety, feature spoof/forced fallback, tails, scalar differential, thread counts; cycles/element plus frequency effects.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 45,
+    "title": "Thinking Like a GPU",
+    "part": 8,
+    "status": "PLAN",
+    "dependencies": [
+      44
+    ],
+    "question": "Reframe a kernel as many work items with explicit memory spaces, synchronization, launch, and transfer costs.",
+    "visual_content": "CPU tasks versus GPU grid and memory hierarchy; paper-plan a shape and estimate launch/work threshold.",
+    "grammar": "Hardware execution and transfer diagram",
+    "owners": "host / device / completion event",
+    "failure": "dispatch mismatch or uncharged transfer",
+    "acceptance": "Provider conformance requirements and asynchronous lifetime tests; no speed claim without implementation.",
+    "amendment": "Separate model graph, compiler IR, fused kernel and captured launch graph. Show a dependency before a performance optimization.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 46,
+    "title": "Metal and Unified Memory",
+    "part": 8,
+    "status": "PLAN",
+    "dependencies": [
+      45
+    ],
+    "question": "Execute planned attention on Apple GPU while reasoning precisely about shared physical memory and synchronization.",
+    "visual_content": "Command lifecycle and shared-memory residency; Lab 47 Metal/CPU crossover sweep.",
+    "grammar": "Hardware execution and transfer diagram",
+    "owners": "host / device / completion event",
+    "failure": "dispatch mismatch or uncharged transfer",
+    "acceptance": "Scalar differential by shape/dtype, unsupported fallback, command failure, buffer lifetime; warm/cold pipeline and synchronization included.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 47,
+    "title": "CUDA and Device Mirrors",
+    "part": 8,
+    "status": "PLAN",
+    "dependencies": [
+      46
+    ],
+    "question": "Maintain coherent device-resident/mirrored state and run the same plan on a discrete NVIDIA GPU.",
+    "visual_content": "Host home/device mirror coherence and stream timeline; sweep resident versus transferred inputs where hardware exists.",
+    "grammar": "Hardware execution and transfer diagram",
+    "owners": "host / device / completion event",
+    "failure": "dispatch mismatch or uncharged transfer",
+    "acceptance": "CPU differential, stale mirror injection, unsupported/error fallback overwrites workspace, multi-stream lifetime; include driver/device/clock/build.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 48,
+    "title": "Why a GPU Can Be Slower Than a CPU",
+    "part": 8,
+    "status": "PLAN",
+    "dependencies": [
+      47
+    ],
+    "question": "Build an evidence-based shape gate from fixed overhead, work, transfer, and contention rather than brand assumptions.",
+    "visual_content": "Cost curves/crossover table and deterministic fallback tree; matched CPU/GPU sweep across context/query shapes.",
+    "grammar": "Hardware execution and transfer diagram",
+    "owners": "host / device / completion event",
+    "failure": "dispatch mismatch or uncharged transfer",
+    "acceptance": "Same outputs on both branches, T-1/T/T+1, forced modes, failure fallback; report losing cases and variance.",
+    "amendment": "Own the first bounded graph lowering/capture case study: dynamic shapes, specialization, buffer addresses, warmup and replay invalidation. Measure transfer/launch overhead before explaining a CPU/GPU result.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 49,
+    "title": "Prefix Caching",
+    "part": 9,
+    "status": "PLAN",
+    "dependencies": [
+      27,
+      34
+    ],
+    "question": "Reuse computed KV for repeated token prefixes across requests without violating model/config/lifetime semantics.",
+    "visual_content": "Cross-request prefix ownership and cold/warm timelines; shared-system-prompt workload with cache on/off.",
+    "grammar": "Proposal, verification and rollback trace",
+    "owners": "sequence / draft / target cache",
+    "failure": "rejection, invalid reuse or negative speedup",
+    "acceptance": "Cached/uncached logits, config/model/tokenizer keying, partial COW, eviction, tenant boundaries; TTFT/tokens saved/hit rate with cold control.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 50,
+    "title": "Sticky Slots as an Intermediate Design",
+    "part": 9,
+    "status": "PLAN",
+    "dependencies": [
+      49
+    ],
+    "question": "Understand when context-bound prefix reuse offers high value with lower complexity and where it stops scaling.",
+    "visual_content": "Warm-slot routing and contrast with page-sharing radix; alternating conversations beyond slot capacity.",
+    "grammar": "Proposal, verification and rollback trace",
+    "owners": "sequence / draft / target cache",
+    "failure": "rejection, invalid reuse or negative speedup",
+    "acceptance": "Slot metadata never outlives KV, overlap leaves a fresh logit position, cross-conversation isolation; shared-prefix TTFT and churn workload.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 51,
+    "title": "Speculative Decoding",
+    "part": 9,
+    "status": "PLAN",
+    "dependencies": [
+      50
+    ],
+    "question": "Reduce target-model decode iterations while preserving the target distribution exactly under the chosen algorithm.",
+    "visual_content": "Draft/verify/accept/rollback timeline; deterministic toy distributions with full accept/partial/reject.",
+    "grammar": "Proposal, verification and rollback trace",
+    "owners": "sequence / draft / target cache",
+    "failure": "rejection, invalid reuse or negative speedup",
+    "acceptance": "Distributional test or exact greedy special case, rollback positions/KV, RNG consumption, EOG/stop; tokens per target pass plus end-to-end latency.",
+    "amendment": "Read the full exact speculative-sampling paper; derive acceptance/correction and show first rejection plus KV rollback. Distinguish greedy verification from stochastic distribution preservation.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 52,
+    "title": "Prompt-Lookup Decoding",
+    "part": 9,
+    "status": "PLAN",
+    "dependencies": [
+      51
+    ],
+    "question": "Propose tokens from repeated prompt n-grams without running a second model.",
+    "visual_content": "N-gram match to proposed run and target-logit predecessor mapping; RAG quote, code, and creative prompts.",
+    "grammar": "Proposal, verification and rollback trace",
+    "owners": "sequence / draft / target cache",
+    "failure": "rejection, invalid reuse or negative speedup",
+    "acceptance": "Greedy equivalence, mismatch token handling, rollback suffix, duplicate matches/tie policy, mixed sequences; acceptance, target calls, batch size, end-to-end latency.",
+    "amendment": "Contrast prompt lookup/ngram proposals with draft models; add a source-verified comparison sidebar for EAGLE/MTP with their model/training assumptions. These remain optional proposal mechanisms.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 53,
+    "title": "When Speculation Loses",
+    "part": 9,
+    "status": "PLAN",
+    "dependencies": [
+      52
+    ],
+    "question": "Determine when proposal, verification batch inflation, rollback, and contention cost more than saved target steps.",
+    "visual_content": "Break-even surface and adaptive state timeline; sweep acceptance, lookahead, concurrency, model/provider.",
+    "grammar": "Proposal, verification and rollback trace",
+    "owners": "sequence / draft / target cache",
+    "failure": "rejection, invalid reuse or negative speedup",
+    "acceptance": "Gate changes performance only, never output; threshold/window boundaries and re-enable; end-to-end matched static-off/static-on/adaptive.",
+    "amendment": "Charge draft, verification, rollback and memory costs to useful accepted tokens; include a counterexample where speculation loses.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 54,
+    "title": "Why MoE Changes the Inference Engine",
+    "part": 10,
+    "status": "PLAN",
+    "dependencies": [
+      18,
+      34,
+      48
+    ],
+    "question": "Explain how conditional expert activation changes weight demand, scheduling, batching, and correctness.",
+    "visual_content": "Token-router-expert-combine flow and dense/MoE byte demand; route synthetic tokens under uniform/skewed gates.",
+    "grammar": "Routing and memory-tier swimlane",
+    "owners": "router / expert pool / transfer queue",
+    "failure": "miss, eviction race or capacity pressure",
+    "acceptance": "Top-k/ties, weight ordering, combine weights, capacity/unsupported semantics; measure routing and expert compute separately.",
+    "amendment": "Trace top-k expert routing, dispatch, expert compute and combine; separate activation communication from expert-weight residency.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 55,
+    "title": "Models Larger Than Available VRAM",
+    "part": 10,
+    "status": "PLAN",
+    "dependencies": [
+      54
+    ],
+    "question": "Quantify when weights, KV, scratch, and other processes cannot simultaneously reside in fast memory.",
+    "visual_content": "Full inference memory budget and tier hierarchy; vary model/cache/context on hypothetical and measured machines.",
+    "grammar": "Routing and memory-tier swimlane",
+    "owners": "router / expert pool / transfer queue",
+    "failure": "miss, eviction race or capacity pressure",
+    "acceptance": "Units/overflow, requested versus effective placement, OOM/fallback behavior; capacity/transfer model labeled estimate until measured.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 56,
+    "title": "Expert Storage and Paging",
+    "part": 10,
+    "status": "PLAN",
+    "dependencies": [
+      55
+    ],
+    "question": "Store experts so their offsets are verifiable and fetch only routed weights without full expansion.",
+    "visual_content": "Container layout and miss-to-cache-fill path; pack mixed-size layer records and replay routes.",
+    "grammar": "Routing and memory-tier swimlane",
+    "owners": "router / expert pool / transfer queue",
+    "failure": "miss, eviction race or capacity pressure",
+    "acceptance": "Checksums/ranges, short reads, layer stride, duplicate IDs, quant block boundaries, oracle matvec; storage bytes/s and ceiling explicitly not inference.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 57,
+    "title": "Residency, Pinning, Eviction, and Queue Depth",
+    "part": 10,
+    "status": "PLAN",
+    "dependencies": [
+      56
+    ],
+    "question": "Keep expert bytes valid while used, evictable when safe, and honestly report effective I/O concurrency.",
+    "visual_content": "Three-state residency machine and synchronous/batched I/O timelines; uniform/skewed routes, QD sweep, forced read error.",
+    "grammar": "Routing and memory-tier swimlane",
+    "owners": "router / expert pool / transfer queue",
+    "failure": "miss, eviction race or capacity pressure",
+    "acceptance": "Never evict pinned, unwind all-or-nothing, duplicate expert handling, requested/effective metrics, cache clear; hit/read bytes/bandwidth and no tok/s without model compute.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 58,
+    "title": "Toward Unified Inference Memory",
+    "part": 10,
+    "status": "PLAN",
+    "dependencies": [
+      57
+    ],
+    "question": "Decide whether KV, recurrent state, expert weights, and scratch can share one placement/eviction abstraction without hiding their semantic differences.",
+    "visual_content": "Unified logical page kinds over tiers and mixed-budget eviction; compare static KV/expert partitions with dynamic policy in simulation.",
+    "grammar": "Routing and memory-tier swimlane",
+    "owners": "router / expert pool / transfer queue",
+    "failure": "miss, eviction race or capacity pressure",
+    "acceptance": "Dirty mutable state never discarded, immutable experts need no writeback, pin/failure/cancel rules; simulated hit/transfer/wait labeled model, not measured speed.",
+    "amendment": "Use an allocation ownership ledger across weight/KV/expert pools. Do not equate a unified policy with a physically unified address space.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 59,
+    "title": "Fast Wrong Answers Are Still Wrong",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      13,
+      34,
+      41
+    ],
+    "question": "Explain why fluent output, determinism, and unit tests can coexist with serious inference defects.",
+    "visual_content": "Proof ladder and defect propagation chain; inject mask, position, stale-KV, and tensor-layout faults.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Define what each subsequent level proves; no performance result survives failed equivalence.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 60,
+    "title": "Scalar Oracles",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      59
+    ],
+    "question": "Build references simple and independent enough to expose optimized-path bugs.",
+    "visual_content": "Oracle-to-implementations comparison; mutate each optimized path and verify oracle catches it.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Boundary shapes, extreme values, expected failures, oracle cross-check with hand math; oracles are not performance baselines.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 61,
+    "title": "Differential Testing",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      60
+    ],
+    "question": "Systematically compare implementations across shapes, dtypes, layouts, orders, and providers.",
+    "visual_content": "Test matrix and failure-shrinking flow; randomized boundary-focused cases.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Coverage includes B/T thresholds, MHA/GQA, short/long, aligned/partial prefix, task orders; record failures, do not time as benchmark.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 62,
+    "title": "Numerical Determinism",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      61
+    ],
+    "question": "Decide which outputs must be bitwise stable, tolerance-stable, or distributionally equivalent across order and hardware.",
+    "visual_content": "Completion-order versus combine-order; vary thread/task/provider order repeatedly.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Thread-count/order reproducibility, documented cross-provider tolerances, RNG sequence, gate thresholds; record determinism settings in benchmarks.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 63,
+    "title": "Concurrency Bugs That Still Produce Plausible Text",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      62
+    ],
+    "question": "Find state races, cross-request contamination, stale metadata, and ordering errors that avoid crashes.",
+    "visual_content": "Two-request interleaving and stale-slot timeline; inject yields, reorder completions, cancel during shared batch.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Isolated-output differential under concurrency, no cross-request state, worker survives failure, terminal exactly once; performance secondary.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 64,
+    "title": "Ownership and Lifetime Failures",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      63
+    ],
+    "question": "Prove every weight, context, page, mirror, expert lease, stream, and sampler has one coherent lifetime.",
+    "visual_content": "Ownership graphs for KV/expert/device stream and success/error/cancel unwind; inject every acquisition failure.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Zero leaked blocks/pins/tasks, no reuse while referenced, duplicate acquisition, idempotent cleanup, sanitizer; benchmark only after guard overhead understood.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 65,
+    "title": "Sanitizers, Fuzzing, and Boundary Testing",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      64
+    ],
+    "question": "Exercise memory, parser, ABI, allocator, and numerical boundaries beyond hand-selected cases.",
+    "visual_content": "Input-to-parser/kernel containment and corpus lifecycle; seed with valid minimal cases then mutate.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Crashes, leaks, undefined behavior, hangs, invariant errors; fuzz executions are coverage evidence, not performance results.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 66,
+    "title": "Real-Model Equivalence",
+    "part": 11,
+    "status": "PLAN",
+    "dependencies": [
+      65
+    ],
+    "question": "Demonstrate actual supported model semantics across prompt positions and decode, not merely component arithmetic.",
+    "visual_content": "Component-to-model proof ladder and corpus matrix; prompts crossing blocks/context shapes and repeated prefixes.",
+    "grammar": "Counterexample and proof-boundary diagram",
+    "owners": "oracle / optimized implementation / harness",
+    "failure": "plausible output that violates an invariant",
+    "acceptance": "Tokenizer/template, logits, greedy outputs, cached/uncached, batched/isolated, providers, repeated runs; only equivalent configurations advance performance gates.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 67,
+    "title": "Protocols and the AI Gateway",
+    "part": 12,
+    "status": "PLAN",
+    "dependencies": [
+      27,
+      48,
+      66
+    ],
+    "question": "Normalize multiple wire protocols into one truthful engine request without leaking protocol quirks into execution policy.",
+    "visual_content": "Many protocols to one request object and response/error mapping; replay equivalent requests across adapters.",
+    "grammar": "Protocol and operational lifecycle",
+    "owners": "tenant / gateway / runtime / observer",
+    "failure": "disconnect, overload, malformed artifact or SLO miss",
+    "acceptance": "Schema validation, stop/sampling mapping, stream/sync semantic equivalence, error codes, usage; protocol overhead measured separately from model.",
+    "amendment": "Own grammar/JSON-schema constrained decoding: compiler/automaton state, allowed-token mask, unsatisfiable continuation, stop behavior and cancellation. Syntactic validity is not semantic truth.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 68,
+    "title": "Model Resolution and Routing",
+    "part": 12,
+    "status": "PLAN",
+    "dependencies": [
+      67
+    ],
+    "question": "Resolve a user model identifier to an exact local artifact or provider with explicit policy and provenance.",
+    "visual_content": "Model-name decision tree and artifact identity flow; ambiguous aliases, missing artifact, offline provider.",
+    "grammar": "Protocol and operational lifecycle",
+    "owners": "tenant / gateway / runtime / observer",
+    "failure": "disconnect, overload, malformed artifact or SLO miss",
+    "acceptance": "No silent provider/model substitution, canonical cache identity, capability errors, secret boundary; measure resolution separately, no inference claim.",
+    "amendment": "Own adapter identity, loading, residency and routing; introduce multimodal encoder/projector inputs and per-request state. Include reuse isolation across adapters and model revisions.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 69,
+    "title": "Streaming as a Systems Contract",
+    "part": 12,
+    "status": "PLAN",
+    "dependencies": [
+      68
+    ],
+    "question": "Define ordering, UTF-8, backpressure, cancellation, terminal events, and usage for a reliable token stream.",
+    "visual_content": "Runtime-channel-wire pipeline and slow-client backpressure; disconnect at prefill/decode/final event.",
+    "grammar": "Protocol and operational lifecycle",
+    "owners": "tenant / gateway / runtime / observer",
+    "failure": "disconnect, overload, malformed artifact or SLO miss",
+    "acceptance": "Valid framing/UTF-8, ordered pieces, exactly one terminal outcome, no Done after error, cleanup; time first byte/token and blocked-producer behavior.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 70,
+    "title": "Metrics and Observability",
+    "part": 12,
+    "status": "PLAN",
+    "dependencies": [
+      69
+    ],
+    "question": "Expose enough state to explain latency, cache behavior, saturation, failures, and provider selection without perturbing hot paths.",
+    "visual_content": "Causal observability map from symptom to subsystem; generate slow client, cache churn, provider fallback, and verify signals.",
+    "grammar": "Protocol and operational lifecycle",
+    "owners": "tenant / gateway / runtime / observer",
+    "failure": "disconnect, overload, malformed artifact or SLO miss",
+    "acceptance": "Monotonic counters, label bounds, terminal accounting, snapshot consistency, low overhead; benchmark instrumentation on/off.",
+    "amendment": "Name timestamps and units for TTFT, ITL, TPOT, E2E, queue delay and goodput. Use trace IDs and censoring/failure policy; never infer token timing solely from transport chunks.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 71,
+    "title": "Failure Containment",
+    "part": 12,
+    "status": "PLAN",
+    "dependencies": [
+      70
+    ],
+    "question": "Prevent malformed input, one request, one model, one shared batch, or one provider failure from corrupting unrelated work.",
+    "visual_content": "Failure domains and recovery transitions; inject parser, model-load, decode, device, stream, and disk errors.",
+    "grammar": "Protocol and operational lifecycle",
+    "owners": "tenant / gateway / runtime / observer",
+    "failure": "disconnect, overload, malformed artifact or SLO miss",
+    "acceptance": "Unaffected requests remain isolated where contract permits, failed cache metadata invalidated, capacity recovered, errors observable; measure recovery and blast radius.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 72,
+    "title": "Security and Untrusted Models",
+    "part": 12,
+    "status": "PLAN",
+    "dependencies": [
+      71
+    ],
+    "question": "Treat model files, templates, prompts, API inputs, local paths, native code, and secrets as distinct trust boundaries.",
+    "visual_content": "Trust-boundary/data-flow diagram and attack-to-control table; fuzz huge metadata, malicious paths, prompt/cache tenant collisions.",
+    "grammar": "Protocol and operational lifecycle",
+    "owners": "tenant / gateway / runtime / observer",
+    "failure": "disconnect, overload, malformed artifact or SLO miss",
+    "acceptance": "Reject over-budget/invalid artifacts safely, secret redaction, tenant cache partitioning, dependency audit; record security-control overhead where relevant.",
+    "amendment": "Threat-model untrusted model files, templates, adapters, tenant cache reuse, prompt logging and resource exhaustion. Pin a parser boundary and test rejection.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 73,
+    "title": "Benchmarking Without Lying to Yourself",
+    "part": 12,
+    "status": "PLAN",
+    "dependencies": [
+      72
+    ],
+    "question": "Produce reproducible performance evidence that separates correctness, workload, state, hardware, and control.",
+    "visual_content": "Benchmark boundary/state-reset flow and metric decision table; deliberately contaminate prefix/model/OS caches and detect it.",
+    "grammar": "Protocol and operational lifecycle",
+    "owners": "tenant / gateway / runtime / observer",
+    "failure": "disconnect, overload, malformed artifact or SLO miss",
+    "acceptance": "Equivalence gate first, full manifest/raw output, matched stop/model/quantization, repeated order-randomized controls; this chapter's deliverable is the benchmark suite.",
+    "amendment": "Report SLO-qualified goodput, tail distributions, warm/cold phases, arrival process, concurrency, model, precision and hardware. No synthetic timing fixture becomes a speed claim.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 74,
+    "title": "Hermon's System Architecture",
+    "part": 13,
+    "status": "PLAN",
+    "dependencies": [
+      73
+    ],
+    "question": "Establish the current system boundary and exact default/compatibility/preview/library/target topology at a recorded commit.",
+    "visual_content": "Source-verified system topology and three runtime modes; build/test normal and preview feature configurations where available.",
+    "grammar": "Pinned source-to-runtime architecture",
+    "owners": "API / dispatcher / worker / bridge",
+    "failure": "mistaking available library code for the default path",
+    "acceptance": "Check doc claims against actual dispatch gates/call graph; no reused benchmark number without reproducer/metadata.",
+    "amendment": "Update the case-study ledger to the inspected Hermon pin without rewriting historical measurements. Keep CURRENT, PREVIEW, LIBRARY and TARGET distinct.",
+    "existing_manifest_ids": [
+      "FIG-ENGINE-ARCHITECTURE-001"
+    ]
+  },
+  {
+    "chapter": 75,
+    "title": "Why Hermon Did Not Rewrite Everything",
+    "part": 13,
+    "status": "PLAN",
+    "dependencies": [
+      74
+    ],
+    "question": "Analyze how wrapping a proven engine enables product/runtime progress while native components mature behind gates.",
+    "visual_content": "Proven mechanism inside owned policy shell and rewrite/substitution risk map; inspect dependency/build modes.",
+    "grammar": "Pinned source-to-runtime architecture",
+    "owners": "API / dispatcher / worker / bridge",
+    "failure": "mistaking available library code for the default path",
+    "acceptance": "Wrapper equivalence/real-model tests and explicit stub behavior; do not claim native superiority from architecture.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 76,
+    "title": "The Substitution Ladder",
+    "part": 13,
+    "status": "PLAN",
+    "dependencies": [
+      75
+    ],
+    "question": "Show how reference structures become a default native path through evidence rather than a flag flip.",
+    "visual_content": "Seven-rung ladder with evidence gates and rollback; place current paged/native/MoE components on it.",
+    "grammar": "Pinned source-to-runtime architecture",
+    "owners": "API / dispatcher / worker / bridge",
+    "failure": "mistaking available library code for the default path",
+    "acceptance": "Each rung names tests and measurement required; highlight model fixture/1,000-prompt/open integration gates.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 77,
+    "title": "Anatomy of the Hermon Source Tree",
+    "part": 13,
+    "status": "PLAN",
+    "dependencies": [
+      76
+    ],
+    "question": "Teach a contributor where contracts live and which changes are local versus cross-layer.",
+    "visual_content": "Crate dependency/ownership graph and “change X, inspect Y” map; follow a protocol field, GGUF key, radix change, and ISA kernel.",
+    "grammar": "Pinned source-to-runtime architecture",
+    "owners": "API / dispatcher / worker / bridge",
+    "failure": "mistaking available library code for the default path",
+    "acceptance": "Confirm unsafe lint boundaries, feature compilation, test fixture gates; no performance claim.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 78,
+    "title": "Follow One Request Through Hermon",
+    "part": 13,
+    "status": "PLAN",
+    "dependencies": [
+      77
+    ],
+    "question": "Trace validation, model resolution, dispatch, admission, batched execution, stream backpressure, and terminal accounting on the default path.",
+    "visual_content": "Source-linked sequence diagram and resource ownership by phase; run a local fixture if available with logs/metrics.",
+    "grammar": "Pinned source-to-runtime architecture",
+    "owners": "API / dispatcher / worker / bridge",
+    "failure": "mistaking available library code for the default path",
+    "acceptance": "Piece/Done/error contract, bounded channels, batch failure invalidation, worker recovery; timings only if full setup recorded.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": [
+      "FIG-RUNTIME-SEQUENCE-001"
+    ]
+  },
+  {
+    "chapter": 79,
+    "title": "Follow One Token Through Hermon",
+    "part": 13,
+    "status": "PLAN",
+    "dependencies": [
+      78
+    ],
+    "question": "Trace tokenization, chat template, prefill/decode batching, logits, sampling, UTF-8 buffering, KV mutation, and stream output.",
+    "visual_content": "Token lifecycle with positions and PLD verification branch; fixed greedy prompt trace if model fixture exists.",
+    "grammar": "Pinned source-to-runtime architecture",
+    "owners": "API / dispatcher / worker / bridge",
+    "failure": "mistaking available library code for the default path",
+    "acceptance": "Token bytes/UTF-8, logit-position selection, accepted/rejected draft KV, stop/EOG, isolated baseline; no performance beyond reproducible run.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 80,
+    "title": "Hybrid Transformer Architectures",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      58,
+      73,
+      79
+    ],
+    "question": "Adapt the inference mental model when layers mix full attention, sliding/local attention, linear/recurrent mechanisms, and MoE.",
+    "visual_content": "Mixed layer stack and state-kind table; simulate memory/work under layer mixtures.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Per-layer semantics, position/mask, state reset, unsupported hard error; estimates labeled, real measurements only on implemented model.",
+    "amendment": "Separate externally deployed architectural variants from research hypotheses. Add typed multimodal input and MLA/sliding-window/hybrid state-accounting exceptions, sourced per actual model.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 81,
+    "title": "Recurrent State and STATE Pages",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      80
+    ],
+    "question": "Manage mutable fixed-size recurrent/linear-attention state alongside append-oriented KV.",
+    "visual_content": "KV append versus STATE mutation and branch/COW; fork two continuations and reproduce alias corruption without COW.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Sequential oracle, reset/fork/rollback, cancel/error, provider mirror coherence; state bytes/update latency separately.",
+    "amendment": "A recurrent STATE page stores a bounded recurrence state, not a dense KV history. Define rollback/checkpoint behavior before using speculation.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 82,
+    "title": "Unified Memory Economics",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      81
+    ],
+    "question": "Derive placement decisions across weights, KV, STATE, experts, scratch, and mirrors from value/cost rather than one cache policy.",
+    "visual_content": "Typed page catalog and eviction decision matrix; mixed chat/MoE/recurrent workloads under static/dynamic budgets.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Never lose dirty state, reserve forward progress, reproducible simulation inputs; results are simulation until implemented/measured.",
+    "amendment": "Compare physical tiers with explicit transfer latency/bandwidth and ownership. A cost model is an analytical prediction, not a measured migration policy.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 83,
+    "title": "Prefill/Decode Disaggregation",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      82
+    ],
+    "question": "Decide when distinct workers/devices for compute-heavy prefill and memory-heavy decode outweigh KV transfer and coordination.",
+    "visual_content": "Prefill worker -> KV transfer -> decode worker with failure edges; sweep prompt/context/network bandwidth.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Exact model/revision/positions/layout, complete/atomic handoff, retry/recompute semantics; simulation estimates versus real two-node measurements clearly separated.",
+    "amendment": "Read after Chapter 84 in the proposed production order. Build a two-process KV-transfer reference with layout/version handshake, ownership acknowledgement, duplicate delivery and failure injection before any performance claim.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 84,
+    "title": "Multi-GPU Execution",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      83
+    ],
+    "question": "Partition weights, operators, or experts across devices while accounting for collectives, memory, and failure.",
+    "visual_content": "TP all-reduce, pipeline stages, expert routing across GPUs; simulate latency by topology/batch.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Sharded versus single-device differential, collective order, partial failure, model/config identity; real measurements require exact topology.",
+    "amendment": "Read before Chapter 83 in the proposed production order. Separate TP/PP/DP/context/expert parallelism; add real two-worker correctness execution where hardware permits, with a CPU reference path and no GPU-scaling claim from simulation.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 85,
+    "title": "Multi-Node Inference",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      84
+    ],
+    "question": "Extend execution and serving across machines with explicit partitioning, replication, state transfer, and failure domains.",
+    "visual_content": "Multi-node ownership/failure map and state transfer; inject loss, delay, node failure, duplicate terminal response.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Shard identity, exactly-once-visible stream semantics, lease expiry, recovery/recompute; simulation versus cluster results explicit.",
+    "amendment": "Extend the multi-worker contract to multi-node placement, collective failure, timeout and recovery. Require an actual distributed integration record; a simulator alone cannot establish production readiness.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 86,
+    "title": "The Inference Engine as a Database",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      85
+    ],
+    "question": "Use database concepts to clarify planning, buffer management, indexes, operators, and distributed execution—and identify where the analogy fails.",
+    "visual_content": "Side-by-side pipelines and buffer/page mapping; apply a buffer-pool policy then identify failure on mutable KV/state.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Analogies checked against counterexamples; simulation inputs/results labeled.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 87,
+    "title": "Toward a Universal Inference Execution Protocol",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      86
+    ],
+    "question": "Derive what a portable plan/provider/state interface would need before proposing any syntax or standard.",
+    "visual_content": "Model semantics -> planner -> provider graph and state-handle lifecycle; lower one attention step to two providers.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "Conformance oracle, unsupported capability, version mismatch, cancellation/failure, deterministic plan metadata; no performance claim from interface alone.",
+    "amendment": "Revisit IR and executable-plan contracts introduced in Chapters 45/48. Compare a minimal interchange boundary against concrete consumers; do not present a proposed protocol as an adopted standard.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 88,
+    "title": "What Comes After Today's Transformer Runtime?",
+    "part": 14,
+    "status": "PLAN",
+    "dependencies": [
+      87
+    ],
+    "question": "Synthesize durable engine invariants for new architectures without predicting specific winners.",
+    "visual_content": "Inference-as-OS stack and research dependency tree; test one policy hypothesis in simulation rather than claim architecture.",
+    "grammar": "Typed distributed state and communication map",
+    "owners": "worker / state shard / transport",
+    "failure": "layout mismatch, lost owner or failed collective",
+    "acceptance": "State what evidence would falsify each proposal and which semantics must remain invariant; no speculative benchmark headlines.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 89,
+    "title": "Designing the Final Mini Engine",
+    "part": 15,
+    "status": "PLAN",
+    "dependencies": [
+      66,
+      73,
+      85,
+      88
+    ],
+    "question": "Freeze a coherent scope, supported model contract, architecture, ownership rules, and acceptance gates for the graduation runtime.",
+    "visual_content": "End-to-end architecture and owner/lifetime matrix; design review with failure walkthroughs.",
+    "grammar": "Acceptance-gate and integration diagram",
+    "owners": "component / test harness / release decision",
+    "failure": "a failed gate incorrectly reported as completion",
+    "acceptance": "Acceptance matrix includes model equivalence, concurrency, security, performance, and production behavior; no code-complete claim yet.",
+    "amendment": "Select supported feature combinations and explicitly exclude unimplemented ones. Graduation scope is an evidence-backed engine, not a checklist of every surveyed vendor feature.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 90,
+    "title": "End-to-End Implementation",
+    "part": 15,
+    "status": "PLAN",
+    "dependencies": [
+      89
+    ],
+    "question": "Assemble tokenizer, model loading, packed math, KV paging, batching, providers, sampling, and streaming without bypassing ownership surfaces.",
+    "visual_content": "Concrete module/call graph and one request/token/byte/owner trace; smoke workloads across supported modes.",
+    "grammar": "Acceptance-gate and integration diagram",
+    "owners": "component / test harness / release decision",
+    "failure": "a failed gate incorrectly reported as completion",
+    "acceptance": "Build/format/unit/integration, explicit unsupported errors, leak/cancel/failure tests; collect baseline only after smoke equivalence.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 91,
+    "title": "Correctness Gate",
+    "part": 15,
+    "status": "PLAN",
+    "dependencies": [
+      90
+    ],
+    "question": "Decide whether the integrated engine is semantically trustworthy enough to measure and expose.",
+    "visual_content": "Gate funnel and failure triage path; run boundary prompts/configs and injected errors.",
+    "grammar": "Acceptance-gate and integration diagram",
+    "owners": "component / test harness / release decision",
+    "failure": "a failed gate incorrectly reported as completion",
+    "acceptance": "This entire chapter is the correctness record; any blocker prevents Chapter 92 performance conclusions.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 92,
+    "title": "Performance Gate",
+    "part": 15,
+    "status": "PLAN",
+    "dependencies": [
+      91
+    ],
+    "question": "Determine where the correct engine meets, exceeds, or misses explicit workload/hardware targets.",
+    "visual_content": "Performance envelope and bottleneck timeline; required warm/cold, serial/batched, dense/paged, provider sweeps.",
+    "grammar": "Acceptance-gate and integration diagram",
+    "owners": "component / test harness / release decision",
+    "failure": "a failed gate incorrectly reported as completion",
+    "acceptance": "Recheck outputs during benchmarks, publish manifests/raw results, estimates separated, unfavorable results retained.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 93,
+    "title": "Production Gate",
+    "part": 15,
+    "status": "PLAN",
+    "dependencies": [
+      92
+    ],
+    "question": "Prove the engine behaves safely under load, cancellation, failures, hostile inputs, observability, and deployment lifecycle.",
+    "visual_content": "Deploy/readiness/drain lifecycle and fault-injection matrix; slow clients, OOM pressure, corrupt models, provider failure, restart/cache state.",
+    "grammar": "Acceptance-gate and integration diagram",
+    "owners": "component / test harness / release decision",
+    "failure": "a failed gate incorrectly reported as completion",
+    "acceptance": "No leaks/deadlocks/starvation, bounded memory/queues, truthful metrics, graceful terminal behavior, recoverable rollback; publish operational evidence.",
+    "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
+    "existing_manifest_ids": []
+  },
+  {
+    "chapter": 94,
+    "title": "Replace One Hermon Component and Prove It",
+    "part": 15,
+    "status": "PLAN",
+    "dependencies": [
+      93
+    ],
+    "question": "Demonstrate contribution-level mastery by substituting one bounded Hermon component through its real contracts and proving correctness/performance/rollback.",
+    "visual_content": "Before/after call and ownership path plus release/rollback ladder; component unit, runtime integration, real-model, concurrency, and matched performance A/B.",
+    "grammar": "Acceptance-gate and integration diagram",
+    "owners": "component / test harness / release decision",
+    "failure": "a failed gate incorrectly reported as completion",
+    "acceptance": "All Hermon gates relevant to the component, model fixture, failure/rollback, full benchmark metadata; do not claim merge/default unless repository state confirms it.",
+    "amendment": "Replace one narrowly bounded component only after semantic, ownership, ABI, failure and performance gates. Require a reversible integration and an honest status label.",
+    "existing_manifest_ids": []
+  }
+]

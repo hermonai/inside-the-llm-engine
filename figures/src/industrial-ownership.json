@@ -1,0 +1,25 @@
+{
+  "id": "FIG-INDUSTRIAL-OWNERSHIP-001",
+  "chapter": 24,
+  "kind": "industrial-ownership",
+  "title": "Follow the owner before freeing the byte",
+  "purpose": "Separate logical sequence state, shared physical storage and asynchronous device lifetimes.",
+  "contract": [
+    "Solid = reference or data access; dashed = control / lifecycle signal.",
+    "State ownership shown here is a design contract, not a Rust type declaration.",
+    "Cancellation requests retirement; completion and refcounts determine safe reclamation."
+  ],
+  "status": "EDUCATIONAL / REFERENCE",
+  "publication_status": "reference atlas",
+  "code": "research/industrial-source-map.md",
+  "legacy": null,
+  "animate": false,
+  "caption": "Separate logical sequence state, shared physical storage and asynchronous device lifetimes. Solid = reference or data access; dashed = control / lifecycle signal.",
+  "alt": "Separate logical sequence state, shared physical storage and asynchronous device lifetimes. Solid = reference or data access; dashed = control / lifecycle signal. State ownership shown here is a design contract, not a Rust type declaration. Cancellation requests retirement; completion and refcounts determine safe reclamation.",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "scope": "reference architecture; not a Hermon implementation claim"
+  }
+}

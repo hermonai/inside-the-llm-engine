@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">One reduction, then four output coordinates</title><desc id="desc">Follow every square and partial sum before broadcasting the reciprocal RMS. x [4] and learned w [4] are immutable; epsilon = 1e-5 is inside the root. Products, sums and output are F32; y [4] has canonical owned storage.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH07-PASSES  /  CANONICAL / CHAPTER 7</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">One reduction, then four output coordinates</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Follow every square and partial sum before broadcasting the reciprocal RMS.</text>
+<text x="50" y="207" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">PASS 1 / read all x before producing any y</text>
+<rect x="50" y="231" width="430" height="149" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="260" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="261" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">01 / Square</text>
+<text x="68" y="295" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">x = [1, -2, 3, -4]</text>
+<text x="68" y="322" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">x² = [1, 4, 9, 16]</text>
+<rect x="515" y="231" width="430" height="149" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="260" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="261" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">02 / Reduce</text>
+<text x="533" y="295" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">partial sums = [1, 5, 14, 30]</text>
+<text x="533" y="322" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">mean = 30 / 4 = 7.5</text>
+<rect x="50" y="404" width="430" height="149" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="433" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="434" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">03 / Reciprocal RMS</text>
+<text x="68" y="468" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">epsilon = 0.00001</text>
+<text x="68" y="495" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">r = 1 / √(7.5 + epsilon)</text>
+<text x="68" y="522" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">r ≈ 0.365148</text>
+<rect x="515" y="404" width="430" height="149" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="433" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="434" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">04 / Scale and write</text>
+<text x="533" y="468" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">PASS 2 / read x and w</text>
+<text x="533" y="495" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">w = [1, 0.5, 2, -1]</text>
+<text x="533" y="522" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">yᵢ = (xᵢ × r) × wᵢ</text>
+<line x1="480" y1="304" x2="515" y2="304" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="515.00,304.00 506.00,308.35 506.00,299.65"/>
+<line x1="730" y1="380" x2="730" y2="392" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="730" y1="392" x2="260" y2="392" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="260" y1="392" x2="260" y2="404" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="260.00,404.00 255.65,395.00 264.35,395.00"/>
+<line x1="480" y1="478" x2="515" y2="478" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="515.00,478.00 506.00,482.35 506.00,473.65"/>
+<text x="50" y="589" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">The shared denominator includes x[3]; y[0] cannot be finalized after reading only x[0].</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">x [4] and learned w [4] are immutable; epsilon = 1e-5 is inside the root.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Products, sums and output are F32; y [4] has canonical owned storage.</text>
+</svg>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">From a token identity to a numerical state</title><desc id="desc">Locate embedding and normalization between tokenization and learned projections. E [3,4] is model-owned; x [4] and y [4] are fresh activation owners. F32 teaching fixture; Q/K/V and attention remain outside this chapter.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH07-JOURNEY  /  CANONICAL / CHAPTER 7</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">From a token identity to a numerical state</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Locate embedding and normalization between tokenization and learned projections.</text>
+<rect x="50" y="203" width="260" height="106" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="232" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">01 / Identity</text>
+<text x="68" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">token 1 is an index</text>
+<text x="68" y="294" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">not an activation</text>
+<rect x="365" y="203" width="260" height="106" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="232" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="383" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">02 / Lookup</text>
+<text x="383" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">E [3,4] → x [4]</text>
+<text x="383" y="294" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">copy row 1 into x</text>
+<rect x="680" y="203" width="265" height="106" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="694" y="232" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="698" y="233" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">03 / RMSNorm</text>
+<text x="698" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">x [4], w [4], epsilon</text>
+<text x="698" y="294" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">new output y [4]</text>
+<line x1="310" y1="257" x2="365" y2="257" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="365.00,257.00 356.00,261.35 356.00,252.65"/>
+<line x1="625" y1="257" x2="680" y2="257" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="680.00,257.00 671.00,261.35 671.00,252.65"/>
+<rect x="50" y="358" width="895" height="96" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="387" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="388" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">The same four values survive the explanation</text>
+<text x="68" y="422" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">x = [1, -2, 3, -4]   →   r ≈ 0.365148   →   y ≈ [0.365, -0.365, 2.191, 1.461]</text>
+<rect x="50" y="491" width="895" height="93" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="520" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="521" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Next / three learned projections</text>
+<text x="68" y="555" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Q/K/V, position, attention and KV state are not implemented by this chapter.</text>
+<line x1="810" y1="309" x2="810" y2="358" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="810.00,358.00 805.65,349.00 814.35,349.00"/>
+<line x1="500" y1="454" x2="500" y2="491" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="500.00,491.00 495.65,482.00 504.35,482.00"/>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">E [3,4] is model-owned; x [4] and y [4] are fresh activation owners.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">F32 teaching fixture; Q/K/V and attention remain outside this chapter.</text>
+</svg>

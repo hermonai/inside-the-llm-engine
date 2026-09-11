@@ -3,6 +3,7 @@
 from pathlib import Path
 import json
 import math
+import re
 from PIL import Image, ImageOps, ImageDraw
 from pypdf import PdfReader
 
@@ -18,7 +19,8 @@ for identifier in ids:
     assert text.count(identifier)==1, identifier
 assert '\ufffd' not in text
 assert not any(p.images for p in chapter.pages), 'chapter figures must remain vectors'
-for filename,count in [('chapter06.html',14),('book.html',22)]:
+embedded=sum(len(re.findall(r'!\[[^\]]*\]\([^)]*figures/generated/[^)]*\.svg\)',path.read_text())) for path in (ROOT/'manuscript').glob('part-*/chapter-*.md'))
+for filename,count in [('chapter06.html',14),('book.html',embedded)]:
     content=(ROOT/'build/publication'/filename).read_text()
     assert content.count('data:image/svg+xml')==count
     assert '<math ' in content

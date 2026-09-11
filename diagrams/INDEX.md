@@ -84,3 +84,4 @@ must preserve its semantics.
 | D076 | Embedding and projection | 7 | data flow | Why is row lookup different from output GEMV? | [`transformer/embedding-vs-output-projection.txt`](transformer/embedding-vs-output-projection.txt) | canonical |
 | D077 | Transformer Primitives v1 | 7 | architecture | Which tested primitives now connect IDs to normalized vectors? | [`transformer/chapter07-engine-architecture.txt`](transformer/chapter07-engine-architecture.txt) | canonical |
 | D078 | Hermon and llama.cpp path | 7 | architecture | Which relevant paths are CURRENT, PREVIEW, or LIBRARY? | [`transformer/hermon-llamacpp-normalization-path.txt`](transformer/hermon-llamacpp-normalization-path.txt) | canonical |
+| D079 | Industrial curriculum dependencies | all | dependency graph | Which foundations precede the proposed industrial chapters? | [`runtime/industrial-curriculum.txt`](runtime/industrial-curriculum.txt) | proposal |

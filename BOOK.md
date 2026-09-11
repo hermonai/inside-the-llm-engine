@@ -1,6 +1,6 @@
 # Inside the LLM Engine
 
-## From First Token to Production-Grade Inference
+## From model weights and KV memory to industrial inference serving.
 
 This is the reader-facing table of contents. The authoring specification for
 each chapter lives in [docs/OUTLINE.md](docs/OUTLINE.md).

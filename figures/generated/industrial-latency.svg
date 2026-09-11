@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">One timeline, four different latency questions</title><desc id="desc">Keep arrival, token emission and terminal completion on the same client-visible clock. All times are synthetic arithmetic fixtures, not benchmark results. N counts output tokens; TPOT averages N − 1 output intervals. Report percentile distributions and workload conditions, not only this mean.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-INDUSTRIAL-LATENCY-001  /  EDUCATIONAL / REFERENCE</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">One timeline, four different latency questions</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Keep arrival, token emission and terminal completion on the same client-visible clock.</text>
+<text x="45" y="207" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">A synthetic client trace • four output tokens • one clock • milliseconds</text>
+<line x1="75" y1="285" x2="943" y2="285" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="943.00,285.00 934.00,289.35 934.00,280.65"/>
+<line x1="75" y1="268" x2="75" y2="302" stroke="#152b3c" stroke-width="1.5"/>
+<text x="75" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">arrive</text>
+<text x="75" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">0</text>
+<line x1="555" y1="268" x2="555" y2="302" stroke="#152b3c" stroke-width="1.5"/>
+<text x="555" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">token 1</text>
+<text x="555" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">120</text>
+<line x1="655" y1="268" x2="655" y2="302" stroke="#152b3c" stroke-width="1.5"/>
+<text x="655" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">2</text>
+<text x="655" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">145</text>
+<line x1="795" y1="268" x2="795" y2="302" stroke="#152b3c" stroke-width="1.5"/>
+<text x="795" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">3</text>
+<text x="795" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">180</text>
+<line x1="895" y1="268" x2="895" y2="302" stroke="#152b3c" stroke-width="1.5"/>
+<text x="895" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">4</text>
+<text x="895" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">205</text>
+<line x1="935" y1="268" x2="935" y2="302" stroke="#152b3c" stroke-width="1.5"/>
+<text x="935" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">done</text>
+<text x="935" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="middle">215</text>
+<line x1="75" y1="353" x2="550" y2="353" stroke="#152b3c" stroke-width="3"/>
+<text x="285" y="380" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="middle">TTFT = 120 ms</text>
+<line x1="560" y1="353" x2="895" y2="353" stroke="#152b3c" stroke-width="3"/>
+<text x="725" y="380" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="middle">ITLs = 25, 35, 25 ms</text>
+<rect x="45" y="407" width="438" height="106" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="59" y="436" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">PER-REQUEST MEAN</text>
+<text x="59" y="461" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">TPOT = (205 − 120) / (4 − 1)</text>
+<text x="59" y="486" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">= 28.33 ms per output interval</text>
+<rect x="507" y="407" width="448" height="106" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="521" y="436" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">END-TO-END</text>
+<text x="521" y="461" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">E2E = 215 − 0 = 215 ms</text>
+<text x="521" y="486" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Includes the 10 ms terminal tail</text>
+<text x="45" y="548" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">TTFT includes client-visible queueing, prompt work and transport—not just prefill.</text>
+<text x="45" y="577" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Inter-token latency is not stream-chunk latency. TPOT is undefined for N &lt; 2.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">All times are synthetic arithmetic fixtures, not benchmark results.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">N counts output tokens; TPOT averages N − 1 output intervals.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Report percentile distributions and workload conditions, not only this mean.</text>
+</svg>

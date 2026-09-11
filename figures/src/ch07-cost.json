@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-COST",
+  "chapter": 7,
+  "kind": "ch07-cost",
+  "title": "Count payloads before promising speed",
+  "purpose": "Account for two input reads, one gain read and one fresh output write.",
+  "contract": [
+    "F32 cold-payload accounting gives approximately 16D bytes for RMSNorm.",
+    "This is an analytical model, not measured physical traffic or a hardware speed claim."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Account for two input reads, one gain read and one fresh output write. F32 cold-payload accounting gives approximately 16D bytes for RMSNorm. This is an analytical model, not measured physical traffic or a hardware speed claim.",
+  "alt": "Account for two input reads, one gain read and one fresh output write. F32 cold-payload accounting gives approximately 16D bytes for RMSNorm. This is an analytical model, not measured physical traffic or a hardware speed claim.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

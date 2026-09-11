@@ -2,6 +2,282 @@
   "version": 1,
   "figures": [
     {
+      "id": "FIG-CH07-JOURNEY",
+      "chapter": 7,
+      "title": "From a token identity to a numerical state",
+      "purpose": "Locate embedding and normalization between tokenization and learned projections.",
+      "concepts": [
+        "journey",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-journey.json",
+      "generated": [
+        "figures/generated/ch07-journey.svg",
+        "figures/generated/ch07-journey.txt"
+      ],
+      "caption": "Locate embedding and normalization between tokenization and learned projections. E [3,4] is model-owned; x [4] and y [4] are fresh activation owners. F32 teaching fixture; Q/K/V and attention remain outside this chapter.",
+      "alt": "Locate embedding and normalization between tokenization and learned projections. E [3,4] is model-owned; x [4] and y [4] are fresh activation owners. F32 teaching fixture; Q/K/V and attention remain outside this chapter.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-LOOKUP",
+      "chapter": 7,
+      "title": "An ID selects a row, not a meaning",
+      "purpose": "Separate learned table capacity from the four values copied for one token.",
+      "concepts": [
+        "lookup",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-lookup.json",
+      "generated": [
+        "figures/generated/ch07-lookup.svg",
+        "figures/generated/ch07-lookup.txt"
+      ],
+      "caption": "Separate learned table capacity from the four values copied for one token. Canonical E [3,4], strides [4,1], F32; token 1 selects row 1. Element offsets [4,5,6,7] correspond to byte displacements [16,20,24,28].",
+      "alt": "Separate learned table capacity from the four values copied for one token. Canonical E [3,4], strides [4,1], F32; token 1 selects row 1. Element offsets [4,5,6,7] correspond to byte displacements [16,20,24,28].",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-SEQUENCE",
+      "chapter": 7,
+      "title": "Equal tokens do not share mutable activations",
+      "purpose": "Preserve token order and repetition when gathering a sequence into new storage.",
+      "concepts": [
+        "sequence",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-sequence.json",
+      "generated": [
+        "figures/generated/ch07-sequence.svg",
+        "figures/generated/ch07-sequence.txt"
+      ],
+      "caption": "Preserve token order and repetition when gathering a sequence into new storage. Tokens [1,0,1] produce canonical X [3,4] with strides [4,1]. Rows 0 and 2 have equal values, but mutating one cannot mutate the other.",
+      "alt": "Preserve token order and repetition when gathering a sequence into new storage. Tokens [1,0,1] produce canonical X [3,4] with strides [4,1]. Rows 0 and 2 have equal values, but mutating one cannot mutate the other.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-OWNERS",
+      "chapter": 7,
+      "title": "Copy the activation; preserve the parameters",
+      "purpose": "Follow actual OwnedTensor and TensorView responsibilities across one call.",
+      "concepts": [
+        "owners",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-owners.json",
+      "generated": [
+        "figures/generated/ch07-owners.svg",
+        "figures/generated/ch07-owners.txt"
+      ],
+      "caption": "Follow actual OwnedTensor and TensorView responsibilities across one call. Views borrow storage; embedding and RMSNorm outputs own fresh F32 buffers. The diagram shows data and lifetime dependencies, not an invented engine class hierarchy.",
+      "alt": "Follow actual OwnedTensor and TensorView responsibilities across one call. Views borrow storage; embedding and RMSNorm outputs own fresh F32 buffers. The diagram shows data and lifetime dependencies, not an invented engine class hierarchy.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-PASSES",
+      "chapter": 7,
+      "title": "One reduction, then four output coordinates",
+      "purpose": "Follow every square and partial sum before broadcasting the reciprocal RMS.",
+      "concepts": [
+        "passes",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-passes.json",
+      "generated": [
+        "figures/generated/ch07-passes.svg",
+        "figures/generated/ch07-passes.txt"
+      ],
+      "caption": "Follow every square and partial sum before broadcasting the reciprocal RMS. x [4] and learned w [4] are immutable; epsilon = 1e-5 is inside the root. Products, sums and output are F32; y [4] has canonical owned storage.",
+      "alt": "Follow every square and partial sum before broadcasting the reciprocal RMS. x [4] and learned w [4] are immutable; epsilon = 1e-5 is inside the root. Products, sums and output are F32; y [4] has canonical owned storage.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": "figures/generated/ch07-passes.html"
+    },
+    {
+      "id": "FIG-CH07-EPSILON",
+      "chapter": 7,
+      "title": "A small constant changes the function",
+      "purpose": "Distinguish defined zero-vector behavior from invalid configuration and tiny signals.",
+      "concepts": [
+        "epsilon",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-epsilon.json",
+      "generated": [
+        "figures/generated/ch07-epsilon.svg",
+        "figures/generated/ch07-epsilon.txt"
+      ],
+      "caption": "Distinguish defined zero-vector behavior from invalid configuration and tiny signals. The teaching API requires finite positive epsilon. Zero input gives zero output. Exact scale invariance does not hold with fixed positive epsilon.",
+      "alt": "Distinguish defined zero-vector behavior from invalid configuration and tiny signals. The teaching API requires finite positive epsilon. Zero input gives zero output. Exact scale invariance does not hold with fixed positive epsilon.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-RANGE",
+      "chapter": 7,
+      "title": "Finite input is only the first gate",
+      "purpose": "Expose square overflow separately from overflow of individually finite squares.",
+      "concepts": [
+        "range",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-range.json",
+      "generated": [
+        "figures/generated/ch07-range.svg",
+        "figures/generated/ch07-range.txt"
+      ],
+      "caption": "Expose square overflow separately from overflow of individually finite squares. Deterministic F32 numerical stress, not a model activation distribution or timing benchmark. Underflow may be accepted; non-finite squares and sums return typed errors.",
+      "alt": "Expose square overflow separately from overflow of individually finite squares. Deterministic F32 numerical stress, not a model activation distribution or timing benchmark. Underflow may be accepted; non-finite squares and sums return typed errors.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-COST",
+      "chapter": 7,
+      "title": "Count payloads before promising speed",
+      "purpose": "Account for two input reads, one gain read and one fresh output write.",
+      "concepts": [
+        "cost",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-cost.json",
+      "generated": [
+        "figures/generated/ch07-cost.svg",
+        "figures/generated/ch07-cost.txt"
+      ],
+      "caption": "Account for two input reads, one gain read and one fresh output write. F32 cold-payload accounting gives approximately 16D bytes for RMSNorm. This is an analytical model, not measured physical traffic or a hardware speed claim.",
+      "alt": "Account for two input reads, one gain read and one fresh output write. F32 cold-payload accounting gives approximately 16D bytes for RMSNorm. This is an analytical model, not measured physical traffic or a hardware speed claim.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-CONTRAST",
+      "chapter": 7,
+      "title": "RMS normalization is not mean centering",
+      "purpose": "Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits.",
+      "concepts": [
+        "contrast",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-contrast.json",
+      "generated": [
+        "figures/generated/ch07-contrast.svg",
+        "figures/generated/ch07-contrast.txt"
+      ],
+      "caption": "Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits. Uniform x=[4,4,4,4], positive epsilon; both gains 1, LayerNorm bias 0. Mixed-sign fixture output RMS is about 1.342 after learned gain, not unity.",
+      "alt": "Use a uniform vector to expose the operation that LayerNorm performs and RMSNorm omits. Uniform x=[4,4,4,4], positive epsilon; both gains 1, LayerNorm bias 0. Mixed-sign fixture output RMS is about 1.342 after learned gain, not unity.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-CH07-SOURCE",
+      "chapter": 7,
+      "title": "An equation crosses an execution boundary",
+      "purpose": "Compare the teaching operator with source-verified default and preview paths.",
+      "concepts": [
+        "source",
+        "embedding",
+        "RMSNorm"
+      ],
+      "source": "figures/src/ch07-source.json",
+      "generated": [
+        "figures/generated/ch07-source.svg",
+        "figures/generated/ch07-source.txt"
+      ],
+      "caption": "Compare the teaching operator with source-verified default and preview paths. CURRENT and PREVIEW denote inspected Hermon routes, not interchangeable implementations. CPU GGML precision is revision-specific; no universal accelerator claim is implied.",
+      "alt": "Compare the teaching operator with source-verified default and preview paths. CURRENT and PREVIEW denote inspected Hermon routes, not interchangeable implementations. CPU GGML precision is revision-specific; no universal accelerator claim is implied.",
+      "evidence": "research/astra/chapter07-regeneration.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-INDUSTRIAL-STACK-001",
+      "chapter": 1,
+      "title": "Three systems cooperate to emit one token",
+      "purpose": "Model semantics defines the computation; the engine executes it; serving decides whose work runs.",
+      "concepts": [
+        "stack",
+        "industrial architecture"
+      ],
+      "source": "figures/src/industrial-stack.json",
+      "generated": [
+        "figures/generated/industrial-stack.svg",
+        "figures/generated/industrial-stack.txt"
+      ],
+      "caption": "Model semantics defines the computation; the engine executes it; serving decides whose work runs. Reference architecture, not a claim that every engine uses this organization.",
+      "alt": "Model semantics defines the computation; the engine executes it; serving decides whose work runs. Reference architecture, not a claim that every engine uses this organization. Weights E[V,D] are parameters; X[T,D] and logits [V] are activations. KV is persistent state beside execution, not a mandatory serial stage.",
+      "evidence": "research/industrial-source-map.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-INDUSTRIAL-OWNERSHIP-001",
+      "chapter": 24,
+      "title": "Follow the owner before freeing the byte",
+      "purpose": "Separate logical sequence state, shared physical storage and asynchronous device lifetimes.",
+      "concepts": [
+        "ownership",
+        "industrial architecture"
+      ],
+      "source": "figures/src/industrial-ownership.json",
+      "generated": [
+        "figures/generated/industrial-ownership.svg",
+        "figures/generated/industrial-ownership.txt"
+      ],
+      "caption": "Separate logical sequence state, shared physical storage and asynchronous device lifetimes. Solid = reference or data access; dashed = control / lifecycle signal.",
+      "alt": "Separate logical sequence state, shared physical storage and asynchronous device lifetimes. Solid = reference or data access; dashed = control / lifecycle signal. State ownership shown here is a design contract, not a Rust type declaration. Cancellation requests retirement; completion and refcounts determine safe reclamation.",
+      "evidence": "research/industrial-source-map.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-INDUSTRIAL-LATENCY-001",
+      "chapter": 20,
+      "title": "One timeline, four different latency questions",
+      "purpose": "Keep arrival, token emission and terminal completion on the same client-visible clock.",
+      "concepts": [
+        "latency",
+        "industrial architecture"
+      ],
+      "source": "figures/src/industrial-latency.json",
+      "generated": [
+        "figures/generated/industrial-latency.svg",
+        "figures/generated/industrial-latency.txt"
+      ],
+      "caption": "Keep arrival, token emission and terminal completion on the same client-visible clock. All times are synthetic arithmetic fixtures, not benchmark results.",
+      "alt": "Keep arrival, token emission and terminal completion on the same client-visible clock. All times are synthetic arithmetic fixtures, not benchmark results. N counts output tokens; TPOT averages N − 1 output intervals. Report percentile distributions and workload conditions, not only this mean.",
+      "evidence": "research/industrial-source-map.md",
+      "animation": null
+    },
+    {
+      "id": "FIG-INDUSTRIAL-MEMORY-001",
+      "chapter": 22,
+      "title": "Logical tokens are not physical memory",
+      "purpose": "Distinguish valid state, reserved capacity and shared allocation ownership before adding bytes.",
+      "concepts": [
+        "memory",
+        "industrial architecture"
+      ],
+      "source": "figures/src/industrial-memory.json",
+      "generated": [
+        "figures/generated/industrial-memory.svg",
+        "figures/generated/industrial-memory.txt"
+      ],
+      "caption": "Distinguish valid state, reserved capacity and shared allocation ownership before adding bytes. Formula assumes uniform dense K,V tensors; b is stored bytes per element.",
+      "alt": "Distinguish valid state, reserved capacity and shared allocation ownership before adding bytes. Formula assumes uniform dense K,V tensors; b is stored bytes per element. The shared-block fixture has 2 tokens per block; each block contains 64 bytes. Category widths are not proportions. No device capacity or performance is implied.",
+      "evidence": "research/industrial-source-map.md",
+      "animation": null
+    },
+    {
       "id": "FIG-TENSOR-STRIDE-001",
       "chapter": 5,
       "title": "A tensor is a map into storage",

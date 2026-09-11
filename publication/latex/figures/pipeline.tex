@@ -1,0 +1,46 @@
+% Generated from figures/generated/pipeline.svg; do not hand edit.
+\begin{tikzpicture}[x=.5pt,y=-.5pt]
+\path[use as bounding box] (0,0) rectangle (1000,720);
+\path[fill=white,draw=none,line width=0.5pt] (0.0,0.0) rectangle (1000.0,720.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,70;green,92;blue,107},font=\sffamily\fontsize{7.0}{8.4}\selectfont] at (40,38) {FIG-TRANSFORMER-PIPELINE-001  /  EDUCATIONAL MODEL};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{15.0}{18.0}\selectfont] at (40,84) {From identity to three learned views};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=0.75pt] (40,109) -- (960,109);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (40,140) {Lookup copies a selected row; normalization rescales it; three projections produce};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (40,163) {distinct activations.};
+\path[fill={rgb,255:red,244;green,234;blue,210},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (45.0,223.0) rectangle (305.0,315.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (59,252) {01  Lookup E[1,:]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (59,277) {x = [1, −1, 2, 0.5]};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=1.25pt] (305,270) -- (380,270);
+\path[fill={rgb,255:red,21;green,43;blue,60},draw=none,line width=0.5pt] (380.00,270.00) -- (371.00,274.35) -- (371.00,265.65) -- cycle;
+\path[fill={rgb,255:red,220;green,239;blue,231},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (390.0,223.0) rectangle (650.0,315.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (404,252) {02  RMSNorm};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (404,277) {w [4], ε = 10⁻⁵};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{8.5}{10.2}\selectfont] at (690,244) {Implemented through};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{8.5}{10.2}\selectfont] at (690,272) {Chapter 7};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=1.25pt] (520,315) -- (520,355);
+\path[fill={rgb,255:red,21;green,43;blue,60},draw=none,line width=0.5pt] (520.00,355.00) -- (515.65,346.00) -- (524.35,346.00) -- cycle;
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=0.75pt,dash pattern=on 3.0pt off 2.5pt] (180,355) -- (820,355);
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=1.25pt,dash pattern=on 3.0pt off 2.5pt] (180,355) -- (180,405);
+\path[fill={rgb,255:red,21;green,43;blue,60},draw=none,line width=0.5pt] (180.00,405.00) -- (175.65,396.00) -- (184.35,396.00) -- cycle;
+\path[fill={rgb,255:red,220;green,236;blue,247},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (60.0,410.0) rectangle (300.0,528.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (74,439) {03  WQ [4,4]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (74,464) {Q flat [4]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (74,489) {Q heads [2,2]};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=1.25pt,dash pattern=on 3.0pt off 2.5pt] (500,355) -- (500,405);
+\path[fill={rgb,255:red,21;green,43;blue,60},draw=none,line width=0.5pt] (500.00,405.00) -- (495.65,396.00) -- (504.35,396.00) -- cycle;
+\path[fill={rgb,255:red,220;green,236;blue,247},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (380.0,410.0) rectangle (620.0,528.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (394,439) {03  WK [4,4]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (394,464) {K flat [4]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (394,489) {K heads [2,2]};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=1.25pt,dash pattern=on 3.0pt off 2.5pt] (820,355) -- (820,405);
+\path[fill={rgb,255:red,21;green,43;blue,60},draw=none,line width=0.5pt] (820.00,405.00) -- (815.65,396.00) -- (824.35,396.00) -- cycle;
+\path[fill={rgb,255:red,220;green,236;blue,247},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (700.0,410.0) rectangle (940.0,528.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (714,439) {03  WV [4,4]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (714,464) {V flat [4]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.5}{11.4}\selectfont] at (714,489) {V heads [2,2]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{8.5}{10.2}\selectfont] at (60,574) {QKV is a planned Chapter 8 operator; arrows below RMSNorm are a specification.};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=0.75pt] (40,608) -- (960,608);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{7.5}{9.0}\selectfont] at (40,638) {E [3,4], token 1 selects x [4]};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{7.5}{9.0}\selectfont] at (40,659) {x̂ᵢ = xᵢwᵢ / √(Σⱼxⱼ²/4 + ε)};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{7.5}{9.0}\selectfont] at (40,680) {Q [2,2], K [2,2], V [2,2]; no position yet};
+\end{tikzpicture}

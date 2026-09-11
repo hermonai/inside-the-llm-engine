@@ -1,0 +1,26 @@
+FIG-CH07-JOURNEY
+From a token identity to a numerical state
+CANONICAL / CHAPTER 7
+
+Locate embedding and normalization between tokenization and learned projections.
+E [3,4] is model-owned; x [4] and y [4] are fresh activation owners.
+F32 teaching fixture; Q/K/V and attention remain outside this chapter.
+token 1 ──▶ select E[1,:] ══▶ owned x [4] ══▶ RMSNorm ══▶ owned y [4]
+Model owns E and w. Request owns x and y; no output aliases parameters.
+x = [1, -2, 3, -4]
+squares = [1.0, 4.0, 9.0, 16.0]
+partial sums = [1.0, 5.0, 14.0, 30.0]
+y = [0.36514812707901, -0.36514812707901, 2.1908888816833496, 1.46059250831604]
+element offsets = [4, 5, 6, 7]
+byte displacements = [16, 20, 24, 28]
+
+Locate embedding and normalization between tokenization and learned projections.
+
+E [3,4] is model-owned; x [4] and y [4] are fresh activation owners.
+
+F32 teaching fixture; Q/K/V and attention remain outside this chapter.
+
+Fixture: {"source": "code/reference/fixtures/chapter07-visual.json"}
+
+Source: figures/src/ch07-journey.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/normalization.rs

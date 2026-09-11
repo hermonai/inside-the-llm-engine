@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Equal tokens do not share mutable activations</title><desc id="desc">Preserve token order and repetition when gathering a sequence into new storage. Tokens [1,0,1] produce canonical X [3,4] with strides [4,1]. Rows 0 and 2 have equal values, but mutating one cannot mutate the other.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH07-SEQUENCE  /  CANONICAL / CHAPTER 7</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Equal tokens do not share mutable activations</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Preserve token order and repetition when gathering a sequence into new storage.</text>
+<text x="50" y="209" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">IDs [T] = [1, 0, 1]</text>
+<text x="515" y="209" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">X [T,D] = [3,4] / one owner</text>
+<rect x="70" y="242" width="245" height="58" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="84" y="271" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">position 0: token 1</text>
+<line x1="315" y1="271" x2="510" y2="271" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="510.00,271.00 501.00,275.35 501.00,266.65"/>
+<rect x="515" y="247" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="276" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="565.0" y="278" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">1</text>
+<rect x="615" y="247" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="629" y="276" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="665.0" y="278" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">-2</text>
+<rect x="715" y="247" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="729" y="276" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="765.0" y="278" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">3</text>
+<rect x="815" y="247" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="829" y="276" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="865.0" y="278" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">-4</text>
+<rect x="70" y="330" width="245" height="58" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="84" y="359" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">position 1: token 0</text>
+<line x1="315" y1="359" x2="510" y2="359" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="510.00,359.00 501.00,363.35 501.00,354.65"/>
+<rect x="515" y="335" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="364" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="565.0" y="366" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<rect x="615" y="335" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="629" y="364" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="665.0" y="366" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<rect x="715" y="335" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="729" y="364" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="765.0" y="366" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<rect x="815" y="335" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="829" y="364" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="865.0" y="366" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<rect x="70" y="418" width="245" height="58" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="84" y="447" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">position 2: token 1</text>
+<line x1="315" y1="447" x2="510" y2="447" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="510.00,447.00 501.00,451.35 501.00,442.65"/>
+<rect x="515" y="423" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="452" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="565.0" y="454" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">1</text>
+<rect x="615" y="423" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="629" y="452" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="665.0" y="454" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">-2</text>
+<rect x="715" y="423" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="729" y="452" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="765.0" y="454" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">3</text>
+<rect x="815" y="423" width="100" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="829" y="452" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="865.0" y="454" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">-4</text>
+<rect x="50" y="523" width="895" height="62" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="552" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="553" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Repeated IDs copy equal values into different output cells.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Tokens [1,0,1] produce canonical X [3,4] with strides [4,1].</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Rows 0 and 2 have equal values, but mutating one cannot mutate the other.</text>
+</svg>

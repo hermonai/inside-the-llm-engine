@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-OWNERS",
+  "chapter": 7,
+  "kind": "ch07-owners",
+  "title": "Copy the activation; preserve the parameters",
+  "purpose": "Follow actual OwnedTensor and TensorView responsibilities across one call.",
+  "contract": [
+    "Views borrow storage; embedding and RMSNorm outputs own fresh F32 buffers.",
+    "The diagram shows data and lifetime dependencies, not an invented engine class hierarchy."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/embedding.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Follow actual OwnedTensor and TensorView responsibilities across one call. Views borrow storage; embedding and RMSNorm outputs own fresh F32 buffers. The diagram shows data and lifetime dependencies, not an invented engine class hierarchy.",
+  "alt": "Follow actual OwnedTensor and TensorView responsibilities across one call. Views borrow storage; embedding and RMSNorm outputs own fresh F32 buffers. The diagram shows data and lifetime dependencies, not an invented engine class hierarchy.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

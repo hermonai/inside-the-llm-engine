@@ -1,8 +1,9 @@
 # LLM engine visual atlas
 
-Thirty-one plates share one visual language and explicit evidence status.
-Eight Chapter 5 and fourteen Chapter 6 plates are canonical inside their
-chapters; nine remain regeneration prototypes. Read the
+Forty-five plates share one visual language and explicit evidence status.
+Eight Chapter 5, fourteen Chapter 6 and ten Chapter 7 plates are canonical;
+nine are prototypes and four are architecture references. Read the
+[Chapter 7 atlas](chapter07-atlas.md), [industrial atlas](industrial-atlas.md),
 [Chapter 5 tensor atlas](chapter05-atlas.md) and
 [Chapter 6 equation-to-kernel atlas](chapter06-atlas.md) for both complete sequences.
 The seven written chapters remain the current book; future mechanisms below

@@ -1,5 +1,12 @@
 # Visual language v1
 
+Publication requirement, 2026-09-11: the book ships a native `.tex` edition.
+New and regenerated chapter illustrations must have professional TikZ sources,
+with geometric edges and typeset labels, not verbatim character-box graphs.
+`publication/build-tex.py` preserves semantic SVG geometry as native TikZ;
+`scripts/check-native-figures.py` enforces parity. Legacy Unicode sources remain
+internal references and migration inputs, not the preferred print representation.
+
 The system adds publication vectors and optional motion to the existing
 [Unicode grammar](../docs/DIAGRAM_STYLE.md). That grammar remains authoritative
 for legacy diagrams. Do not redefine an old arrow in a graphical counterpart.

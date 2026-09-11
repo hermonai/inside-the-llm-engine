@@ -1,5 +1,12 @@
 # Diagram Style
 
+For the published book, native LaTeX/TikZ illustrations now take precedence:
+see [the visual language](../figures/VISUAL_LANGUAGE.md) and
+[the TeX edition](../publication/latex/README.md). The Unicode grammar below
+continues to govern legacy/internal semantic specifications; it is not a
+requirement to publish text-only graphs. Future chapter publication must include
+the native vector counterpart, its math/shape contract and rendered review.
+
 Canonical diagrams are executable editorial specifications: they must answer a
 technical question without depending on color, an image renderer, or nearby
 prose. Store reusable diagrams as UTF-8 `.txt` files under `diagrams/`, register

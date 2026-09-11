@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Follow the owner before freeing the byte</title><desc id="desc">Separate logical sequence state, shared physical storage and asynchronous device lifetimes. Solid = reference or data access; dashed = control / lifecycle signal. State ownership shown here is a design contract, not a Rust type declaration. Cancellation requests retirement; completion and refcounts determine safe reclamation.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-INDUSTRIAL-OWNERSHIP-001  /  EDUCATIONAL / REFERENCE</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Follow the owner before freeing the byte</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Separate logical sequence state, shared physical storage and asynchronous device</text>
+<text x="40" y="163" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">lifetimes.</text>
+<rect x="45" y="214" width="285" height="109" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="59" y="243" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">MODEL INSTANCE</text>
+<text x="59" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Immutable weights + config</text>
+<text x="59" y="293" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Shared across requests</text>
+<rect x="355" y="214" width="290" height="109" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="369" y="243" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">SEQUENCE STATE</text>
+<text x="369" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Position, RNG, constraints</text>
+<text x="369" y="293" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Logical KV block handles</text>
+<rect x="670" y="214" width="285" height="109" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="684" y="243" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">SCHEDULER</text>
+<text x="684" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Queues + runnable set</text>
+<text x="684" y="293" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Admission and token budget</text>
+<line x1="670" y1="270" x2="645" y2="270" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="645.00,270.00 654.00,265.65 654.00,274.35"/>
+<rect x="45" y="403" width="285" height="109" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="59" y="432" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">BACKEND EXECUTOR</text>
+<text x="59" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Buffers + graph resources</text>
+<text x="59" y="482" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">In-flight completion events</text>
+<rect x="355" y="403" width="290" height="109" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="369" y="432" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">KV BLOCK MANAGER</text>
+<text x="369" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Physical pages + refcounts</text>
+<text x="369" y="482" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Shared prefix, private tail</text>
+<line x1="362" y1="410" x2="638" y2="410" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="362" y1="505" x2="638" y2="505" stroke="#152b3c" stroke-width="1.5"/>
+<rect x="670" y="403" width="285" height="109" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="684" y="432" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">CONNECTION / STREAM</text>
+<text x="684" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">Output queue + disconnect</text>
+<text x="684" y="482" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">One terminal outcome</text>
+<line x1="185" y1="323" x2="185" y2="403" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="185.00,403.00 180.65,394.00 189.35,394.00"/>
+<text x="199" y="366" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">borrow weights</text>
+<line x1="500" y1="323" x2="500" y2="403" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="500.00,403.00 495.65,394.00 504.35,394.00"/>
+<text x="515" y="365" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">reference pages</text>
+<line x1="810" y1="403" x2="810" y2="323" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="810.00,323.00 814.35,332.00 805.65,332.00"/>
+<text x="823" y="358" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">cancel</text>
+<text x="823" y="378" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">signal</text>
+<line x1="330" y1="455" x2="355" y2="455" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="355.00,455.00 346.00,459.35 346.00,450.65"/>
+<text x="45" y="546" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Release rule: retire handles only after dependent device work has completed.</text>
+<text x="45" y="574" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">A disconnect is not permission to free a shared prefix or an in-flight buffer.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Solid = reference or data access; dashed = control / lifecycle signal.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">State ownership shown here is a design contract, not a Rust type declaration.</text>
+<text x="40" y="680" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Cancellation requests retirement; completion and refcounts determine safe reclamation.</text>
+</svg>

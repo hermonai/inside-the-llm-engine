@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Copy the activation; preserve the parameters</title><desc id="desc">Follow actual OwnedTensor and TensorView responsibilities across one call. Views borrow storage; embedding and RMSNorm outputs own fresh F32 buffers. The diagram shows data and lifetime dependencies, not an invented engine class hierarchy.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH07-OWNERS  /  CANONICAL / CHAPTER 7</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Copy the activation; preserve the parameters</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Follow actual OwnedTensor and TensorView responsibilities across one call.</text>
+<rect x="50" y="210" width="365" height="122" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="239" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="240" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">MODEL / OwnedTensor</text>
+<text x="68" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">E: immutable parameters [3,4]</text>
+<text x="68" y="301" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">w: immutable learned gain [4]</text>
+<rect x="570" y="210" width="375" height="122" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="584" y="239" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="588" y="240" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">CALL / TensorView</text>
+<text x="588" y="274" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">borrows parameter storage</text>
+<text x="588" y="301" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">cannot outlive its owner</text>
+<line x1="570" y1="270" x2="415" y2="270" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="415.00,270.00 424.00,265.65 424.00,274.35"/>
+<text x="427" y="250" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">borrows</text>
+<rect x="50" y="405" width="365" height="143" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="434" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="435" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">REQUEST / x owner</text>
+<text x="68" y="469" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">lookup copies row 1</text>
+<text x="68" y="496" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">mutate x[0] = 99</text>
+<text x="68" y="523" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">E[1,0] remains 1</text>
+<rect x="570" y="405" width="375" height="143" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="584" y="434" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="588" y="435" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">REQUEST / y owner</text>
+<text x="588" y="469" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">RMSNorm returns new storage</text>
+<text x="588" y="496" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">x and w remain unchanged</text>
+<text x="588" y="523" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">drop each owner independently</text>
+<line x1="237" y1="332" x2="237" y2="405" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="237.00,405.00 232.65,396.00 241.35,396.00"/>
+<text x="255" y="377" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">copy</text>
+<line x1="415" y1="480" x2="570" y2="480" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="570.00,480.00 561.00,484.35 561.00,475.65"/>
+<text x="429" y="455" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="start">normalize</text>
+<text x="50" y="583" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">Solid: data transformation / materialization. Dashed: immutable lifetime dependency.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Views borrow storage; embedding and RMSNorm outputs own fresh F32 buffers.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">The diagram shows data and lifetime dependencies, not an invented engine class hierarchy.</text>
+</svg>

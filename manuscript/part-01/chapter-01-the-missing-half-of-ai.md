@@ -73,7 +73,7 @@ makes that split explicit:
                                                         ▼
   ┌────────────────────────────────────────────────────────────────────┐
   │ INFERENCE ENGINE                                                   │
-  │ resolve ──▶ admit ──▶ schedule ──▶ model step ──▶ select ──▶ stop │
+  │ resolve ──▶ admit ──▶ schedule ──▶ model step ──▶ select ──▶ stop  │
   │               │                                      │             │
   │               ▼                                      ▼             │
   │      [request state / timing]              [ordered output stream] │

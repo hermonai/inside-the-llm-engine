@@ -1,0 +1,24 @@
+FIG-INDUSTRIAL-MEMORY-001
+Logical tokens are not physical memory
+EDUCATIONAL / REFERENCE
+
+ONE DEVICE ══ weights + KV + live activations + workspace + graph + runtime
+A logical pages ──▶ shared S ◀── B logical pages
+A logical pages ──▶ private A; B logical pages ──▶ private B
+Physical set {S,A,B}: 3 × 64 B = 192 B, not 2 × 128 B = 256 B
+Dense uniform KV example: 2 × 2 × 4 × 1 × 2 × 4 = 128 valid bytes.
+
+Distinguish valid state, reserved capacity and shared allocation ownership before adding
+bytes.
+
+Formula assumes uniform dense K,V tensors; b is stored bytes per element.
+
+The shared-block fixture has 2 tokens per block; each block contains 64 bytes.
+
+Category widths are not proportions. No device capacity or performance is implied.
+
+Fixture: {"layers": 2, "tokens": 4, "kv_heads": 1, "head_dim": 2, "bytes": 4, "shared_blocks":
+1, "private_blocks": [1, 1], "block_bytes": 64}
+
+Source: figures/src/industrial-memory.json
+Implementation/evidence: research/industrial-source-map.md

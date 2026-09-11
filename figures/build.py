@@ -15,6 +15,8 @@ import textwrap
 import xml.etree.ElementTree as ET
 import chapter05
 import chapter06
+import chapter07
+import industrial
 
 ROOT = Path(__file__).resolve().parents[1]
 INK, MUTED, BLUE, TEAL, GOLD = '#152b3c', '#465c6b', '#dcecf7', '#dcefe7', '#f4ead2'
@@ -64,7 +66,11 @@ class Drawing:
 
 def render(s, frame=None):
     d, f, k = Drawing(s), s['fixture'], s['kind']
-    if k.startswith('ch06-'):
+    if k.startswith('ch07-'):
+        chapter07.render(s,d,frame)
+    elif k.startswith('industrial-'):
+        industrial.render(s, d)
+    elif k.startswith('ch06-'):
         chapter06.render(s,d,frame)
     elif k.startswith('tensor-'):
         chapter05.render(s,d,ROOT)
@@ -163,7 +169,10 @@ def render(s, frame=None):
 
 def validate_fixture(s):
     f,k=s['fixture'],s['kind']
-    if k.startswith('ch06-'):
+    if k.startswith('ch07-'):
+        assert f['source']=='code/reference/fixtures/chapter07-visual.json'
+        assert chapter07.fixture()['sums']==[1,5,14,30]
+    elif k.startswith('ch06-'):
         assert f['source']=='code/reference/fixtures/chapter06-visual.json'
         assert chapter06.fixture()['shape']==[3,4,2]
     elif k.startswith('tensor-'):
@@ -207,6 +216,8 @@ def main():
         assert s['caption']==entry['caption'] and s['alt']==entry['alt']
         assert (ROOT/entry['evidence']).is_file()
         if s['legacy']: assert (ROOT/s['legacy']).is_file()
+        if s['kind'].startswith('industrial-'):
+            industrial.validate(s)
         validate_fixture(s)
         svg=render(s); ET.fromstring(svg)
         base='figures/generated/'+s['kind']
@@ -222,7 +233,11 @@ def main():
             'batch':['iteration   0   1   2   3', 'Request A   P   D   D   ·', 'Request B   ·   P   D   D', 'Request C   ·   ·   P   D'],
             'sequence':['API ──▶ submit queue ──▶ worker ──▶ Context::decode_batch', 'API ◀┄┄ sample/stream ◀┄┄ worker ◀┄┄ logits/status', 'Legend: solid call; dashed return; worker owns Context and Batch.'],
             'architecture':['Client ┄┄▶ API ┄┄▶ Dispatcher ┄┄▶ Batched worker [CURRENT]', '                                   │', '                                   ▼', 'parameters ══▶ llama.cpp graph ◀── context / KV state', '                     │', '                     ▼', '             backend ──▶ configured CPU / GPU', 'PREVIEW: paged runtime; LIBRARY: native components; separate integration gates.']}
-        if s['kind'].startswith('ch06-'):
+        if s['kind'].startswith('ch07-'):
+            diagram_lines=[line for raw in chapter07.text_lines(s) for line in (textwrap.wrap(raw,94) or [''])]
+        elif s['kind'].startswith('industrial-'):
+            diagram_lines=industrial.text_lines(s)
+        elif s['kind'].startswith('ch06-'):
             diagram_lines=[line for raw in chapter06.text_lines(s) for line in (textwrap.wrap(raw,94) or [''])]
         else:
             diagram_lines=chapter05.text_lines(s,ROOT) if s['kind'].startswith('tensor-') else maps[s['kind']]

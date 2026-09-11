@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Finite input is only the first gate</title><desc id="desc">Expose square overflow separately from overflow of individually finite squares. Deterministic F32 numerical stress, not a model activation distribution or timing benchmark. Underflow may be accepted; non-finite squares and sums return typed errors.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH07-RANGE  /  CANONICAL / CHAPTER 7</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Finite input is only the first gate</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Expose square overflow separately from overflow of individually finite squares.</text>
+<text x="50" y="211" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">F32 arithmetic / alternating [m, -m] / epsilon = 10⁻⁵</text>
+<rect x="50" y="239" width="175" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">m = 10⁻²⁰</text>
+<line x1="225" y1="261" x2="280" y2="261" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="280.00,261.00 271.00,265.35 271.00,256.65"/>
+<rect x="280" y="239" width="665" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="294" y="268" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">finite square/reduction</text>
+<rect x="50" y="292" width="175" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="321" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">m = 10⁻¹⁰</text>
+<line x1="225" y1="314" x2="280" y2="314" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="280.00,314.00 271.00,318.35 271.00,309.65"/>
+<rect x="280" y="292" width="665" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="294" y="321" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">finite square/reduction</text>
+<rect x="50" y="345" width="175" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="374" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">m = 1</text>
+<line x1="225" y1="367" x2="280" y2="367" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="280.00,367.00 271.00,371.35 271.00,362.65"/>
+<rect x="280" y="345" width="665" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="294" y="374" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">finite square/reduction</text>
+<rect x="50" y="398" width="175" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="427" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">m = 10¹⁰</text>
+<line x1="225" y1="420" x2="280" y2="420" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="280.00,420.00 271.00,424.35 271.00,415.65"/>
+<rect x="280" y="398" width="665" height="44" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="294" y="427" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">finite square/reduction</text>
+<rect x="50" y="451" width="175" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">m = 10²⁰</text>
+<line x1="225" y1="473" x2="280" y2="473" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="280.00,473.00 271.00,477.35 271.00,468.65"/>
+<rect x="280" y="451" width="665" height="44" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="294" y="480" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">ERROR / square overflow</text>
+<rect x="50" y="525" width="895" height="65" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="554" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="555" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Different failure: [10¹⁹,10¹⁹,10¹⁹,10¹⁹] has finite squares but a non-finite sum.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Deterministic F32 numerical stress, not a model activation distribution or timing benchmark.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Underflow may be accepted; non-finite squares and sums return typed errors.</text>
+</svg>

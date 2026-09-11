@@ -1,0 +1,40 @@
+{
+  "id": "FIG-INDUSTRIAL-LATENCY-001",
+  "chapter": 20,
+  "kind": "industrial-latency",
+  "title": "One timeline, four different latency questions",
+  "purpose": "Keep arrival, token emission and terminal completion on the same client-visible clock.",
+  "contract": [
+    "All times are synthetic arithmetic fixtures, not benchmark results.",
+    "N counts output tokens; TPOT averages N − 1 output intervals.",
+    "Report percentile distributions and workload conditions, not only this mean."
+  ],
+  "status": "EDUCATIONAL / REFERENCE",
+  "publication_status": "reference atlas",
+  "code": "research/industrial-source-map.md",
+  "legacy": null,
+  "animate": false,
+  "caption": "Keep arrival, token emission and terminal completion on the same client-visible clock. All times are synthetic arithmetic fixtures, not benchmark results.",
+  "alt": "Keep arrival, token emission and terminal completion on the same client-visible clock. All times are synthetic arithmetic fixtures, not benchmark results. N counts output tokens; TPOT averages N − 1 output intervals. Report percentile distributions and workload conditions, not only this mean.",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "arrival_ms": 0,
+    "token_ms": [
+      120,
+      145,
+      180,
+      205
+    ],
+    "finish_ms": 215,
+    "ttft_ms": 120,
+    "itl_ms": [
+      25,
+      35,
+      25
+    ],
+    "tpot_ms": 28.333333333333332,
+    "e2e_ms": 215
+  }
+}

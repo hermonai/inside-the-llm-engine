@@ -1,0 +1,23 @@
+FIG-INDUSTRIAL-STACK-001
+Three systems cooperate to emit one token
+EDUCATIONAL / REFERENCE
+
+SERVING ── IDs / work ──▶ MODEL PROGRAM ── ops ──▶ EXECUTOR
+EXECUTOR ══ read/write ══ KV STATE; EXECUTOR ── hidden ──▶ LM HEAD
+LM HEAD ── logits ──▶ SAMPLER ── token ──▶ STREAM
+SAMPLER ┄┄ next ID / next iteration ┄┄▶ SERVING
+Prefix reuse and speculative proposals are optional, not serial stages.
+
+Model semantics defines the computation; the engine executes it; serving decides whose work
+runs.
+
+Reference architecture, not a claim that every engine uses this organization.
+
+Weights E[V,D] are parameters; X[T,D] and logits [V] are activations.
+
+KV is persistent state beside execution, not a mandatory serial stage.
+
+Fixture: {"scope": "reference architecture; not a Hermon implementation claim"}
+
+Source: figures/src/industrial-stack.json
+Implementation/evidence: research/industrial-source-map.md

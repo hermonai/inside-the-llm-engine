@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-SOURCE",
+  "chapter": 7,
+  "kind": "ch07-source",
+  "title": "An equation crosses an execution boundary",
+  "purpose": "Compare the teaching operator with source-verified default and preview paths.",
+  "contract": [
+    "CURRENT and PREVIEW denote inspected Hermon routes, not interchangeable implementations.",
+    "CPU GGML precision is revision-specific; no universal accelerator claim is implied."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Compare the teaching operator with source-verified default and preview paths. CURRENT and PREVIEW denote inspected Hermon routes, not interchangeable implementations. CPU GGML precision is revision-specific; no universal accelerator claim is implied.",
+  "alt": "Compare the teaching operator with source-verified default and preview paths. CURRENT and PREVIEW denote inspected Hermon routes, not interchangeable implementations. CPU GGML precision is revision-specific; no universal accelerator claim is implied.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

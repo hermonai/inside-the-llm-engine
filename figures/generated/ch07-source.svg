@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">An equation crosses an execution boundary</title><desc id="desc">Compare the teaching operator with source-verified default and preview paths. CURRENT and PREVIEW denote inspected Hermon routes, not interchangeable implementations. CPU GGML precision is revision-specific; no universal accelerator claim is implied.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH07-SOURCE  /  CANONICAL / CHAPTER 7</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">An equation crosses an execution boundary</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare the teaching operator with source-verified default and preview paths.</text>
+<rect x="50" y="208" width="430" height="166" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="237" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="238" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">CURRENT / Hermon default</text>
+<text x="68" y="272" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Dispatcher selects Batched</text>
+<text x="68" y="299" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">worker → Context::decode_batch</text>
+<text x="68" y="326" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">llama graph → GGML operators</text>
+<text x="68" y="353" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">backend → typed execution</text>
+<rect x="515" y="208" width="430" height="166" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="237" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="238" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">PREVIEW / explicit paged path</text>
+<text x="533" y="272" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">tensor_row_f32 copies host row</text>
+<text x="533" y="299" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Rust rms_norm applies gain</text>
+<text x="533" y="326" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">model construction checks epsilon</text>
+<text x="533" y="353" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">not the default serving route</text>
+<rect x="50" y="419" width="895" height="158" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="448" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="449" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">The same equation does not imply the same numerical implementation</text>
+<text x="68" y="483" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Teaching: strided views; F32 products and sequential F32 sum; typed errors.</text>
+<text x="68" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Pinned GGML CPU: contiguous inner rows; F32 product then double sum.</text>
+<text x="68" y="537" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Storage conversion, graph fusion and device kernels have separate contracts.</text>
+<text x="68" y="564" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Hermon 2a3fd521 / llama.cpp 389ff61d; inspected 2026-09-10.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">CURRENT and PREVIEW denote inspected Hermon routes, not interchangeable implementations.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">CPU GGML precision is revision-specific; no universal accelerator claim is implied.</text>
+</svg>

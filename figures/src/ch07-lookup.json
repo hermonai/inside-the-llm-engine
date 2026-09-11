@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-LOOKUP",
+  "chapter": 7,
+  "kind": "ch07-lookup",
+  "title": "An ID selects a row, not a meaning",
+  "purpose": "Separate learned table capacity from the four values copied for one token.",
+  "contract": [
+    "Canonical E [3,4], strides [4,1], F32; token 1 selects row 1.",
+    "Element offsets [4,5,6,7] correspond to byte displacements [16,20,24,28]."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/embedding.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Separate learned table capacity from the four values copied for one token. Canonical E [3,4], strides [4,1], F32; token 1 selects row 1. Element offsets [4,5,6,7] correspond to byte displacements [16,20,24,28].",
+  "alt": "Separate learned table capacity from the four values copied for one token. Canonical E [3,4], strides [4,1], F32; token 1 selects row 1. Element offsets [4,5,6,7] correspond to byte displacements [16,20,24,28].",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-JOURNEY",
+  "chapter": 7,
+  "kind": "ch07-journey",
+  "title": "From a token identity to a numerical state",
+  "purpose": "Locate embedding and normalization between tokenization and learned projections.",
+  "contract": [
+    "E [3,4] is model-owned; x [4] and y [4] are fresh activation owners.",
+    "F32 teaching fixture; Q/K/V and attention remain outside this chapter."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Locate embedding and normalization between tokenization and learned projections. E [3,4] is model-owned; x [4] and y [4] are fresh activation owners. F32 teaching fixture; Q/K/V and attention remain outside this chapter.",
+  "alt": "Locate embedding and normalization between tokenization and learned projections. E [3,4] is model-owned; x [4] and y [4] are fresh activation owners. F32 teaching fixture; Q/K/V and attention remain outside this chapter.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

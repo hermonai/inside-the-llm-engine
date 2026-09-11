@@ -1,6 +1,10 @@
 # Inside the LLM Engine
 
-## From First Token to Production-Grade Inference
+The [native LaTeX edition](publication/latex/README.md) ships the complete written
+book as `.tex`, with TikZ versions of all semantic plates and geometric legacy
+diagrams. `make -C publication/latex` builds it without publishing text-box graphs.
+
+## From model weights and KV memory to industrial inference serving.
 
 Build and understand an industrial LLM inference engine with Rust, C, GGUF,
 quantization, KV caching, paged attention, continuous batching, SIMD, GPU
@@ -33,8 +37,20 @@ standalone chapter PDFs. The [Chapter 6 visual edition](figures/chapter06-atlas.
 now follows one executable dot/GEMV/GEMM fixture through addresses, loop order,
 tiling, numerical equivalence and production source. Fourteen canonical plates
 and two step sequences retain all three historical benchmark records, including
-losses. Chapter 7 is the next bounded visual regeneration milestone;
-Chapter 8 remains the next new curriculum chapter.
+losses. The [Chapter 7 visual edition](figures/chapter07-atlas.md) adds ten
+canonical plates and an executable two-pass RMSNorm trace. Chapter 8 remains
+the next new curriculum chapter.
+
+Companion: [Training Large Language Models From Scratch](https://github.com/mapleaiorg/llm-train-book),
+*From tokens and gradients to industrial distributed training.* The two books
+meet at a versioned model-artifact contract; see [the boundary](docs/TRAINING_INFERENCE_BOUNDARY.md).
+
+The [industrial architecture recalibration](docs/INDUSTRIAL_CURRICULUM_AUDIT.md)
+preserves those milestones and proposes stronger compiler, adapter, structured
+decoding and distributed-systems coverage. Read the four new
+[reference architecture plates](figures/industrial-atlas.md) or the
+[94-chapter illustration plan](figures/CHAPTER_ILLUSTRATION_PLAN.md).
+These planning/reference artifacts do not mark future chapters complete.
 
 ```text
                          INSIDE THE LLM ENGINE

@@ -1,0 +1,27 @@
+{
+  "id": "FIG-CH07-PASSES",
+  "chapter": 7,
+  "kind": "ch07-passes",
+  "title": "One reduction, then four output coordinates",
+  "purpose": "Follow every square and partial sum before broadcasting the reciprocal RMS.",
+  "contract": [
+    "x [4] and learned w [4] are immutable; epsilon = 1e-5 is inside the root.",
+    "Products, sums and output are F32; y [4] has canonical owned storage."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": null,
+  "animate": true,
+  "caption": "Follow every square and partial sum before broadcasting the reciprocal RMS. x [4] and learned w [4] are immutable; epsilon = 1e-5 is inside the root. Products, sums and output are F32; y [4] has canonical owned storage.",
+  "alt": "Follow every square and partial sum before broadcasting the reciprocal RMS. x [4] and learned w [4] are immutable; epsilon = 1e-5 is inside the root. Products, sums and output are F32; y [4] has canonical owned storage.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  },
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "FIG-INDUSTRIAL-STACK-001",
+  "chapter": 1,
+  "kind": "industrial-stack",
+  "title": "Three systems cooperate to emit one token",
+  "purpose": "Model semantics defines the computation; the engine executes it; serving decides whose work runs.",
+  "contract": [
+    "Reference architecture, not a claim that every engine uses this organization.",
+    "Weights E[V,D] are parameters; X[T,D] and logits [V] are activations.",
+    "KV is persistent state beside execution, not a mandatory serial stage."
+  ],
+  "status": "EDUCATIONAL / REFERENCE",
+  "publication_status": "reference atlas",
+  "code": "research/industrial-source-map.md",
+  "legacy": null,
+  "animate": false,
+  "caption": "Model semantics defines the computation; the engine executes it; serving decides whose work runs. Reference architecture, not a claim that every engine uses this organization.",
+  "alt": "Model semantics defines the computation; the engine executes it; serving decides whose work runs. Reference architecture, not a claim that every engine uses this organization. Weights E[V,D] are parameters; X[T,D] and logits [V] are activations. KV is persistent state beside execution, not a mandatory serial stage.",
+  "frames": [
+    0
+  ],
+  "fixture": {
+    "scope": "reference architecture; not a Hermon implementation claim"
+  }
+}

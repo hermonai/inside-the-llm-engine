@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-SEQUENCE",
+  "chapter": 7,
+  "kind": "ch07-sequence",
+  "title": "Equal tokens do not share mutable activations",
+  "purpose": "Preserve token order and repetition when gathering a sequence into new storage.",
+  "contract": [
+    "Tokens [1,0,1] produce canonical X [3,4] with strides [4,1].",
+    "Rows 0 and 2 have equal values, but mutating one cannot mutate the other."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/embedding.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Preserve token order and repetition when gathering a sequence into new storage. Tokens [1,0,1] produce canonical X [3,4] with strides [4,1]. Rows 0 and 2 have equal values, but mutating one cannot mutate the other.",
+  "alt": "Preserve token order and repetition when gathering a sequence into new storage. Tokens [1,0,1] produce canonical X [3,4] with strides [4,1]. Rows 0 and 2 have equal values, but mutating one cannot mutate the other.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

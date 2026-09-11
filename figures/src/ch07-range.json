@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-RANGE",
+  "chapter": 7,
+  "kind": "ch07-range",
+  "title": "Finite input is only the first gate",
+  "purpose": "Expose square overflow separately from overflow of individually finite squares.",
+  "contract": [
+    "Deterministic F32 numerical stress, not a model activation distribution or timing benchmark.",
+    "Underflow may be accepted; non-finite squares and sums return typed errors."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Expose square overflow separately from overflow of individually finite squares. Deterministic F32 numerical stress, not a model activation distribution or timing benchmark. Underflow may be accepted; non-finite squares and sums return typed errors.",
+  "alt": "Expose square overflow separately from overflow of individually finite squares. Deterministic F32 numerical stress, not a model activation distribution or timing benchmark. Underflow may be accepted; non-finite squares and sums return typed errors.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

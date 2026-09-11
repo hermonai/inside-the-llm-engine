@@ -1,0 +1,22 @@
+FIG-INDUSTRIAL-OWNERSHIP-001
+Follow the owner before freeing the byte
+EDUCATIONAL / REFERENCE
+
+MODEL owns weights ── borrowed by ──▶ EXECUTOR
+SCHEDULER ┄┄ selects ┄┄▶ SEQUENCE owns logical handles
+SEQUENCE ── references ──▶ KV MANAGER owns physical pages
+STREAM disconnect ┄┄▶ retire sequence ┄┄▶ wait for work completion
+completion ┄┄▶ release references; free only at zero references
+
+Separate logical sequence state, shared physical storage and asynchronous device lifetimes.
+
+Solid = reference or data access; dashed = control / lifecycle signal.
+
+State ownership shown here is a design contract, not a Rust type declaration.
+
+Cancellation requests retirement; completion and refcounts determine safe reclamation.
+
+Fixture: {"scope": "reference architecture; not a Hermon implementation claim"}
+
+Source: figures/src/industrial-ownership.json
+Implementation/evidence: research/industrial-source-map.md

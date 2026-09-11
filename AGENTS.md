@@ -3,13 +3,13 @@
 Visual regeneration is now a separate bounded workstream. Read
 `ASTRA_REGENERATION_PLAN.md` and `figures/VISUAL_LANGUAGE.md` before visual
 changes. The first milestone established prototypes and builds; the visual
-pilots for Chapters 5 and 6 are now complete. Neither completes Chapter 8 or
+pilots for Chapters 5, 6 and 7 are now complete. Neither completes Chapter 8 or
 regenerates all chapters. Preserve the pre-existing Chapter 8 research and working-tree status
-changes. Next regeneration pilot: Chapter 7, before completing Chapter 8.
+changes. Next bounded curriculum task: Chapter 8, with native vector illustrations.
 
 Read this file, `docs/STATUS.md`, `docs/ROADMAP.md`, and `git status` before
-working. This repository is the open book **Inside the LLM Engine: From First
-Token to Production-Grade Inference**. Its mission is to take a programmer from
+working. This repository is the open book **Inside the LLM Engine: From model
+weights and KV memory to industrial inference serving**. Its mission is to take a programmer from
 the first token through the design, implementation, verification, measurement,
 and operation of a production-grade inference engine.
 
@@ -113,14 +113,14 @@ Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
 progress: Chapters 5–7, Tensor Substrate v1, ENGINE-2's checked reference and
 blocked scalar kernels, Transformer Primitives v1, Labs 16–38, 78 canonical
 Unicode text diagrams, and the Chapter 1–6 diagram/math retrofit are complete.
-The full suite contains 173 unit/integration tests and two compile-fail doctests.
+The full suite contains 178 unit/integration tests and two compile-fail doctests.
 The authoritative state and next task are in
 `docs/STATUS.md`.
 
-The active visual workstream's next bounded task is Chapter 7 embeddings and
-normalization: preserve existing operators/oracles and stress evidence, then
-connect token identity, table storage, activation ownership and the two-pass
-RMSNorm computation. Follow pass D in `ASTRA_REGENERATION_PLAN.md`. Chapter 6
+Chapter 7 visual regeneration is complete: ten canonical plates connect token
+identity, table storage, activation ownership and two-pass RMSNorm, with an
+independent oracle and checked fixture. Pass D in `ASTRA_REGENERATION_PLAN.md`
+is complete. Chapter 6
 now has fourteen canonical vector plates, two step sequences and executable
 Rust/Python/figure/source parity; its three historical benchmark records remain
 unchanged. Do not turn either visual pilot into new attention or QKV work.

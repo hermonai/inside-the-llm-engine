@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH07-EPSILON",
+  "chapter": 7,
+  "kind": "ch07-epsilon",
+  "title": "A small constant changes the function",
+  "purpose": "Distinguish defined zero-vector behavior from invalid configuration and tiny signals.",
+  "contract": [
+    "The teaching API requires finite positive epsilon. Zero input gives zero output.",
+    "Exact scale invariance does not hold with fixed positive epsilon."
+  ],
+  "status": "CANONICAL / CHAPTER 7",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/normalization.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Distinguish defined zero-vector behavior from invalid configuration and tiny signals. The teaching API requires finite positive epsilon. Zero input gives zero output. Exact scale invariance does not hold with fixed positive epsilon.",
+  "alt": "Distinguish defined zero-vector behavior from invalid configuration and tiny signals. The teaching API requires finite positive epsilon. Zero input gives zero output. Exact scale invariance does not hold with fixed positive epsilon.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter07-visual.json"
+  }
+}

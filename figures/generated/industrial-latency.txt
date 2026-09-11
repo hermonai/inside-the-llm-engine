@@ -1,0 +1,21 @@
+FIG-INDUSTRIAL-LATENCY-001
+One timeline, four different latency questions
+EDUCATIONAL / REFERENCE
+
+arrival 0 ──▶ token 1:120 ──▶ 2:145 ──▶ 3:180 ──▶ 4:205 ──▶ done:215
+TTFT = 120 ms; ITLs = 25, 35, 25 ms; TPOT = 85/3 ms; E2E = 215 ms
+Measure output tokens on one clock; network chunks are not necessarily tokens.
+
+Keep arrival, token emission and terminal completion on the same client-visible clock.
+
+All times are synthetic arithmetic fixtures, not benchmark results.
+
+N counts output tokens; TPOT averages N − 1 output intervals.
+
+Report percentile distributions and workload conditions, not only this mean.
+
+Fixture: {"arrival_ms": 0, "token_ms": [120, 145, 180, 205], "finish_ms": 215, "ttft_ms": 120,
+"itl_ms": [25, 35, 25], "tpot_ms": 28.333333333333332, "e2e_ms": 215}
+
+Source: figures/src/industrial-latency.json
+Implementation/evidence: research/industrial-source-map.md

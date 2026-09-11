@@ -15,6 +15,13 @@ manifest validation, an atlas, and PDF/HTML builds. Commit on
 
 ## Chapter regeneration order
 
+Architecture recalibration (2026-09-10): the
+[industrial audit](docs/INDUSTRIAL_CURRICULUM_AUDIT.md) and
+[migration proposal](docs/INDUSTRIAL_ARCHITECTURE_MIGRATION.md) add a
+source-backed industrial coverage map and four reference plates. They do not
+change canonical chapter states or the bounded order below. The proposed
+Chapter 84-before-83 reading order requires a later reviewed outline migration.
+
 Pass B is COMPLETE (2026-09-07): eight embedded canonical plates, executable
 Rust/Python/fixture parity, actual ownership UML, six added Rust checks,
 updated Labs 16-21 and vector PDF/offline HTML publication. See the
@@ -25,13 +32,18 @@ plates, two accessible step sequences, one executable numerical/address fixture,
 six added tests, repaired operand edges, fresh source-status/orientation evidence,
 and a 33-page standalone visual edition. Historical performance records retain
 their losses and original pins. See the
-[Chapter 6 review](research/astra/chapter06-regeneration.md). Pass D is next.
+[Chapter 6 review](research/astra/chapter06-regeneration.md).
+
+Pass D completes the Chapter 7 visual edition: ten canonical plates, one
+four-step numerical sequence, five added tests, Rust/Python/address parity and
+standalone PDF/offline publication. See the [review](research/astra/chapter07-regeneration.md).
+Pass E, the new QKV chapter, is next; no attention work is bundled into Pass D.
 
 | Pass | Work | Exit gate |
 | --- | --- | --- |
 | B | Chapter 5 tensor pilot — COMPLETE | One matrix survives logical/physical/transpose/copy sequence; actual Rust UML; five parity reviews; static PDF complete |
 | C | Chapter 6 matrix pilot — COMPLETE | Independent input edges; executable numerical/address sequence; measured locality evidence; source-backed CPU/GPU distinction; vector/offline publication |
-| D | Chapter 7 normalization | Two-pass numerical sequence, epsilon/overflow plates; unchanged oracle and stress tests |
+| D | Chapter 7 normalization — COMPLETE | Ten vector plates, two-pass sequence, epsilon curve and overflow gates; unchanged operators and historical stress tests |
 | E | Complete Chapter 8 | Reuse preserved research; checked QKV/head API, independent oracle, tests, labs, prose and figures; no attention yet |
 | F | Chapters 1–4 | Progressive architecture, bytes, historical tiny model, sampling and lifecycle; retain all regressions |
 | G | Chapters 9–13 | Position then attention then FFN then block then stack; prototype designs become canonical only after reference/oracle parity |
