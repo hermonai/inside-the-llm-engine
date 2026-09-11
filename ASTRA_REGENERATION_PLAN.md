@@ -1,8 +1,8 @@
 # Visual regeneration plan
 
-This plan is the active regeneration workstream. `docs/STATUS.md` retains the
-in-progress Chapter 8 work exactly as it arrived; that chapter is still
-RESEARCHING. Existing COMPLETE milestones remain historical achievements,
+This plan is the active regeneration workstream. `docs/STATUS.md` records
+Chapter 8's completed QKV milestone (2026-09-12). Its original research was
+preserved, refreshed and implemented. Existing COMPLETE milestones remain historical achievements,
 not assertions that they have passed the new visual gates.
 
 ## Milestone A: audit and prototype system
@@ -37,14 +37,19 @@ their losses and original pins. See the
 Pass D completes the Chapter 7 visual edition: ten canonical plates, one
 four-step numerical sequence, five added tests, Rust/Python/address parity and
 standalone PDF/offline publication. See the [review](research/astra/chapter07-regeneration.md).
-Pass E, the new QKV chapter, is next; no attention work is bundled into Pass D.
+Pass E, the new QKV chapter, is COMPLETE: 15 Rust tests, an independent full
+component oracle, ten canonical SVG/TikZ plates, Labs 39–48, a 19-page chapter
+and a 169-page native ebook. No position or attention work is bundled into it.
+The next new curriculum chapter is Chapter 9 per `docs/STATUS.md`; detailed
+Chapters 1–4 visual regeneration remains a separate pending pass, not a reason
+to claim those older plates have already received the same editorial redesign.
 
 | Pass | Work | Exit gate |
 | --- | --- | --- |
 | B | Chapter 5 tensor pilot — COMPLETE | One matrix survives logical/physical/transpose/copy sequence; actual Rust UML; five parity reviews; static PDF complete |
 | C | Chapter 6 matrix pilot — COMPLETE | Independent input edges; executable numerical/address sequence; measured locality evidence; source-backed CPU/GPU distinction; vector/offline publication |
 | D | Chapter 7 normalization — COMPLETE | Ten vector plates, two-pass sequence, epsilon curve and overflow gates; unchanged operators and historical stress tests |
-| E | Complete Chapter 8 | Reuse preserved research; checked QKV/head API, independent oracle, tests, labs, prose and figures; no attention yet |
+| E | Chapter 8 — COMPLETE | Preserved research implemented; checked QKV/head API, independent oracle, tests, labs, prose and ten native-vector figures; no attention yet |
 | F | Chapters 1–4 | Progressive architecture, bytes, historical tiny model, sampling and lifecycle; retain all regressions |
 | G | Chapters 9–13 | Position then attention then FFN then block then stack; prototype designs become canonical only after reference/oracle parity |
 | H | Parts III–VI | File bytes and packed weights, profiling, dense KV then paging, request state then batching; measured claims gated |

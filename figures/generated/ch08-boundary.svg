@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Raw QKV does not know the position</title><desc id="desc">Show why equal input vectors produce equal raw projections at different labels. Same normalized values and weights produce the same output, in fresh owners. Later contextual inputs may already differ. RoPE, attention and caching are deferred.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-BOUNDARY  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Raw QKV does not know the position</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Show why equal input vectors produce equal raw projections at different labels.</text>
+<rect x="50" y="211" width="300" height="105" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="240" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="241" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">External label / position 0</text>
+<text x="68" y="275" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">same x̂ and same weights</text>
+<rect x="435" y="211" width="230" height="105" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="449" y="240" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="453" y="241" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Raw projection</text>
+<text x="453" y="275" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">no position input</text>
+<rect x="750" y="211" width="195" height="105" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="764" y="240" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="768" y="241" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Same Q/K/V</text>
+<text x="768" y="275" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">fresh owners</text>
+<line x1="350" y1="263" x2="435" y2="263" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="435.00,263.00 426.00,267.35 426.00,258.65"/>
+<line x1="665" y1="263" x2="750" y2="263" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="750.00,263.00 741.00,267.35 741.00,258.65"/>
+<rect x="50" y="355" width="300" height="105" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="384" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="385" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">External label / position 7</text>
+<text x="68" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">same x̂ and same weights</text>
+<rect x="435" y="355" width="230" height="105" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="449" y="384" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="453" y="385" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Raw projection</text>
+<text x="453" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">no position input</text>
+<rect x="750" y="355" width="195" height="105" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="764" y="384" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="768" y="385" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Same Q/K/V</text>
+<text x="768" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">fresh owners</text>
+<line x1="350" y1="407" x2="435" y2="407" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="435.00,407.00 426.00,411.35 426.00,402.65"/>
+<line x1="665" y1="407" x2="750" y2="407" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="750.00,407.00 741.00,411.35 741.00,402.65"/>
+<rect x="50" y="524" width="895" height="65" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="553" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="554" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">NEXT / RoPE adds an explicit position-dependent transformation to Q and K.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Same normalized values and weights produce the same output, in fresh owners.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Later contextual inputs may already differ. RoPE, attention and caching are deferred.</text>
+</svg>

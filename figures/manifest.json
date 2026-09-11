@@ -1,6 +1,216 @@
 {
   "version": 1,
   "figures": [
+  {
+    "id": "FIG-CH08-JOURNEY",
+    "chapter": 8,
+    "title": "One activation, three learned maps",
+    "purpose": "Follow a normalized token through projections into head-major activation storage.",
+    "concepts": [
+      "journey",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-journey.json",
+    "generated": [
+      "figures/generated/ch08-journey.svg",
+      "figures/generated/ch08-journey.txt"
+    ],
+    "caption": "Follow a normalized token through projections into head-major activation storage. Q uses Hq heads; K and V each use Hkv heads. All use width Dh. Model parameters are immutable; projections create F32 activation owners.",
+    "alt": "Follow a normalized token through projections into head-major activation storage. Q uses Hq heads; K and V each use Hkv heads. All use width Dh. Model parameters are immutable; projections create F32 activation owners.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-TRACE",
+    "chapter": 8,
+    "title": "Compute a query coordinate from its causes",
+    "purpose": "Trace one non-identity weight row through products and an ordered sum.",
+    "concepts": [
+      "trace",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-trace.json",
+    "generated": [
+      "figures/generated/ch08-trace.svg",
+      "figures/generated/ch08-trace.txt"
+    ],
+    "caption": "Trace one non-identity weight row through products and an ordered sum. Hand fixture x=[1,-2,3,-4], Wq first row=[1,0,2,0]; q[0]=7. Chapter 6 GEMV performs F32 products and increasing-index F32 accumulation.",
+    "alt": "Trace one non-identity weight row through products and an ordered sum. Hand fixture x=[1,-2,3,-4], Wq first row=[1,0,2,0]; q[0]=7. Chapter 6 GEMV performs F32 products and increasing-index F32 accumulation.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-HEADS",
+    "chapter": 8,
+    "title": "Heads are a view of projected coordinates",
+    "purpose": "Locate every head coordinate in the same four-element activation payload.",
+    "concepts": [
+      "heads",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-heads.json",
+    "generated": [
+      "figures/generated/ch08-heads.svg",
+      "figures/generated/ch08-heads.txt"
+    ],
+    "caption": "Locate every head coordinate in the same four-element activation payload. Canonical Q [2,2], element strides [2,1]; head h starts at 2h. F32 byte displacement is four times the element offset; no copy is implied.",
+    "alt": "Locate every head coordinate in the same four-element activation payload. Canonical Q [2,2], element strides [2,1]; head h starts at 2h. F32 byte displacement is four times the element offset; no copy is implied.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-OWNERS",
+    "chapter": 8,
+    "title": "Parameters persist; activations belong to a call",
+    "purpose": "Separate shared model weights, borrowed inputs and independent output lifetimes.",
+    "concepts": [
+      "owners",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-owners.json",
+    "generated": [
+      "figures/generated/ch08-owners.svg",
+      "figures/generated/ch08-owners.txt"
+    ],
+    "caption": "Separate shared model weights, borrowed inputs and independent output lifetimes. Q/K/V own independent Vec payloads; head views borrow those outputs. into_parts transfers ownership without copying payload; no KV cache exists yet.",
+    "alt": "Separate shared model weights, borrowed inputs and independent output lifetimes. Q/K/V own independent Vec payloads; head views borrow those outputs. into_parts transfers ownership without copying payload; no KV cache exists yet.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-GEOMETRY",
+    "chapter": 8,
+    "title": "Fewer KV heads; still distinct queries",
+    "purpose": "Compare MHA, GQA and MQA with four query heads held fixed.",
+    "concepts": [
+      "geometry",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-geometry.json",
+    "generated": [
+      "figures/generated/ch08-geometry.svg",
+      "figures/generated/ch08-geometry.txt"
+    ],
+    "caption": "Compare MHA, GQA and MQA with four query heads held fixed. Equal-width head model; Hq must be divisible by Hkv; group size is Hq/Hkv. Dashed links explain future attention association, not copying or averaging.",
+    "alt": "Compare MHA, GQA and MQA with four query heads held fixed. Equal-width head model; Hq must be divisible by Hkv; group size is Hq/Hkv. Dashed links explain future attention association, not copying or averaging.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-SEQUENCE",
+    "chapter": 8,
+    "title": "Same projection, different workload shape",
+    "purpose": "Contrast implemented one-token GEMV with a derived multi-token matrix product.",
+    "concepts": [
+      "sequence",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-sequence.json",
+    "generated": [
+      "figures/generated/ch08-sequence.svg",
+      "figures/generated/ch08-sequence.txt"
+    ],
+    "caption": "Contrast implemented one-token GEMV with a derived multi-token matrix product. Our operator accepts one [D] vector only. Sequence GEMM is conceptual here. A token/head permutation changes strides; metadata reshape is not a transpose.",
+    "alt": "Contrast implemented one-token GEMV with a derived multi-token matrix product. Our operator accepts one [D] vector only. Sequence GEMM is conceptual here. A token/head permutation changes strides; metadata reshape is not a transpose.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-PACKING",
+    "chapter": 8,
+    "title": "Bundled is not necessarily fused",
+    "purpose": "Distinguish graph submission, packed storage and physical kernel fusion.",
+    "concepts": [
+      "packing",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-packing.json",
+    "generated": [
+      "figures/generated/ch08-packing.svg",
+      "figures/generated/ch08-packing.txt"
+    ],
+    "caption": "Distinguish graph submission, packed storage and physical kernel fusion. Separate, bundled and concatenated describe different implementation choices. Concatenated output widths are Pq, Pkv, Pkv; equal-thirds splitting fails for GQA.",
+    "alt": "Distinguish graph submission, packed storage and physical kernel fusion. Separate, bundled and concatenated describe different implementation choices. Concatenated output widths are Pq, Pkv, Pkv; equal-thirds splitting fails for GQA.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-COST",
+    "chapter": 8,
+    "title": "Head geometry is a memory decision",
+    "purpose": "Count parameters, arithmetic and future KV payload without inventing speedups.",
+    "concepts": [
+      "cost",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-cost.json",
+    "generated": [
+      "figures/generated/ch08-cost.svg",
+      "figures/generated/ch08-cost.txt"
+    ],
+    "caption": "Count parameters, arithmetic and future KV payload without inventing speedups. Analytical counting convention: two FLOPs per multiply/add; no bias or output projection. Illustrative KV storage is F16; it is not an implemented cache or measured traffic.",
+    "alt": "Count parameters, arithmetic and future KV payload without inventing speedups. Analytical counting convention: two FLOPs per multiply/add; no bias or output projection. Illustrative KV storage is F16; it is not an implemented cache or measured traffic.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-BOUNDARY",
+    "chapter": 8,
+    "title": "Raw QKV does not know the position",
+    "purpose": "Show why equal input vectors produce equal raw projections at different labels.",
+    "concepts": [
+      "boundary",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-boundary.json",
+    "generated": [
+      "figures/generated/ch08-boundary.svg",
+      "figures/generated/ch08-boundary.txt"
+    ],
+    "caption": "Show why equal input vectors produce equal raw projections at different labels. Same normalized values and weights produce the same output, in fresh owners. Later contextual inputs may already differ. RoPE, attention and caching are deferred.",
+    "alt": "Show why equal input vectors produce equal raw projections at different labels. Same normalized values and weights produce the same output, in fresh owners. Later contextual inputs may already differ. RoPE, attention and caching are deferred.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
+  {
+    "id": "FIG-CH08-SOURCE",
+    "chapter": 8,
+    "title": "Verify the route before naming the kernel",
+    "purpose": "Keep default serving, preview graph bundles and tensor representation distinct.",
+    "concepts": [
+      "source",
+      "QKV",
+      "head geometry"
+    ],
+    "source": "figures/src/ch08-source.json",
+    "generated": [
+      "figures/generated/ch08-source.svg",
+      "figures/generated/ch08-source.txt"
+    ],
+    "caption": "Keep default serving, preview graph bundles and tensor representation distinct. CURRENT and PREVIEW are pinned source findings, not new production benchmark results. Hermon 2a3fd521 and llama.cpp 389ff61d were inspected on 2026-09-11.",
+    "alt": "Keep default serving, preview graph bundles and tensor representation distinct. CURRENT and PREVIEW are pinned source findings, not new production benchmark results. Hermon 2a3fd521 and llama.cpp 389ff61d were inspected on 2026-09-11.",
+    "evidence": "research/part-02/chapter-08-queries-keys-and-values.md",
+    "animation": null,
+    "publication_status": "canonical"
+  },
     {
       "id": "FIG-CH07-JOURNEY",
       "chapter": 7,

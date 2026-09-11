@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Head geometry is a memory decision</title><desc id="desc">Count parameters, arithmetic and future KV payload without inventing speedups. Analytical counting convention: two FLOPs per multiply/add; no bias or output projection. Illustrative KV storage is F16; it is not an implemented cache or measured traffic.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-COST  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Head geometry is a memory decision</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Count parameters, arithmetic and future KV payload without inventing speedups.</text>
+<text x="50" y="209" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">ANALYTICAL / D = 4096, Hq = 32, Dh = 128; bias-free</text>
+<text x="50" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Geometry</text>
+<text x="255" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Parameters</text>
+<text x="490" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">FLOPs / token</text>
+<text x="755" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">KV / token / layer</text>
+<rect x="50" y="278" width="895" height="62" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="307" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="66" y="316" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">MHA / 32</text>
+<text x="255" y="316" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">50,331,648</text>
+<text x="490" y="316" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">100,663,296</text>
+<text x="755" y="316" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">16,384 B</text>
+<rect x="50" y="353" width="895" height="62" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="382" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="66" y="391" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">GQA / 8</text>
+<text x="255" y="391" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">25,165,824</text>
+<text x="490" y="391" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">50,331,648</text>
+<text x="755" y="391" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">4,096 B</text>
+<rect x="50" y="428" width="895" height="62" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="66" y="466" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">MQA / 1</text>
+<text x="255" y="466" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">17,825,792</text>
+<text x="490" y="466" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">35,651,584</text>
+<text x="755" y="466" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">512 B</text>
+<rect x="50" y="528" width="895" height="63" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="557" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="558" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">KV uses F16 here; teaching activations are F32. Counts are not measured speed.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Analytical counting convention: two FLOPs per multiply/add; no bias or output projection.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Illustrative KV storage is F16; it is not an implemented cache or measured traffic.</text>
+</svg>

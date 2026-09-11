@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-OWNERS",
+  "chapter": 8,
+  "kind": "ch08-owners",
+  "title": "Parameters persist; activations belong to a call",
+  "purpose": "Separate shared model weights, borrowed inputs and independent output lifetimes.",
+  "contract": [
+    "Q/K/V own independent Vec payloads; head views borrow those outputs.",
+    "into_parts transfers ownership without copying payload; no KV cache exists yet."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Separate shared model weights, borrowed inputs and independent output lifetimes. Q/K/V own independent Vec payloads; head views borrow those outputs. into_parts transfers ownership without copying payload; no KV cache exists yet.",
+  "alt": "Separate shared model weights, borrowed inputs and independent output lifetimes. Q/K/V own independent Vec payloads; head views borrow those outputs. into_parts transfers ownership without copying payload; no KV cache exists yet.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}

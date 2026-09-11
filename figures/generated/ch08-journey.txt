@@ -1,0 +1,21 @@
+FIG-CH08-JOURNEY
+One activation, three learned maps
+CANONICAL / CHAPTER 8
+
+Follow a normalized token through projections into head-major activation storage.
+Q uses Hq heads; K and V each use Hkv heads. All use width Dh.
+Model parameters are immutable; projections create F32 activation owners.
+Raw fixture: {'query': [[7.0, 2.0], [-2.0, -3.0]], 'key': [[1.0, -3.0], [3.0, 3.5]], 'value':
+[[-3.0, -1.0], [0.5, -2.0]]}
+Each head borrows its activation owner. No position or attention executes.
+
+Follow a normalized token through projections into head-major activation storage.
+
+Q uses Hq heads; K and V each use Hkv heads. All use width Dh.
+
+Model parameters are immutable; projections create F32 activation owners.
+
+Fixture: {"source": "code/reference/fixtures/chapter08-qkv.json"}
+
+Source: figures/src/ch08-journey.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/qkv.rs

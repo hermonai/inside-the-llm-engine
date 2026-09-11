@@ -1,5 +1,5 @@
 {
-  "canonical_and_reference_plates": 45,
+  "canonical_and_reference_plates": 55,
   "legacy_vector_diagrams": 28,
   "files": [
     "figures/architecture.tex",
@@ -30,6 +30,16 @@
     "figures/ch07-range.tex",
     "figures/ch07-sequence.tex",
     "figures/ch07-source.tex",
+    "figures/ch08-boundary.tex",
+    "figures/ch08-cost.tex",
+    "figures/ch08-geometry.tex",
+    "figures/ch08-heads.tex",
+    "figures/ch08-journey.tex",
+    "figures/ch08-owners.tex",
+    "figures/ch08-packing.tex",
+    "figures/ch08-sequence.tex",
+    "figures/ch08-source.tex",
+    "figures/ch08-trace.tex",
     "figures/gemv.tex",
     "figures/heads.tex",
     "figures/industrial-latency.tex",

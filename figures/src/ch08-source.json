@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-SOURCE",
+  "chapter": 8,
+  "kind": "ch08-source",
+  "title": "Verify the route before naming the kernel",
+  "purpose": "Keep default serving, preview graph bundles and tensor representation distinct.",
+  "contract": [
+    "CURRENT and PREVIEW are pinned source findings, not new production benchmark results.",
+    "Hermon 2a3fd521 and llama.cpp 389ff61d were inspected on 2026-09-11."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Keep default serving, preview graph bundles and tensor representation distinct. CURRENT and PREVIEW are pinned source findings, not new production benchmark results. Hermon 2a3fd521 and llama.cpp 389ff61d were inspected on 2026-09-11.",
+  "alt": "Keep default serving, preview graph bundles and tensor representation distinct. CURRENT and PREVIEW are pinned source findings, not new production benchmark results. Hermon 2a3fd521 and llama.cpp 389ff61d were inspected on 2026-09-11.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}

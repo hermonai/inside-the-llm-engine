@@ -42,3 +42,4 @@ cleanup. The portfolio ledger is [`docs/LABS.md`](../docs/LABS.md).
 - [Lab 36 — RMSNorm Scale Experiment](lab-36-rmsnorm-scale-experiment.md)
 - [Lab 37 — RMSNorm Magnitude Stress](lab-37-rmsnorm-magnitude-stress.md)
 - [Lab 38 — Compare Rust Against the Python Oracle](lab-38-rust-python-rmsnorm.md)
+- [Labs 39–48 — QKV Projection Workbench](lab-39-qkv-projection-workbench.md)

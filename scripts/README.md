@@ -14,7 +14,10 @@ Clippy, and all repository checks run in the lightweight CI workflow.
 its full output and address metadata with an independent F32 Python oracle.
 It additionally checks contribution/tail enumeration, pinned annotation values,
 four actual Rust source excerpts and fourteen embedded canonical figures.
-`check-figure-browser.cjs` exercises all five step sequences, offline Chapters
-5/6 images and MathML, keyboard/reduced-motion controls, three viewport widths,
-and Chapter 6 SVG text bounds. Publication structure and visual review helpers
+`check-qkv-visual-parity.py` compares full raw/composed Rust projections with
+the independent Chapter 8 oracle, including the borrowed head, offsets,
+analytical costs, ten scene links and deliberately corrupted candidates.
+`check-figure-browser.cjs` exercises all six step sequences, offline Chapters
+5/6/7/8 images and MathML, keyboard/reduced-motion controls, three viewport widths,
+SVG text bounds and Chapter 8 panel-border crossings. Publication structure and visual review helpers
 are documented in `docs/FIGURE_BUILD.md`.

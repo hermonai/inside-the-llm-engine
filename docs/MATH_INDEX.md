@@ -31,5 +31,11 @@ The identifiers are semantic and stable even if manuscript line numbers move.
 | `RMSNORM` | $y_i=x_iw_i/\sqrt{D^{-1}\sum_jx_j^2+\epsilon}$ | 7 | Defines epsilon-inside-root rescaling followed by learned element-wise scale. |
 | `RMSNORM-PAYLOAD` | $Q\approx16D$ bytes | 7 | Models two input reads, one weight read, and one output write for F32 payload. |
 
+| `QKV-PROJECTION` | $\mathbf{q}=\mathbf{W}_Q\widehat{\mathbf{x}}$ | 8 | Three bias-free learned maps; [mechanism](../figures/generated/ch08-trace.svg). |
+| `HEAD-OFFSET` | $o(h,j)=hD_h+j$ | 8 | Head-major element offset, distinct from bytes; [plate](../figures/generated/ch08-heads.svg). |
+| `GQA-GROUP` | $g(h)=\lfloor h/G\rfloor$ | 8 | Future contiguous query-to-KV association, not executed by projection. |
+| `QKV-WORK` | $F=2D(P_Q+2P_{KV})$ FLOPs | 8 | Declared multiply/add counting convention; not timing. |
+| `KV-PAYLOAD` | $B=2LTH_{kv}D_hs$ bytes | 8 / later cache chapters | Analytical future dense K/V payload; excludes metadata and workspace. |
+
 Local symbol tables in each chapter remain authoritative for scope-specific
 meaning. See [`MATH_STYLE.md`](MATH_STYLE.md) for notation and review rules.

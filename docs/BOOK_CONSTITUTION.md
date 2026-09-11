@@ -90,11 +90,12 @@ template, then pass equivalence tests.
 
 ## Diagrams and prose
 
-Core architecture must remain understandable in plain Markdown, terminals,
-editors, AI context windows, and print. Prefer polished Unicode box-drawing
-text with defined arrow meanings; show state, ownership, concurrency, and
-residency. Keep a monospaced, color-free representation that needs no external
-renderer. `DIAGRAM_STYLE.md` defines the grammar and inventory contract;
+Publication decision, requested 2026-09-11: ship editable native LaTeX/TikZ
+illustrations with typeset equations, rather than character-box graphs.
+Show state, ownership, concurrency and residency with explicit edge meanings.
+Maintain useful text descriptions and historical Unicode semantic sources for
+Markdown, terminals and AI context; these are not the preferred print plates.
+`DIAGRAM_STYLE.md` defines the visual and legacy inventory contracts;
 `MATH_STYLE.md` defines notation, shapes, units, and numerical evidence. The
 voice is technical, direct, concrete, curious, and never
 mystical or condescending.

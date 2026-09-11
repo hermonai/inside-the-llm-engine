@@ -22,7 +22,7 @@ Milestone: ENGINE-0 / ENGINE-1.
 5. [Tensors Without Magic](manuscript/part-02/chapter-05-tensors-without-magic.md)
 6. [Matrix Multiplication: The Engine Room](manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
 7. [Embeddings and Normalization](manuscript/part-02/chapter-07-embeddings-and-normalization.md)
-8. Queries, Keys, and Values
+8. [Queries, Keys, and Values](manuscript/part-02/chapter-08-queries-keys-and-values.md)
 9. Position: RoPE From First Principles
 10. Causal Self-Attention
 11. The Feed-Forward Network

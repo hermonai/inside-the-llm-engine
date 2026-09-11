@@ -33,7 +33,7 @@ const fs = require('node:fs');
   // Both canonical chapters must remain readable offline with embedded vectors.
   const failures=[];
   page.on('requestfailed', request => failures.push(request.url()));
-  for (const [chapter,count] of [['05',8],['06',14],['07',10]]) {
+  for (const [chapter,count] of [['05',8],['06',14],['07',10],['08',10]]) {
   await page.goto('file://'+path.resolve('build/publication/chapter'+chapter+'.html'));
   if (await page.locator('img').count() !== count) throw Error('chapter figure count');
   if (await page.locator('math').count() === 0) throw Error('missing native math');
@@ -44,10 +44,21 @@ const fs = require('node:fs');
   }
   }
   if(failures.length) throw Error(failures.join('\n'));
-  for (const entry of JSON.parse(fs.readFileSync('figures/manifest.json')).figures.filter(e=>e.id.startsWith('FIG-CH06-') || e.id.startsWith('FIG-CH07-') || e.id.startsWith('FIG-INDUSTRIAL-'))) {
+  for (const entry of JSON.parse(fs.readFileSync('figures/manifest.json')).figures.filter(e=>e.id.startsWith('FIG-CH06-') || e.id.startsWith('FIG-CH07-') || e.id.startsWith('FIG-CH08-') || e.id.startsWith('FIG-INDUSTRIAL-'))) {
     await page.goto('file://'+path.resolve(entry.generated[0]));
     const outside=await page.locator('text').evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBBox();return r.x<0 || r.y<0 || r.x+r.width>1000 || r.y+r.height>720;}).map(n=>n.textContent));
     if(outside.length) throw Error(entry.id+' text outside canvas: '+outside.join('; '));
+    if (entry.id.startsWith('FIG-CH08-')) {
+      const crossings=await page.evaluate(() => {
+        const rects=[...document.querySelectorAll('rect')].map(n=>n.getBBox()).filter(r=>r.width<1000);
+        return [...document.querySelectorAll('text')].filter(n=>{
+          const b=n.getBBox();
+          return rects.some(r=>b.x<r.x+r.width && b.x+b.width>r.x && b.y<r.y+r.height && b.y+b.height>r.y &&
+            !(b.x>=r.x && b.x+b.width<=r.x+r.width && b.y>=r.y && b.y+b.height<=r.y+r.height));
+        }).map(n=>n.textContent);
+      });
+      if(crossings.length) throw Error(entry.id+' text crosses panel boundary: '+crossings.join('; '));
+    }
   }
-  await browser.close(); console.log('Browser QA passed: six animations, keyboard, reduced motion, offline Chapters 5/6/7 SVG/MathML, 1024/768/390px, Chapter 6/7 and industrial SVG bounds');
+  await browser.close(); console.log('Browser QA passed: six animations, keyboard, reduced motion, offline Chapters 5/6/7/8 SVG/MathML, 1024/768/390px, Chapter 6/7/8 and industrial SVG bounds');
 })().catch(error => {console.error(error); process.exit(1);});

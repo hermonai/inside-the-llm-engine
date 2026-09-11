@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Bundled is not necessarily fused</title><desc id="desc">Distinguish graph submission, packed storage and physical kernel fusion. Separate, bundled and concatenated describe different implementation choices. Concatenated output widths are Pq, Pkv, Pkv; equal-thirds splitting fails for GQA.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-PACKING  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Bundled is not necessarily fused</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Distinguish graph submission, packed storage and physical kernel fusion.</text>
+<rect x="50" y="205" width="430" height="137" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">SEPARATE / teaching</text>
+<text x="68" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">three W owners, three GEMVs</text>
+<text x="68" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Q, K, V have independent owners</text>
+<text x="68" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">head formation moves no payload</text>
+<rect x="515" y="205" width="430" height="137" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">BUNDLED / Hermon PREVIEW</text>
+<text x="533" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">three W tensors, one shared input</text>
+<text x="533" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">three mul_mat nodes in one graph</text>
+<text x="533" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">one graph is not one fused kernel</text>
+<text x="50" y="400" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">CONCATENATED WEIGHT / derived representation; no teaching candidate</text>
+<rect x="50" y="430" width="440" height="65" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="459" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">Q width Pq</text>
+<rect x="490" y="430" width="220" height="65" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="504" y="459" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">K width Pkv</text>
+<rect x="710" y="430" width="235" height="65" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="724" y="459" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="20" text-anchor="start">V width Pkv</text>
+<text x="50" y="535" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Flat output starts: Q at 0; K at Pq; V at Pq + Pkv (element offsets).</text>
+<text x="50" y="566" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">GQA split widths are unequal. Splitting the result into three equal thirds is wrong.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Separate, bundled and concatenated describe different implementation choices.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Concatenated output widths are Pq, Pkv, Pkv; equal-thirds splitting fails for GQA.</text>
+</svg>

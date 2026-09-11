@@ -171,6 +171,16 @@
     "acceptance": "Shape divisibility, mapping boundaries, independent projection oracle; measure bundled versus separate only later with controls.",
     "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
     "existing_manifest_ids": [
+      "FIG-CH08-JOURNEY",
+      "FIG-CH08-TRACE",
+      "FIG-CH08-HEADS",
+      "FIG-CH08-OWNERS",
+      "FIG-CH08-GEOMETRY",
+      "FIG-CH08-SEQUENCE",
+      "FIG-CH08-PACKING",
+      "FIG-CH08-COST",
+      "FIG-CH08-BOUNDARY",
+      "FIG-CH08-SOURCE",
       "FIG-QKV-HEADS-001"
     ]
   },

@@ -127,7 +127,10 @@ The historical Chapter 6 oracle and benchmark records remain separate regression
 - [`engine-0-oracle.md`](../reference/engine-0-oracle.md) records the historical
   fake candidate milestone.
 
-Guided work is in [Labs 1–38](../../docs/LABS.md). Chapter 8 will add Q/K/V
-projection semantics on this substrate. The project intentionally adds no
+Guided work is in [Labs 1–48](../../docs/LABS.md). Chapter 8 adds checked Q/K/V
+projection semantics and borrowed head views on this substrate. Run
+`cargo run --example chapter08_qkv_trace`, `cargo test --test qkv`, and the
+repository-root `python3 scripts/check-qkv-visual-parity.py` for the independent
+full-vector, head-offset and analytical-cost checks. The project intentionally adds no
 training, complete Transformer layer, attention, general tensor framework,
 BLAS, accelerator, or GGUF dependency yet.

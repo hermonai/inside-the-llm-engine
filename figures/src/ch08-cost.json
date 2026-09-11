@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-COST",
+  "chapter": 8,
+  "kind": "ch08-cost",
+  "title": "Head geometry is a memory decision",
+  "purpose": "Count parameters, arithmetic and future KV payload without inventing speedups.",
+  "contract": [
+    "Analytical counting convention: two FLOPs per multiply/add; no bias or output projection.",
+    "Illustrative KV storage is F16; it is not an implemented cache or measured traffic."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Count parameters, arithmetic and future KV payload without inventing speedups. Analytical counting convention: two FLOPs per multiply/add; no bias or output projection. Illustrative KV storage is F16; it is not an implemented cache or measured traffic.",
+  "alt": "Count parameters, arithmetic and future KV payload without inventing speedups. Analytical counting convention: two FLOPs per multiply/add; no bias or output projection. Illustrative KV storage is F16; it is not an implemented cache or measured traffic.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}

@@ -9,8 +9,9 @@ may not omit the underlying obligations without recording why.
 1. An opening problem and why it matters to an inference engine.
 2. A concrete mental model before advanced formalism.
 3. A first-principles derivation and consistent core terminology.
-4. At least one meaningful canonical Unicode diagram that follows
-   `DIAGRAM_STYLE.md`, answers a named question, and is inventoried.
+4. Meaningful canonical native-vector illustrations that follow
+   `DIAGRAM_STYLE.md`, answer named questions, have editable TikZ counterparts,
+   and are inventoried. Historical Unicode diagrams remain semantic references.
 5. Mathematical treatment that follows `MATH_STYLE.md`, including symbol and
    shape declarations, units, approximation status, and cost where relevant.
 6. A reference implementation or explicitly labeled pseudocode.
@@ -64,8 +65,9 @@ body supplies evidence or action.
 - Code builds, formats, and tests at the chapter's milestone.
 - Optimized numerical output is checked against an independent oracle.
 - Benchmark metadata and raw results are durable and reproducible.
-- Diagrams render in a monospaced view without color or external images, pass
-  diagram style/width checks, and have matching inventory purpose statements.
+- Diagrams pass rendered color/grayscale and label/layout review, have matching
+  inventory purpose statements and useful text descriptions, and ship editable
+  native TikZ. Legacy text sources retain their style/width checks.
 - Central equations follow the notation contract, appear in `MATH_INDEX.md`
   when reused across chapters, and numerical examples match an oracle or test.
 - Terms match `TERMINOLOGY.md` and new terms update `GLOSSARY.md`.

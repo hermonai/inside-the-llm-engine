@@ -195,6 +195,30 @@ or globally shared KV heads relative to query heads.
 without eliminating distinct query heads. First introduced: Chapter 8. Common
 confusion: fewer KV heads do not mean fewer query outputs.
 
+### Raw Q/K/V projection
+
+**Short:** Three learned linear maps of one token activation, before position
+or attention. **Precise:** This book uses bias-free weights in semantic
+`[output,input]` orientation and fresh F32 head-major activation owners.
+Every output coordinate contracts over the full residual width. First
+introduced: Chapter 8. Common confusion: heads partition projected output,
+not the input coordinates available to each learned map.
+
+### Head-major activation
+
+**Short:** Contiguous coordinates of one head precede those of the next.
+**Precise:** One-token shape `[H,Dh]`, element strides `[Dh,1]`, offset
+`h*Dh+j`. A borrowed head view aliases activation storage, not weight storage.
+First introduced: Chapter 8. Common confusion: reshaping token/head axes is
+not a coordinate-preserving axis permutation.
+
+### Bundled QKV
+
+**Short:** Several projection operations submitted together with shared input.
+**Precise:** A graph bundle may still use separate weights, separate output
+owners and several physical kernels. It is not synonymous with concatenated
+QKV weights, quantization packing or kernel fusion. First introduced: Chapter 8.
+
 ### Hidden state
 
 **Short:** The per-token vector transformed through model layers.

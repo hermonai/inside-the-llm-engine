@@ -1,0 +1,21 @@
+FIG-CH08-GEOMETRY
+Fewer KV heads; still distinct queries
+CANONICAL / CHAPTER 8
+
+Compare MHA, GQA and MQA with four query heads held fixed.
+Equal-width head model; Hq must be divisible by Hkv; group size is Hq/Hkv.
+Dashed links explain future attention association, not copying or averaging.
+Raw fixture: {'query': [[7.0, 2.0], [-2.0, -3.0]], 'key': [[1.0, -3.0], [3.0, 3.5]], 'value':
+[[-3.0, -1.0], [0.5, -2.0]]}
+Each head borrows its activation owner. No position or attention executes.
+
+Compare MHA, GQA and MQA with four query heads held fixed.
+
+Equal-width head model; Hq must be divisible by Hkv; group size is Hq/Hkv.
+
+Dashed links explain future attention association, not copying or averaging.
+
+Fixture: {"source": "code/reference/fixtures/chapter08-qkv.json"}
+
+Source: figures/src/ch08-geometry.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/qkv.rs

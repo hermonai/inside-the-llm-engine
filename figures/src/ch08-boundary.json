@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-BOUNDARY",
+  "chapter": 8,
+  "kind": "ch08-boundary",
+  "title": "Raw QKV does not know the position",
+  "purpose": "Show why equal input vectors produce equal raw projections at different labels.",
+  "contract": [
+    "Same normalized values and weights produce the same output, in fresh owners.",
+    "Later contextual inputs may already differ. RoPE, attention and caching are deferred."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Show why equal input vectors produce equal raw projections at different labels. Same normalized values and weights produce the same output, in fresh owners. Later contextual inputs may already differ. RoPE, attention and caching are deferred.",
+  "alt": "Show why equal input vectors produce equal raw projections at different labels. Same normalized values and weights produce the same output, in fresh owners. Later contextual inputs may already differ. RoPE, attention and caching are deferred.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}

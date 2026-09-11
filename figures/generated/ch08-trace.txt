@@ -1,0 +1,21 @@
+FIG-CH08-TRACE
+Compute a query coordinate from its causes
+CANONICAL / CHAPTER 8
+
+Trace one non-identity weight row through products and an ordered sum.
+Hand fixture x=[1,-2,3,-4], Wq first row=[1,0,2,0]; q[0]=7.
+Chapter 6 GEMV performs F32 products and increasing-index F32 accumulation.
+Raw fixture: {'query': [[7.0, 2.0], [-2.0, -3.0]], 'key': [[1.0, -3.0], [3.0, 3.5]], 'value':
+[[-3.0, -1.0], [0.5, -2.0]]}
+Each head borrows its activation owner. No position or attention executes.
+
+Trace one non-identity weight row through products and an ordered sum.
+
+Hand fixture x=[1,-2,3,-4], Wq first row=[1,0,2,0]; q[0]=7.
+
+Chapter 6 GEMV performs F32 products and increasing-index F32 accumulation.
+
+Fixture: {"source": "code/reference/fixtures/chapter08-qkv.json"}
+
+Source: figures/src/ch08-trace.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/qkv.rs

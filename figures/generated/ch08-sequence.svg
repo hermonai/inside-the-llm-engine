@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Same projection, different workload shape</title><desc id="desc">Contrast implemented one-token GEMV with a derived multi-token matrix product. Our operator accepts one [D] vector only. Sequence GEMM is conceptual here. A token/head permutation changes strides; metadata reshape is not a transpose.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-SEQUENCE  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Same projection, different workload shape</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Contrast implemented one-token GEMV with a derived multi-token matrix product.</text>
+<rect x="50" y="205" width="430" height="163" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">ONE TOKEN / implemented</text>
+<text x="68" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">x̂ [D]</text>
+<text x="68" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Wq [Pq,D] times x̂ → q [Pq]</text>
+<text x="68" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">three GEMVs, independent outputs</text>
+<text x="68" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">no position argument</text>
+<rect x="515" y="205" width="430" height="163" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">T TOKEN ROWS / derived</text>
+<text x="533" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">X̂ [T,D]</text>
+<text x="533" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Qflat = X̂ Wqᵀ [T,Pq]</text>
+<text x="533" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">reuse weights across token rows</text>
+<text x="533" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">sequence operator is future work</text>
+<rect x="50" y="419" width="895" height="154" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="448" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="449" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Do not confuse axis permutation with reshape</text>
+<text x="68" y="483" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Contiguous [T,H,Dh] strides: [H×Dh, Dh, 1].</text>
+<text x="68" y="510" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Permuted [H,T,Dh] strides: [Dh, H×Dh, 1]; usually non-contiguous.</text>
+<text x="68" y="537" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">A reshape to [H,T,Dh] keeps flat order but changes which token a value belongs to.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Our operator accepts one [D] vector only. Sequence GEMM is conceptual here.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">A token/head permutation changes strides; metadata reshape is not a transpose.</text>
+</svg>

@@ -6,7 +6,8 @@ import xml.etree.ElementTree as ET
 
 ROOT=Path(__file__).resolve().parents[1]
 for name in ('inside-the-llm-engine-tex.pdf','inside-the-llm-engine.pdf','chapter05-tensors-without-magic.pdf',
-             'chapter06-matrix-multiplication.pdf','chapter07-embeddings-and-normalization.pdf','visual-atlas.pdf'):
+             'chapter06-matrix-multiplication.pdf','chapter07-embeddings-and-normalization.pdf',
+             'chapter08-queries-keys-and-values.pdf','visual-atlas.pdf'):
     output=subprocess.run(['pdftotext','-bbox',str(ROOT/'output/pdf'/name),'-'],
                           check=True,capture_output=True).stdout
     tree=ET.fromstring(output)

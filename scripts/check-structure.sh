@@ -339,4 +339,22 @@ if [ "$chapter_seven_words" -lt 6000 ] || [ "$chapter_seven_words" -gt 9000 ]; t
     exit 1
 fi
 
-echo "structure check passed: 15 parts, 94 specifications, Chapters 1-7 artifacts present"
+for file in \
+    manuscript/part-02/chapter-08-queries-keys-and-values.md \
+    research/part-02/chapter-08-queries-keys-and-values.md \
+    code/mini-engine/crates/engine0/src/qkv.rs \
+    code/mini-engine/crates/engine0/tests/qkv.rs \
+    code/mini-engine/crates/engine0/examples/chapter08_qkv_trace.rs \
+    code/reference/python/chapter08_qkv_oracle.py \
+    code/reference/fixtures/chapter08-qkv.json \
+    labs/lab-39-qkv-projection-workbench.md \
+    scripts/check-qkv-visual-parity.py \
+    publication/check-chapter08.py
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 8 artifact: $file" >&2
+        exit 1
+    fi
+done
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-8 artifacts present"

@@ -99,7 +99,7 @@ and print legibility. More detail belongs in a linked zoom, not smaller type.
 - **Required counterexample / boundary:** shape, mask or numerical mismatch.
 - **Test anchor:** Shape divisibility, mapping boundaries, independent projection oracle; measure bundled versus separate only later with controls.
 - **Industrial refinement:** Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.
-- **Existing manifest assets (mixed status, not proof of chapter completion):** FIG-QKV-HEADS-001.
+- **Existing manifest assets (mixed status, not proof of chapter completion):** FIG-CH08-JOURNEY, FIG-CH08-TRACE, FIG-CH08-HEADS, FIG-CH08-OWNERS, FIG-CH08-GEOMETRY, FIG-CH08-SEQUENCE, FIG-CH08-PACKING, FIG-CH08-COST, FIG-CH08-BOUNDARY, FIG-CH08-SOURCE, FIG-QKV-HEADS-001.
 - **Next scene IDs:** FIG-CH08-MECHANISM-001 and FIG-CH08-BOUNDARY-001 (reserved plan only; reuse a matching existing plate before creating another).
 
 ## Chapter 9 — Position: RoPE From First Principles

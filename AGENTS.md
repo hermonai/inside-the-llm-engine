@@ -3,9 +3,10 @@
 Visual regeneration is now a separate bounded workstream. Read
 `ASTRA_REGENERATION_PLAN.md` and `figures/VISUAL_LANGUAGE.md` before visual
 changes. The first milestone established prototypes and builds; the visual
-pilots for Chapters 5, 6 and 7 are now complete. Neither completes Chapter 8 or
-regenerates all chapters. Preserve the pre-existing Chapter 8 research and working-tree status
-changes. Next bounded curriculum task: Chapter 8, with native vector illustrations.
+pilots for Chapters 5, 6 and 7 are complete. Chapter 8 is now complete with
+checked QKV/head semantics, ten native-vector figures, full-component parity
+and Labs 39–48. This does not regenerate all chapters. Next bounded new
+curriculum task: Chapter 9, position/RoPE with native TikZ illustrations.
 
 Read this file, `docs/STATUS.md`, `docs/ROADMAP.md`, and `git status` before
 working. This repository is the open book **Inside the LLM Engine: From model
@@ -110,10 +111,11 @@ paths. Never push unless the user explicitly authorizes it.
 ## Current state and next task
 
 Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
-progress: Chapters 5–7, Tensor Substrate v1, ENGINE-2's checked reference and
-blocked scalar kernels, Transformer Primitives v1, Labs 16–38, 78 canonical
-Unicode text diagrams, and the Chapter 1–6 diagram/math retrofit are complete.
-The full suite contains 178 unit/integration tests and two compile-fail doctests.
+progress: Chapters 5–8, Tensor Substrate v1, ENGINE-2's checked reference and
+blocked scalar kernels, Transformer Primitives v1, checked QKV and Labs 16–48
+are complete. The 55-plate atlas has native TikZ counterparts; legacy diagrams
+are geometrically rendered in the 169-page native edition.
+The full suite contains 193 unit/integration tests and two compile-fail doctests.
 The authoritative state and next task are in
 `docs/STATUS.md`.
 
@@ -123,10 +125,11 @@ independent oracle and checked fixture. Pass D in `ASTRA_REGENERATION_PLAN.md`
 is complete. Chapter 6
 now has fourteen canonical vector plates, two step sequences and executable
 Rust/Python/figure/source parity; its three historical benchmark records remain
-unchanged. Do not turn either visual pilot into new attention or QKV work.
+unchanged. Chapter 8 adds QKV without implementing position or attention.
 
-The next new curriculum chapter is Chapter 8 — Queries, Keys, and Values. Start from the
-ENGINE-2 GEMM/GEMV layer and Chapter 7's residual-width activations; derive and
-build checked Q/K/V projections and head-shape transformations without
-beginning attention scores, masking, attention softmax, value aggregation,
-RoPE, KV caching, GGUF, quantization, SIMD, BLAS, or accelerator execution.
+The next new curriculum chapter is Chapter 9 — Position: RoPE From First
+Principles. Start from Chapter 8's raw Q/K heads; inspect current source and
+declare coordinate pairing before deriving and implementing scalar rotations.
+Prove norm preservation, inverse and relative-position behavior with an
+independent oracle. Do not begin attention scores, masking, attention softmax,
+value aggregation, KV caching, GGUF, quantization, SIMD, BLAS or accelerator execution.

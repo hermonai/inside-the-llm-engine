@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-HEADS",
+  "chapter": 8,
+  "kind": "ch08-heads",
+  "title": "Heads are a view of projected coordinates",
+  "purpose": "Locate every head coordinate in the same four-element activation payload.",
+  "contract": [
+    "Canonical Q [2,2], element strides [2,1]; head h starts at 2h.",
+    "F32 byte displacement is four times the element offset; no copy is implied."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Locate every head coordinate in the same four-element activation payload. Canonical Q [2,2], element strides [2,1]; head h starts at 2h. F32 byte displacement is four times the element offset; no copy is implied.",
+  "alt": "Locate every head coordinate in the same four-element activation payload. Canonical Q [2,2], element strides [2,1]; head h starts at 2h. F32 byte displacement is four times the element offset; no copy is implied.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}

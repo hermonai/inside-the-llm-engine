@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Compute a query coordinate from its causes</title><desc id="desc">Trace one non-identity weight row through products and an ordered sum. Hand fixture x=[1,-2,3,-4], Wq first row=[1,0,2,0]; q[0]=7. Chapter 6 GEMV performs F32 products and increasing-index F32 accumulation.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-TRACE  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Compute a query coordinate from its causes</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Trace one non-identity weight row through products and an ordered sum.</text>
+<text x="50" y="210" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">ONE WEIGHT ROW / q[0] = Wq[0,:] · x</text>
+<rect x="160" y="238" width="150" height="48" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="174" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="235.0" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">1</text>
+<rect x="310" y="238" width="150" height="48" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="324" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="385.0" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<rect x="460" y="238" width="150" height="48" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="474" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="535.0" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">2</text>
+<rect x="610" y="238" width="150" height="48" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="624" y="267" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="685.0" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<text x="50" y="270" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">weight</text>
+<rect x="160" y="303" width="150" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="174" y="332" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="235.0" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">1</text>
+<rect x="310" y="303" width="150" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="324" y="332" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="385.0" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">-2</text>
+<rect x="460" y="303" width="150" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="474" y="332" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="535.0" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">3</text>
+<rect x="610" y="303" width="150" height="48" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="624" y="332" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="685.0" y="334" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">-4</text>
+<text x="50" y="335" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">input</text>
+<line x1="235" y1="351" x2="235" y2="388" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="235.00,388.00 230.65,379.00 239.35,379.00"/>
+<line x1="385" y1="351" x2="385" y2="388" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="385.00,388.00 380.65,379.00 389.35,379.00"/>
+<line x1="535" y1="351" x2="535" y2="388" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="535.00,388.00 530.65,379.00 539.35,379.00"/>
+<line x1="685" y1="351" x2="685" y2="388" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="685.00,388.00 680.65,379.00 689.35,379.00"/>
+<rect x="160" y="390" width="150" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="174" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="235.0" y="421" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">1</text>
+<rect x="310" y="390" width="150" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="324" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="385.0" y="421" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<rect x="460" y="390" width="150" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="474" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="535.0" y="421" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">6</text>
+<rect x="610" y="390" width="150" height="48" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="624" y="419" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="685.0" y="421" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="middle">0</text>
+<text x="50" y="422" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">product</text>
+<rect x="50" y="476" width="410" height="100" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="505" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="506" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Ordered F32 sum</text>
+<text x="68" y="540" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">0 + 1 + 0 + 6 + 0 = 7</text>
+<rect x="515" y="476" width="430" height="100" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="505" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="506" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Entire Q / four weight rows</text>
+<text x="533" y="540" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">q_flat = [7, 2, -2, -3]</text>
+<line x1="460" y1="526" x2="515" y2="526" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="515.00,526.00 506.00,530.35 506.00,521.65"/>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Hand fixture x=[1,-2,3,-4], Wq first row=[1,0,2,0]; q[0]=7.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Chapter 6 GEMV performs F32 products and increasing-index F32 accumulation.</text>
+</svg>

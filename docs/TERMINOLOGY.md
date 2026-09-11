@@ -120,6 +120,12 @@ entry before a chapter reaches TECH-REVIEW.
 
 ## Naming rules
 
+Q/K/V **parameters** are the learned projection matrices; Q/K/V **activations**
+are their token-derived outputs. **Raw** means before position transforms.
+**Bundled graph**, **concatenated weights**, **backend packing** and **kernel
+fusion** are distinct choices; never infer one from another's name. A head
+view borrows an activation owner, not the weight row that produced its values.
+
 Use `ENGINE-N` for curriculum milestones, `part-NN` and
 `chapter-NN-topic.md` for manuscript paths, and uppercase project status labels.
 Use “Hermon-owned paged engine” only for the specific gated path verified in

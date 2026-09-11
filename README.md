@@ -26,7 +26,10 @@ checked Tensor Substrate v1. [Chapter 6](manuscript/part-02/chapter-06-matrix-mu
 builds ENGINE-2's reference and blocked scalar linear-algebra kernels and
 migrates the existing projection through GEMV. [Chapter 7](manuscript/part-02/chapter-07-embeddings-and-normalization.md)
 adds checked single/sequence embedding and RMSNorm as Transformer Primitives
-v1 while preserving the original tiny-model regression. Chapter 8 is next.
+v1 while preserving the original tiny-model regression.
+[Chapter 8](manuscript/part-02/chapter-08-queries-keys-and-values.md) adds checked
+raw Q/K/V projections, MHA/GQA/MQA geometry, borrowed head views and an
+independent component oracle. Chapter 9, position and RoPE, is next.
 
 The [Chapter 5 visual pilot](figures/chapter05-atlas.md) carries one matrix
 through storage, transpose, reshape, slicing, copying and Rust ownership.
@@ -38,8 +41,10 @@ now follows one executable dot/GEMV/GEMM fixture through addresses, loop order,
 tiling, numerical equivalence and production source. Fourteen canonical plates
 and two step sequences retain all three historical benchmark records, including
 losses. The [Chapter 7 visual edition](figures/chapter07-atlas.md) adds ten
-canonical plates and an executable two-pass RMSNorm trace. Chapter 8 remains
-the next new curriculum chapter.
+canonical plates and an executable two-pass RMSNorm trace. Chapter 8 adds ten
+more native-vector plates connecting projection arithmetic, head layouts,
+ownership, graph bundles and analytical serving-memory implications. The
+native LaTeX ebook now contains eight chapters across 169 pages.
 
 Companion: [Training Large Language Models From Scratch](https://github.com/mapleaiorg/llm-train-book),
 *From tokens and gradients to industrial distributed training.* The two books
@@ -204,11 +209,11 @@ artifacts follow [the math style](docs/MATH_STYLE.md) and
 ## Status
 
 Phase 0 established the repository and editorial architecture. Phase 1 is
-complete. Phase 2 is in progress: Chapters 5–7, Tensor Substrate v1, ENGINE-2
-plus Transformer Primitives v1, Labs 16–38, and their source-verified research,
-independent oracles, 78 Unicode diagrams, and four performance records pass
-their gates. The Chapter 1–6 diagram/math retrofit is complete; Chapter 8 is
-next. See
+complete. Phase 2 is in progress: Chapters 5–8, Tensor Substrate v1, ENGINE-2,
+Transformer Primitives v1 and checked QKV, Labs 16–48, and their source-verified
+research pass their gates. There are 193 unit/integration tests plus two
+compile-fail doctests, four chapter parity gates and 55 atlas plates. The
+Chapter 1–6 diagram/math retrofit is complete; Chapter 9 is next. See
 [docs/STATUS.md](docs/STATUS.md) for the authoritative ledger.
 
 ## Contributing and license

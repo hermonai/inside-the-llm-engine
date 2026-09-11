@@ -8,6 +8,7 @@ python3 figures/build.py --check
 python3 scripts/check-tensor-visual-parity.py
 python3 scripts/check-linear-visual-parity.py
 python3 scripts/check-normalization-visual-parity.py
+python3 scripts/check-qkv-visual-parity.py
 python3 scripts/check-links.py
 python3 scripts/check-diagram-style.py
 python3 scripts/check-diagram-width.py
@@ -34,15 +35,16 @@ python3 -m venv .venv
 pdftoppm -scale-to 1200 -png output/pdf/visual-atlas.pdf build/atlas-page
 ```
 
-Outputs: `output/pdf/inside-the-llm-engine.pdf` (all seven written chapters),
+Outputs: `output/pdf/inside-the-llm-engine.pdf` (all eight written chapters),
 `output/pdf/chapter05-tensors-without-magic.pdf` and
 `output/pdf/chapter06-matrix-multiplication.pdf` (regenerated chapters),
 `output/pdf/chapter07-embeddings-and-normalization.pdf`,
-`output/pdf/visual-atlas.pdf` (45 vector plates), and `build/publication/book.html`
-plus `chapter05.html`, `chapter06.html`, `chapter07.html`, `atlas.html` and six animation pages. HTML mathematics uses native MathML,
+`output/pdf/chapter08-queries-keys-and-values.pdf`,
+`output/pdf/visual-atlas.pdf` (55 vector plates), and `build/publication/book.html`
+plus `chapter05.html`, `chapter06.html`, `chapter07.html`, `chapter08.html`, `atlas.html` and six animation pages. HTML mathematics uses native MathML,
 not a remote renderer. The build never advertises unwritten chapters as complete.
 The atlas is a separately readable companion. Chapter 5 embeds eight canonical
-figures, Chapter 6 fourteen and Chapter 7 ten: SVG in offline HTML and vector PDF in print. Other chapters
+figures, Chapter 6 fourteen and Chapters 7 and 8 ten each: SVG in offline HTML and vector PDF in print. Other chapters
 retain their legacy diagrams pending their bounded regeneration passes.
 Binary/build outputs are ignored in Git. The audit inventory script records
 baseline audits; do not regenerate historical inventories as a routine build step.
@@ -59,6 +61,7 @@ pdftoppm -scale-to 1000 -png output/pdf/chapter05-tensors-without-magic.pdf buil
 pdftoppm -scale-to 1400 -png output/pdf/chapter06-matrix-multiplication.pdf build/ch06-final
 .venv/bin/python publication/check-chapter06.py
 .venv/bin/python publication/check-chapter07.py
+.venv/bin/python publication/check-chapter08.py
 .venv/bin/python publication/check-page-bounds.py
 ```
 
@@ -69,7 +72,7 @@ Publication dependencies are explicit; the full PDF is also built locally for
 this milestone. PDF byte identity is not required across TeX versions.
 
 Optional browser QA requires Playwright and a Chromium installation:
-Build the publication first; this check also verifies the offline Chapters 5/6/7
+Build the publication first; this check also verifies the offline Chapters 5/6/7/8
 figures, native math and narrow-screen layout.
 
 ```sh

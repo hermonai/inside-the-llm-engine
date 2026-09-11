@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Verify the route before naming the kernel</title><desc id="desc">Keep default serving, preview graph bundles and tensor representation distinct. CURRENT and PREVIEW are pinned source findings, not new production benchmark results. Hermon 2a3fd521 and llama.cpp 389ff61d were inspected on 2026-09-11.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-SOURCE  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Verify the route before naming the kernel</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Keep default serving, preview graph bundles and tensor representation distinct.</text>
+<rect x="50" y="205" width="430" height="177" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">CURRENT / default runtime</text>
+<text x="68" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">BatchedRuntime → llama.cpp</text>
+<text x="68" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">model graph: build_qkv</text>
+<text x="68" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">separate or fused W representation</text>
+<text x="68" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">then RoPE; then attention</text>
+<rect x="515" y="205" width="430" height="177" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">PREVIEW / opt-in paged</text>
+<text x="533" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">normalize token rows</text>
+<text x="533" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">project_bundle → tensor bridge</text>
+<text x="533" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">copy input once; build 3 matmuls</text>
+<text x="533" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">copy Q/K/V back; then RoPE</text>
+<rect x="50" y="429" width="895" height="149" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="458" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="459" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Representation is a contract, not a name</text>
+<text x="68" y="493" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Teaching W [P,D] equals GGML logical dimensions ne=[D,P].</text>
+<text x="68" y="520" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">GGML heads: ne=[Dh,H,T]; chapter notation: [T,H,Dh].</text>
+<text x="68" y="547" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Hermon 2a3fd521 / llama.cpp 389ff61d; inspected 2026-09-11.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">CURRENT and PREVIEW are pinned source findings, not new production benchmark results.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Hermon 2a3fd521 and llama.cpp 389ff61d were inspected on 2026-09-11.</text>
+</svg>

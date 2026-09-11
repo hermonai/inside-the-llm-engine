@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">One activation, three learned maps</title><desc id="desc">Follow a normalized token through projections into head-major activation storage. Q uses Hq heads; K and V each use Hkv heads. All use width Dh. Model parameters are immutable; projections create F32 activation owners.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-JOURNEY  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">One activation, three learned maps</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Follow a normalized token through projections into head-major activation storage.</text>
+<rect x="50" y="205" width="260" height="95" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">01 / Residual</text>
+<text x="68" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">one token: x̂ [D]</text>
+<rect x="400" y="205" width="255" height="95" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="414" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="418" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">02 / Q projection</text>
+<text x="418" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">WQ [Pq,D]</text>
+<rect x="730" y="205" width="215" height="95" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="744" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="748" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">03 / Q heads</text>
+<text x="748" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">[H,Dh] / F32</text>
+<line x1="310" y1="252" x2="352" y2="252" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="352" y1="252" x2="352" y2="253" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="352" y1="253" x2="400" y2="253" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="400.00,253.00 391.00,257.35 391.00,248.65"/>
+<line x1="655" y1="253" x2="730" y2="253" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="730.00,253.00 721.00,257.35 721.00,248.65"/>
+<rect x="400" y="331" width="255" height="95" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="414" y="360" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="418" y="361" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">02 / K projection</text>
+<text x="418" y="395" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">WK [Pkv,D]</text>
+<rect x="730" y="331" width="215" height="95" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="744" y="360" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="748" y="361" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">03 / K heads</text>
+<text x="748" y="395" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">[H,Dh] / F32</text>
+<line x1="310" y1="252" x2="352" y2="252" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="352" y1="252" x2="352" y2="379" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="352" y1="379" x2="400" y2="379" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="400.00,379.00 391.00,383.35 391.00,374.65"/>
+<line x1="655" y1="379" x2="730" y2="379" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="730.00,379.00 721.00,383.35 721.00,374.65"/>
+<rect x="400" y="457" width="255" height="95" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="414" y="486" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="418" y="487" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">02 / V projection</text>
+<text x="418" y="521" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">WV [Pkv,D]</text>
+<rect x="730" y="457" width="215" height="95" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="744" y="486" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="748" y="487" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">03 / V heads</text>
+<text x="748" y="521" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">[H,Dh] / F32</text>
+<line x1="310" y1="252" x2="352" y2="252" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="352" y1="252" x2="352" y2="505" stroke="#152b3c" stroke-width="1.5"/>
+<line x1="352" y1="505" x2="400" y2="505" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="400.00,505.00 391.00,509.35 391.00,500.65"/>
+<line x1="655" y1="505" x2="730" y2="505" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="730.00,505.00 721.00,509.35 721.00,500.65"/>
+<text x="50" y="588" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Three learned maps consume the same input; no token-to-token mixing occurs here.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Q uses Hq heads; K and V each use Hkv heads. All use width Dh.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Model parameters are immutable; projections create F32 activation owners.</text>
+</svg>

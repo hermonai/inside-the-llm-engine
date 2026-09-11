@@ -9,7 +9,7 @@ from pypdf import PdfReader
 root = Path(__file__).resolve().parents[1]
 source = root/'publication/latex'
 manifest = json.loads((source/'manifest.json').read_text())
-assert manifest['canonical_and_reference_plates'] == 45
+assert manifest['canonical_and_reference_plates'] == len(json.loads((root/'figures/manifest.json').read_text())['figures'])
 assert manifest['legacy_vector_diagrams'] == 28
 main = (source/'main.tex').read_text()
 assert '\\includegraphics' not in main, 'native edition must not embed plates as images'
@@ -37,4 +37,4 @@ for start in range(0,len(paths),20):
         x,y = offset%5*320+10,offset//5*460+25
         sheet.paste(tile,(x,y)); draw.text((x,y-18),path.stem,fill='black')
     sheet.save(out/f'overview-{start//20+1:02}.png')
-print('Native TeX QA:',len(reader.pages),'pages, 45 semantic + 28 legacy TikZ sources, no raster/verbatim graphs')
+print('Native TeX QA:',len(reader.pages),'pages,',manifest['canonical_and_reference_plates'],'semantic + 28 legacy TikZ sources, no raster/verbatim graphs')

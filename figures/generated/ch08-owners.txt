@@ -1,0 +1,21 @@
+FIG-CH08-OWNERS
+Parameters persist; activations belong to a call
+CANONICAL / CHAPTER 8
+
+Separate shared model weights, borrowed inputs and independent output lifetimes.
+Q/K/V own independent Vec payloads; head views borrow those outputs.
+into_parts transfers ownership without copying payload; no KV cache exists yet.
+Raw fixture: {'query': [[7.0, 2.0], [-2.0, -3.0]], 'key': [[1.0, -3.0], [3.0, 3.5]], 'value':
+[[-3.0, -1.0], [0.5, -2.0]]}
+Each head borrows its activation owner. No position or attention executes.
+
+Separate shared model weights, borrowed inputs and independent output lifetimes.
+
+Q/K/V own independent Vec payloads; head views borrow those outputs.
+
+into_parts transfers ownership without copying payload; no KV cache exists yet.
+
+Fixture: {"source": "code/reference/fixtures/chapter08-qkv.json"}
+
+Source: figures/src/ch08-owners.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/qkv.rs

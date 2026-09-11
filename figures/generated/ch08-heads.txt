@@ -1,0 +1,21 @@
+FIG-CH08-HEADS
+Heads are a view of projected coordinates
+CANONICAL / CHAPTER 8
+
+Locate every head coordinate in the same four-element activation payload.
+Canonical Q [2,2], element strides [2,1]; head h starts at 2h.
+F32 byte displacement is four times the element offset; no copy is implied.
+Raw fixture: {'query': [[7.0, 2.0], [-2.0, -3.0]], 'key': [[1.0, -3.0], [3.0, 3.5]], 'value':
+[[-3.0, -1.0], [0.5, -2.0]]}
+Each head borrows its activation owner. No position or attention executes.
+
+Locate every head coordinate in the same four-element activation payload.
+
+Canonical Q [2,2], element strides [2,1]; head h starts at 2h.
+
+F32 byte displacement is four times the element offset; no copy is implied.
+
+Fixture: {"source": "code/reference/fixtures/chapter08-qkv.json"}
+
+Source: figures/src/ch08-heads.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/qkv.rs

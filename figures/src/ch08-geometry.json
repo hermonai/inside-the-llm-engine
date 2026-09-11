@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-GEOMETRY",
+  "chapter": 8,
+  "kind": "ch08-geometry",
+  "title": "Fewer KV heads; still distinct queries",
+  "purpose": "Compare MHA, GQA and MQA with four query heads held fixed.",
+  "contract": [
+    "Equal-width head model; Hq must be divisible by Hkv; group size is Hq/Hkv.",
+    "Dashed links explain future attention association, not copying or averaging."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Compare MHA, GQA and MQA with four query heads held fixed. Equal-width head model; Hq must be divisible by Hkv; group size is Hq/Hkv. Dashed links explain future attention association, not copying or averaging.",
+  "alt": "Compare MHA, GQA and MQA with four query heads held fixed. Equal-width head model; Hq must be divisible by Hkv; group size is Hq/Hkv. Dashed links explain future attention association, not copying or averaging.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}

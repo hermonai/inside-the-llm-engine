@@ -1,0 +1,21 @@
+FIG-CH08-BOUNDARY
+Raw QKV does not know the position
+CANONICAL / CHAPTER 8
+
+Show why equal input vectors produce equal raw projections at different labels.
+Same normalized values and weights produce the same output, in fresh owners.
+Later contextual inputs may already differ. RoPE, attention and caching are deferred.
+Raw fixture: {'query': [[7.0, 2.0], [-2.0, -3.0]], 'key': [[1.0, -3.0], [3.0, 3.5]], 'value':
+[[-3.0, -1.0], [0.5, -2.0]]}
+Each head borrows its activation owner. No position or attention executes.
+
+Show why equal input vectors produce equal raw projections at different labels.
+
+Same normalized values and weights produce the same output, in fresh owners.
+
+Later contextual inputs may already differ. RoPE, attention and caching are deferred.
+
+Fixture: {"source": "code/reference/fixtures/chapter08-qkv.json"}
+
+Source: figures/src/ch08-boundary.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/qkv.rs

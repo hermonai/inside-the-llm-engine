@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-SEQUENCE",
+  "chapter": 8,
+  "kind": "ch08-sequence",
+  "title": "Same projection, different workload shape",
+  "purpose": "Contrast implemented one-token GEMV with a derived multi-token matrix product.",
+  "contract": [
+    "Our operator accepts one [D] vector only. Sequence GEMM is conceptual here.",
+    "A token/head permutation changes strides; metadata reshape is not a transpose."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Contrast implemented one-token GEMV with a derived multi-token matrix product. Our operator accepts one [D] vector only. Sequence GEMM is conceptual here. A token/head permutation changes strides; metadata reshape is not a transpose.",
+  "alt": "Contrast implemented one-token GEMV with a derived multi-token matrix product. Our operator accepts one [D] vector only. Sequence GEMM is conceptual here. A token/head permutation changes strides; metadata reshape is not a transpose.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}

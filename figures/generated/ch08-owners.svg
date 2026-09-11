@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Parameters persist; activations belong to a call</title><desc id="desc">Separate shared model weights, borrowed inputs and independent output lifetimes. Q/K/V own independent Vec payloads; head views borrow those outputs. into_parts transfers ownership without copying payload; no KV cache exists yet.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH08-OWNERS  /  CANONICAL / CHAPTER 8</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Parameters persist; activations belong to a call</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Separate shared model weights, borrowed inputs and independent output lifetimes.</text>
+<rect x="50" y="205" width="390" height="128" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">MODEL / immutable weights</text>
+<text x="68" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Wq, Wk, Wv own parameters</text>
+<text x="68" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shared by calls; never overwritten</text>
+<rect x="550" y="205" width="395" height="128" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="564" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="568" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">CALL / immutable views</text>
+<text x="568" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">borrow weights and x̂</text>
+<text x="568" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">all shapes checked first</text>
+<line x1="550" y1="270" x2="440" y2="270" stroke="#152b3c" stroke-width="2.5" stroke-dasharray="6 5"/>
+<polygon fill="#152b3c" points="440.00,270.00 449.00,265.65 449.00,274.35"/>
+<text x="448" y="244" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="16" text-anchor="start">borrows</text>
+<rect x="50" y="414" width="275" height="105" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="443" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="444" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Q / fresh owner</text>
+<text x="68" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Vec payload + metadata</text>
+<text x="68" y="505" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">heads borrow this owner</text>
+<line x1="710" y1="333" x2="185" y2="414" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="185.00,414.00 193.24,408.33 194.56,416.93"/>
+<rect x="360" y="414" width="275" height="105" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="374" y="443" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="378" y="444" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">K / fresh owner</text>
+<text x="378" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Vec payload + metadata</text>
+<text x="378" y="505" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">heads borrow this owner</text>
+<line x1="710" y1="333" x2="495" y2="414" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="495.00,414.00 501.89,406.76 504.96,414.90"/>
+<rect x="670" y="414" width="275" height="105" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="684" y="443" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="688" y="444" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">V / fresh owner</text>
+<text x="688" y="478" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Vec payload + metadata</text>
+<text x="688" y="505" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">heads borrow this owner</text>
+<line x1="710" y1="333" x2="805" y2="414" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="805.00,414.00 795.33,411.47 800.97,404.85"/>
+<text x="50" y="568" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">into_parts moves ownership. Dropping a borrower does not free its activation.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Q/K/V own independent Vec payloads; head views borrow those outputs.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">into_parts transfers ownership without copying payload; no KV cache exists yet.</text>
+</svg>

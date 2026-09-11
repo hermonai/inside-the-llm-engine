@@ -1,5 +1,27 @@
 # Project Status
 
+## Chapter 8 — verified QKV milestone, 2026-09-12
+
+COMPLETE: a 5,215-word projection chapter with ten canonical vector/TikZ
+illustrations, checked one-token bias-free QKV and borrowed head views,
+independent Python oracle, raw/composed numerical traces, and Labs 39–48.
+The full suite passes 193 unit/integration tests plus two compile-fail doctests;
+Rust format/check/Clippy and all four chapter parity gates pass. The source
+review retains Hermon's CURRENT batched / PREVIEW paged distinction at
+`2a3fd521`, with pinned llama.cpp `389ff61d` (inspected September 11).
+
+The native `.tex` edition is now 169 pages / eight written chapters. The
+standalone Chapter 8 is 19 pages; the atlas has 55 plates, including 42
+canonical chapter figures, nine prototypes and four architecture references.
+PDF vector/glyph/page-bound checks and offline 1024/768/390px browser checks
+pass. The rendered review corrected a note/panel overlap and added a panel
+boundary regression gate. See [the review record](../research/part-02/chapter-08-queries-keys-and-values.md).
+
+This supersedes the historical next-task statements below. No attention,
+position operator, KV cache, GGUF loader or new performance candidate was
+implemented. The next new curriculum chapter is **Chapter 9 — Position: RoPE
+From First Principles**. The paired training book is unchanged in this milestone.
+
 ## Chapter 7 visual regeneration — 2026-09-11
 
 COMPLETE: connect the existing lookup and RMSNorm operators with ten canonical
@@ -108,7 +130,7 @@ tracked separately below.
 
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–7 complete; Chapter 8 is next |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–8 complete; position and attention remain future work |
 | Chapter 5 — Tensors Without Magic | COMPLETE | 7,468-word regenerated chapter, eight embedded vector plates, thirteen retained legacy diagrams, fresh production source review, traversal record and independent visual/offset oracles |
 | Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
 | Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
@@ -118,13 +140,14 @@ tracked separately below.
 | Chapter 7 — Embeddings and Normalization | COMPLETE | 6,034-word reviewed chapter, primary-source and Hermon/llama.cpp trace, fifteen canonical diagrams, independent oracle, and scale/magnitude experiments |
 | Transformer Primitives v1 | COMPLETE | Checked single and sequence embedding lookup plus explicit two-pass F32 RMSNorm with immutable strided inputs, canonical owned outputs, typed numerical failures, and unchanged historical model behavior |
 | Labs 30–38 — Embeddings and normalization | COMPLETE | Table layout, checked lookup, view/copy ownership, hand RMS, implementation, epsilon, scale, magnitude, and Rust/Python equivalence exercises |
+| Chapter 8 — Queries, Keys, and Values | COMPLETE | Checked QKV/head API, 15 new Rust tests, independent oracle and full component trace, ten canonical native-vector plates, Labs 39–48 and source-classified production review |
 
 ## Curriculum status
 
 | Scope | Status | Milestone |
 | --- | --- | --- |
 | Part I (Ch. 1–4) | COMPLETE | ENGINE-1 is the smallest complete autoregressive inference engine |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–7, Tensor Substrate v1, ENGINE-2, and Transformer Primitives v1 complete; Chapter 8 is next |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–8, Tensor Substrate v1, ENGINE-2, Transformer Primitives v1 and checked QKV complete; Chapter 9 is next |
 | Part III (Ch. 14–18) | PLANNED | ENGINE-3 |
 | Part IV (Ch. 19–22) | PLANNED | ENGINE-4 |
 | Part V (Ch. 23–27) | PLANNED | ENGINE-5 / ENGINE-6 |
@@ -145,13 +168,14 @@ tracked separately below.
 1. Select licenses for prose, diagrams, and code; decide whether one or
    separate licenses are appropriate.
 2. Choose the small, redistributable model fixtures for later equivalence labs.
-3. Decide the publication toolchain only after Markdown-first manuscript needs
-   are demonstrated.
+3. Keep Markdown/offline HTML and native LaTeX/TikZ editions synchronized;
+   finish the deeper editorial regeneration of legacy Chapters 1–4.
 
 ## Next recommended task
 
-Complete only Chapter 8 — Queries, Keys, and Values. Derive checked linear
-projections and the reshape/transposition contracts that create head-shaped
-activations. Do not begin attention scores, masking, attention softmax, value
-aggregation, RoPE, KV caching, GGUF, quantization, SIMD intrinsics, GPU
-execution, or autograd.
+Complete only Chapter 9 — Position: RoPE From First Principles. Begin with a
+fresh source trace and an explicit coordinate-pairing convention; derive the
+rotation, norm preservation and relative-position identity, then implement a
+checked scalar operator with independent oracle and native TikZ diagrams.
+Do not begin attention scores, masking, attention softmax, value aggregation,
+KV caching, GGUF, quantization, SIMD intrinsics, GPU execution or autograd.

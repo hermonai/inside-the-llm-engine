@@ -1,0 +1,21 @@
+FIG-CH08-PACKING
+Bundled is not necessarily fused
+CANONICAL / CHAPTER 8
+
+Distinguish graph submission, packed storage and physical kernel fusion.
+Separate, bundled and concatenated describe different implementation choices.
+Concatenated output widths are Pq, Pkv, Pkv; equal-thirds splitting fails for GQA.
+Raw fixture: {'query': [[7.0, 2.0], [-2.0, -3.0]], 'key': [[1.0, -3.0], [3.0, 3.5]], 'value':
+[[-3.0, -1.0], [0.5, -2.0]]}
+Each head borrows its activation owner. No position or attention executes.
+
+Distinguish graph submission, packed storage and physical kernel fusion.
+
+Separate, bundled and concatenated describe different implementation choices.
+
+Concatenated output widths are Pq, Pkv, Pkv; equal-thirds splitting fails for GQA.
+
+Fixture: {"source": "code/reference/fixtures/chapter08-qkv.json"}
+
+Source: figures/src/ch08-packing.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/qkv.rs

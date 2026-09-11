@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH08-JOURNEY",
+  "chapter": 8,
+  "kind": "ch08-journey",
+  "title": "One activation, three learned maps",
+  "purpose": "Follow a normalized token through projections into head-major activation storage.",
+  "contract": [
+    "Q uses Hq heads; K and V each use Hkv heads. All use width Dh.",
+    "Model parameters are immutable; projections create F32 activation owners."
+  ],
+  "status": "CANONICAL / CHAPTER 8",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/qkv.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Follow a normalized token through projections into head-major activation storage. Q uses Hq heads; K and V each use Hkv heads. All use width Dh. Model parameters are immutable; projections create F32 activation owners.",
+  "alt": "Follow a normalized token through projections into head-major activation storage. Q uses Hq heads; K and V each use Hkv heads. All use width Dh. Model parameters are immutable; projections create F32 activation owners.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter08-qkv.json"
+  }
+}
