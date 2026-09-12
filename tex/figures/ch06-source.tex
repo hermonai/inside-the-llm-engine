@@ -1,0 +1,28 @@
+% Editable textbook TikZ, initially imported from the verified semantic plate.
+\begin{tikzpicture}[x=.5pt,y=-.5pt]
+\path[use as bounding box] (30,170) rectangle (975,700);
+\path[fill={rgb,255:red,220;green,236;blue,247},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (50.0,204.0) rectangle (480.0,307.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,233) {CURRENT default Hermon};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,258) {Dispatcher → BatchedRuntime};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,283) {Context::decode\_batch → llama\_decode};
+\path[fill={rgb,255:red,220;green,236;blue,247},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (530.0,204.0) rectangle (945.0,307.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (544,233) {PREVIEW / LIBRARY bridge};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (544,258) {paged → matmul\_bundle\_with\_session};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (544,283) {checked Rust → tensor\_bridge.cpp};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=1.25pt] (265,307) -- (265,348);
+\path[fill={rgb,255:red,21;green,43;blue,60},draw=none,line width=0.5pt] (265.00,348.00) -- (260.65,339.00) -- (269.35,339.00) -- cycle;
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=1.25pt] (735,307) -- (735,348);
+\path[fill={rgb,255:red,21;green,43;blue,60},draw=none,line width=0.5pt] (735.00,348.00) -- (730.65,339.00) -- (739.35,339.00) -- cycle;
+\path[fill={rgb,255:red,220;green,236;blue,247},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (50.0,350.0) rectangle (945.0,445.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,379) {Pinned llama.cpp / GGML: graph node is not an executed kernel};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,404) {Default: model graph → ggml\_mul\_mat → configured CPU / Metal / CUDA};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,429) {Optional host bridge: ggml\_mul\_mat → session\_compute (CPU only)};
+\path[fill={rgb,255:red,220;green,236;blue,247},draw={rgb,255:red,21;green,43;blue,60},line width=0.7pt] (50.0,475.0) rectangle (945.0,587.0);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,504) {Separate verification pattern: ENGINE-2 never calls the production kernels};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,529) {candidate result → finite elementwise error → tolerance};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{9.0}{10.799999999999999}\selectfont] at (64,554) {pass → benchmark; fail → reject. No speed claim without workload evidence.};
+\draw[fill=none,draw={rgb,255:red,21;green,43;blue,60},line width=0.75pt] (40,608) -- (960,608);
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{7.5}{9.0}\selectfont] at (40,638) {Hermon 2a3fd521: CURRENT batched default; paged runtime PREVIEW.};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{7.5}{9.0}\selectfont] at (40,659) {llama.cpp 389ff61d: graph operator and CPU/Metal/CUDA kernel families.};
+\node[inner sep=0pt,outer sep=0pt,anchor=base west,text={rgb,255:red,21;green,43;blue,60},font=\sffamily\fontsize{7.5}{9.0}\selectfont] at (40,680) {Optional tensor\_bridge.cpp requires host weights; it is not the default GPU path.};
+\end{tikzpicture}

@@ -1,0 +1,31 @@
+\clearpage
+\section{Worked synthesis: separate coordinates from addresses}
+\subsection{Transpose without moving a byte}
+\textbf{Problem.} Storage is $(1,2,3,4,5,6)$, shape $(2,3)$ and strides $(3,1)$.
+Give the transposed view's shape, strides and value at $(2,1)$.
+
+\textbf{Solution.} Swap metadata axes: shape $(3,2)$, strides $(1,3)$.
+The requested offset is $2\cdot1+1\cdot3=5$, so the value is 6.
+The new view still borrows the original storage. Its logical row-major
+sequence is $(1,4,2,5,3,6)$; that is the sequence a materialized transpose
+would write into a new canonical allocation.
+
+\subsection{Logical count is not backing extent}
+\textbf{Problem.} A view has shape $(3,)$, stride $(4,)$ and base 1.
+How many logical values exist, and what minimum backing length is needed?
+
+\textbf{Solution.} There are three logical values, at offsets $1,5,9$.
+The backing slice must contain at least ten elements. Checking only that the
+logical count 3 fits a slice of length 3 would allow out-of-bounds access.
+For nonnegative strides, validate the maximum reachable offset with checked
+arithmetic; handle zero extents separately because they reach no element.
+
+\subsection{Ownership is stronger than an index calculation}
+\textbf{Problem.} Why is a valid zero-stride read view not automatically a
+valid mutable view?
+
+\textbf{Solution.} Multiple logical indices can designate the same element.
+Bounds validity proves reachability, not non-aliasing. Two mutable references
+to overlapping elements would violate the exclusivity contract. The teaching
+engine therefore keeps general views immutable and gates mutation on an
+exclusive canonical owner.

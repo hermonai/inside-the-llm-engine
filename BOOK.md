@@ -5,25 +5,26 @@
 This is the reader-facing table of contents. The authoring specification for
 each chapter lives in [docs/OUTLINE.md](docs/OUTLINE.md).
 
-Companion: [visual prototype atlas](figures/ATLAS.md). Build the current nine
-chapters as PDF/HTML using the [publication instructions](docs/FIGURE_BUILD.md).
+Read the [authored LaTeX edition](tex/README.md). Chapters 1–9 below link to
+editable textbook sources; Chapter 10 onward remains planned. The historical
+[visual atlas](figures/ATLAS.md) is a supplementary evidence artifact.
 
 ### Part I — What Actually Happens When an LLM Answers?
 
-1. [The Missing Half of AI](manuscript/part-01/chapter-01-the-missing-half-of-ai.md)
-2. [From Text to Tokens](manuscript/part-01/chapter-02-from-text-to-tokens.md)
-3. [The Smallest Possible Language Model](manuscript/part-01/chapter-03-the-smallest-possible-language-model.md)
-4. [Logits, Sampling, and the Autoregressive Loop](manuscript/part-01/chapter-04-logits-sampling-autoregressive-loop.md)
+1. [The Missing Half of AI](tex/chapters/ch01.tex)
+2. [From Text to Tokens](tex/chapters/ch02.tex)
+3. [The Smallest Possible Language Model](tex/chapters/ch03.tex)
+4. [Logits, Sampling, and the Autoregressive Loop](tex/chapters/ch04.tex)
 
 Milestone: ENGINE-0 / ENGINE-1.
 
 ### Part II — Build a Transformer Inference Engine
 
-5. [Tensors Without Magic](manuscript/part-02/chapter-05-tensors-without-magic.md)
-6. [Matrix Multiplication: The Engine Room](manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
-7. [Embeddings and Normalization](manuscript/part-02/chapter-07-embeddings-and-normalization.md)
-8. [Queries, Keys, and Values](manuscript/part-02/chapter-08-queries-keys-and-values.md)
-9. [Position: RoPE From First Principles](manuscript/part-02/chapter-09-position-rope.md)
+5. [Tensors Without Magic](tex/chapters/ch05.tex)
+6. [Matrix Multiplication: The Engine Room](tex/chapters/ch06.tex)
+7. [Embeddings and Normalization](tex/chapters/ch07.tex)
+8. [Queries, Keys, and Values](tex/chapters/ch08.tex)
+9. [Position: RoPE From First Principles](tex/chapters/ch09.tex)
 10. Causal Self-Attention
 11. The Feed-Forward Network
 12. One Complete Transformer Layer

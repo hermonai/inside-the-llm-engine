@@ -1,5 +1,39 @@
 # Project Status
 
+## LaTeX-first textbook revision, 2026-09-13
+
+COMPLETE as a bounded source/teaching revision, not a complete rewrite of all
+nine chapters or completion of the planned 94-chapter book. Active prose now
+lives in `tex/chapters/` and builds without Markdown/Pandoc. Chapter 1 has a
+new executable request narrative. Chapters 2–9 retain substantial reviewed
+material with interface corrections, numbered equations, 65 native TikZ
+mechanism figures and 27 new worked synthesis problems.
+
+The early narrative now matches the actual four-token model: prompt `I like`,
+one visible ` Rust` piece, then EOS. Cancellation, budget exhaustion and
+injected model failure can share that prefix but have distinct terminal
+events. Tokenizer probes and the model vocabulary are explicitly separate.
+New figures derive BPE merges, UTF-8 buffering, embedding lookup, projection,
+categorical intervals and temperature rather than drawing text-box graphs.
+
+Rust's 218 unit/integration tests and two compile-fail doctests, five numerical
+parity gates, source/CLI/worked-calculation checks, structure and links pass.
+The authored PDF is rendered page by page, with color/grayscale review,
+word-bound checks and a strict TeX log. See the
+[revision review](../research/textbook/series-style-review.md) and
+[build guide](../tex/README.md). Historical Markdown, semantic fixtures and
+benchmark records are preserved; their exporters do not own this manuscript.
+
+The same source-first standard is applied to DNA Computing and Evolutor as
+separate Chapters 1–3 review candidates. Their accepted Chapters 1–2 remain
+hash-identical, and Chapter 3 is not silently promoted to cumulative acceptance.
+The training book is unchanged in this three-repository revision.
+
+Next new curriculum work: **Chapter 10 — Causal Self-Attention**, directly in
+LaTeX, with a dense checked reference and independent oracle. Deeper editorial
+work on retained Chapters 2–9 and independent specialist review remain open.
+No persistent KV cache, complete decoder or industrial serving engine is claimed.
+
 ## Chapter 9 - verified RoPE milestone, 2026-09-12
 
 COMPLETE: first-principles rotation and relative-position derivations, checked
@@ -197,8 +231,9 @@ tracked separately below.
 1. Select licenses for prose, diagrams, and code; decide whether one or
    separate licenses are appropriate.
 2. Choose the small, redistributable model fixtures for later equivalence labs.
-3. Keep Markdown/offline HTML and native LaTeX/TikZ editions synchronized;
-   finish the deeper editorial regeneration of legacy Chapters 1–4.
+3. Continue the authored LaTeX editorial revision and independent review.
+   Preserve historical Markdown/offline HTML as dated evidence; future web
+   publication must derive from the active textbook, not overwrite it.
 
 ## Next recommended task
 

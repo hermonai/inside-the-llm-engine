@@ -1,13 +1,14 @@
 # Authoring Workflow
 
-The workflow is evidence-first and conflict-resistant.
+The workflow is evidence-first and conflict-resistant. Active manuscripts are
+authored LaTeX, governed by `TEXTBOOK_STANDARD.md` and `tex/README.md`.
+Historical Markdown and character diagrams remain reproducibility inputs only.
 
-```text
-ROADMAP ──▶ CHAPTER SPEC ──▶ SOURCE DISCOVERY ──▶ RESEARCH NOTE
-        ──▶ FACT/STATUS CHECK ──▶ DRAFT ──▶ CODE + UNICODE TEXT DIAGRAMS
-        ──▶ CORRECTNESS ──▶ TECH REVIEW ──▶ EDITORIAL REVIEW
-        ──▶ CROSS-LINK/TERMINOLOGY CHECK ──▶ COMPLETE
-```
+1. Read the roadmap and chapter specification; discover and classify sources.
+2. Draft a concrete problem, derivation and executable experiment in LaTeX.
+3. Author native TikZ mechanisms and worked exercises alongside the code.
+4. Run correctness, technical, rendered editorial and cross-reference reviews.
+5. Record the bounded outcome and unresolved work before claiming completion.
 
 ## Starting a task
 
@@ -26,8 +27,9 @@ it; record structural changes rather than silently reshaping the curriculum.
 
 Write the problem and mental model first. Build the smallest correct reference,
 then expose its failure at scale, then implement the production-shaped design.
-Draft diagrams from a named question using `DIAGRAM_STYLE.md`; register every
-canonical artifact in `diagrams/INDEX.md`. Draft sustained mathematics with a
+Draft native diagrams from a named question using `TEXTBOOK_STANDARD.md`;
+link each figure to its chapter's semantics and evidence. Historical text
+artifacts retain the `diagrams/INDEX.md` inventory. Draft sustained mathematics with a
 local symbol table using `MATH_STYLE.md`; register reusable equations in
 `MATH_INDEX.md`. Keep code, diagrams, research, and prose in the same change
 when practical, but use atomic commits that a second agent can review.
@@ -41,9 +43,10 @@ when practical, but use atomic commits that a second agent can review.
 - **Cross-link:** references, glossary, diagrams, labs, milestones, and next
   chapter assumptions agree.
 
-Run the diagram style/width and math-style checks before marking the editorial
-gate complete. A diagram or equation that is attractive but semantically false
-fails the technical gate.
+Run `make textbook-check`, the PDF build and color/grayscale page review
+before marking the editorial gate complete. Retain the historical diagram
+style/width and math-style checks as regression gates. A diagram or equation
+that is attractive but semantically false fails the technical gate.
 
 Status may advance through PLANNED, RESEARCHING, OUTLINED, DRAFTING,
 CODE-COMPLETE, TECH-REVIEW, EDIT-REVIEW, COMPLETE. Skipping a label requires a

@@ -1,0 +1,1466 @@
+% Authoritative LaTeX; edit this file, not the historical Markdown.
+\chapter{Embeddings and Normalization}\label{chapter-7-embeddings-and-normalization}
+Chapter 2 ended with integers. A tokenizer transformed UTF-8 bytes into
+token identities under a model-specific vocabulary contract. Chapter 3
+used one of those identities to select a hidden vector, but its purpose
+was to make an entire language-model forward pass small enough to
+calculate by hand. Now we can inspect that first numerical step as an
+engine operation in its own right.
+
+A token ID is not a small activation. Multiplying the integer
+\texttt{128} by a model weight does not recover what token 128
+``means.'' The integer is an addressable symbol. The model's
+\textbf{embedding table} stores one learned floating-point row for each
+symbol. A checked lookup crosses from discrete token space into the
+continuous model space in which the network computes.
+
+Once there, scale matters. A vector and a hundred-times-larger copy
+point in the same direction, but their components drive later arithmetic
+at very different magnitudes. Transformer architectures commonly place
+normalization around learned transformations to control that scale. This
+chapter builds \textbf{RMSNorm} from squares, a mean, a square root, a
+reciprocal, and a learned element-wise scale. There is no hidden
+framework call.
+
+These operators are short. Their contracts are not. We need to know
+which axes mean vocabulary and model width, which bytes a row uses,
+whether the result aliases weights, what happens to an empty dimension,
+where epsilon appears, which precision performs the reduction, and what
+finite values can still overflow. Those decisions become assumptions of
+every later Transformer chapter.
+
+\begin{quote}
+\textbf{FIRST PRINCIPLE} Tokenization chooses a discrete model symbol.
+Embedding lookup materializes that symbol's learned model-space vector.
+Normalization then changes the vector's scale under an explicit
+numerical contract; it does not invent its meaning or clip its
+coordinates.
+\end{quote}
+
+\section{The first learned vector}\label{the-first-learned-vector}
+
+\EngineFigure{ch07-journey}{Token identity, copied embedding and normalized activation occupy different boundaries.}{fig:ch07-journey}
+
+The visual edition follows one deliberately small table through the
+whole chapter. It has three vocabulary rows and four coordinates per
+row; token 1 selects the existing RMSNorm hand vector
+\texttt{{[}1,-2,3,-4{]}}. This is a new connecting fixture, not a
+replacement for Chapter 3's three-dimensional tiny model or the original
+Chapter 7 table tests. Keeping these identities explicit prevents a
+polished diagram from silently changing the engine being explained.
+
+Read the plate as three contracts. An integer identifies a row. Lookup
+copies that row into activation storage. RMSNorm creates another
+activation under a specified equation. The dashed next-step arrow is a
+curriculum boundary, not an implemented Q/K/V call. This is the
+model-semantic view; the ownership and physical-address views below
+explain what its short arrows cost.
+
+The complete boundary is visible in the
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/token-to-model-space.txt}{token-to-model-space
+diagram}:
+
+The token identity selects a parameter row. The copied row becomes an activation. Normalization transforms that activation while leaving the embedding table unchanged.
+
+The tokenizer owns text segmentation and the mapping from pieces to
+integer IDs. The numerical model owns the embedding table. An ID has
+meaning only relative to that pair of artifacts: the same integer can
+select an unrelated row in a different model.
+
+Let \(V_{\mathrm{vocab}}\) be the vocabulary size and \(D\) be the model
+or embedding dimension. The table is a learned parameter matrix
+
+\begin{equation}
+\mathbf{E}\in\mathbb{R}^{V_{\mathrm{vocab}}\times D}.
+\end{equation}
+
+For a valid token ID \(t\), lookup produces
+
+\begin{equation}
+\mathbf{x}=\mathbf{E}_{t,:}\in\mathbb{R}^{D},
+\qquad 0\le t<V_{\mathrm{vocab}}.
+\end{equation}
+
+The colon means every column in row \(t\). Written element by element,
+
+\begin{equation}
+x_j=E_{t,j},
+\qquad 0\le j<D.
+\end{equation}
+
+This equation specifies selection, not arithmetic over every table row.
+A one-hot vector times \(\mathbf{E}\) is a mathematically equivalent
+description, but constructing that mostly-zero vector and performing a
+dense product would be a perverse implementation. The engine already has
+the row index.
+
+The output is the first \textbf{residual activation}. In a decoder, the
+\textbf{residual stream} is the persistent model-width state carried
+from one Transformer sublayer to the next. Chapter 7 establishes its
+width and normalization; it does not yet build any of the
+transformations that consume it.
+
+\section{What is physically stored?}\label{what-is-physically-stored}
+
+The table contains floating-point parameters learned during training. It
+does not contain source strings, dictionary definitions, or
+human-readable facts. Rows can acquire useful geometric relationships,
+but an inference engine needs no story about their semantics to execute
+lookup. It needs a tensor with valid metadata and a token in range.
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/embedding-logical-layout.txt}{logical
+layout} separates the two axes:
+
+\begin{itemize}
+\tightlist
+\item
+  axis 0 has length \(V_{\mathrm{vocab}}\) and is selected by token
+  identity;
+\item
+  axis 1 has length \(D\) and becomes the model-space vector.
+\end{itemize}
+
+That is why the semantic shape is \texttt{{[}V,D{]}}, rather than
+\texttt{{[}D,V{]}}. The convention matches the operator: selecting
+\texttt{table{[}t,:{]}} returns \texttt{D} values. Another system can
+store axes differently, but then its metadata and kernel must make that
+orientation explicit.
+
+In Tensor Substrate v1, an \texttt{OwnedTensor} uses canonical row-major
+storage. An embedding owner therefore reports
+
+\begin{verbatim}
+shape   = [V,D]
+strides = [D,1]        // measured in elements
+dtype   = f32
+\end{verbatim}
+
+For base offset zero, the canonical physical element offset is
+
+\begin{equation}
+o(t,j)=tD+j.
+\end{equation}
+
+Because one \texttt{f32} occupies four bytes, the corresponding byte
+displacement from the allocation's first element is
+
+\begin{equation}
+b(t,j)=4(tD+j)\quad[\mathrm{bytes}].
+\end{equation}
+
+Those equations describe the canonical case. The reference operator
+accepts a general validated \texttt{TensorView}, so its actual logical
+mapping remains Chapter 5's stride equation:
+
+\begin{equation}
+o(t,j)=b_0+t s_0+j s_1,
+\end{equation}
+
+where \(b_0\) is the view's base element offset and \(s_0,s_1\) are
+nonnegative element strides. The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/embedding-physical-layout.txt}{physical-layout
+diagram} puts the canonical shortcut beside the general rule. Code calls
+checked \texttt{get2(t,j)} instead of reconstructing either formula in
+the operator. That keeps extent validation and logical addressing in the
+tensor substrate.
+
+For a canonical table, one selected row is physically contiguous:
+reading columns \texttt{0..D} walks adjacent \texttt{f32} values. A
+strided table can place padding or another logical arrangement between
+columns. A zero-stride view can repeat one storage value across an axis.
+Tensor Substrate v1 admits those immutable views, so the broad reference
+operator defines their behavior instead of quietly assuming stride one.
+
+\section{The checked lookup
+contract}\label{the-checked-lookup-contract}
+
+\EngineFigure{ch07-lookup}{Token 1 selects four F32 values at element offsets 4 through 7 and byte displacements 16 through 28.}{fig:ch07-lookup}
+
+The table and activation must not share a label merely because both are
+matrices of numbers. The learned table is \texttt{{[}V,D{]}}; a sequence
+of selected activations is \texttt{{[}T,D{]}}. Here one token selects
+\texttt{{[}D{]}}. In the plate, the ochre cells remain parameters and
+the green cells are a new owner. The address labels are displacements
+within the canonical table, not allocator addresses and not offsets
+within the returned vector, whose own first element is zero.
+
+\texttt{\seqsplit{embedding\_lookup\_reference}} accepts an immutable
+table view and a \texttt{TokenId}.
+
+\Needspace{12\baselineskip}
+
+It requires:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  table rank exactly two;
+\item
+  vocabulary size \(V_{\mathrm{vocab}}>0\);
+\item
+  model dimension \(D>0\);
+\item
+  token ID in the half-open interval \([0,V_{\mathrm{vocab}})\);
+\item
+  a view whose reachable extent was already validated by Tensor
+  Substrate v1.
+\end{enumerate}
+
+It returns a canonical \texttt{OwnedTensor} of shape \texttt{{[}D{]}}.
+Wrong rank, empty axes, and an invalid ID produce structured
+\texttt{EmbeddingError} variants. A token equal to
+\(V_{\mathrm{vocab}}\) is already out of range; the last valid ID is
+\(V_{\mathrm{vocab}}-1\). Validation precedes element reads, so ordinary
+bad input cannot become a panic or a speculative out-of-bounds access.
+
+The core loop is deliberately unsurprising:
+
+\begin{verbatim}
+let mut output = Vec::with_capacity(model_dimension);
+for column in 0..model_dimension {
+    output.push(*table.get2(row, column)?);
+}
+OwnedTensor::from_vec(vec![model_dimension], output)
+\end{verbatim}
+
+The important code is also around the loop: rank and dimension checks,
+checked conversion from \texttt{TokenId}, output shape construction, and
+the owned return type. A five-line numerical body does not imply a
+five-line operator contract.
+
+\begin{quote}
+\textbf{BUILD IT} Use
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-30-inspect-embedding-row.md}{Lab
+30} to calculate canonical and strided offsets, then
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-31-checked-embedding-lookup.md}{Lab
+31} to audit every validation boundary. An off-by-one comparison must
+fail at token \texttt{V}, not during a later storage access.
+\end{quote}
+
+\section{View or copy?}\label{view-or-copy}
+
+The table already owns the selected values. Why allocate another vector?
+
+One possible interface returns a
+\texttt{\seqsplit{TensorView<'weights>}} of the row. That avoids copying
+\(D\) elements. It also aliases model parameters and carries a lifetime
+tied to their owner. An immutable consumer could use it safely, but a
+residual stream is not just an immutable observation: later sublayers
+produce additions and other request-local state. If code expects to
+mutate the row as an activation, aliasing model weights would be
+catastrophic.
+
+The selected Chapter 7 policy is therefore explicit materialization:
+
+For each input position $t$, gather $X_{t,:}=E_{x_t,:}$. Repeated IDs give equal row values but distinct output positions.
+
+The fresh owner costs one read and one write per element. In the
+simplest cold-payload accounting, a canonical \texttt{f32} lookup moves
+approximately
+
+\begin{equation}
+Q_{\mathrm{lookup}}\approx 8D\quad[\mathrm{bytes}],
+\end{equation}
+
+counting \(4D\) input bytes and \(4D\) output bytes. This is not
+measured memory traffic: cache lines, write allocation, allocator
+metadata, and warm data can change physical transfers. It is a useful
+statement of the policy's payload cost.
+
+In exchange, downstream mutation cannot alter \(\mathbf{E}\), the
+activation can outlive the lookup borrow, and request cleanup has one
+obvious owner. The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/embedding-view-vs-copy.txt}{view-versus-copy
+diagram} records both options rather than presenting the copy as free.
+
+A database-table analogy can help for one moment: the embedding table is
+long-lived storage, and an ID chooses a row. The analogy stops there.
+These are learned numerical weights, not relational records; there is no
+SQL predicate, transaction, schema evolution, or human field meaning.
+The actual mechanism remains tensor indexing and copying.
+
+\begin{quote}
+\textbf{PROVE IT}
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-32-embedding-view-vs-copy.md}{Lab
+32} mutates the returned \texttt{OwnedTensor} and verifies that the
+original table is unchanged. Ownership is tested behavior, not a
+comment.
+\end{quote}
+
+\section{From one token to a
+sequence}\label{from-one-token-to-a-sequence}
+
+\EngineFigure{ch07-sequence}{Repeated token identities produce equal rows at distinct positions in one activation allocation.}{fig:ch07-sequence}
+
+Positions and identities are separate axes of reasoning. Positions 0 and
+2 can contain the same token ID without sharing mutable output cells. In
+this fixture, changing \texttt{X{[}0,0{]}} cannot change
+\texttt{X{[}2,0{]}}, even though lookup originally wrote the same value
+into both. An optimization that deduplicated parameter reads would still
+owe the same logical output and ownership contract.
+
+Inference begins with more than one prompt token even though later
+generation produces one new token at a time. The single-row rule
+generalizes without introducing attention.
+
+For the token sequence
+
+\begin{equation}
+\mathbf{t}=[t_0,t_1,\ldots,t_{T-1}],
+\end{equation}
+
+sequence embedding produces
+
+\begin{equation}
+\mathbf{X}\in\mathbb{R}^{T\times D},
+\qquad X_{ij}=E_{t_i,j},
+\end{equation}
+
+for \(0\le i<T\) and \(0\le j<D\). The shapes are:
+
+\begin{verbatim}
+token identities   [T]
+embedding table    [V,D]
+result             [T,D]
+\end{verbatim}
+
+\texttt{\seqsplit{embedding\_sequence\_reference}} validates the same
+positive table dimensions, checks prospective output element count
+\(TD\), then checks each token before copying its logical row. It
+preserves order and repetition. Tokens \texttt{{[}3,0,3{]}} produce rows
+\texttt{{[}E3,E0,E3{]}}; it does not deduplicate them or sort for
+locality.
+
+An empty token sequence has \(T=0\) and returns an owned tensor with
+shape \texttt{{[}0,D{]}}. That result has a well-defined shape and no
+values. This does not make an empty model vocabulary valid: \(V=0\)
+leaves no token identity selectable, and \(D=0\) would not create a
+model-space vector. The axes have independent contracts.
+
+The implementation is intentionally only a gather into
+\texttt{{[}T,D{]}}. It does not create batches, positions, masks, Q/K/V,
+or a Transformer block. Those concepts need separate semantic and
+ownership work.
+
+\section{The residual-stream
+invariant}\label{the-residual-stream-invariant}
+
+\EngineFigure{ch07-owners}{Model parameters, immutable views and request-owned activation tensors have distinct lifetimes.}{fig:ch07-owners}
+
+This diagram uses the real storage types, \texttt{OwnedTensor} and
+\texttt{TensorView}, not an imagined Transformer class hierarchy. The
+dashed edge points from a view to the owner it borrows. Solid edges
+represent a copy or numerical transformation. Neither means transferring
+ownership of model weights into a request. Model storage can serve many
+requests; request cleanup must release only its own activation owners.
+
+Once lookup produces \(\mathbf{x}_0\in\mathbb{R}^{D}\) for a token,
+\(D\) becomes one of the decoder's central dimensional invariants.
+Transformer sublayers can create internal tensors with other shapes, but
+a value added back into the residual stream must return to model width
+\(D\).
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/residual-stream-width.txt}{residual-width
+diagram} states that bounded claim. ``Persistent'' means the state is
+carried through the layer sequence for this request, not that it has
+model lifetime or durable storage. It is activation data. The embedding
+table and normalization weights are parameters; the residual vectors are
+request-owned values.
+
+This distinction is summarized in the
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/parameters-vs-activations.txt}{parameter/activation
+diagram}:
+
+Read-only parameter storage outlives individual calls; each request creates and releases its own activation owners. Figure~\ref{fig:parameter-owners} gives the corresponding ownership relation.
+
+Inference does not update the learned parameters. Multiple requests may
+read them concurrently. Each request owns the activations it creates and
+eventually releases them. Later chapters will give that distinction
+consequences for loading, placement, caches, and scheduling; here it
+already prevents parameter aliasing.
+
+\section{Why scale needs a
+contract}\label{why-scale-needs-a-contract}
+
+Consider two vectors:
+
+\begin{equation}
+\mathbf{x}_1=[1,2,-1,2],
+\qquad
+\mathbf{x}_2=[10,20,-10,20].
+\end{equation}
+
+The second is \(10\mathbf{x}_1\). Their coordinate pattern and direction
+agree, but every component of the second is ten times larger. Repeated
+learned transformations and residual additions can produce activation
+scales that vary across layers and inputs. Later matrix products
+multiply those values by many weights, so scale affects representable
+range and numerical behavior.
+
+Normalization provides a defined rescaling based on a vector statistic.
+It is not clipping. A clipping operator might independently replace
+every value above a threshold with that threshold, changing coordinates
+selectively. RMSNorm computes one scalar from the entire vector, scales
+every coordinate by that shared value, and then applies learned
+per-coordinate weights. Large components remain large relative to small
+components unless learned scale changes that relation.
+
+The original RMSNorm paper by Biao Zhang and Rico Sennrich proposed
+removing LayerNorm's recentering step while retaining RMS-based
+rescaling. That history is useful, but the inference engine still needs
+the exact forward equation.
+
+\section{Root mean square from first
+principles}\label{root-mean-square-from-first-principles}
+\index{root mean square}
+
+Let
+
+\begin{equation}
+\mathbf{x}=[x_0,x_1,\ldots,x_{D-1}]\in\mathbb{R}^{D},
+\qquad D>0.
+\end{equation}
+
+First square each component. Squaring makes every contribution
+nonnegative, so opposite signs cannot cancel. Next take the arithmetic
+mean:
+
+\begin{equation}
+m_2(\mathbf{x})=\frac{1}{D}\sum_{i=0}^{D-1}x_i^2.
+\end{equation}
+
+The quantity \(m_2\) has squared units relative to \(\mathbf{x}\).
+Taking the square root restores the original units:
+
+\begin{equation}
+\operatorname{RMS}(\mathbf{x})
+=\sqrt{\frac{1}{D}\sum_{i=0}^{D-1}x_i^2}.
+\end{equation}
+
+That sequence---square, mean, root---is the name \textbf{root mean
+square}. The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/rms-calculation-pipeline.txt}{RMS
+pipeline} makes each lowering step visible.
+
+Why take a mean rather than only a sum? If a vector repeated the same
+magnitude at every coordinate, the sum of squares would grow with \(D\).
+Dividing by \(D\) makes its RMS equal that coordinate magnitude,
+independent of vector length. For \texttt{{[}4,4,4,4{]}}, RMS is 4, not
+8.
+
+RMS alone has a zero-denominator problem. For the zero vector, every
+square and their mean are zero. The reciprocal required for
+normalization would be undefined. RMSNorm therefore defines an
+epsilon-stabilized denominator. In this book and the checked operator,
+epsilon is \emph{inside} the square root:
+
+\begin{equation}
+r=\frac{1}{\sqrt{m_2(\mathbf{x})+\epsilon}},
+\qquad \epsilon>0.
+\end{equation}
+
+The expression
+
+\begin{equation}
+\frac{1}{\sqrt{m_2(\mathbf{x})}+\epsilon}
+\end{equation}
+
+is a different function. It cannot be substituted just because both
+contain a square root and epsilon. PyTorch's official RMSNorm semantics
+and the inspected Hermon/llama.cpp paths use the first convention.
+
+\section{The RMSNorm operator}\label{the-rmsnorm-operator}
+\index{RMSNorm}
+
+RMS rescaling alone would apply scalar \(r\) to every coordinate.
+RMSNorm also has a learned scale vector
+
+\begin{equation}
+\mathbf{w}\in\mathbb{R}^{D}.
+\end{equation}
+
+The complete operator is
+
+\begin{equation}
+\boxed{
+y_i=x_i
+\left(
+\frac{1}{\sqrt{\frac{1}{D}\sum_{j=0}^{D-1}x_j^2+\epsilon}}
+\right)
+w_i
+},
+\qquad 0\le i<D.
+\end{equation}
+
+Equivalently, if \(r\) names the scalar reciprocal RMS,
+
+\begin{equation}
+\mathbf{y}=r(\mathbf{x}\odot\mathbf{w}),
+\qquad
+\mathbf{x},\mathbf{w},\mathbf{y}\in\mathbb{R}^{D}.
+\end{equation}
+
+The operator has two different kinds of multiplication. The reciprocal
+RMS \(r\) is one scalar derived from all of \(\mathbf{x}\). The learned
+scale \(\mathbf{w}\) is element-wise: coordinate \(i\) uses \(w_i\). The
+symbol \(\odot\) denotes that element-wise product, not a dot product.
+
+Learned scale lets the trained model adjust normalized coordinates
+instead of forcing every feature to use identical output scale. During
+inference, \(\mathbf{w}\) is immutable parameter data. No learning
+occurs inside this function.
+
+\Needspace{28\baselineskip}
+
+\subsection{A complete calculation by
+hand}\label{a-complete-calculation-by-hand}
+
+Use
+
+\begin{equation}
+\mathbf{x}=[1,-2,3,-4],\qquad
+\mathbf{w}=[1,0.5,2,-1],\qquad
+\epsilon=10^{-5}.
+\end{equation}
+
+The squares sum to
+
+\begin{equation}
+1^2+(-2)^2+3^2+(-4)^2=1+4+9+16=30.
+\end{equation}
+
+With \(D=4\),
+
+\begin{equation}
+m_2=\frac{30}{4}=7.5,
+\end{equation}
+
+and
+
+\begin{equation}
+r=\frac{1}{\sqrt{7.5+10^{-5}}}
+\approx0.36514813.
+\end{equation}
+
+Applying both scales gives
+
+\begin{equation}
+\begin{aligned}
+y_0&= 1(r)(1)       &&\approx 0.36514813,\\
+y_1&=-2(r)(0.5)     &&\approx-0.36514813,\\
+y_2&= 3(r)(2)       &&\approx 2.1908888,\\
+y_3&=-4(r)(-1)      &&\approx 1.4605925.
+\end{aligned}
+\end{equation}
+
+The independent Python oracle and a focused Rust test calculate the
+entire vector. The printed decimals are evidence from those programs,
+not unchecked mental arithmetic.
+
+\begin{quote}
+\textbf{BUILD IT} Complete
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-33-compute-rms-by-hand.md}{Lab
+33}. Keep exact symbolic steps separate from approximate decimal output,
+then use
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-34-implement-rmsnorm.md}{Lab
+34} to trace those same stages through the reference operator.
+\end{quote}
+
+\section{Equation to two loops}\label{equation-to-two-loops}
+
+\EngineFigure{ch07-passes}{Four squares reduce to a shared reciprocal RMS before the second pass writes output coordinates.}{fig:ch07-passes}
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/figures/generated/ch07-passes.html}{four-step
+sequence} highlights the same stages, with keyboard controls and no
+autoplay. Its static plate is complete: every intermediate needed for
+the hand calculation remains visible in print. The highlighted stage
+changes only the explanation, not the reduction order. Partial sums
+\texttt{{[}1,5,14,30{]}} correspond to increasing logical index, exactly
+as the reference loop below.
+
+The direct lowering naturally has two logical passes:
+
+\begin{verbatim}
+sum_squares = 0
+for i in 0..D:
+    sum_squares += x[i] * x[i]
+
+mean_square = sum_squares / D
+inverse_rms = 1 / sqrt(mean_square + epsilon)
+
+for i in 0..D:
+    y[i] = x[i] * inverse_rms * weight[i]
+\end{verbatim}
+
+Pass one reduces \(D\) values to the scalar \(r\). Pass two broadcasts
+that scalar while reading the input again and reading learned weights.
+The output for coordinate zero cannot be finalized before pass one has
+seen the last input, because the last square contributes to its
+denominator.
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/rmsnorm-two-pass.txt}{two-pass
+diagram} follows the data, and the
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/equation-to-loop.txt}{equation-to-loop
+diagram} connects symbols, tensor shapes, checked logical indices, and
+execution. The reference implementation follows it closely:
+
+\Needspace{20\baselineskip}
+
+\begin{verbatim}
+let mut sum_squares = 0.0_f32;
+for index in 0..dimension {
+    let value = *input.get(&[index])?;
+    let square = value * value;
+    sum_squares += square;
+}
+
+let mean_square = sum_squares / dimension as f32;
+let inverse_rms = 1.0_f32 / (mean_square + epsilon).sqrt();
+
+for index in 0..dimension {
+    output.push(*input.get(&[index])? * inverse_rms * *weight.get(&[index])?);
+}
+\end{verbatim}
+
+The source contains finite-value checks omitted from this condensed
+excerpt. Those checks make the simple algorithm fail explicitly when its
+arithmetic leaves the declared domain.
+
+\section{Shape, layout, and ownership
+contracts}\label{shape-layout-and-ownership-contracts}
+
+\texttt{\seqsplit{rms\_norm\_reference}} accepts two immutable
+\texttt{TensorView} values and a scalar epsilon. Its complete
+preconditions are:
+
+\begin{itemize}
+\tightlist
+\item
+  input rank is one;
+\item
+  learned-scale rank is one;
+\item
+  their lengths agree;
+\item
+  \(D>0\);
+\item
+  epsilon is finite and greater than zero;
+\item
+  every logical input and weight value is finite.
+\end{itemize}
+
+The function accepts any valid nonnegative-stride rank-one view. A
+stride-two input reads every other physical element. A zero-stride input
+repeats one physical value \(D\) times; a zero-stride weight repeats one
+learned scale. That behavior is safe because views are immutable and the
+tensor constructor has proved their reachable extent. The operator does
+not call \texttt{to\_contiguous} and does not disguise a layout repair
+as numerical work.
+
+The output is a new canonical \texttt{{[}D{]}} \texttt{OwnedTensor}. It
+aliases neither input nor weight. That policy matches embedding output:
+parameter owners are read-only, and new activation data has
+request-local ownership.
+
+Wrong rank produces \texttt{RankMismatch} naming the operand. Unequal
+lengths produce \texttt{LengthMismatch} with both sizes. Empty dimension
+and invalid epsilon have dedicated variants. \texttt{TensorError}
+remains wrapped for substrate failures. There are also structured
+numerical errors for non-finite input, square, accumulated reduction,
+inverse RMS, and output.
+
+Ordinary invalid operator inputs do not panic. Resource exhaustion
+remains a different boundary: after checked element count, a real
+allocator failure is not converted into a tensor-shape error by this
+small teaching API.
+
+\section{Epsilon is semantic
+metadata}\label{epsilon-is-semantic-metadata}
+
+\EngineFigure{ch07-epsilon}{Positive epsilon defines zero-input behavior but breaks exact scale invariance for tiny signals.}{fig:ch07-epsilon}
+
+For \(\mathbf{x}=\mathbf{0}\) and positive finite epsilon,
+
+\begin{equation}
+r=\frac{1}{\sqrt{\epsilon}}
+\end{equation}
+
+is finite. Each output still equals zero because \(x_i=0\). The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/epsilon-zero-vector.txt}{epsilon
+diagram} shows the valid and rejected paths.
+
+The Chapter 7 API rejects:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{epsilon\ ==\ 0}, because the zero vector would have an
+  undefined reciprocal;
+\item
+  \texttt{epsilon\ \textless{}\ 0}, because the square-root input can
+  become negative;
+\item
+  NaN, because it poisons comparisons and arithmetic;
+\item
+  positive or negative infinity, because the operator requires finite
+  configuration.
+\end{itemize}
+
+Why not accept zero for nonzero vectors? An operator contract must cover
+every valid input, not only the vector a caller happens to provide
+today. Positive epsilon makes zero-vector behavior defined. Requiring
+positivity at entry is more predictable than conditionally accepting a
+configuration based on input values.
+
+The number itself is model configuration, not a universal constant. The
+educational examples use \texttt{1e-5}; current model families can
+specify other values. PyTorch even defines a dtype-based default when
+its \texttt{eps} argument is omitted. An inference runtime loading
+trained weights must use the model's declared convention and value.
+Hermon's paged preview reads
+\texttt{\seqsplit{llama.attention.layer\_norm\_rms\_epsilon}} metadata,
+defaults only under its current code path, and rejects nonpositive or
+non-finite results at model construction. That is validation at a
+different lifecycle stage, not a license to ignore epsilon.
+
+\begin{quote}
+\textbf{ENGINEERING FAILURE} Treating epsilon as an arbitrary ``small
+number'' can create a numerically different model. Moving it outside the
+square root, changing it during a port, or accepting NaN metadata
+violates the operator contract even if many ordinary vectors produce
+superficially similar output.
+\end{quote}
+
+Use
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-35-break-epsilon.md}{Lab
+35} to make every invalid case and the zero-vector result executable.
+
+\section{RMSNorm is not LayerNorm}\label{rmsnorm-is-not-layernorm}
+
+\EngineFigure{ch07-contrast}{A uniform vector is preserved near unit scale by RMSNorm but becomes zero after LayerNorm centering with zero bias.}{fig:ch07-contrast}
+
+The uniform-vector counterexample is more useful than a vague family
+resemblance. With unit gain and zero bias, LayerNorm removes all four
+equal coordinates by subtracting their mean. RMSNorm does not. After RMS
+rescaling, learned gain introduces another distinction: our mixed-sign
+fixture's output has RMS about \texttt{1.342}. Coordinate 3 changes sign
+because its gain is negative. There is no final operation that forces
+the gained vector back to unit RMS.
+
+Readers will encounter both names. They are related normalization
+operators, not spelling variants.
+
+LayerNorm computes a mean
+
+\begin{equation}
+\mu=\frac{1}{D}\sum_{i=0}^{D-1}x_i,
+\end{equation}
+
+centers the vector with \(x_i-\mu\), and scales by a variance-like
+statistic before learned affine parameters. RMSNorm omits that
+recentering step. It uses the root mean square of the uncentered
+coordinates and a learned scale.
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/layernorm-vs-rmsnorm.txt}{LayerNorm/RMSNorm
+diagram} shows the difference in one glance. Removing the mean and
+subtraction changes both mathematical invariances and execution. It is
+not correct to explain RMSNorm as ``LayerNorm but faster'' without first
+naming the missing operation and without measurement. The original
+RMSNorm paper reports experimental efficiency and task results for its
+studied systems; that evidence does not predict a universal
+inference-kernel speed ratio on every engine.
+
+Chapter 7 stops at this contrast. Batch normalization, group
+normalization, partial RMSNorm, training gradients, and convergence
+behavior are outside its inference boundary.
+
+\section{Precision is part of the
+operator}\label{precision-is-part-of-the-operator}
+
+Real-number notation has unlimited range and precision. The Rust
+operator does not. Transformer Primitives v1 makes one simple choice:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Stage & Educational dtype \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+input activation storage & \texttt{f32} \\
+learned scale storage & \texttt{f32} \\
+\texttt{x*x} product & \texttt{f32} \\
+sum-of-squares accumulator & \texttt{f32} \\
+mean, square root, reciprocal & \texttt{f32} \\
+element-wise output product & \texttt{f32} \\
+output storage & \texttt{f32} \\
+\end{longtable}
+}
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/normalization-precision-flow.txt}{precision-flow
+diagram} places the finite-range gates along that path. There is no
+implicit promotion to \texttt{f64} and no mixed-precision type
+machinery.
+
+Production execution can store activations or weights in FP16 or BF16
+while using wider arithmetic for sensitive reductions. Meta's published
+Llama 4 reference, for example, casts the normalization input to float
+for square, mean, and reciprocal-square-root work, then casts the
+normalized value back before applying the learned weight. This is one
+source-verified model implementation, not a claim that every backend
+follows the same sequence. Backend kernels can fuse stages while
+preserving the model's accepted precision contract.
+
+The reduction order matters too. In finite precision,
+
+\begin{equation}
+(a+b)+c
+\end{equation}
+
+can round differently from
+
+\begin{equation}
+a+(b+c).
+\end{equation}
+
+The scalar reference visits logical indices in increasing order. A
+future SIMD tree, threaded partition, or GPU reduction can combine
+partial sums in another order. Equivalent real-number equations
+therefore need a numerical agreement policy: finite outputs are compared
+with an absolute-plus-relative tolerance, while NaN or infinity cannot
+pass merely because their neighboring values are close. Bit identity
+remains appropriate for row selection and exact zero fixtures, not as a
+universal cross-backend RMSNorm rule.
+
+\section{Finite input can still
+fail}\label{finite-input-can-still-fail}
+
+\EngineFigure{ch07-range}{The magnitude sweep separates accepted finite reductions from square overflow and accumulated-sum overflow.}{fig:ch07-range}
+
+Checking \texttt{x.is\_finite()} is necessary but insufficient. Squaring
+expands the exponent. A finite \texttt{f32} around \texttt{1e20} has a
+mathematical square around \texttt{1e40}, which exceeds the maximum
+finite binary32 magnitude. \texttt{x*x} becomes infinity. Even when
+every individual square is finite, their sum can overflow.
+
+At the other end, very small squares can become subnormal or underflow
+to zero. For tiny activations, epsilon can dominate the mean square. The
+operator then behaves approximately like
+
+\begin{equation}
+y_i\approx\frac{x_iw_i}{\sqrt{\epsilon}},
+\end{equation}
+
+not like an exactly scale-invariant map.
+
+The reference implementation remains the transparent naïve reduction. It
+checks each square and the running sum and returns
+\texttt{NonFiniteSquare} or \texttt{\seqsplit{NonFiniteReduction}}
+instead of silently continuing. Detection does not expand the
+algorithm's numerical range; it makes the limit observable.
+
+Stable norm algorithms exist. Netlib's \texttt{SLASSQ}, for example,
+represents a sum of squares using a scale and a scaled sum so
+intermediate values can avoid many overflow and underflow cases. That is
+valuable evidence and a possible future candidate. It does not belong in
+the active Chapter 7 reference path: the more complex invariant would
+obscure the direct equation, and there is no measured model workload
+demanding substitution yet.
+
+\begin{quote}
+\textbf{PROVE IT}
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-37-rmsnorm-magnitude-stress.md}{Lab
+37} distinguishes finite input from finite intermediate arithmetic.
+Remove the checks only in a disposable change and watch infinity turn a
+normalization into a misleading zero or NaN.
+\end{quote}
+
+\section{Scale experiment: where epsilon becomes
+visible}\label{scale-experiment-where-epsilon-becomes-visible}
+
+Without epsilon and under exact real arithmetic, a positive scalar
+\(\alpha\) cancels:
+
+\begin{equation}
+\frac{\alpha\mathbf{x}}
+{\sqrt{\operatorname{mean}((\alpha\mathbf{x})^2)}}
+=
+\frac{\mathbf{x}}
+{\sqrt{\operatorname{mean}(\mathbf{x}^2)}}.
+\end{equation}
+
+With fixed positive epsilon, the denominator becomes
+
+\begin{equation}
+\sqrt{\alpha^2m_2(\mathbf{x})+\epsilon},
+\end{equation}
+
+so exact cancellation no longer holds. It remains a good approximation
+when \(\alpha^2m_2\gg\epsilon\).
+
+The curve in the epsilon plate makes that condition visible. Keeping the
+learned gain and epsilon fixed, exact real arithmetic gives the scalar
+relation
+
+\begin{equation}
+\mathbf{y}(\alpha\mathbf{x})=c(\alpha)\mathbf{y}(\mathbf{x}),\qquad
+c(\alpha)=\frac{\alpha\sqrt{m_2+\epsilon}}
+{\sqrt{\alpha^2m_2+\epsilon}},\quad \alpha>0.
+\end{equation}
+
+Here \(c\) is the output scale relative to the unscaled input, not a
+latency or accuracy score. For the hand vector, \(m_2=7.5\) and the two
+denominator terms are equal at
+\(\alpha=\sqrt{\epsilon/7.5}\approx0.00115\). Below that crossover,
+epsilon dominates; above it, the curve approaches its nearly flat
+regime. The horizontal axis is logarithmic so both behaviors remain
+visible. This analytical curve complements the discrete executable
+sweep, not a new timing benchmark or an assertion about trained
+activation distributions.
+
+The committed Rust example and independent Python oracle use the hand
+vector, learned scale, and \texttt{epsilon=1e-5}. Relative to
+\texttt{alpha=1}, the Python oracle records:
+
+\Needspace{12\baselineskip}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}rr@{}}
+\toprule\noalign{}
+Positive scale \(\alpha\) & Maximum absolute output difference \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{1e-8} & \texttt{2.1908698} \\
+\texttt{0.1} & \texttt{0.000144584} \\
+\texttt{1} & \texttt{0} \\
+\texttt{10} & \texttt{0.000001446} \\
+\texttt{100} & \texttt{0.000001460} \\
+\end{longtable}
+}
+
+The tiny-scale counterexample matters more than the close large-scale
+rows. A blanket sentence ``RMSNorm is scale invariant'' would be false
+for the operator we actually execute.
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-36-rmsnorm-scale-experiment.md}{Lab
+36} reproduces the sweep and asks where the epsilon crossover lies.
+
+The magnitude sweep adds another view:
+
+\Needspace{12\baselineskip}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}rl@{}}
+\toprule\noalign{}
+Input magnitude & Teaching \texttt{f32} observation with alternating
+signs \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{1e-20} & finite subnormal square; output scale dominated by
+epsilon \\
+\texttt{1e-10} & finite square; epsilon still dominates \\
+\texttt{1} & output approximately \texttt{±0.999995} \\
+\texttt{1e10} & finite square and output \texttt{±1} at printed
+precision \\
+\texttt{1e20} & typed square-overflow error \\
+\end{longtable}
+}
+
+Four values of \texttt{1e19} separately square to finite values but
+overflow their running \texttt{f32} sum, exercising a different error.
+These are bounded numerical experiments, not a claim that real trained
+activations span this entire range.
+
+\section{Work and memory behavior}\label{work-and-memory-behavior}
+
+\EngineFigure{ch07-cost}{Four F32 payload streams explain an analytical 16D-byte RMSNorm cost without asserting measured memory traffic.}{fig:ch07-cost}
+
+Embedding lookup and RMSNorm differ from Chapter 6's matrix products.
+
+A single embedding lookup selects one row, checks addresses, reads \(D\)
+values, and under our policy writes \(D\) values. It performs almost no
+floating-point arithmetic. Vocabulary size controls parameter-table
+capacity and ID bounds, but a single valid lookup does not scan all
+\(V_{\mathrm{vocab}}\) rows.
+
+The RMSNorm reference performs a reduction and an element-wise pass.
+Under a simple cold-payload \texttt{f32} model it:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  reads input once for the reduction: \(4D\) bytes;
+\item
+  reads input again for scaling: \(4D\) bytes;
+\item
+  reads learned weight: \(4D\) bytes;
+\item
+  writes output: \(4D\) bytes.
+\end{enumerate}
+
+Thus
+
+\begin{equation}
+Q_{\mathrm{RMSNorm}}\approx16D\quad[\mathrm{bytes}].
+\end{equation}
+
+This estimate excludes tensor metadata, output allocation overhead,
+cache-line effects, write allocation, and reuse from nearby operations.
+The computation does roughly linear work in \(D\), including a square
+and sum per input and two multiplications per output, plus division,
+square root, and reciprocal work. Assigning one universal FLOP count to
+square root or reciprocal is not useful here.
+
+The structural conclusion is narrower: this operation exposes much less
+data reuse than a large GEMM, in which loaded matrix blocks can feed
+many output cells. Its arithmetic intensity is low under the stated
+payload boundary, so optimization questions will often concern data
+movement, reduction strategy, and fusion. ``Often'' is architectural
+reasoning, not a measurement of the current example.
+
+No timing benchmark is published for Chapter 7. A nanosecond result for
+one tiny vector would mostly expose call, allocation, compiler, and
+timer details. The scale and magnitude experiments answer actual
+correctness questions. A later optimization should first define the
+candidate, workload, cache state, repetitions, hardware, compiler, and
+equivalence gate before measuring speed.
+
+\section{Embedding is not output
+projection}\label{embedding-is-not-output-projection}
+
+ENGINE-1 contains both an embedding table and an output weight matrix
+with shape \texttt{{[}V,D{]}}. Equal shape does not make the operations
+equal.
+
+Embedding maps a token identity to a model-space row:
+
+\begin{equation}
+t\longmapsto\mathbf{E}_{t,:}\in\mathbb{R}^{D}.
+\end{equation}
+
+Output projection maps a hidden vector to one score per vocabulary item:
+
+\begin{equation}
+\mathbf{z}=\mathbf{W}_{\mathrm{out}}\mathbf{x}+\mathbf{b},
+\qquad
+\mathbf{W}_{\mathrm{out}}\in
+\mathbb{R}^{V_{\mathrm{vocab}}\times D},
+\quad
+\mathbf{z}\in\mathbb{R}^{V_{\mathrm{vocab}}}.
+\end{equation}
+
+Lookup reads one selected row. Projection uses every output row in a
+GEMV. The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/embedding-vs-output-projection.txt}{comparison
+diagram} shows where the two \texttt{{[}V,D{]}} tensors act.
+
+Some architectures tie embedding and output-projection weights, sharing
+parameter storage. That is a model architecture decision, not a
+consequence of shape. ENGINE-1 keeps distinct owners and Chapter 7 does
+not redesign it.
+
+\section{Integration without rewriting
+history}\label{integration-without-rewriting-history}
+
+Before this chapter,
+\texttt{\seqsplit{TinyLanguageModel::embedding\_row}} manually checked
+the token and copied each tensor element. It now calls
+\texttt{\seqsplit{embedding\_lookup\_reference}}, converts the owned
+tensor into its existing hidden
+\texttt{Vec\textless{}f32\textgreater{}}, and maps an invalid token back
+to the established \texttt{\seqsplit{ModelError::TokenOutOfRange}}
+variant. The output GEMV and bias addition are unchanged.
+
+RMSNorm is \emph{not} inserted into ENGINE-1. That tiny model was
+defined without a normalization weight or normalization step. Adding one
+merely to claim integration would change its logits and invalidate the
+historical hand fixture. The new operator is a tested primitive for the
+Transformer path that later chapters will compose honestly.
+
+The known regression remains:
+
+\begin{verbatim}
+input token:       like
+embedding/hidden: [1.0,-0.5,2.0]
+logits:            [-0.7,0.1,0.4,2.2]
+greedy output:     Rust, then EOS
+\end{verbatim}
+
+This is a useful architectural lesson: extracting an operation should
+preserve the model's semantics. Adding a new primitive to a library does
+not authorize changing old model graphs.
+
+\section{Independent correctness}\label{independent-correctness}
+
+The visual edition adds a second, explicitly connected evidence path:
+
+\begin{verbatim}
+python3 scripts/check-normalization-visual-parity.py
+\end{verbatim}
+
+An input-only JSON fixture supplies the table, token sequence, gain and
+epsilon. The Rust example calls the real operators; it does not print a
+stored expected answer. The independent Python computation supplies both
+a wider mathematical answer and an explicitly rounded F32 trace. The
+gate compares the entire output, selected addresses, squares and partial
+sums, then checks that all ten canonical scenes are embedded once. Five
+additional Rust tests cover the connecting fixture and its ownership and
+range claims. Existing oracle and stress tests remain independent
+regressions, not replaced by screenshots.
+
+The original operator milestone added 30 deterministic tests. Embedding
+coverage includes first, middle, and last rows; dimensions one and
+greater; wrong rank; empty axes; out-of-range IDs; strided and
+zero-stride views; sequence order and repetition; empty token sequence;
+and ownership isolation.
+
+RMSNorm coverage includes dimension one; the hand vector; mixed signs;
+zero and uniform vectors; non-unit weights; strided and zero-stride
+views; wrong ranks; length mismatch; empty dimension; invalid epsilon;
+non-finite operands; large and small magnitudes; square, reduction, and
+output overflow; and approximate positive-scale invariance where epsilon
+is negligible.
+
+The Python oracle is independently expressed. It uses ordinary Python
+lists, \texttt{math.fsum}, and Python's wider floating-point evaluation
+for the primary mathematical result. A separate \texttt{struct}-based
+helper rounds every stress operation to IEEE binary32 so it can classify
+the Rust reference's finite range. It does not import Rust, NumPy, or
+another tensor framework.
+
+Independent expression reduces correlated mistakes: the Rust operator
+follows checked tensor strides, while Python works from mathematical
+lists. It does not prove every possible vector. Boundary tests,
+deterministic fixtures, and the unchanged previous oracles remain part
+of the gate.
+
+\begin{quote}
+\textbf{PROVE IT}
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-38-rust-python-rmsnorm.md}{Lab
+38} compares exact lookup results and tolerant RMSNorm results.
+Deliberately permute learned weights; an RMS-only scalar check will miss
+the bug, while full-vector comparison will catch it.
+\end{quote}
+
+\section{Inside Hermon}\label{inside-hermon-3}
+
+\EngineFigure{ch07-source}{Source-verified default and preview routes separate graph execution from the visible Rust normalization loop.}{fig:ch07-source}
+
+The following paths were rechecked at Hermon commit \texttt{2a3fd521} on
+2026-09-10; the full pin and original historical observations are
+retained in the
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/astra/chapter07-regeneration.md}{visual
+review record}. Status labels matter because Hermon has a release path
+and a separately gated engine preview.
+
+\begin{quote}
+\textbf{INSIDE HERMON --- CURRENT} With
+\texttt{\seqsplit{HERMON\_RUNTIME\_MODE}} unset, \texttt{dispatch.rs}
+selects \texttt{Batched}. That path constructs the llama.cpp-backed
+batched runtime. Embedding lookup, normalization, and the rest of the
+default model graph therefore execute in the pinned llama.cpp/GGML
+machinery rather than the Rust reference loop in \texttt{paged.rs}.
+\end{quote}
+
+\begin{quote}
+\textbf{INSIDE HERMON --- PREVIEW} Explicit
+\texttt{\seqsplit{HERMON\_RUNTIME\_MODE=paged}} selection is accompanied
+by source-level preview warnings and additional gates. Its
+\texttt{\seqsplit{GgufLlamaForward}} reads token embedding rows through
+a typed llama.cpp bridge, loads normalization vectors, validates model
+epsilon, and runs a visible Rust \texttt{rms\_norm} function for its
+Hermon-owned forward path.
+\end{quote}
+
+\begin{quote}
+\textbf{INSIDE HERMON --- LIBRARY}
+\texttt{\seqsplit{hermon-gguf::model\_shape}} verifies that
+\texttt{\seqsplit{token\_embd.weight}} begins with GGML dimension
+\texttt{\seqsplit{embedding\_length}} and derives vocabulary size from
+the next dimension.
+\texttt{\seqsplit{hermon-llamacpp::tensor\_row\_f32}} validates a
+requested row and materializes it as a Rust
+\texttt{Vec\textless{}f32\textgreater{}}, converting supported
+host-resident packed storage through the C++ bridge. These library
+abilities are consumed by the paged preview; their existence does not
+make that path the default.
+\end{quote}
+
+The preview Rust function computes \texttt{sum(x*x)} in \texttt{f32},
+divides by length, adds epsilon inside \texttt{sqrt}, takes the
+reciprocal, and multiplies input and gain. Its debug assertions rely on
+model construction to establish equal slice lengths. The teaching API is
+more general and defensive because it is a public checked operator over
+arbitrary valid views.
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/hermon-llamacpp-normalization-path.txt}{Hermon
+mapping diagram} keeps CURRENT, PREVIEW, and LIBRARY boundaries on the
+same page. It also prevents a common source-reading error: finding
+native code does not prove the default API request reaches it.
+
+\section{Inside llama.cpp and
+GGML}\label{inside-llama.cpp-and-ggml-1}
+
+Hermon's submodule pins llama.cpp/GGML commit
+\texttt{\seqsplit{389ff61d77b5c71cec0cf92fe4e5d01ace80b797}}. At that
+revision the architecture has several layers.
+
+The llama graph builder creates token embeddings with
+\texttt{ggml\_get\_rows} over the token-embedding tensor and input-token
+tensor. Its \texttt{build\_norm} function maps the model's RMS
+normalization type to \texttt{ggml\_rms\_norm}, passing
+\texttt{f\_norm\_rms\_eps}. Learned multiplication is represented by
+subsequent graph work and can participate in fused execution.
+
+\texttt{ggml\_get\_rows} first creates an operator node and result
+tensor. The result's fastest physical dimension is the source row width;
+remaining dimensions track the index tensor. At CPU execution, backend
+dispatch selects by source storage type:
+
+\begin{itemize}
+\tightlist
+\item
+  F32 rows are copied;
+\item
+  F16 and BF16 rows are converted to F32;
+\item
+  supported quantized rows are dequantized to F32.
+\end{itemize}
+
+Thus a ``row lookup'' can include conversion and materialization in a
+production engine. The graph knows the semantic operation; the backend
+kernel knows the physical type.
+
+The inspected CPU F32 RMSNorm kernel requires the first tensor dimension
+to be contiguous. It distributes outer rows across threads and visits
+each contiguous inner row. At this commit \texttt{ggml-cpu/vec.h}
+defines the \texttt{ggml\_float} accumulator as \texttt{double}, but
+\texttt{x{[}i{]}*x{[}i{]}} is formed from two F32 operands before that
+product is cast into the wider sum. It computes
+\texttt{mean\ =\ sum\ /\ row\_width}, then
+\texttt{scale\ =\ 1/sqrtf(mean\ +\ eps)}. The plain path copies and
+scales the row. A fused RMSNorm-plus-multiply path applies the learned
+weight during the output loop.
+
+GGML stores epsilon in operator parameters and asserts a nonnegative
+value in that kernel. It asserts row indices and layout invariants after
+graph and model construction. Those assertions are appropriate inside
+its validated execution graph; the public educational functions instead
+return typed errors for ordinary malformed calls.
+
+The source flow is:
+
+The model graph declares RMS normalization and learned scaling. The CPU execution path reads epsilon, accumulates squares, computes a scale, then writes the normalized values; fusion can combine the learned multiply with that write.
+
+This chapter describes the pinned CPU path, not every backend.
+Accelerator kernels can partition reductions, fuse operations, and
+impose other layout or dtype contracts. Source at one commit also cannot
+justify ``llama.cpp always'' claims across revisions.
+
+\section{Educational and production
+boundaries}\label{educational-and-production-boundaries}
+
+The teaching path is intentionally narrow:
+
+Immutable strided F32 inputs enter a checked two-pass reference and produce a fresh canonical F32 owner. No optimized normalization candidate is claimed.
+
+A production engine may need lower-precision activation storage, packed
+or quantized parameter rows, wider accumulation, vector or thread
+reductions, device-local addresses, graph scheduling, batch dimensions,
+and fused normalization with neighboring work. Each complication changes
+a contract: conversion precision, work partition, ownership, layout, or
+failure placement.
+
+The reference remains valuable precisely because it does not absorb all
+those concerns. A future optimized candidate can be compared against one
+named semantic path. The permanent substitution order remains:
+
+First establish scalar semantics and an independent oracle. Next check any proposed replacement against them. Measure it only after correctness passes.
+
+Chapter 7 has no candidate because correctness infrastructure should
+precede optimization pressure. That is not unfinished work. It is a
+deliberate engine state with an inspectable active implementation.
+
+\section{Common mistakes}\label{common-mistakes-5}
+
+Several short statements conceal major errors:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{``The token ID is fed into the neural network as a number.''}
+  The ID selects a learned row; its scalar magnitude is not an
+  activation feature.
+\item
+  \textbf{``Embedding is a matrix multiply.''} One-hot multiplication is
+  an equivalence, while the implemented operation is indexed row
+  materialization.
+\item
+  \textbf{``Shape \texttt{{[}V,D{]}} guarantees contiguous rows.''} Only
+  shape plus strides and storage metadata establish layout.
+\item
+  \textbf{``Returning a view is always faster.''} It avoids one copy but
+  constrains lifetime and preserves aliasing; safety and later mutation
+  requirements decide the interface.
+\item
+  \textbf{``RMSNorm makes every component unit length.''} It uses one
+  vector-wide RMS factor and then learned per-coordinate scale.
+  Individual coordinates need not have magnitude one.
+\item
+  \textbf{``RMSNorm subtracts the mean.''} That describes the centering
+  found in LayerNorm, not this operator.
+\item
+  \textbf{``Epsilon can go anywhere near the denominator.''} Placement
+  defines the function.
+\item
+  \textbf{``Finite input means finite squares.''} A finite \texttt{f32}
+  can overflow when squared, and finite squares can overflow their sum.
+\item
+  \textbf{``Equivalent reductions must match bit-for-bit.''} Different
+  valid reduction trees can round differently; equivalence needs a
+  justified tolerance and finite-value gate.
+\item
+  \textbf{``A Rust RMSNorm function proves Hermon uses it in
+  production.''} Runtime selection proves the current default path; at
+  the inspected commit it is llama.cpp-backed batched execution.
+\end{itemize}
+
+\section{Transformer Primitives v1}\label{transformer-primitives-v1}
+
+Chapter 7 completes a named extension of ENGINE-2 rather than inventing
+ENGINE-3. \textbf{Transformer Primitives v1} means the repository can
+now execute:
+
+\begin{itemize}
+\tightlist
+\item
+  checked single-token embedding
+  \texttt{{[}V,D{]}\ +\ TokenId\ -\textgreater{}\ {[}D{]}};
+\item
+  checked sequence embedding
+  \texttt{{[}V,D{]}\ +\ {[}T{]}\ -\textgreater{}\ {[}T,D{]}};
+\item
+  explicit parameter-to-activation copy ownership;
+\item
+  checked scalar RMSNorm
+  \texttt{{[}D{]}\ +\ {[}D{]}\ +\ epsilon\ -\textgreater{}\ {[}D{]}};
+\item
+  valid strided and zero-stride reference layouts;
+\item
+  typed shape, epsilon, ID, and finite-range failures;
+\item
+  independent Python and Rust numerical verification.
+\end{itemize}
+
+ENGINE-2's dot, GEMV, reference GEMM, and blocked GEMM remain intact.
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/chapter07-engine-architecture.txt}{milestone
+architecture} places all three ingredients---embedding, normalization,
+and linear algebra---on the checked tensor substrate without composing a
+fake Transformer layer.
+
+The labs form a complete evidence path:
+
+\begin{itemize}
+\tightlist
+\item
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/README.md}{Labs
+  30--32} follow embedding offsets, checked lookup, and ownership;
+\item
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/README.md}{Labs
+  33--35} derive RMSNorm and break its epsilon contract;
+\item
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/README.md}{Labs
+  36--37} expose scale and finite-range behavior;
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-38-rust-python-rmsnorm.md}{Lab
+  38} closes the independent oracle gate.
+\end{itemize}
+
+\section{What we can now account
+for}\label{what-we-can-now-account-for}
+
+For embedding lookup, we can name the long-lived parameter owner, both
+tensor axes, the selected logical coordinates, canonical and strided
+offsets, copied bytes, activation owner, valid ID interval, and every
+empty-axis decision.
+
+For RMSNorm, we can name input and learned-scale shapes, the reduced
+dimension, epsilon convention, storage and reduction dtype, loop order,
+two-pass traffic, output owner, zero-vector result, invalid
+configuration, overflow boundary, oracle, and tolerance policy.
+
+That is the level at which later kernels must be understood. The
+equation, memory, ownership, and production mapping agree. Short code is
+no excuse for a vague system contract.
+
+\section{The boundary to Chapter 8}\label{the-boundary-to-chapter-8}
+
+We now have model-space vectors, normalization, and matrix
+multiplication. How does a Transformer turn one residual vector into
+three different representations that determine what information it asks
+for, what information it offers, and what information is ultimately
+transported?
+
+That is the bounded question for \textbf{Chapter 8 --- Queries, Keys,
+and Values}. Chapter 8 may build the three linear projections and their
+shape/ownership contracts. It must not smuggle in attention, position
+rotation, or KV caching: those remain separate later chapters.
+
+\section{Primary references}\label{primary-references-2}
+
+\begin{itemize}
+\tightlist
+\item
+  Biao Zhang and Rico Sennrich,
+  \href{https://arxiv.org/abs/1910.07467}{``Root Mean Square Layer
+  Normalization''}, 2019;
+  \href{https://papers.neurips.cc/paper_files/paper/2019/file/1e8a19426224ca89e83cef47f1e7f53b-Paper.pdf}{NeurIPS
+  proceedings version}.
+\item
+  Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E. Hinton,
+  \href{https://arxiv.org/abs/1607.06450}{``Layer Normalization''},
+  2016.
+\item
+  PyTorch,
+  \href{https://docs.pytorch.org/docs/2.14/generated/torch.nn.RMSNorm.html}{\texttt{\seqsplit{torch.nn.RMSNorm}}},
+  rechecked 2026-09-10, and
+  \href{https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html}{\texttt{\seqsplit{torch.nn.Embedding}}},
+  accessed 2026-09-03.
+\item
+  Meta,
+  \href{https://github.com/meta-llama/llama-models/blob/main/models/llama4/model.py}{Llama
+  4 reference \texttt{model.py}}, accessed 2026-09-03.
+\item
+  Netlib LAPACK,
+  \href{https://www.netlib.org/lapack/explore-html/d8/d76/group__lassq_ga0596b4bfa745d0d1c5817d4790921cda.html}{\texttt{SLASSQ}:
+  scaled sum of squares}, accessed 2026-09-03.
+\item
+  Rust standard library,
+  \href{https://doc.rust-lang.org/std/primitive.f32.html}{\texttt{f32}},
+  accessed 2026-09-03.
+\item
+  Hermon source at \texttt{2a3fd521} and its pinned llama.cpp/GGML
+  source at \texttt{389ff61d}, rechecked 2026-09-10; full hashes and
+  classifications are in the
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/astra/chapter07-regeneration.md}{visual
+  review}. The
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-02/chapter-07-embeddings-and-normalization.md}{original
+  research note} preserves the 2026-09-03 historical inspection.
+\end{itemize}
+
+
+\input{worked/ch07.tex}

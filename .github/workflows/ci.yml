@@ -16,6 +16,8 @@ jobs:
         run: scripts/check-structure.sh
       - name: Check relative Markdown links
         run: python3 scripts/check-links.py
+      - name: Check authored textbook, executable request trace and worked calculations
+        run: python3 scripts/check-textbook.py
       - name: Check canonical diagram width
         run: python3 scripts/check-diagram-width.py
       - name: Check canonical diagram style and inventory

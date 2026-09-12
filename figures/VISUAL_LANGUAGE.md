@@ -1,5 +1,10 @@
 # Visual language v1
 
+The active textbook is now authored in `tex/`; see `TEXTBOOK_STANDARD.md` and
+`tex/README.md`. Native TikZ figures in that directory are directly editable.
+The scene generators below continue to own the historical atlas and its
+regression fixtures, not the active manuscript or its new figures.
+
 Publication requirement, 2026-09-11: the book ships a native `.tex` edition.
 New and regenerated chapter illustrations must have professional TikZ sources,
 with geometric edges and typeset labels, not verbatim character-box graphs.

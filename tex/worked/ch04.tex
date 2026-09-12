@@ -1,0 +1,33 @@
+\section{Worked synthesis: selection is a separate program}
+\subsection{Prove the stable shift}
+\textbf{Problem.} Show that subtracting the same finite constant $c$ from
+every logit leaves softmax unchanged in real arithmetic.
+
+\textbf{Solution.} Factor out $\exp(-c)$ from numerator and denominator:
+\begin{equation}
+\frac{\exp(z_i-c)}{\sum_j\exp(z_j-c)}
+=\frac{\exp(-c)\exp(z_i)}{\exp(-c)\sum_j\exp(z_j)}
+=\frac{\exp(z_i)}{\sum_j\exp(z_j)}.
+\end{equation}
+Choosing $c=\max_jz_j$ makes all exponent arguments nonpositive. This avoids
+positive exponential overflow, though tiny probabilities can still underflow.
+The proof does not permit NaN inputs or subtraction producing nonfinite values
+without a stated numerical policy.
+
+\subsection{A nucleus is a smallest prefix}
+\textbf{Problem.} Sorted probabilities are $(.55,.25,.15,.05)$ and the
+threshold is $p=.7$. Which entries survive and what is their renormalization?
+
+\textbf{Solution.} One entry gives mass $.55<.7$; two give $.80\geq.7$.
+Keep the first two, then divide by $.80$, obtaining $(.6875,.3125)$.
+Keeping only entries whose individual probability exceeds $.7$ would keep
+nothing: that is not nucleus sampling.
+
+\subsection{Fix the draw, not just the seed}
+\textbf{Problem.} For those retained probabilities and $u=.8$, which entry is
+selected by a cumulative categorical sampler?
+
+\textbf{Solution.} The first interval ends at $.6875$; $.8$ lies in the second.
+A fixed draw isolates distribution and interval logic from the pseudorandom
+generator. A seeded end-to-end test adds coverage of draw consumption, but it
+cannot by itself localize an incorrect distribution.

@@ -1,0 +1,13 @@
+\begin{tikzpicture}[font=\sffamily\small]
+\node[block] (h0) at (0,0) {history $[1,2]$\\prompt: I like};
+\node[block] (f0) at (4,0) {$F_\theta([1,2])$\\$(-.7,.1,.4,2.2)$};
+\node[block,fill=BookGreen] (a0) at (8.3,0) {choose ID 3\\emit Rust};
+\node[block] (h1) at (0,-2) {history $[1,2,3]$\\prompt + output};
+\node[block] (f1) at (4,-2) {$F_\theta([1,2,3])$\\$(.3,-.2,-.3,-.5)$};
+\node[block,fill=BookGold] (a1) at (8.3,-2) {choose ID 0\\stop: EOS};
+\draw[flow] (h0)--node[above]{input}(f0);
+\draw[flow] (f0)--node[above]{argmax}(a0);
+\draw[flow] (h1)--(f1);
+\draw[control] (f1)--node[above]{control}(a1);
+\draw[flow] (a0.south)--++(0,-.6)-|node[pos=.25,above]{append ID 3}(h1.north);
+\end{tikzpicture}

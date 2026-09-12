@@ -1,0 +1,1504 @@
+% Authoritative LaTeX; edit this file, not the historical Markdown.
+\chapter{Logits, Sampling, and the Autoregressive Loop}\label{chapter-4-logits-sampling-and-the-autoregressive-loop}
+Chapter 3 ended with a vector:
+
+\begin{verbatim}
+[-0.7, 0.1, 0.4, 2.2]
+\end{verbatim}
+
+Those four numbers are the complete output of one ENGINE-1 model forward
+for the token \texttt{like}. They say that candidate token 3,
+\texttt{Rust}, has the largest raw score. They do not themselves say
+whether the runtime must choose \texttt{Rust}, how randomness enters,
+what temperature changes, or what happens after a token is chosen.
+
+That missing machinery is the subject of this chapter.
+
+We will turn one forward result into a complete generation loop:
+
+\EngineFigure{sampling-feedback}{A request owns its selection policy and random state. Text identities feed back; EOS exits through the terminal owner.}{fig:sampling-feedback}
+
+The result is small, but it is real. ENGINE-1 will support a separate
+greedy path, numerically stable softmax, categorical sampling,
+temperature, top-k, top-p, seeded request-local randomness, EOS,
+output-token budgets, cancellation, failure, byte-safe streaming, and
+exactly one terminal outcome. Nothing outside the model will manufacture
+a candidate table. Every generated token will come from actual model
+logits.
+
+\section{The model has spoken---only in
+numbers}\label{the-model-has-spokenonly-in-numbers}
+
+A language model and an inference engine have different
+responsibilities. The model maps token history to scores. The engine
+decides how to use those scores, owns mutable generation state, returns
+bytes, and stops the request.
+
+\begin{quote}
+\textbf{FIRST PRINCIPLE} The model predicts scores; the sampler chooses
+an output token.
+\end{quote}
+
+Keeping this separation seems fussy in a four-token engine. It becomes
+vital when one model serves concurrent requests with different sampling
+policies, when a grammar masks candidates, when speculative decoding
+verifies proposed tokens, or when an operator needs to compare raw model
+output with the policy that transformed it.
+
+ENGINE-1 therefore keeps this boundary:
+
+\begin{verbatim}
+Model::forward(&history) -> ForwardPass { logits, ... }
+SamplerState::sample(&logits) -> SamplingStep { token_id, ... }
+\end{verbatim}
+
+\texttt{Logits} is evidence about what the model predicted. It is
+finite, typed, and unchanged by sampling. A separate workspace holds
+temperature-adjusted and filtered candidates.
+
+\section{What autoregressive generation
+means}\label{what-autoregressive-generation-means}
+
+Suppose a token sequence contains random variables \(x_0,\ldots,x_T\).
+The chain rule factors its joint probability:
+
+\begin{equation}
+P(x_0,\ldots,x_T)
+=\prod_{t=0}^{T}P\!\left(x_t\mid x_0,\ldots,x_{t-1}\right),
+\end{equation}
+
+where the \(t=0\) factor is the unconditional \(P(x_0)\).
+
+An autoregressive language model repeatedly predicts the next token
+given the tokens already visible. At step \texttt{t}, it produces scores
+for \texttt{x\_(t+1)}. The engine chooses one candidate, appends that
+token to the sequence, and runs the model again. Bengio and colleagues'
+early \href{https://jmlr.org/papers/v3/bengio03a.html}{neural
+probabilistic language model} is one primary source for this conditional
+sequence framing.
+
+The general statement is about full visible history. ENGINE-1 has a
+deliberate limitation: its \texttt{\seqsplit{TinyLanguageModel}} reads
+only \texttt{history.last()}. Two histories with the same final token
+therefore produce identical logits, even if every earlier token differs.
+ENGINE-1 implements genuine autoregressive feedback; its representation
+is not yet context-sensitive.
+
+That distinction matters. ``Autoregressive'' describes how outputs
+become future inputs. It does not guarantee that a particular model uses
+all history well---or at all.
+
+\section{From logits to a probability
+distribution}\label{from-logits-to-a-probability-distribution}
+\index{softmax}
+
+A logit is an unnormalized score. It may be negative, zero, or positive.
+Its absolute value is not a probability, and the vector does not need to
+sum to anything meaningful.
+
+For a finite score vector
+\(\mathbf{z}\in\mathbb{R}^{V_{\mathrm{vocab}}}\), softmax defines
+
+\begin{equation}
+p_i=\frac{e^{z_i}}
+{\sum_{j=0}^{V_{\mathrm{vocab}}-1}e^{z_j}},
+\qquad
+\mathbf{p}\in[0,1]^{V_{\mathrm{vocab}}},
+\quad \sum_i p_i=1.
+\end{equation}
+
+Here:
+
+\begin{itemize}
+\tightlist
+\item
+  \(V_{\mathrm{vocab}}\) is vocabulary size;
+\item
+  \texttt{z\_i} is the raw score for token ID \texttt{i};
+\item
+  \texttt{p\_i} is that token's normalized probability;
+\item
+  \texttt{z} is \texttt{{[}V{]}} model output;
+\item
+  \texttt{p} is a \texttt{{[}V{]}} request-local distribution.
+\end{itemize}
+
+Every exponential is positive. The denominator is the sum of all
+numerators. Therefore every \texttt{p\_i} is non-negative and the
+probabilities sum to one in exact arithmetic. PyTorch's official
+\href{https://docs.pytorch.org/docs/stable/generated/torch.nn.Softmax.html}{\texttt{Softmax}
+documentation} states the same mathematical contract.
+
+For logits \texttt{{[}1,2,3{]}}, the direct calculation is
+approximately:
+
+\begin{verbatim}
+exp values = [2.718282, 7.389056, 20.085537]
+sum        = 30.192875
+p          = [0.090031, 0.244728, 0.665241]
+\end{verbatim}
+
+Token 2 remains the largest, but now the values describe a distribution
+from which a categorical outcome can be drawn.
+
+\subsection{Why naive softmax fails}\label{why-naive-softmax-fails}
+
+Try logits \texttt{{[}1000,999,998{]}}. The ordering and gaps are
+harmless. The direct implementation is not: \texttt{exp(1000)} overflows
+ordinary floating-point storage. An infinite numerator can produce
+infinite sums and undefined divisions.
+
+The mathematical formula needs an equivalent numerical form. Let
+
+\begin{equation}
+m=\max_{0\le j<V_{\mathrm{vocab}}}z_j,
+\qquad
+p_i=\frac{e^{z_i-m}}
+{\sum_{j=0}^{V_{\mathrm{vocab}}-1}e^{z_j-m}}.
+\end{equation}
+
+Subtracting one constant from every score does not alter softmax. For
+any finite constant \(c\):
+
+\begin{equation}
+\frac{e^{z_i+c}}{\sum_j e^{z_j+c}}
+=\frac{e^{z_i}e^c}{e^c\sum_j e^{z_j}}
+=\frac{e^{z_i}}{\sum_j e^{z_j}}.
+\end{equation}
+
+With \texttt{c=-m}, every exponential argument is at most zero. At least
+one is exactly zero, whose exponential is one. Numerators cannot
+overflow, and the denominator cannot be zero.
+
+This is \textbf{stable softmax}. Blanchard, Higham, and Higham analyze
+shifted formulas in
+\href{https://doi.org/10.1093/imanum/draa038}{Accurately computing the
+log-sum-exp and softmax functions}. ENGINE-1 uses the clarity-first
+maximum, exponential, sum, and normalization passes in \texttt{f64} for
+the sampling workspace while preserving the model's raw \texttt{f32}
+logits.
+
+For \(\mathbf{z}=[1000,999,998]\), \(m=1000\) and
+
+\begin{equation}
+\mathbf{z}-m=[0,-1,-2],\qquad
+\mathbf{p}\approx[0.6652409558,0.2447284711,0.0900305732].
+\end{equation}
+
+The canonical
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/stable-softmax.txt}{stable-softmax
+flow} connects these equations to the implementation passes.
+
+All results are finite.
+
+\begin{quote}
+\textbf{ENGINEERING FAILURE --- NAIVE SOFTMAX} A mathematically
+recognizable expression can still be an invalid numerical program.
+Algebraic equivalence does not imply equal floating-point behavior.
+\end{quote}
+
+\section{Greedy decoding needs no
+softmax}\label{greedy-decoding-needs-no-softmax}
+
+Softmax preserves ordering because exponentiation is strictly increasing
+and every candidate shares the same positive denominator:
+
+\begin{equation}
+\operatorname*{arg\,max}_i z_i
+=\operatorname*{arg\,max}_i \operatorname{softmax}(\mathbf{z})_i.
+\end{equation}
+
+Greedy decoding can scan raw logits and choose the maximum. It does not
+need exponentials or normalized probabilities.
+
+ENGINE-1 treats greedy as a separate
+\texttt{\seqsplit{SamplingConfig::Greedy}} mode. It never divides by
+temperature zero and does not approximate greedy with a tiny positive
+temperature. A strict \texttt{\textgreater{}} comparison replaces the
+current winner; iteration proceeds in token-ID order. Equal maxima
+therefore choose the lowest token ID, deliberately and reproducibly.
+
+Greedy is deterministic and inexpensive: one \texttt{O(V)} scan. It is
+not globally optimal sequence search. Choosing the locally highest
+next-token score does not prove that the resulting complete sequence has
+the greatest joint probability. Greedy can also produce dull or
+repetitive text. Those are policy tradeoffs, not reasons to hide its
+simple semantics.
+
+\section{Randomness is request
+state}\label{randomness-is-request-state}
+
+Random sampling is not a command sent to the model. It is stateful
+computation in the engine.
+
+\begin{verbatim}
+REQUEST
+  prompt and generated history
+  immutable sampler configuration
+  mutable PRNG state
+  successful sample count
+  remaining output budget
+  terminal state
+\end{verbatim}
+
+A pseudorandom number generator, or PRNG, advances deterministic
+internal state. A seed chooses its starting state. Give the same
+algorithm the same seed and consume values in the same order, and it
+produces the same number sequence.
+
+ENGINE-1 implements SplitMix64, derived from the design described by
+Steele, Lea, and Flood in
+\href{https://doi.org/10.1145/2660193.2660195}{Fast Splittable
+Pseudorandom Number Generators}. It uses wrapping \texttt{u64}
+arithmetic and converts the high 53 output bits into a binary64 draw in
+\texttt{{[}0,1)}.
+
+This generator is compact, deterministic, and testable. It is not
+cryptographically secure, and the engine never describes it that way.
+
+Each admitted request constructs a fresh \texttt{SamplerState}. Two
+concurrent requests do not share one mutable RNG. Otherwise scheduling
+would change which request consumes which draw:
+
+\begin{quote}
+\begin{enumerate}
+\item global draws: r0 r1 r2 r3 ...
+\item schedule A,B,A,B  \(\longrightarrow\)  A gets r0,r2; B gets r1,r3
+\item schedule A,A,B,B  \(\longrightarrow\)  A gets r0,r1; B gets r2,r3
+\end{enumerate}
+\end{quote}
+
+The model and seeds could be identical while outputs changed with
+scheduling. Per-request state removes that coupling.
+
+\begin{quote}
+\textbf{FIRST PRINCIPLE} Randomness is mutable request state, not a
+hidden global service.
+\end{quote}
+
+\subsection{What a seed guarantees}\label{what-a-seed-guarantees}
+
+ENGINE-1's promise is intentionally bounded:
+
+\begin{quote}
+For the same ENGINE-1 commit, executable/toolchain/target, model
+parameters, tokenizer, prompt tokens, sampling configuration, and seed,
+the scalar path repeats the same token sequence.
+\end{quote}
+
+A fixed seed alone does not guarantee identical output across engine
+versions, models, providers, quantizations, RNG algorithms,
+floating-point libraries, or sampler orders. Even tiny logit or
+cumulative-boundary changes can map a draw to another token.
+
+``Seed equals determinism everywhere'' is therefore false. A seed is one
+member of a reproduction contract.
+
+\section{Categorical sampling, one interval at a
+time}\label{categorical-sampling-one-interval-at-a-time}
+\index{sampling!categorical}
+
+Suppose \(\mathbf{p}=[0.20,0.30,0.50]\). Define cumulative boundaries
+\(c_i=\sum_{j=0}^{i}p_j\) and \(c_{-1}=0\). For a draw \(r\sim U[0,1)\),
+select
+
+\begin{equation}
+i=\min\{k:r<c_k\},
+\qquad\text{equivalently}\qquad c_{i-1}\le r<c_i.
+\end{equation}
+
+Their cumulative boundaries divide \texttt{{[}0,1)}:
+
+\EngineFigure{categorical-intervals}{Interval lengths equal probabilities.
+The draw at 0.2 belongs to token 1, not token 0: each interval includes its
+left endpoint and excludes its right endpoint.}{fig:categorical-intervals}
+
+Draw \texttt{r} uniformly in \texttt{{[}0,1)}. Select the first
+cumulative boundary strictly greater than \texttt{r}:
+
+\begin{quote}
+\begin{enumerate}
+\item r=0.19  \(\longrightarrow\)  token 0
+\item r=0.20  \(\longrightarrow\)  token 1
+\item r=0.49  \(\longrightarrow\)  token 1
+\item r=0.50  \(\longrightarrow\)  token 2
+\item r=0.99  \(\longrightarrow\)  token 2
+\end{enumerate}
+\end{quote}
+
+ENGINE-1 exposes the pure boundary as:
+
+\begin{verbatim}
+categorical_select(probabilities, draw) -> Result<TokenId, SamplingError>
+\end{verbatim}
+
+The RNG is only one producer of \texttt{draw}. Tests and the independent
+Python oracle can supply an artificial value. This separation prevents
+one failing test from becoming an unsolved mixture of softmax,
+filtering, PRNG, and cumulative-selection bugs.
+
+The function validates finite, non-negative probabilities and a sum
+within tolerance of one. Floating-point rounding can leave the last
+cumulative sum a few ulps below one. If a valid draw survives every
+earlier interval, the implementation returns the final
+positive-probability candidate. It never uses that fallback to rescue an
+invalid or empty distribution.
+
+\section{Temperature changes shape, not
+randomness}\label{temperature-changes-shape-not-randomness}
+
+For stochastic mode, ENGINE-1 requires a finite temperature \(\tau>0\)
+and transforms scores:
+
+\begin{equation}
+z'_i=\frac{z_i}{\tau}.
+\end{equation}
+
+Then it computes the distribution. Temperature affects score gaps:
+
+\begin{itemize}
+\tightlist
+\item
+  \(\tau<1\) magnifies gaps and sharpens the distribution;
+\item
+  \(\tau=1\) leaves scores unchanged;
+\item
+  \(\tau>1\) shrinks gaps and flattens the distribution.
+\end{itemize}
+
+Positive division preserves ordering. For logits \texttt{{[}1,2,3{]}}:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}rl@{}}
+\toprule\noalign{}
+Temperature & Probabilities \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+0.5 & \texttt{\seqsplit{[0.015876,0.117310,0.866813]}} \\
+1.0 & \texttt{\seqsplit{[0.090031,0.244728,0.665241]}} \\
+2.0 & \texttt{\seqsplit{[0.186324,0.307196,0.506480]}} \\
+\end{longtable}
+}
+
+Token 2 stays highest. The cold distribution concentrates more mass on
+it; the hot distribution spreads more mass to alternatives.
+
+\EngineFigure{temperature-distributions}{Temperature $T$ (the $\tau$ in the
+equation above) changes the probability distribution, not the logit ordering.
+All three panels use the same vertical probability scale and token IDs.}{fig:temperature-distributions}
+
+Temperature does not produce a draw. If selection remains greedy,
+changing a positive temperature cannot change the winner. Randomness
+comes from categorical sampling.
+
+ENGINE-1 rejects zero, negative, NaN, and infinite stochastic
+temperatures. Greedy remains a different mode. This makes the API say
+what it means.
+
+\section{Top-k: a fixed candidate
+count}\label{top-k-a-fixed-candidate-count}
+
+A production vocabulary may contain tens of thousands of candidates.
+Many receive tiny probability. Top-k keeps the \texttt{k} highest scores
+and removes the rest before sampling:
+
+\begin{quote}
+\begin{enumerate}
+\item scores  \(\longrightarrow\)  order/select highest k  \(\longrightarrow\)  mask others  \(\longrightarrow\)  normalize  \(\longrightarrow\)  sample
+\end{enumerate}
+\end{quote}
+
+Because softmax preserves ordering, ENGINE-1 applies top-k in logit
+space. Its simple teaching implementation sorts indexes by score
+descending and token ID ascending. It stores removed entries as
+\texttt{None} in a workspace rather than putting negative infinity into
+raw \texttt{Logits}.
+
+The edge contract is explicit:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{None}: disabled;
+\item
+  \texttt{k=0}: invalid;
+\item
+  \texttt{k=1}: one survivor, hence probability one;
+\item
+  \texttt{k\textgreater{}=V}: no filtering.
+\end{itemize}
+
+Sorting costs \texttt{O(V\ log\ V)} in this implementation. A production
+sampler may use partial selection, but optimization would not change the
+survivor semantics or deterministic tie rule.
+
+\section{Top-p: an adaptive probability
+mass}\label{top-p-an-adaptive-probability-mass}
+
+Top-p, or nucleus sampling, keeps a variable-size set. Sort candidates
+by probability descending and retain the smallest prefix whose
+cumulative mass reaches threshold \texttt{p}. Holtzman and colleagues
+introduced and evaluated this policy in
+\href{https://arxiv.org/abs/1904.09751}{The Curious Case of Neural Text
+Degeneration}.
+
+Consider:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}lr@{}}
+\toprule\noalign{}
+Token & Probability \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+A & 0.40 \\
+B & 0.30 \\
+C & 0.15 \\
+D & 0.10 \\
+E & 0.05 \\
+\end{longtable}
+}
+
+For threshold \(\tau_p=0.80\), A and B provide only \(0.70\). C crosses
+the threshold, so C is included. The nucleus is A/B/C with mass
+\texttt{0.85}. ENGINE-1 renormalizes:
+
+\begin{verbatim}
+[0.470588,0.352941,0.176471,0,0]
+\end{verbatim}
+
+Top-k retains a fixed count. Top-p retains an adaptive count determined
+by the distribution's concentration. Neither is universally superior.
+
+Formally, after sorting
+\(p_{(0)}\ge\cdots\ge p_{(V_{\mathrm{vocab}}-1)}\), the retained prefix
+ends at
+
+\begin{equation}
+m=\min\left\{k:\sum_{j=0}^{k}p_{(j)}\ge\tau_p\right\}.
+\end{equation}
+
+ENGINE-1 accepts \(\tau_p\) only in \((0,1]\); \(\tau_p=1\) is a
+deliberate no-op. Equal probabilities use token ID ascending as the
+secondary order.
+
+\section{Filter order is inference
+behavior}\label{filter-order-is-inference-behavior}
+
+Temperature, top-k, and top-p are not a bag of commutative options.
+Their order can change the candidate set and final probabilities.
+
+ENGINE-1 fixes this pipeline:
+
+\begin{quote}
+\begin{enumerate}
+\item raw finite logits
+\item \(\longrightarrow\)  copy and divide by temperature
+\item \(\longrightarrow\)  top-k mask in logit space
+\item \(\longrightarrow\)  stable softmax over survivors
+\item \(\longrightarrow\)  top-p filter in probability space
+\item \(\longrightarrow\)  renormalize
+\item \(\longrightarrow\)  categorical draw
+\end{enumerate}
+\end{quote}
+
+The implementation and prose use this exact order. Configuration fields
+do not silently determine order.
+
+Other engines can choose differently. In particular, the current Hermon
+shim examined later builds a llama.cpp-backed chain with a different
+order. That is not a contradiction. Sampling order is policy, and
+reproducibility requires identifying the policy.
+
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/sampling-pipeline.txt}{The
+canonical sampling pipeline} keeps raw logits separate from processed
+candidates.
+
+\begin{quote}
+\textbf{ENGINEERING FAILURE --- DESTROYED EVIDENCE} If top-k mutates raw
+logits in place, a later debugger sees masks rather than model output.
+Keep the model prediction and the sampler decision as separate
+artifacts.
+\end{quote}
+
+\section{The complete ENGINE-1
+loop}\label{the-complete-engine-1-loop}
+
+The runtime's operation order now has a precise commit point:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Validate input tokens, \texttt{max\_new\_tokens}, and sampling
+  configuration.
+\item
+  Construct a fresh request-owned \texttt{SamplerState}.
+\item
+  Admit the request and begin execution.
+\item
+  Check cancellation and output budget.
+\item
+  Build history from prompt plus committed output tokens.
+\item
+  Run \texttt{Model::forward} and validate exactly \texttt{V} logits.
+\item
+  Preserve and optionally trace the raw forward result.
+\item
+  Check cancellation again before sampling.
+\item
+  Select a \texttt{TokenId}; trace probabilities and draw for stochastic
+  mode.
+\item
+  If it is EOS, stop without decoding or streaming it.
+\item
+  Otherwise append it to \texttt{GenerationState}. This is the commit
+  point.
+\item
+  Emit token identity, decode bytes, frame strict UTF-8, and emit text.
+\item
+  Repeat or transition exactly once to terminal state.
+\end{enumerate}
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/autoregressive-state.txt}{autoregressive
+state diagram} distinguishes data movement from stop checks.
+
+\subsection{A complete greedy trace}\label{a-complete-greedy-trace}
+
+Prompt text:
+
+\begin{verbatim}
+I like
+\end{verbatim}
+
+Tokenizer output:
+
+\begin{verbatim}
+[1,2]
+\end{verbatim}
+
+The last token is \texttt{like}. Chapter 3 computed:
+
+\begin{verbatim}
+hidden = [1,-0.5,2]
+logits = [-0.7,0.1,0.4,2.2]
+argmax = 3 = Rust
+\end{verbatim}
+
+The runtime appends token 3:
+
+\begin{verbatim}
+[1,2,3]
+\end{verbatim}
+
+It decodes token 3 to the byte piece for \texttt{Rust}, emits valid
+text, and runs the model again. ENGINE-1 reads the final \texttt{Rust}
+token:
+
+\begin{verbatim}
+hidden = [-1,0,0]
+logits = [0.3,-0.2,-0.3,-0.5]
+argmax = 0 = <eos>
+\end{verbatim}
+
+EOS completes the request. It is not added to visible output, decoded,
+or streamed. The complete model-derived path is:
+
+\begin{quote}
+\begin{enumerate}
+\item "I like"  \(\longrightarrow\)  [1,2]  \(\longrightarrow\)  Rust  \(\longrightarrow\)  [1,2,3]  \(\longrightarrow\)  <eos>  \(\longrightarrow\)  completed
+\end{enumerate}
+\end{quote}
+
+No fake candidate table produces \texttt{Rust}.
+
+\subsection{A seeded stochastic
+trace}\label{a-seeded-stochastic-trace}
+
+Run:
+
+\begin{verbatim}
+cd code/mini-engine
+cargo run -p engine0 -- --trace --sample --temperature 1 \
+  --top-k 3 --top-p .9 --seed 42 --max-tokens 3 'I like'
+\end{verbatim}
+
+At the first step, ENGINE-1 records raw logits, then:
+
+\begin{verbatim}
+probabilities = [0,0,0.1418510634,0.8581489366]
+draw          = 0.7415648788
+selected      = 3
+\end{verbatim}
+
+At the next step:
+
+\begin{verbatim}
+probabilities = [0.4639634327,0.2814080427,0.2546285245,0]
+draw          = 0.1599103929
+selected      = 0 = <eos>
+\end{verbatim}
+
+The same bounded reproduction environment repeats those draws and
+tokens. Timing fields are not part of semantic equality.
+
+\section{EOS, budgets, and visible
+output}\label{eos-budgets-and-visible-output}
+
+EOS is a vocabulary token with a model score. It is also semantic
+control. ENGINE-1 chooses this policy:
+
+\begin{itemize}
+\tightlist
+\item
+  sampled EOS ends generation;
+\item
+  EOS is not committed to the visible generated-token list;
+\item
+  EOS is not decoded to bytes;
+\item
+  EOS is not streamed as ordinary text;
+\item
+  terminal reason is \texttt{EndOfSequence}.
+\end{itemize}
+
+\texttt{max\_new\_tokens} counts committed non-EOS output tokens. A
+prompt of ten tokens and \texttt{\seqsplit{max\_new\_tokens=5}} allows
+at most five new visible tokens; it does not cap the total sequence at
+five.
+
+Application stop strings are more complicated. A string can span tokens
+and UTF-8 pieces, and policy must decide whether matching bytes are
+included or removed. Chapter 4 defers that design. Its core stop set is
+EOS, output budget, cancellation, and failure.
+
+\section{Cancellation and failure without partial
+ambiguity}\label{cancellation-and-failure-without-partial-ambiguity}
+
+Cancellation is checked before a forward and again after forward before
+sampling. If cancellation is observed at either point, no later token is
+committed. The current engine is synchronous, but this placement
+establishes the invariant an asynchronous runtime must preserve.
+
+Sampling can fail. Invalid temperature, top-k, or top-p does not
+silently fall back to greedy. Empty logits, non-finite processed values,
+negative probabilities, invalid sums, invalid draws, and empty candidate
+sets have typed errors.
+
+For a non-EOS token, ENGINE-1 commits it before tokenizer/UTF-8
+processing. If decoding fails afterward, the generation result contains
+the committed token and a failed terminal outcome. This is more truthful
+than pretending the model never selected it. Stream consumers may
+already have received token identity, so rollback would be dishonest
+without a richer transactional protocol.
+
+Terminal delivery still has one owner:
+\texttt{\seqsplit{Lifecycle::finish}}. Every successful, cancelled, or
+failed branch returns an outcome to that owner. It emits one terminal
+stream event, records one terminal trace event, and closes future
+emission. A second transition returns \texttt{AlreadyTerminal}.
+
+\begin{quote}
+\textbf{ENGINEERING FAILURE --- DOUBLE TERMINATION} If the EOS branch
+emits \texttt{Done} and loop cleanup emits another \texttt{Done}, the
+client sees two endings. Terminal success is a state transition, not an
+informal callback.
+\end{quote}
+
+\begin{quote}
+\textbf{ENGINEERING FAILURE --- POST-EOS OUTPUT} If the loop appends or
+decodes another token before checking EOS, its sequence and stream
+disagree with model control. Stop ordering must be explicit.
+\end{quote}
+
+\section{Follow the token, byte, and
+owner}\label{follow-the-token-byte-and-owner-1}
+
+Part I can now complete all three recurring journeys.
+
+\subsection{Follow the token}\label{follow-the-token-1}
+
+\begin{quote}
+\begin{enumerate}
+\item human text
+\item \(\longrightarrow\)  tokenizer
+\item \(\longrightarrow\)  TokenId history
+\item \(\longrightarrow\)  embedding row
+\item \(\longrightarrow\)  hidden activation
+\item \(\longrightarrow\)  output projection
+\item \(\longrightarrow\)  raw logits
+\item \(\longrightarrow\)  temperature/filtering
+\item \(\longrightarrow\)  greedy or categorical selection
+\item \(\longrightarrow\)  new TokenId
+\item \(\longrightarrow\)  append
+\item \(\longrightarrow\)  model again
+\end{enumerate}
+\end{quote}
+
+The reusable
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/part1-follow-token.txt}{Part
+I token diagram} also shows the decode and stream branch.
+
+\subsection{Follow the byte}\label{follow-the-byte-1}
+
+Model parameter bytes are read by scalar \texttt{f32} arithmetic. The
+result is a finite raw \texttt{f32} logit vector. Stochastic processing
+copies values to a request-local \texttt{f64} workspace. Selection
+yields an integer token ID. The tokenizer maps that ID to bytes, the
+UTF-8 decoder holds incomplete suffixes, and only valid complete text
+reaches the stream.
+
+See
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/part1-follow-byte.txt}{Part
+I follow the byte}.
+
+\subsection{Follow the owner}\label{follow-the-owner-1}
+
+The model lifetime owns immutable parameters and the tokenizer/model
+contract. A request owns prompt tokens, committed output, sampling
+configuration, RNG state, budget, UTF-8 buffer, and terminal state. A
+forward step owns temporary hidden values, raw logits, processed
+candidates, and one selection.
+
+See
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/part1-follow-owner.txt}{Part
+I follow the owner}.
+
+This separation prepares the engine for concurrency:
+
+Figure~\ref{fig:parameter-owners} gives the storage relationship. Extend
+each request's private state with its own sampler and random generator;
+there is still no mutable edge between requests.
+
+The model can be shared. Mutable sequence and sampler state cannot. A
+future continuous batch may evaluate several sequences together, but
+sampling remains logically per sequence. The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/model-two-requests.txt}{two-request
+ownership diagram} makes that future constraint visible.
+
+\section{Build it: the sampler and
+runtime}\label{build-it-the-sampler-and-runtime}
+
+The Chapter 4 implementation lives in:
+
+\begin{verbatim}
+code/mini-engine/crates/engine0/src/sampling.rs
+code/mini-engine/crates/engine0/src/lib.rs
+\end{verbatim}
+
+The public design separates immutable and mutable pieces:
+
+\begin{verbatim}
+SamplingConfig       // mode and parameters, carried by Request
+SamplerState         // one RNG and sample count per generate call
+ProbabilityDistribution
+SamplingStep         // token, optional probabilities/draw, sample index
+SamplingError        // typed validation and numerical failures
+\end{verbatim}
+
+The model still returns \texttt{Logits}. It has no RNG, no temperature,
+and no stop policy. The runtime no longer carries the old temporary
+\texttt{GreedySelector}. Instead it creates a sampler from each
+request's configuration.
+
+Trace mode exposes tiny educational fixtures:
+
+\begin{verbatim}
+[model] raw logits
+[sampler] immutable configuration
+[sampler] processed probabilities, when stochastic
+[sampler] request-local draw, when stochastic
+[sampler] selected TokenId
+[sequence] commit non-EOS token
+[tokenizer/stream] bytes and valid text
+\end{verbatim}
+
+Production tracing should not log sensitive prompts or huge tensors by
+default. ENGINE-1's \texttt{TraceSink} already requires an explicit
+opt-in for full values.
+
+\section{Prove it: an independent
+oracle}\label{prove-it-an-independent-oracle}
+
+\texttt{\seqsplit{code/reference/python/chapter04\_sampling\_oracle.py}}
+independently implements stable softmax, temperature, top-k, top-p,
+renormalization, and fixed-draw categorical selection. It imports no
+Rust engine code.
+
+Run:
+
+\begin{verbatim}
+python3 code/reference/python/chapter04_sampling_oracle.py \
+  --logits -0.7 0.1 0.4 2.2 \
+  --temperature 1 --top-k 3 --top-p .9 --draw .63
+\end{verbatim}
+
+Expected core output:
+
+\begin{verbatim}
+probabilities = [0,0,0.1418510649,0.8581489351]
+retained      = [2,3]
+selected      = 3
+PASS
+\end{verbatim}
+
+The fixed draw is important. A numerical oracle should not need to
+duplicate ENGINE-1's PRNG before it can prove the cumulative boundary.
+RNG output vectors are tested separately.
+
+Rust tests cover 83 cases across the workspace. Twenty dedicated
+sampling tests cover numerical values, large-logit stability, shift
+invariance, probability invariants, greedy ties, temperature,
+top-k/top-p edges and order, fixed draws, pinned SplitMix64 output,
+same/different seeds, raw-logit preservation, and a deterministic
+property grid. Lifecycle tests cover EOS, budget, cancellation at both
+checkpoints, model/sampler/tokenizer/UTF-8 failure, per-request seed
+isolation, no post-terminal output, and exactly one terminal event.
+
+\begin{quote}
+\textbf{PROVE IT} A sampler is correct only when its stages can be
+checked independently and its full loop preserves lifecycle invariants.
+\end{quote}
+
+\section{Performance lab: sampling is
+work}\label{performance-lab-sampling-is-work}
+
+Sampling over vocabulary size \texttt{V} can require:
+
+\begin{itemize}
+\tightlist
+\item
+  a maximum scan;
+\item
+  temperature scaling;
+\item
+  exponentiation and summation;
+\item
+  sorting or selection for filters;
+\item
+  renormalization;
+\item
+  a cumulative scan.
+\end{itemize}
+
+Greedy needs only the maximum scan. ENGINE-1's teaching top-k and top-p
+use straightforward sorting for clarity. Their asymptotic and constant
+costs are visible.
+
+The reproducible probe in
+\texttt{\seqsplit{code/mini-engine/crates/engine0/examples/chapter04\_sampling\_cost.rs}}
+measures sampling separately from model forward on an Apple M1. The full
+record is
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/benchmarks/chapter-04-sampling-cost.md}{\texttt{\seqsplit{research/benchmarks/chapter-04-sampling-cost.md}}}.
+
+Exploratory medians in nanoseconds per call were:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}rrrrr@{}}
+\toprule\noalign{}
+V & Greedy & Softmax + categorical & Top-k 40 & Top-p .9 \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+16 & 26 & 341 & 472 & 597 \\
+256 & 284 & 2,832 & 5,295 & 6,817 \\
+4,096 & 5,137 & 41,467 & 107,582 & 127,452 \\
+\end{longtable}
+}
+
+These numbers are not end-to-end token latency and cannot be
+extrapolated to production models. They exclude the model entirely. They
+show only that the extra passes and clarity-first sorting have
+measurable cost in ENGINE-1. For large language models, forward
+execution is often much more expensive, but that proportion depends on
+model, hardware, provider, vocabulary, batching, and implementation.
+Measure the actual system before making a latency claim.
+
+\section{Inside Hermon}\label{inside-hermon}
+
+Hermon is the production case study, not the teaching implementation.
+The following behavior was inspected at commit
+\texttt{\seqsplit{472a44cdb511b2dae6c9569e59543db8f8350b25}}; its
+llama.cpp submodule was pinned at
+\texttt{\seqsplit{389ff61d77b5c71cec0cf92fe4e5d01ace80b797}}.
+
+\begin{quote}
+\textbf{INSIDE HERMON --- CURRENT} The default batched runtime carries
+sampler configuration in each submitted request and constructs one
+mutable llama.cpp sampler for each \texttt{ActiveSeq}. Model work may be
+batched, but eligible logit rows are sampled through their owning
+sequences' sampler objects.
+\end{quote}
+
+\texttt{\seqsplit{crates/hermon-runtime/src/batched.rs}} stores prompt
+tokens, pending token, completion count, maximum completion count, UTF-8
+buffer, generated history, and concrete sampler in \texttt{ActiveSeq}.
+Admission constructs that sampler. The worker requests logits for
+eligible sequence positions, samples per sequence, checks
+end-of-generation and budget, updates pending state, streams pieces, and
+eventually sends \texttt{\seqsplit{StreamItem::Done(EngineMetrics)}}.
+Error branches send an error rather than \texttt{Done}.
+
+The linked facade in
+\texttt{\seqsplit{crates/hermon-llamacpp/src/linked.rs}} owns a native
+\texttt{llama\_sampler*}. Sampling takes mutable sampler and context
+references plus the relevant logit-row index. The simpler iterator path
+makes the feedback loop visible: sample from the previous decode, stop
+on EOG, feed the selected token through decode so KV state advances,
+decrement remaining budget, and return the token.
+
+Hermon's C shim at this commit chooses a greedy llama.cpp sampler when
+\texttt{temperature\textless{}=0}. Otherwise it constructs top-k → top-p
+→ min-p → temperature → distribution. Seed zero becomes time-derived in
+the shim. That chain is Hermon's current wrapper policy; it is not
+ENGINE-1's order.
+
+\begin{quote}
+\textbf{INSIDE HERMON --- PREVIEW} The gated Hermon-owned paged GGUF
+runtime is still CPU and greedy-only. Its source uses local argmax in
+the paged loop, and the documented 1,000-prompt temperature-zero
+equivalence corpus remains a release gate.
+\end{quote}
+
+This status distinction prevents two misleading claims: the existence of
+stochastic sampling on Hermon's default llama.cpp-backed path does not
+mean the Hermon-owned paged path supports it, and an implemented paged
+path does not mean it is the default release path.
+
+\subsection{The pinned llama.cpp
+library}\label{the-pinned-llama.cpp-library}
+
+The pinned public \texttt{llama.h} documents sampler chains ending in a
+selection stage such as greedy or distribution. Its current CPU greedy
+implementation uses a strict greater-than scan. Its distribution sampler
+owns seeded \texttt{std::mt19937} state, performs a maximum-shifted
+exponential computation, and draws cumulatively. Top-k truncates
+score-ordered candidates; top-p computes probabilities, orders them, and
+includes the threshold-crossing candidate.
+
+ENGINE-1 borrows none of that code and promises no RNG identity with it.
+The comparison validates boundaries: logits exist before selection,
+sampler state is mutable, chain order matters, and end-of-generation
+belongs to the runtime.
+
+\section{Why raw logits are durable
+evidence}\label{why-raw-logits-are-durable-evidence}
+
+It is tempting to treat a logit vector as disposable scratch. After all,
+the request needs only one token. That shortcut destroys information at
+exactly the boundary where inference behavior is hardest to debug.
+
+Suppose a user reports that token 17 appeared unexpectedly. Several
+different causes can lead there:
+
+\begin{itemize}
+\tightlist
+\item
+  the model genuinely assigned token 17 a large raw score;
+\item
+  temperature flattened a concentrated distribution;
+\item
+  top-k removed a token that would otherwise dominate;
+\item
+  top-p's retained set changed at a cumulative boundary;
+\item
+  a grammar or future constraint masked alternatives;
+\item
+  the RNG draw landed in token 17's interval;
+\item
+  token IDs and tokenizer bytes did not match the intended model
+  revision.
+\end{itemize}
+
+If the sampler overwrote raw logits, these explanations collapse into
+one processed vector. If trace data retains raw logits, processed
+probabilities, configuration, draw, and selected ID as distinct
+artifacts, each stage can be audited.
+
+This is also a correctness requirement for future speculative decoding.
+A draft model may propose several tokens, but a target model must verify
+them under the target sampling semantics. Constrained generation may add
+grammar, JSON-schema, tool-syntax, repetition, or forbidden-token masks.
+Those processors answer ``which outputs are currently allowed?'' Raw
+logits answer ``what did the model predict before policy?'' The
+questions are related but not identical.
+
+ENGINE-1 does not implement those future processors. It establishes the
+seam they require:
+
+\begin{quote}
+\begin{enumerate}
+\item raw model evidence  \(\longrightarrow\)  ordered logit processors  \(\longrightarrow\)  candidate distribution
+\item \(\longrightarrow\)  stateful selection  \(\longrightarrow\)  committed token
+\end{enumerate}
+\end{quote}
+
+\begin{quote}
+\textbf{FIRST PRINCIPLE} Sampling policy is inference behavior, not
+model weights. Preserve the evidence on both sides of that policy
+boundary.
+\end{quote}
+
+\section{Renormalization is not
+optional}\label{renormalization-is-not-optional}
+
+Softmax initially distributes one unit of mass over active candidates.
+Top-p then removes some candidates. If the retained probabilities sum to
+\texttt{0.85}, sampling directly against intervals ending at
+\texttt{0.85} leaves \texttt{{[}0.85,1)} without a mathematically owned
+token.
+
+One could scale a random draw by retained mass, but that is
+renormalization in another form. ENGINE-1 performs it explicitly:
+
+\begin{equation}
+q_i=
+\begin{cases}
+\displaystyle\frac{p_i}{\sum_{j\in S}p_j}, & i\in S,\\begin{equation}6pt]
+0, & i\notin S,
+\end{cases}
+\end{equation}
+
+where \(S\) is the retained candidate set.
+
+Now retained \texttt{q\_i} values sum approximately to one. The
+categorical selector has one contract regardless of which filters ran.
+Stage tests compose cleanly: distribution construction proves
+normalization, and categorical selection assumes normalized input.
+
+The distinction clarifies the all-filtered failure. If candidate mass is
+zero, there is no denominator and no distribution. ENGINE-1 returns
+\texttt{\seqsplit{AllCandidatesFiltered}}; it does not unmask a
+convenient token or switch to greedy. A future policy may require
+``always keep at least one,'' but that rule must be explicit in the
+processor that owns it.
+
+\section{A lifecycle matrix for the real
+loop}\label{a-lifecycle-matrix-for-the-real-loop}
+
+The canonical
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/sampling/generation-terminal-state-machine.txt}{generation
+state machine} makes the transition events and three terminal states
+explicit.
+
+The happy path alone cannot establish runtime correctness. Consider what
+has been committed and what may be emitted at each terminal cause:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Cause
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Token selected?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Token committed?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Text emitted?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Terminal
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+EOS & yes, EOS & no & no EOS text & completed: EOS \\
+Budget before next step & previous only & previous only & previous text
+& completed: max tokens \\
+Cancel before forward & no new token & no & no & cancelled \\
+Cancel after forward & no new sample & no & no & cancelled \\
+Model failure & no & no & no new text & failed: model \\
+Sampling failure & no token & no & no new text & failed: sampling \\
+Tokenizer failure & yes, non-EOS & yes & token event may exist & failed:
+tokenizer \\
+UTF-8 failure & yes, non-EOS & yes & only prior valid text & failed:
+UTF-8 \\
+\end{longtable}
+}
+
+The table exposes why ``stop the loop'' is insufficient as a design. A
+stop has a point in the state transition. An EOS decision occurs before
+commit. Tokenizer failure occurs after commit. Cancellation can occur on
+either side of expensive model work but before selection. The result
+must reflect those facts.
+
+ENGINE-1's stream is ordered:
+
+\begin{quote}
+\begin{enumerate}
+\item zero or more token/text events  \(\longrightarrow\)  exactly one Terminal event  \(\longrightarrow\)  nothing
+\end{enumerate}
+\end{quote}
+
+Text events need not correspond one-to-one with token events because a
+token piece may end in an incomplete UTF-8 scalar. The decoder buffers
+bytes until a valid prefix exists. Sampling is token-level; user-visible
+streaming is byte/text-level. Chapter 2's boundary remains active inside
+Chapter 4's loop.
+
+\section{Selection state under future
+batching}\label{selection-state-under-future-batching}
+
+Continuous batching will eventually assemble model work from several
+sequences:
+
+\begin{quote}
+\begin{enumerate}
+\item Request A tokens --+
+\item Request B tokens  \(\longrightarrow\)  model batch  \(\longrightarrow\)  logits A, logits B, logits C
+\item Request C tokens --+
+\end{enumerate}
+\end{quote}
+
+That physical batch does not merge logical sequences. Row A must be
+processed with A's configuration, RNG state, token history, and
+remaining budget. A worker may change the order in which sequences enter
+batches without changing which RNG stream each sequence consumes.
+
+This is why request-owned randomness is a systems rule, not a detail of
+random number generation. State ownership makes scheduling freedom
+possible. A global RNG would turn an optimization---reordering batch
+work---into a semantic change.
+
+Speculative decoding creates another version of the same constraint. A
+draft path may propose multiple candidates in one step, but accepted
+output still has to obey the target model and chosen sampling contract.
+Rollback must restore model/KV state and stateful processors
+consistently. Chapter 4 does not implement speculation; it supplies the
+raw-logit, sampler-state, and commit boundaries later chapters will
+need.
+
+\section{Seven first principles,
+connected}\label{seven-first-principles-connected}
+
+The chapter's individual rules form one chain:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{The model predicts scores; the sampler chooses a token.} This
+  separates learned model semantics from request policy.
+\item
+  \textbf{Equivalent mathematics can have different numerical safety.}
+  Stable softmax preserves semantics while preventing exponential
+  overflow.
+\item
+  \textbf{Randomness is owned mutable state.} Seeds and consumption
+  order belong to one request.
+\item
+  \textbf{Sampling policy is part of inference behavior.} Temperature,
+  filters, tie rules, order, and RNG algorithm belong in a reproduction
+  record.
+\item
+  \textbf{Raw and processed scores are different artifacts.} Debugging
+  and future constraints need both.
+\item
+  \textbf{Selected output becomes future input.} Feedback is the
+  operational heart of autoregressive generation.
+\item
+  \textbf{Termination has one owner and defined commit points.} EOS,
+  budget, cancellation, and failure must produce one coherent final
+  outcome.
+\end{enumerate}
+
+Remove any one rule and the tiny engine develops a production-shaped
+bug. Put softmax inside the model, and sampling policy contaminates
+model semantics. Use naive exponentials, and ordinary logits can yield
+NaNs. Share an RNG, and scheduling changes text. Mutate raw scores, and
+debugging loses evidence. Append before checking EOS, and sequence state
+lies. Emit terminal events in several branches, and clients can receive
+contradictory endings.
+
+That is why ENGINE-1 spends more code on contracts and tests than on the
+few lines of exponential arithmetic. The arithmetic chooses a token; the
+contracts make that choice meaningful inside a system.
+
+\section{Common mistakes}\label{common-mistakes-3}
+
+\subsection{``Logits are
+probabilities''}\label{logits-are-probabilities}
+
+Logits are unnormalized scores. They can be negative and do not sum to
+one. Softmax creates probabilities when a policy needs them.
+
+\subsection{``Softmax belongs in every
+forward''}\label{softmax-belongs-in-every-forward}
+
+The model boundary returns logits. Greedy can consume them directly;
+other processors may need raw scores. Making softmax mandatory would
+conflate model semantics with selection policy.
+
+\subsection{``The highest logit must be
+selected''}\label{the-highest-logit-must-be-selected}
+
+Greedy selects it. Categorical sampling can choose any
+positive-probability candidate retained by policy.
+
+\subsection{``Temperature adds
+randomness''}\label{temperature-adds-randomness}
+
+Temperature changes distribution shape. The RNG draw supplies
+randomness.
+
+\subsection{``Temperature changes
+ordering''}\label{temperature-changes-ordering}
+
+Positive temperature divides every score by the same positive number, so
+ordering stays fixed.
+
+\subsection{``Top-p keeps p percent of
+tokens''}\label{top-p-keeps-p-percent-of-tokens}
+
+Top-p keeps the smallest probability-ordered prefix whose mass reaches
+\texttt{p}. Its candidate count varies.
+
+\subsection{``Top-k and top-p are the
+same''}\label{top-k-and-top-p-are-the-same}
+
+Top-k fixes a count. Top-p fixes retained mass. They can keep different
+sets.
+
+\subsection{``A fixed seed guarantees the same text
+everywhere''}\label{a-fixed-seed-guarantees-the-same-text-everywhere}
+
+Seed controls one PRNG start. Model logits, engine version, sampler
+order, numeric behavior, and tokenization also affect output.
+
+\subsection{``Sampling is stateless''}\label{sampling-is-stateless}
+
+Every draw advances RNG state. Future repetition and grammar processors
+add more mutable state.
+
+\subsection{``EOS is visible text''}\label{eos-is-visible-text}
+
+ENGINE-1 treats EOS as control. It is neither decoded nor streamed.
+
+\subsection{``max\_new\_tokens includes the
+prompt''}\label{max_new_tokens-includes-the-prompt}
+
+It counts committed output tokens. Prompt length is a different
+quantity.
+
+\subsection{``Random sampling means random
+noise''}\label{random-sampling-means-random-noise}
+
+The model determines probability mass. Sampling chooses from that
+structured distribution after explicit filtering.
+
+\section{Labs}\label{labs}
+
+Chapter 4 completes the following progression:
+
+\begin{itemize}
+\tightlist
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-09-stable-softmax-by-hand.md}{Lab
+  9 --- Stable Softmax by Hand}
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-10-temperature.md}{Lab
+  10 --- Change Temperature}
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-11-fixed-categorical-draw.md}{Lab
+  11 --- Select With a Fixed Random Draw}
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-12-top-k-vs-top-p.md}{Lab
+  12 --- Top-k Versus Top-p}
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-13-build-the-autoregressive-loop.md}{Lab
+  13 --- Trace the Autoregressive Loop}
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-14-change-the-seed.md}{Lab
+  14 --- Change the Seed}
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-15-break-the-sampler.md}{Lab
+  15 --- Break the Sampler}
+\end{itemize}
+
+Each moves through CHECK, BUILD, BREAK, and EXTEND. The numerical labs
+compare independent Python and Rust boundaries. The lifecycle labs
+deliberately inject failure rather than proving only the happy path.
+
+\section{Exercises}\label{exercises-3}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Prove algebraically that adding any constant to all logits preserves
+  softmax. Then explain why subtracting the maximum improves
+  floating-point behavior.
+\item
+  For logits \texttt{{[}2,2,1{]}}, state ENGINE-1's greedy result and
+  its top-k order for \texttt{k=2}. Identify the tie rule.
+\item
+  Compute the temperature-one softmax of \texttt{{[}0,1{]}}. Without
+  recomputing exact exponentials, predict how \texttt{T=.5} and
+  \texttt{T=2} change the gap.
+\item
+  Draw cumulative intervals for \texttt{{[}.1,.2,.3,.4{]}}. Select
+  tokens for draws \texttt{0}, \texttt{.1}, \texttt{.2999}, \texttt{.3},
+  and the largest value below one.
+\item
+  For \texttt{\seqsplit{[.40,.30,.15,.10,.05]}}, compare top-k 2 with
+  top-p .8. Renormalize both survivor sets.
+\item
+  Give an example where applying top-p before top-k could differ from
+  ENGINE-1's order. Explain why a sampler version belongs in a
+  reproduction record.
+\item
+  Trace \texttt{I\ like} through both model forwards, including hidden
+  vectors, logits, selected IDs, history, byte piece, and terminal
+  reason.
+\item
+  Explain what happens if token decoding fails after ENGINE-1's commit
+  point. Which state and events are truthful, and why is there still one
+  terminal?
+\item
+  Design a test that would expose shared global RNG state between two
+  requests.
+\item
+  Explain why a future batched model forward may combine several
+  sequences while their sampler states remain separate.
+\end{enumerate}
+
+\section{What Part I has built}\label{what-part-i-has-built}
+
+Chapter 1 defined the machine and its request-to-terminal lifecycle.
+Chapter 2 crossed the text/token/byte boundary. Chapter 3 opened the
+numerical function and derived every score. Chapter 4 turns numerical
+prediction into generation.
+
+The loop now connects the tokenizer, numerical model, sampler, byte decoder and terminal owner.
+
+The Part I engine is now:
+
+Figure~\ref{fig:sampling-feedback} is the completed feedback path. The four-token model is fully inspectable, but its architecture is intentionally limited.
+
+It is tiny. It is scalar. It has only four tokens. It depends only on
+the final token. It does no training, attention, position handling, KV
+caching, GGUF loading, quantization, batching, paging, native kernels,
+or acceleration.
+
+Those limitations do not make it fake. Every parameter is visible. Every
+forward score is real. Every selection follows a stated policy. Every
+random draw has an owner. Every output token feeds back. Every request
+terminates once. A reader can inspect and run the entire path.
+
+\begin{quote}
+\textbf{FIRST PRINCIPLE} Autoregressive generation feeds selected
+outputs back into future model inputs, and every such loop needs
+explicit state and termination ownership.
+\end{quote}
+
+\section{Summary}\label{summary-3}
+
+\begin{itemize}
+\tightlist
+\item
+  A model produces raw logits; a sampler chooses a token.
+\item
+  Softmax converts finite scores to non-negative probability mass
+  summing approximately to one.
+\item
+  Subtracting the maximum preserves softmax and prevents exponential
+  overflow.
+\item
+  Greedy selection uses one argmax scan and needs no softmax.
+\item
+  Categorical selection maps a draw in \texttt{{[}0,1)} through
+  cumulative intervals.
+\item
+  Temperature changes distribution sharpness; it does not add randomness
+  or change ordering when positive.
+\item
+  Top-k keeps a fixed number of high scores; top-p keeps adaptive
+  probability mass and includes the threshold-crossing candidate.
+\item
+  Operation order is part of inference behavior.
+\item
+  Raw logits and processed candidates are separate artifacts.
+\item
+  RNG state belongs to one request. A seed has a bounded reproduction
+  contract, not a universal guarantee.
+\item
+  ENGINE-1 checks EOS before commit, counts only new visible tokens
+  against the output budget, and checks cancellation at defined
+  boundaries.
+\item
+  One lifecycle owner emits exactly one completed, cancelled, or failed
+  terminal outcome.
+\item
+  Part I now contains the smallest complete inference engine.
+\end{itemize}
+
+\section{Part II preview: tensors without
+magic}\label{part-ii-preview-tensors-without-magic}
+
+ENGINE-1's remaining intellectual defect is now impossible to miss. It
+feeds tokens back, but its model still reads only the final token. A
+modern decoder needs internal representations spanning positions and
+hidden dimensions.
+
+Before attention, queries, keys, values, or Transformer layers, we need
+to know how those numbers occupy memory. Chapter 5 begins Part II with
+scalars, vectors, matrices, tensors, rank, shape, dtype, row-major
+layout, stride, contiguity, offset calculation, views, copies, aliases,
+ownership, bounds, and overflow-safe element counts.
+
+Attention comes later. First we build a tensor substrate whose semantics
+can survive it.
+
+\section{References}\label{references-1}
+
+\begin{itemize}
+\tightlist
+\item
+  Yoshua Bengio, Réjean Ducharme, Pascal Vincent, and Christian Jauvin.
+  \href{https://jmlr.org/papers/v3/bengio03a.html}{A Neural
+  Probabilistic Language Model}. \emph{Journal of Machine Learning
+  Research} 3, 2003.
+\item
+  Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and Yejin Choi.
+  \href{https://arxiv.org/abs/1904.09751}{The Curious Case of Neural
+  Text Degeneration}. ICLR
+
+  \begin{enumerate}
+  \def\labelenumi{\arabic{enumi}.}
+  \setcounter{enumi}{2019}
+  \tightlist
+  \item
+\end{enumerate}
+\item
+  Pierre Blanchard, Desmond J. Higham, and Nicholas J. Higham.
+  \href{https://doi.org/10.1093/imanum/draa038}{Accurately computing the
+  log-sum-exp and softmax functions}. \emph{IMA Journal of Numerical
+  Analysis} 41(4), 2021.
+\item
+  Guy L. Steele Jr., Doug Lea, and Christine H. Flood.
+  \href{https://doi.org/10.1145/2660193.2660195}{Fast Splittable
+  Pseudorandom Number Generators}. OOPSLA 2014.
+\item
+  PyTorch.
+  \href{https://docs.pytorch.org/docs/stable/generated/torch.nn.Softmax.html}{\texttt{\seqsplit{torch.nn.Softmax}}
+  documentation}.
+\item
+  Hermon source at
+  \texttt{\seqsplit{472a44cdb511b2dae6c9569e59543db8f8350b25}}.
+\item
+  llama.cpp source at
+  \texttt{\seqsplit{389ff61d77b5c71cec0cf92fe4e5d01ace80b797}}.
+\end{itemize}
+
+
+\input{worked/ch04.tex}

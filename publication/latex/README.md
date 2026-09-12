@@ -1,4 +1,8 @@
-# Native LaTeX edition
+# Historical native LaTeX export
+
+The active textbook is now [authored directly in LaTeX](../../tex/README.md).
+Do not regenerate it through this exporter. The instructions below preserve
+the previous export's reproducibility and apply only to this directory.
 
 Build from this directory with `make`. `main.tex` contains all nine written
 chapters and uses native TikZ `.tex` illustrations: no rasterized labels,
@@ -12,7 +16,7 @@ legacy plate has received the detailed Chapter 5–9 editorial redesign.
 To synchronize prose and figures, run `publication/build.py`, then
 `publication/build-tex.py` from the repository root. Commit generated `.tex`
 alongside the source changes. `publication/build-tex.py --check` detects drift.
-The Markdown source remains the web authoring surface; the portable `.tex`
+The historical Markdown source remains this export's web surface; the portable `.tex`
 edition and all its figure sources are shipped, not hidden in ignored build output.
 
 Requires Pandoc 3.9 for regeneration and TeX Live 2025/XeLaTeX with DejaVu,

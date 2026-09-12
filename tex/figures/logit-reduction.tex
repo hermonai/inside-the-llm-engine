@@ -1,0 +1,15 @@
+\begin{tikzpicture}[font=\sffamily\small]
+\foreach \x/\w/\h/\p in {0/1/1/1,3/-.4/-.5/.2,6/.25/2/.5}{
+ \node[cell,fill=BookGold] (w\x) at (\x,0) {$\w$};
+ \node[cell,fill=BookGreen] (h\x) at (\x,-1.2) {$\h$};
+ \node[block] (p\x) at (\x,-2.7) {$\w\times\h=\p$};
+ \draw[flow] (w\x.east)--++(1.1,0)|-(p\x.east);
+ \draw[flow] (h\x)--(p\x);
+}
+\node[note,anchor=east] at (-.7,0) {$W_{3,:}$};
+\node[note,anchor=east] at (-.7,-1.2) {$h$};
+\node[block] (sum) at (3,-4.4) {$z_3=1+.2+.5+b_3=2.2$\\bias $b_3=.5$};
+\draw[flow] (p0.south)--(sum.north west);
+\draw[flow] (p3)--(sum);
+\draw[flow] (p6.south)--(sum.north east);
+\end{tikzpicture}

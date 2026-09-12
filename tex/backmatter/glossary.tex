@@ -1,0 +1,41 @@
+\chapter{A working vocabulary}
+\begin{description}
+\item[Activation] An intermediate value produced for a particular execution;
+not a persistent model parameter.
+\item[Autoregression] Feeding a selected output token back into the history
+that conditions the next prediction.
+\item[Canonical layout] The engine's explicit contiguous row-major storage
+contract; not a synonym for every valid tensor view.
+\item[Engine] The runtime that coordinates model execution, selection, request
+state, output and terminal outcomes.
+\item[Logit] A finite unnormalized score for one vocabulary entry. A logit is
+not a probability and need not be positive.
+\item[Oracle] An independently expressed reference calculation used to detect
+implementation mistakes. Sharing the same mistaken indexing defeats independence.
+\item[Parameter] Persistent model data read during a forward computation.
+\item[RoPE] A position-dependent rotation of specified query/key coordinate
+pairs. Pairing layout and frequency schedule are part of model compatibility.
+\item[Stride] The displacement in storage elements associated with advancing
+one logical index along one axis.
+\item[Terminal outcome] The single final status owned by a request:
+success under a declared stopping rule, cancellation or failure.
+\item[Token] A vocabulary identity; its decoded byte piece need not be a
+complete Unicode scalar or a word.
+\end{description}
+
+\chapter{Evidence and further study}
+Primary references remain adjacent to the chapter claims they support, with
+the source ledger and numerical oracles linked from the relevant chapter.
+The companion research directory distinguishes implemented behavior, gated
+previews, historical results and inference from evidence.
+
+For a complementary treatment of constructing a language model, see Sebastian
+Raschka's \emph{Build a Large Language Model (From Scratch)} and the author's
+\href{https://github.com/rasbt/LLMs-from-scratch}{official companion repository}.
+This book adopts an original systems-focused progression: request invariants,
+mathematical operators, physical layouts, independently checked substitutions,
+then serving behavior. It does not reproduce that book's prose or illustrations.
+
+Historical tokenizer examples include Unicode and emoji. Emoji artwork is
+provided by Twemoji (Twitter and contributors), CC BY 4.0, via the TeX Live
+package. Native scientific diagrams are repository-authored vector geometry.

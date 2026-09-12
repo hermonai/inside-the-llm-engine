@@ -1,0 +1,28 @@
+\clearpage
+\section{Worked synthesis: projection is not attention}
+\subsection{Count unequal head groups}
+\textbf{Problem.} Let model width $D=8$, query heads $H_q=4$, key/value heads
+$H_{kv}=2$, and head width $d_h=2$. Give projection shapes and parameter count
+for bias-free row-output matrices.
+
+\textbf{Solution.} The shapes are $W_Q:[8,8]$, $W_K:[4,8]$ and $W_V:[4,8]$.
+Their total is $64+32+32=128$ parameters. Each query head maps to
+$\lfloor h/(H_q/H_{kv})\rfloor$, giving $(0,0,1,1)$.
+This grouping does not average the query heads or merge their output values.
+
+\subsection{Derive future cache payload without claiming a cache}
+\textbf{Problem.} If later code stores K and V for $L=2$ layers and $T=3$
+positions in F32, what payload follows from those head dimensions?
+
+\textbf{Solution.} $2LTH_{kv}d_h\cdot4=192$ bytes. The leading factor 2 counts
+K and V. It excludes allocation, page tables and any replicated storage.
+This is a capacity calculation, not evidence that Chapter 8 implements a cache.
+
+\subsection{Show the missing dependence}
+\textbf{Problem.} Two positions have the same normalized activation. Do their
+raw QKV projections differ solely because their position labels differ?
+
+\textbf{Solution.} No. The bias-free projection reads the activation and
+weights, not an external position label. Position-dependent rotation in the
+next chapter changes that contract. Attention still requires a query/key
+comparison, visibility mask, normalization and value mixing.

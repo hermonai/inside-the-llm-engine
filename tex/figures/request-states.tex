@@ -1,0 +1,11 @@
+\begin{tikzpicture}[font=\sffamily\small]
+\node[block] (new) at (0,0) {validate};
+\node[block] (loop) at (4,0) {running\\predict / select / emit};
+\node[block,fill=BookGold] (end) at (11,0) {one finalizer\\one terminal event};
+\draw[flow] (new)--node[above]{valid}(loop);
+\draw[control] (new.south)--++(0,-2)-|node[pos=.25,below]{invalid request}(end.south);
+\draw[flow] (loop.north west)--++(0,1)-|(loop.north east);
+\node[note] at (4,1.35) {next token};
+\draw[control] (loop)--node[above,align=center]{EOS / budget\\cancel / error}(end);
+\node[note,anchor=north] at (4,-.9) {A prefix may exist before any terminal outcome.};
+\end{tikzpicture}

@@ -1,5 +1,16 @@
 # Figure and publication build
 
+## Active authored textbook
+
+Run `make textbook-check` and `make textbook` from the repository root.
+The entry point is [the authored LaTeX manuscript](../tex/inside-the-llm-engine.tex);
+see [its build and authoring guide](../tex/README.md). It does not invoke
+Pandoc or read Markdown prose. New figures are native TikZ with typeset
+mathematics. The commands below reproduce historical web/atlas artifacts;
+they do not overwrite the active textbook.
+
+## Historical atlas and web edition
+
 Run from the repository root:
 
 ```sh

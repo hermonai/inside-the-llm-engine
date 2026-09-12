@@ -4,45 +4,10 @@ This project is intentionally AI-authored and AI-assisted. That is useful only
 when the process makes evidence, uncertainty, verification, and review more
 visible than ordinary drafting.
 
-```text
-                    BOOK ROADMAP
-                         │
-                         ▼
-                    CHAPTER SPEC
-                         │
-                         ▼
-                  SOURCE DISCOVERY
-                         │
-                         ▼
-                  RESEARCH NOTES
-                         │
-                         ▼
-                FACT / STATUS CHECK
-                         │
-                         ▼
-                   CHAPTER DRAFT
-                         │
-             ┌───────────┴───────────┐
-             ▼                       ▼
-       CODE / EXPERIMENT      UNICODE TEXT DIAGRAMS
-             │                       │
-             └───────────┬───────────┘
-                         │
-                         ▼
-                  CORRECTNESS CHECK
-                         │
-                         ▼
-                    TECH REVIEW
-                         │
-                         ▼
-                   EDITORIAL PASS
-                         │
-                         ▼
-                  CROSS-LINK CHECK
-                         │
-                         ▼
-                       DONE
-```
+Active prose is authored LaTeX under `tex/`, with native TikZ mechanisms and
+worked examples. Follow `TEXTBOOK_STANDARD.md` and `AUTHORING_WORKFLOW.md`.
+The historical Markdown and text-diagram archives are evidence, not the new
+book's source of truth.
 
 An AI agent must inspect source rather than complete a plausible story from
 names. It records the repository commit and truth category, distinguishes

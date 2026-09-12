@@ -1,0 +1,33 @@
+\section{Worked synthesis: geometry must survive storage}
+\subsection{Recover the relative sign}
+\textbf{Problem.} For two-dimensional rotations, simplify
+$(R(m)q)^\top(R(n)k)$. Which position difference remains?
+
+\textbf{Solution.} Transpose reverses a rotation:
+\begin{equation}
+q^\top R(m)^\top R(n)k
+=q^\top R(-m)R(n)k
+=q^\top R(n-m)k.
+\end{equation}
+The remaining difference is key position minus query position in this
+convention. Changing the sign while keeping the same rotation convention
+changes the score. A norm-preservation test alone cannot detect this error.
+
+\subsection{A norm-preserving wrong pairing}
+\textbf{Problem.} For width four, compare adjacent pairs with split-half pairs.
+Could the wrong choice pass a norm test?
+
+\textbf{Solution.} Adjacent pairs are $(0,1),(2,3)$; split-half pairs are
+$(0,2),(1,3)$. Each rotates disjoint coordinate planes and therefore preserves
+the full norm in real arithmetic. Yet they generally produce different vectors.
+Check component values against an independent oracle using the model's exact
+pairing convention, not just an invariant both implementations share.
+
+\subsection{Reject before mutating}
+\textbf{Problem.} The first pair is valid, but rotating the last pair would
+produce a nonfinite F32 output. What must a failure-atomic in-place API do?
+
+\textbf{Solution.} Validate and dry-run all affected pairs before any write.
+Return the typed error with every input bit unchanged. During the commit pass,
+read both old coordinates before overwriting either one. This contract concerns
+handled numerical errors; it does not promise recovery from allocator aborts.

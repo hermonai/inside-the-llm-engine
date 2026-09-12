@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\sffamily\small]
+\node[block] (template) at (0,0) {chat template\\role/control sequence};
+\node[block] (tok) at (4.8,0) {tokenizer\\bytes $\leftrightarrow$ IDs};
+\node[block,fill=BookGold] (model) at (9.5,0) {model weights\\vocabulary rows};
+\draw[flow] (template)--node[above]{rendered input}(tok);
+\draw[flow] (tok)--node[above]{IDs}(model);
+\node[block,minimum width=11cm] (contract) at (4.8,-2) {one semantic contract: revisions, special IDs, vocabulary mapping};
+\draw[control] (contract.north west)--(template.south);
+\draw[control] (contract.north)--(tok.south);
+\draw[control] (contract.north east)--(model.south);
+\node[note] at (4.8,-3) {Matching tensor dimensions alone cannot detect a permuted vocabulary.};
+\end{tikzpicture}

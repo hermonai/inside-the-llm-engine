@@ -1,5 +1,13 @@
 # Visual regeneration plan
 
+Current decision: the [shared textbook standard](TEXTBOOK_STANDARD.md)
+and [authored LaTeX guide](tex/README.md) govern new prose and illustrations.
+The first source-first revision rewrites Chapter 1, corrects early interfaces,
+adds native mechanisms and 27 worked problems across Chapters 1–9, and retains
+the reviewed mathematical core of Chapters 2–9. This is not a complete
+editorial rewrite of those eight chapters. The milestones below are historical
+evidence; next new curriculum work is Chapter 10, in authored LaTeX.
+
 This plan is the active regeneration workstream. `docs/STATUS.md` records
 Chapter 8's completed QKV milestone (2026-09-12). Its original research was
 preserved, refreshed and implemented. Existing COMPLETE milestones remain historical achievements,

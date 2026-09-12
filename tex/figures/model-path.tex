@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\sffamily\small]
+\node[block] (id) at (0,0) {ID 2};
+\node[block,fill=BookGreen] (h) at (3.2,0) {$h=E_{2,:}$\\shape $[3]$};
+\node[block,fill=BookGreen] (z) at (7,0) {$z=Wh+b$\\shape $[4]$};
+\node[block,fill=BookGold] (e) at (3.2,1.9) {$E:[4,3]$};
+\node[block,fill=BookGold] (w) at (7,1.9) {$W:[4,3],\ b:[4]$};
+\draw[flow] (id)--node[above]{select}(h);
+\draw[flow] (h)--node[above]{project}(z);
+\draw[control] (e)--node[right]{read}(h);
+\draw[control] (w)--node[right]{read}(z);
+\node[note] at (3.5,-1.3) {12 + 12 + 4 = 28 persistent F32 parameters = 112 bytes.};
+\end{tikzpicture}

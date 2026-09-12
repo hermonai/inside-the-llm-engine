@@ -90,6 +90,14 @@ template, then pass equivalence tests.
 
 ## Diagrams and prose
 
+Authoring decision, requested 2026-09-12: the active textbook is authored
+LaTeX in `tex/`, not generated from Markdown. Follow
+`TEXTBOOK_STANDARD.md`: original worked examples, derived equations,
+native mechanism illustrations, executable checks, failure cases and
+worked solutions. Historical Markdown and figures remain evidence archives.
+This shared approach is applied to Inside the LLM Engine, DNA Computing and
+Evolutor; it does not retroactively certify every retained chapter as rewritten.
+
 Publication decision, requested 2026-09-11: ship editable native LaTeX/TikZ
 illustrations with typeset equations, rather than character-box graphs.
 Show state, ownership, concurrency and residency with explicit edge meanings.

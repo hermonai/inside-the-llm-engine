@@ -1,8 +1,11 @@
 # Inside the LLM Engine
 
-The [native LaTeX edition](publication/latex/README.md) ships the complete written
-book as `.tex`, with TikZ versions of all semantic plates and geometric legacy
-diagrams. `make -C publication/latex` builds it without publishing text-box graphs.
+The active manuscript is now [authored LaTeX](tex/README.md), with editable
+TikZ figures, numbered equations and worked solutions. Run `make textbook-check`
+and `make textbook`. The nine-chapter textbook revision includes a rewritten
+Chapter 1, substantive early-chapter corrections, 65 native mechanism figures
+and 27 new worked synthesis problems. It is a partial editorial rewrite, not a
+claim that the entire planned book or production engine is complete.
 
 ## From model weights and KV memory to industrial inference serving.
 
@@ -21,15 +24,15 @@ standard-library-only [ENGINE-1](code/mini-engine/README.md) are complete. They
 establish the request-to-terminal lifecycle, tokenizer/chat contract,
 byte-safe output, a real token-ID-to-logits model, request-owned sampling, and
 the complete autoregressive feedback loop. Part II is now in progress:
-[Chapter 5](manuscript/part-02/chapter-05-tensors-without-magic.md) adds the
-checked Tensor Substrate v1. [Chapter 6](manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
+[Chapter 5](tex/chapters/ch05.tex) adds the
+checked Tensor Substrate v1. [Chapter 6](tex/chapters/ch06.tex)
 builds ENGINE-2's reference and blocked scalar linear-algebra kernels and
-migrates the existing projection through GEMV. [Chapter 7](manuscript/part-02/chapter-07-embeddings-and-normalization.md)
+migrates the existing projection through GEMV. [Chapter 7](tex/chapters/ch07.tex)
 adds checked single/sequence embedding and RMSNorm as Transformer Primitives
 v1 while preserving the original tiny-model regression.
-[Chapter 8](manuscript/part-02/chapter-08-queries-keys-and-values.md) adds checked
+[Chapter 8](tex/chapters/ch08.tex) adds checked
 raw Q/K/V projections, MHA/GQA/MQA geometry, borrowed head views and an
-independent component oracle. [Chapter 9](manuscript/part-02/chapter-09-position-rope.md)
+independent component oracle. [Chapter 9](tex/chapters/ch09.tex)
 adds standard RoPE with explicit pairing, partial rotation, failure-safe
 in-place mutation and an independent complex-number oracle. Chapter 10,
 causal self-attention, is next.
@@ -47,7 +50,8 @@ losses. The [Chapter 7 visual edition](figures/chapter07-atlas.md) adds ten
 canonical plates and an executable two-pass RMSNorm trace. Chapter 8 adds ten
 more native-vector plates connecting projection arithmetic, head layouts,
 ownership, graph bundles and analytical serving-memory implications. The
-native LaTeX ebook now contains nine chapters across 187 pages. Chapter 9 adds
+historical native export contains nine chapters across 187 pages; the active
+textbook edition is built independently from `tex/`. Chapter 9 adds
 ten geometric TikZ plates covering rotations, frequency planes, relative
 position, coordinate layout, numerical precision and production contracts.
 
@@ -62,51 +66,9 @@ decoding and distributed-systems coverage. Read the four new
 [94-chapter illustration plan](figures/CHAPTER_ILLUSTRATION_PLAN.md).
 These planning/reference artifacts do not mark future chapters complete.
 
-```text
-                         INSIDE THE LLM ENGINE
-
-  "Explain quantum computing."                         immutable model data
-              │                                                ║
-              ▼                                                ▼
-       ┌─────────────┐      token IDs                  ┌────────────────┐
-       │  TOKENIZER  │ ──────────────────────────────▶ │ GGUF / WEIGHTS │
-       └─────────────┘                                 │ packed / quant │
-              │                                        └────────┬───────┘
-              ▼                                                 ║
-       ┌─────────────┐       request state                      ║
-       │ API / STREAM│ ──────────────────────────────────┐      ║
-       └──────┬──────┘                                  │      ║
-              │                                         ▼      ▼
-              │                                  ┌──────────────────────┐
-              └────────────────────────────────▶ │ REQUEST RUNTIME      │
-                                                 │ admission / scheduler│
-                                                 │ prefix / KV ownership│
-                                                 └──────────┬───────────┘
-                                                            │
-                                               physical token batch
-                                                            ▼
-                                                 ┌──────────────────────┐
-                                                 │ MODEL FORWARD PASS   │
-                                                 │ tensors / attention  │
-                                                 └──────────┬───────────┘
-                                                            │
-                                                 execution plan + state
-                                                            ▼
-                                     ┌──────────────────────┼────────────────┐
-                                     ▼                      ▼                ▼
-                                ┌──────────┐           ┌──────────┐     ┌──────────┐
-                                │ CPU SIMD │           │  Metal   │     │CUDA/ROCm │
-                                └─────┬────┘           └────┬─────┘     └────┬─────┘
-                                      └──────────┬──────────┴────────────────┘
-                                                 │
-                                              logits
-                                                 ▼
-                                         sampler ──▶ token
-                                                 │
-                                  decode bytes ──▶ stream ──▶ repeat
-
-  Legend:  ──▶ control flow    ══▶ bulk data    [state] mutable ownership
-```
+Begin with one request and its terminal event in [Chapter 1](tex/chapters/ch01.tex).
+The later [industrial architecture plates](figures/industrial-atlas.md) show the
+planned system boundaries; they are reference designs, not current engine capabilities.
 
 ## Why this book exists
 
@@ -124,19 +86,19 @@ reproducer. Every optimized path needs an oracle.
 
 The curriculum advances through eleven named milestones:
 
-```text
-ENGINE-0  token generator
-    └──▶ ENGINE-1  tiny neural language model
-          └──▶ ENGINE-2  linear algebra kernel layer
-                └──▶ ENGINE-3  real GGUF model runner
-                      └──▶ ENGINE-4  KV-cached decoder
-                            └──▶ ENGINE-5  concurrent inference server
-                                  └──▶ ENGINE-6  continuous-batched runtime
-                                        └──▶ ENGINE-7  paged-KV runtime
-                                              └──▶ ENGINE-8  native kernel runtime
-                                                    └──▶ ENGINE-9  accelerated runtime
-                                                          └──▶ ENGINE-10 production system
-```
+| Milestone | Reader-built capability |
+| --- | --- |
+| ENGINE-0 | Token generator |
+| ENGINE-1 | Tiny numerical model and autoregressive loop |
+| ENGINE-2 | Checked linear-algebra kernel layer |
+| ENGINE-3 | Real GGUF model runner (planned) |
+| ENGINE-4 | KV-cached decoder (planned) |
+| ENGINE-5 | Concurrent inference server (planned) |
+| ENGINE-6 | Continuous-batched runtime (planned) |
+| ENGINE-7 | Paged-KV runtime (planned) |
+| ENGINE-8 | Native kernel runtime (planned) |
+| ENGINE-9 | Accelerated runtime (planned) |
+| ENGINE-10 | Production system (planned) |
 
 Labs move through four levels: **CHECK** a concept, **BUILD** it, **BREAK** it
 deliberately, and **EXTEND** it with a measured improvement.
@@ -157,7 +119,7 @@ providing focused refreshers.
 
 ## The progression
 
-The manuscript contains **15 parts and 94 chapters**, followed by 14 reference
+The planned curriculum contains **15 parts and 94 chapters**, followed by 14 reference
 appendices. It moves through conceptual inference, a Transformer from scratch,
 GGUF and quantization, KV caching, serving and scheduling, paged memory, native
 kernels, accelerators, modern decode optimization, MoE, correctness,
@@ -194,15 +156,15 @@ future inference-memory and execution protocols.
 
 ## Repository map
 
-```text
-manuscript/   chapter prose, organized by part
-code/         reference examples, mini-engine, and experiments
-diagrams/     reusable plain-text architecture artifacts
-research/     evidence logs and source inventories
-labs/         CHECK / BUILD / BREAK / EXTEND engineering exercises
-docs/         constitution, outline, policies, workflow, roadmap, and status
-scripts/      repository checks and reproducibility helpers
-```
+| Location | Purpose |
+| --- | --- |
+| `tex/` | Active authored chapters, native figures and worked problems |
+| `code/` | Reference examples, mini-engine and experiments |
+| `research/` | Evidence logs and source inventories |
+| `labs/` | CHECK / BUILD / BREAK / EXTEND exercises |
+| `docs/` | Contracts, outline, policies and status |
+| `manuscript/`, `diagrams/` | Historical Markdown and text-diagram evidence |
+| `scripts/` | Repository and textbook verification |
 
 Start with [the book constitution](docs/BOOK_CONSTITUTION.md) before drafting.
 Contributors and AI agents should also read [AGENTS.md](AGENTS.md),
@@ -241,5 +203,7 @@ engine behavior and frontier proposals are kept visibly separate.
 The first visual-regeneration milestone adds an [illustrated atlas](figures/ATLAS.md),
 editable SVG sources, three step animations, and PDF/HTML build infrastructure.
 See the [book audit](ASTRA_BOOK_AUDIT.md), [visual audit](ASTRA_VISUAL_AUDIT.md),
-and [bounded regeneration plan](ASTRA_REGENERATION_PLAN.md). Seven chapters are
+and [bounded regeneration plan](ASTRA_REGENERATION_PLAN.md). Nine chapters are
 written; later prototype diagrams do not imply completed implementations.
+The [shared textbook standard](TEXTBOOK_STANDARD.md) now governs new authoring.
+The Markdown/HTML exporter is historical and does not regenerate the active LaTeX manuscript.

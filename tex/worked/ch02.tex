@@ -1,0 +1,32 @@
+\section{Worked synthesis: identities, bytes and evidence}
+\subsection{A vocabulary permutation that passes shape checks}
+\textbf{Problem.} Two tokenizers have the same vocabulary size. One exchanges
+the IDs for two ordinary tokens. Why can model shape validation succeed while
+the answer changes?
+
+\textbf{Solution.} A shape check proves only that an ID is in range. The same
+integer now selects a different embedding row and labels a different output
+logit. If only the tokenizer changes, the model's learned association between
+row and token is broken. A coordinated permutation of embedding rows,
+output rows, biases and all special-token semantics could preserve behavior,
+but changing one file does not perform that transformation.
+
+\subsection{Complete the byte trace}
+\textbf{Problem.} A token emits \texttt{E4 B8}; the next emits \texttt{96}.
+List pending bytes and text after each token. What changes if EOS arrives
+instead of the second token?
+
+\textbf{Solution.} After the first token, pending bytes are
+\texttt{E4 B8} and text is empty. After the second, the pending buffer is empty
+and U+4E16 has been emitted once. EOS after the first token leaves an incomplete
+UTF-8 scalar; under this engine's strict completion policy it is a decoding
+failure, not successful text and not an implicit replacement character.
+
+\subsection{Build a discriminating tokenizer check}
+\textbf{Problem.} Is encode/decode round-trip equality sufficient to validate
+compatibility with a model?
+
+\textbf{Solution.} No. A self-consistent but permuted vocabulary round-trips its
+own IDs. Add known byte-to-ID fixtures from the intended model revision,
+special-token checks and template-rendering examples. Round trips test internal
+consistency; known fixtures test the external semantic contract.

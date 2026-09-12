@@ -1,0 +1,59 @@
+\usepackage{fontspec}
+\setmainfont{texgyrepagella-regular.otf}[BoldFont=texgyrepagella-bold.otf,ItalicFont=texgyrepagella-italic.otf,BoldItalicFont=texgyrepagella-bolditalic.otf]
+\setsansfont{texgyreheros-regular.otf}[BoldFont=texgyreheros-bold.otf,ItalicFont=texgyreheros-italic.otf,BoldItalicFont=texgyreheros-bolditalic.otf]
+\setmonofont{DejaVuSansMono.ttf}[Scale=.84,BoldFont=DejaVuSansMono-Bold.ttf,ItalicFont=DejaVuSansMono-Oblique.ttf,BoldItalicFont=DejaVuSansMono-BoldOblique.ttf]
+\usepackage[a4paper,inner=25mm,outer=25mm,top=23mm,bottom=25mm]{geometry}
+\usepackage{amsmath,amsthm,mathtools,graphicx,xcolor,booktabs,longtable,array,calc}
+\usepackage{unicode-math}
+\setmathfont{texgyrepagella-math.otf}
+\usepackage{titlesec,caption,fancyhdr,fvextra,needspace,seqsplit,adjustbox}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,matrix,fit,backgrounds}
+\usepackage{placeins}
+\usepackage{makeidx}
+\makeindex
+\usepackage[AutoFallBack=true]{xeCJK}
+\setCJKmainfont{FandolSong-Regular.otf}
+\setCJKsansfont{FandolHei-Regular.otf}
+\setCJKmonofont{FandolFang-Regular.otf}
+\setCJKfallbackfamilyfont{\CJKrmdefault}{NotoEmoji-Regular.ttf}
+\setCJKfallbackfamilyfont{\CJKttdefault}{NotoEmoji-Regular.ttf}
+\xeCJKDeclareCharClass{CJK}{"1F300 -> "1FAFF, "200D}
+\xeCJKDeclareCharClass{Default}{"2018, "2019, "201C, "201D}
+\usepackage{twemojis}
+\usepackage{xurl,hyperref,bookmark}
+\definecolor{BookBlue}{HTML}{173A55}
+\definecolor{BookPale}{HTML}{EDF5FA}
+\definecolor{BookGreen}{HTML}{DCEFE7}
+\definecolor{BookGold}{HTML}{F4EAD2}
+\hypersetup{colorlinks=true,linkcolor=BookBlue,urlcolor=BookBlue,citecolor=BookBlue,hypertexnames=false,pdftitle={Inside the LLM Engine},pdfauthor={Inside the LLM Engine contributors}}
+\urlstyle{same}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\sffamily Inside the LLM Engine}
+\fancyhead[R]{\small\sffamily Textbook revision}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{15pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{3em}
+\AtBeginDocument{\raggedright}
+\raggedbottom
+\clubpenalty=10000 \widowpenalty=10000
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{1}
+\titleformat{\chapter}[display]{\raggedright\color{BookBlue}\sffamily\bfseries}{\large CHAPTER \thechapter}{8pt}{\huge}
+\titlespacing*{\chapter}{0pt}{0pt}{18pt}
+\titleformat{\section}{\Large\sffamily\bfseries\color{BookBlue}}{\thesection}{.7em}{}
+\titleformat{\subsection}{\large\sffamily\bfseries\color{BookBlue}}{\thesubsection}{.7em}{}
+\captionsetup{hypcap=false,font=small,labelfont=bf,justification=raggedright,singlelinecheck=false}
+\newtheorem{proposition}{Proposition}[chapter]
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[chapter]
+\newcommand{\Term}[1]{\textbf{#1}\index{#1}}
+\newcommand{\Callout}[2]{\par\medskip\noindent\colorbox{BookPale}{\parbox{\dimexpr\linewidth-2\fboxsep\relax}{\raggedright\vspace{5pt}\textbf{\sffamily\color{BookBlue}#1}\par\smallskip #2\par\vspace{5pt}}}\par\medskip}
+\newcommand{\EngineFigure}[3]{\par\medskip\noindent\begin{minipage}{\linewidth}\centering\resizebox{\linewidth}{!}{\input{figures/#1.tex}}\captionof{figure}{#2}\label{#3}\end{minipage}\par\medskip}
+\newcommand{\Code}[1]{\VerbatimInput[breaklines,fontsize=\footnotesize,numbers=left,numbersep=5pt,frame=single]{#1}}
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines,fontsize=\footnotesize}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\newcounter{none}
+\tikzset{flow/.style={-{Stealth[length=2mm]},thick,BookBlue},control/.style={flow,dashed},cell/.style={draw=BookBlue,minimum width=10mm,minimum height=8mm,inner sep=2pt},block/.style={draw=BookBlue,fill=BookPale,rounded corners=2pt,align=center,minimum height=10mm,inner sep=5pt},note/.style={font=\small\sffamily,align=left,text=BookBlue}}

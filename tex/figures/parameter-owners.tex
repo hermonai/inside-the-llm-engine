@@ -1,0 +1,8 @@
+\begin{tikzpicture}[font=\sffamily\small]
+\node[block,fill=BookGold,minimum width=45mm] (w) at (4,0) {model owner\\immutable $E,W,b$};
+\node[block,fill=BookGreen] (a) at (0,-2) {request A\\history $[2]$\\own hidden and logits};
+\node[block,fill=BookGreen] (b) at (8,-2) {request B\\history $[1]$\\own hidden and logits};
+\draw[control] (a.north)--node[above,sloped]{reads / borrows}(w.south west);
+\draw[control] (b.north)--node[above,sloped]{reads / borrows}(w.south east);
+\node[note] at (4,-3.4) {No mutable activation edge joins A to B.};
+\end{tikzpicture}

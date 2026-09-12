@@ -1,0 +1,33 @@
+\section{Worked synthesis: normalization does not erase everything}
+\subsection{Compute every term}
+\textbf{Problem.} Let $x=(3,4)$, $\gamma=(1,2)$ and $\epsilon=.5$.
+Compute RMSNorm in real arithmetic.
+
+\textbf{Solution.} The mean square is $(9+16)/2=12.5$; the denominator is
+$\sqrt{13}$. Therefore
+\begin{equation}
+y=\left(\frac3{\sqrt{13}},\frac8{\sqrt{13}}\right).
+\end{equation}
+The second learned scale is applied after the common normalization. The
+mean of $y$ is not zero, and its RMS need not be one because $\gamma$ and
+$\epsilon$ change the result.
+
+\subsection{Derive the limit of scale invariance}
+\textbf{Problem.} Compare the denominator for $ax$ with that for $x$.
+
+\textbf{Solution.} If $s=\frac1D\sum_i x_i^2$, the denominator is
+$\sqrt{a^2s+\epsilon}$. For positive $a$,
+$ax/\sqrt{a^2s+\epsilon}=x/\sqrt{s+\epsilon/a^2}$.
+It equals the unscaled expression only under special conditions, including
+$\epsilon=0$. For negative $a$, the sign also reverses. Numerical overflow in
+the square is a further implementation concern, not addressed by this
+real-arithmetic manipulation.
+
+\subsection{Preserve the earlier fixture}
+\textbf{Problem.} Why not silently insert RMSNorm into the Chapter 3 model
+as soon as the operator exists?
+
+\textbf{Solution.} Doing so changes its logits and the meaning of earlier
+regression examples. A new composed model must explicitly declare the new
+operation and receive its own expected outputs. Component availability is
+not permission to change the mathematical model behind an established test.

@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\sffamily\small]
+\node[block] (h) at (0,0) {history\\prompt + generated};
+\node[block] (z) at (4.2,0) {model logits\\one score per ID};
+\node[block] (s) at (8.4,0) {request sampler\\policy + RNG owner};
+\node[block,fill=BookGreen] (t) at (8.4,-2) {chosen ID\\classify control/text};
+\draw[flow] (h)--(z);
+\draw[flow] (z)--(s);
+\draw[flow] (s)--(t);
+\draw[flow] (t.west)-|node[pos=.3,below]{append text ID only}(h.south);
+\node[block,fill=BookGold] (end) at (4.2,-3.5) {terminal outcome};
+\draw[control] (t.south)|-node[pos=.75,above]{EOS}(end.east);
+\end{tikzpicture}

@@ -1,0 +1,29 @@
+\clearpage
+\section{Worked synthesis: intervene on one parameter}
+\subsection{Change one weight and predict the whole difference}
+\textbf{Problem.} For $h=(1,-.5,2)^\top$, increase $W_{3,2}$ by $0.1$ and
+leave every other parameter fixed. What changes?
+
+\textbf{Solution.} Only the fourth logit changes:
+\begin{equation}
+\Delta z_i=\begin{cases}0.1h_2=0.2&i=3,\\0&i\ne3.\end{cases}
+\end{equation}
+Thus the original $z_3=2.2$ becomes $2.4$, up to F32 rounding. Greedy output
+remains ID 3. A test that checks only the chosen ID would miss an incorrect
+implementation that ignored the changed weight; compare the full logit vector.
+
+\subsection{Prove the context limitation}
+\textbf{Problem.} Can this model distinguish histories $[1,2]$ and $[3,2]$?
+
+\textbf{Solution.} No. Its forward function chooses the final ID, gathers the
+same embedding row and applies the same projection and bias. Both histories
+produce identical logits. The runtime retains history; this model does not
+use the earlier entries. Larger history allocation alone cannot create context.
+
+\subsection{Count the persistent payload}
+\textbf{Problem.} Count the bytes for $E:[4,3]$, $W:[4,3]$ and $b:[4]$ in F32.
+
+\textbf{Solution.} $(4\cdot3+4\cdot3+4)\cdot4=112$ bytes of parameter payload.
+The hidden vector adds 12 bytes and the logits add 16 bytes for one forward
+result. These counts exclude vector metadata, allocator bookkeeping and history.
+They are not process resident-set measurements.

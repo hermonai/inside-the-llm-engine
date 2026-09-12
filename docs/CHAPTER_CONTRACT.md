@@ -6,6 +6,10 @@ may not omit the underlying obligations without recording why.
 
 ## Required content
 
+Author active chapters directly in LaTeX under `tex/chapters/`; the
+`TEXTBOOK_STANDARD.md` source-first decision supersedes old Markdown
+typesetting instructions. A migration alone is not a completed editorial pass.
+
 1. An opening problem and why it matters to an inference engine.
 2. A concrete mental model before advanced formalism.
 3. A first-principles derivation and consistent core terminology.
@@ -35,8 +39,9 @@ deliverable, and what the next chapter assumes.
 
 ## Callout conventions
 
-Use blockquotes with a bold label. The first line states the claim or task; the
-body supplies evidence or action.
+In LaTeX use `\Callout{Label}{Body}`. The first line states the claim or task;
+the body supplies evidence or action. Markdown research notes may use the
+equivalent blockquote conventions below.
 
 > **FIRST PRINCIPLE**
 > A durable invariant from which the design follows.

@@ -1,0 +1,77 @@
+\documentclass[11pt,oneside,openany]{book}
+\input{preamble.tex}
+\begin{document}
+\frontmatter
+\begin{titlepage}
+\color{BookBlue}\sffamily
+\vspace*{24mm}
+{\fontsize{38}{44}\selectfont\bfseries Inside the\\LLM Engine\par}
+\vspace{12mm}
+{\Large From model weights and KV memory\\to industrial inference serving.\par}
+\vspace{14mm}\rule{\linewidth}{.8pt}\par
+\vspace{7mm}{\large Build the computation. Trace the memory. Prove the behavior.\par}
+\vfill
+{\large LaTeX-first textbook revision\par}
+\vspace{5mm}Chapters 1--9 / September 2026\par
+Working manuscript, not a complete industrial engine.
+\end{titlepage}
+\chapter*{How to use this book}
+\addcontentsline{toc}{chapter}{How to use this book}
+An inference engine turns numerical predictions into an ordered, cancellable,
+resource-bounded computation. We will construct one in Rust. Each new abstraction
+must answer a question the previous program cannot answer; each optimization
+must preserve a result we can already compute independently.
+
+The sequence begins with a request and ends, in the chapters currently written,
+with positioned queries and keys. The miniature language model has four tokens
+and is deliberately not a Transformer. Tensor storage, matrix kernels,
+normalization, projection and rotation are subsequently built and tested as
+components. A complete decoder, persistent KV cache, batching and an operated
+service belong to later chapters. Their presence in the outline is not evidence
+of an implementation.
+
+Read with a terminal, paper and pencil. Predict each small example before
+running it. Change one input and explain the difference. Then read the failure
+case: a boundary check, counterexample or failed measurement often reveals the
+abstraction more clearly than a successful demonstration. Worked extensions
+at the end of each chapter give concrete answers or explicit evaluation rubrics;
+the longer project labs remain in the companion repository.
+
+\section*{What this revision changes}
+These chapter files are the editable manuscript, not a build product exported
+from Markdown. Equations, chapter sections and illustrations are numbered.
+Mechanism illustrations are editable TikZ, with captions outside the graphic
+and color reinforced by labels and line styles. The earlier Markdown edition
+and its evidence records are preserved as historical material.
+
+Chapter 1 is a new executable-led exposition. Chapters 2--9 retain substantial
+reviewed prose while receiving LaTeX authoring, replacement mechanism figures
+or the existing checked geometric plates, and new worked synthesis problems.
+This is a first editorial revision, not a claim that every paragraph has been
+rewritten or independently peer reviewed. Source-pinned production tours retain
+their inspection dates; they are evidence about those revisions, not guarantees
+about a moving repository.
+
+\section*{Prerequisites and notation}
+You need ordinary programming, arrays, loops and basic algebra. We derive the
+matrix operations used by the reference engine. Rust ownership vocabulary is
+introduced where memory lifetimes matter. Vectors are column vectors unless an
+explicit row-batched layout is stated. A shape is a count of elements, not
+bytes. FLOP counts and ideal traffic models are analytical estimates; timings
+are measurements only when their workload and environment are recorded.
+
+\tableofcontents
+\mainmatter
+\input{chapters/ch01.tex}
+\input{chapters/ch02.tex}
+\input{chapters/ch03.tex}
+\input{chapters/ch04.tex}
+\input{chapters/ch05.tex}
+\input{chapters/ch06.tex}
+\input{chapters/ch07.tex}
+\input{chapters/ch08.tex}
+\input{chapters/ch09.tex}
+\backmatter
+\input{backmatter/glossary.tex}
+\printindex
+\end{document}

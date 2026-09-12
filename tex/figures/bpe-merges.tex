@@ -1,0 +1,24 @@
+\begin{tikzpicture}[x=1.2cm,y=1cm,font=\sffamily\small]
+\foreach \x/\b in {0/l,1/o,2/w,3/e,4/r}{
+ \node[cell,minimum width=12mm] at (\x+.5,0) {\b};
+ \draw[BookBlue!30,dashed] (\x,-.45)--(\x,-4.4);
+}
+\draw[BookBlue!30,dashed] (5,-.45)--(5,-4.4);
+\foreach \y/\label in {-1/rank 0,-2/rank 1,-3/rank 2,-4/rank 3}
+ \node[anchor=east] at (-.3,\y) {\label};
+\node[anchor=east] at (-.3,0) {bytes};
+\draw[fill=BookGreen,draw=BookBlue] (0,-1.35) rectangle (2,-.65);
+\node at (1,-1) {lo};
+\foreach \x/\b in {2/w,3/e,4/r} \node[cell,minimum width=12mm] at (\x+.5,-1) {\b};
+\draw[fill=BookGreen,draw=BookBlue] (0,-2.35) rectangle (3,-1.65);
+\node at (1.5,-2) {low};
+\foreach \x/\b in {3/e,4/r} \node[cell,minimum width=12mm] at (\x+.5,-2) {\b};
+\draw[fill=BookPale,draw=BookBlue] (0,-3.35) rectangle (3,-2.65);
+\node at (1.5,-3) {low};
+\draw[fill=BookGreen,draw=BookBlue] (3,-3.35) rectangle (5,-2.65);
+\node at (4,-3) {er};
+\draw[fill=BookGreen,draw=BookBlue] (0,-4.35) rectangle (5,-3.65);
+\node at (2.5,-4) {lower};
+\draw[flow] (5.6,.25)--(5.6,-4.3);
+\node[note,rotate=90] at (6.1,-2) {apply fixed ranks; retain byte order};
+\end{tikzpicture}
