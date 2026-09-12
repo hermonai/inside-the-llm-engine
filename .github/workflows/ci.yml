@@ -38,6 +38,8 @@ jobs:
         run: python3 scripts/check-normalization-visual-parity.py
       - name: Check Chapter 8 Rust, oracle, head geometry and visual parity
         run: python3 scripts/check-qkv-visual-parity.py
+      - name: Check Chapter 9 Rust, complex oracle and position geometry
+        run: python3 scripts/check-rope-visual-parity.py
       - name: Check Rust formatting
         working-directory: code/mini-engine
         run: cargo fmt --all -- --check

@@ -357,4 +357,22 @@ do
     fi
 done
 
-echo "structure check passed: 15 parts, 94 specifications, Chapters 1-8 artifacts present"
+for file in \
+    manuscript/part-02/chapter-09-position-rope.md \
+    research/part-02/chapter-09-position-rope.md \
+    code/mini-engine/crates/engine0/src/rope.rs \
+    code/mini-engine/crates/engine0/tests/rope.rs \
+    code/mini-engine/crates/engine0/examples/chapter09_rope_trace.rs \
+    code/reference/python/chapter09_rope_oracle.py \
+    code/reference/fixtures/chapter09-rope.json \
+    labs/lab-49-rope-position-workbench.md \
+    scripts/check-rope-visual-parity.py \
+    publication/check-chapter09.py
+do
+    if [ ! -s "$file" ]; then
+        echo "missing or empty Chapter 9 artifact: $file" >&2
+        exit 1
+    fi
+done
+
+echo "structure check passed: 15 parts, 94 specifications, Chapters 1-9 artifacts present"

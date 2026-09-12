@@ -118,6 +118,14 @@ entry before a chapter reaches TECH-REVIEW.
 - **Residency** says where bytes currently live; **ownership** says who controls
   lifetime/mutation; **pinning** temporarily prevents eviction.
 
+- **Positioned Q/K** have already received their position transform; applying it
+  again is not idempotent. V remains unrotated in the selected decoder.
+- **Adjacent pairing** uses neighboring rotary coordinates; **split-half pairing**
+  joins the two halves of the rotary prefix. Equivalent layouts require a
+  consistent operand permutation, not a mode switch alone.
+- A **phase table** stores position/frequency coefficients, not token-derived
+  key/value activations. **Rotary width** is distinct from full head width.
+
 ## Naming rules
 
 Q/K/V **parameters** are the learned projection matrices; Q/K/V **activations**

@@ -1,5 +1,5 @@
 {
-  "canonical_and_reference_plates": 55,
+  "canonical_and_reference_plates": 65,
   "legacy_vector_diagrams": 28,
   "files": [
     "figures/architecture.tex",
@@ -40,6 +40,16 @@
     "figures/ch08-sequence.tex",
     "figures/ch08-source.tex",
     "figures/ch08-trace.tex",
+    "figures/ch09-frequencies.tex",
+    "figures/ch09-journey.tex",
+    "figures/ch09-pairing.tex",
+    "figures/ch09-partial.tex",
+    "figures/ch09-plane.tex",
+    "figures/ch09-positions.tex",
+    "figures/ch09-relative.tex",
+    "figures/ch09-scaling.tex",
+    "figures/ch09-source.tex",
+    "figures/ch09-transaction.tex",
     "figures/gemv.tex",
     "figures/heads.tex",
     "figures/industrial-latency.tex",

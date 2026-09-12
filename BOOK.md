@@ -5,7 +5,7 @@
 This is the reader-facing table of contents. The authoring specification for
 each chapter lives in [docs/OUTLINE.md](docs/OUTLINE.md).
 
-Companion: [visual prototype atlas](figures/ATLAS.md). Build the current seven
+Companion: [visual prototype atlas](figures/ATLAS.md). Build the current nine
 chapters as PDF/HTML using the [publication instructions](docs/FIGURE_BUILD.md).
 
 ### Part I — What Actually Happens When an LLM Answers?
@@ -23,7 +23,7 @@ Milestone: ENGINE-0 / ENGINE-1.
 6. [Matrix Multiplication: The Engine Room](manuscript/part-02/chapter-06-matrix-multiplication-the-engine-room.md)
 7. [Embeddings and Normalization](manuscript/part-02/chapter-07-embeddings-and-normalization.md)
 8. [Queries, Keys, and Values](manuscript/part-02/chapter-08-queries-keys-and-values.md)
-9. Position: RoPE From First Principles
+9. [Position: RoPE From First Principles](manuscript/part-02/chapter-09-position-rope.md)
 10. Causal Self-Attention
 11. The Feed-Forward Network
 12. One Complete Transformer Layer

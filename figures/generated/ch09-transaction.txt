@@ -1,0 +1,22 @@
+FIG-CH09-TRANSACTION
+Validate, preflight, then mutate
+CANONICAL / CHAPTER 9
+
+Make failure atomicity visible without hiding an activation-sized copy.
+An immutable dry run checks every output pair before the first write.
+Commit needs exclusive canonical ownership; phase scratch is O(R), not allocation-free.
+Independent adjacent result: [-1.1426396637476532, 1.922075596544176, 2.5856788292467647,
+4.279516911052588, -1.922075596544176, -1.1426396637476532, 0.7970023325794974,
+-2.9350957875106634]
+Position rotates Q and K; V stays unchanged. No attention or cache executes.
+
+Make failure atomicity visible without hiding an activation-sized copy.
+
+An immutable dry run checks every output pair before the first write.
+
+Commit needs exclusive canonical ownership; phase scratch is O(R), not allocation-free.
+
+Fixture: {"source": "code/reference/fixtures/chapter09-rope.json"}
+
+Source: figures/src/ch09-transaction.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/rope.rs

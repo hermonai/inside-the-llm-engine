@@ -78,7 +78,7 @@ def main():
     atlas.save()
     # Resolve source links against the branch; do not leave machine paths in publications.
     host='https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/'
-    introduction='# Inside the LLM Engine\n\nFrom model weights and KV memory to industrial inference serving.\n\nWorking edition: eight completed chapters. Chapters 5–8 have canonical visual editions. Later visual atlas mechanisms remain prototypes or explicitly labeled architecture references.\n\n'
+    introduction='# Inside the LLM Engine\n\nFrom model weights and KV memory to industrial inference serving.\n\nWorking edition: nine completed chapters. Chapters 5–9 have canonical visual editions. Later visual atlas mechanisms remain prototypes or explicitly labeled architecture references.\n\n'
     parts=[introduction]; print_parts=[introduction]; chapter_parts={}
     for path in sorted((ROOT/'manuscript').glob('part-*/chapter-*.md')):
         content=path.read_text()
@@ -120,7 +120,7 @@ def main():
                     '```{=latex}\n\\Needspace{'+str(lines)+'\\baselineskip}\n```\n\n'+marker)
         parts.append(html_content); print_parts.append(pdf_content)
         number=path.name.split('-')[1]
-        if number in ('05','06','07','08'):
+        if number in ('05','06','07','08','09'):
             chapter_parts[number]={'html':html_content,'pdf':pdf_content}
     manuscript='\n\n'.join(parts)
     source=BUILD/'book.md'; source.write_text(manuscript)
@@ -165,12 +165,12 @@ def main():
     for number,versions in chapter_parts.items():
       for mode,content in versions.items():
         chapter_source=BUILD/('chapter'+number+'-'+mode+'.md'); chapter_source.write_text(content)
-        chapter_title='Chapter '+str(int(number))+' - '+{'05':'Tensors Without Magic','06':'Matrix Multiplication: The Engine Room','07':'Embeddings and Normalization','08':'Queries, Keys, and Values'}[number]
+        chapter_title='Chapter '+str(int(number))+' - '+{'05':'Tensors Without Magic','06':'Matrix Multiplication: The Engine Room','07':'Embeddings and Normalization','08':'Queries, Keys, and Values','09':'Position: RoPE From First Principles'}[number]
         if mode=='pdf':
             command=pdf_command.copy(); command[1]=str(chapter_source)
             command[command.index('title=Inside the LLM Engine')]='title='+chapter_title
             command+=['-H',str(chapter_header)]
-            filename={'05':'chapter05-tensors-without-magic.pdf','06':'chapter06-matrix-multiplication.pdf','07':'chapter07-embeddings-and-normalization.pdf','08':'chapter08-queries-keys-and-values.pdf'}[number]
+            filename={'05':'chapter05-tensors-without-magic.pdf','06':'chapter06-matrix-multiplication.pdf','07':'chapter07-embeddings-and-normalization.pdf','08':'chapter08-queries-keys-and-values.pdf','09':'chapter09-position-rope.pdf'}[number]
             result=subprocess.run(command+['--pdf-engine=xelatex','-V','mainfont=DejaVuSerif.ttf','-V','monofont=DejaVuSansMono.ttf','-V','mathfont=latinmodern-math.otf','-V','geometry:margin=18mm','-V','fontsize=10pt','-H',str(header),'-o',str(OUT/filename)],check=True,capture_output=True,text=True)
             if 'Missing character:' in result.stderr: raise RuntimeError(result.stderr)
             if result.stderr: print(result.stderr)
@@ -178,7 +178,7 @@ def main():
             command=common.copy(); command[1]=str(chapter_source)
             command[command.index('title=Inside the LLM Engine')]='title='+chapter_title
             subprocess.run(command+html_flags+['-o',str(BUILD/('chapter'+number+'.html'))],check=True)
-    gallery=['<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual atlas</title><style>body{font:18px system-ui;max-width:1000px;margin:2rem auto;padding:1rem;color:#152b3c}svg{width:100%;height:auto}figure{margin:2rem 0}figcaption{line-height:1.5}</style><h1>Inside the LLM Engine: visual atlas</h1><p>'+str(len(manifest['figures']))+' plates: Chapters 5–8 canonical figures, regeneration prototypes and architecture references. Educational mechanisms beyond Chapter 8 are specifications, not implemented mini-engine features.</p>']
+    gallery=['<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual atlas</title><style>body{font:18px system-ui;max-width:1000px;margin:2rem auto;padding:1rem;color:#152b3c}svg{width:100%;height:auto}figure{margin:2rem 0}figcaption{line-height:1.5}</style><h1>Inside the LLM Engine: visual atlas</h1><p>'+str(len(manifest['figures']))+' plates: Chapters 5–9 canonical figures, regeneration prototypes and architecture references. Educational mechanisms beyond Chapter 9 are specifications, not implemented mini-engine features.</p>']
     for entry in manifest['figures']:
         gallery+=['<figure>',(ROOT/entry['generated'][0]).read_text(),'<figcaption>'+html.escape(entry['caption'])+'</figcaption>']
         if entry['animation']:
@@ -189,7 +189,7 @@ def main():
             gallery.append('<p><a href="'+Path(entry['animation']).name+'">Play the step sequence</a></p>')
         gallery.append('</figure>')
     (BUILD/'atlas.html').write_text('\n'.join(gallery)+'</html>')
-    print('Built full eight-chapter PDF/HTML, standalone Chapters 5/6/7/8 PDF/HTML, and '+str(len(manifest['figures']))+'-plate vector PDF/HTML atlas')
+    print('Built full nine-chapter PDF/HTML, standalone Chapters 5/6/7/8/9 PDF/HTML, and '+str(len(manifest['figures']))+'-plate vector PDF/HTML atlas')
 
 
 if __name__=='__main__': main()

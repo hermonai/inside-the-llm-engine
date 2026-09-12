@@ -1,5 +1,32 @@
 # Project Status
 
+## Chapter 9 - verified RoPE milestone, 2026-09-12
+
+COMPLETE: first-principles rotation and relative-position derivations, checked
+adjacent/split-half scalar RoPE, partial prefixes, F64 phases with F32 storage,
+failure-atomic in-place mutation, an independent complex-number oracle and
+complete embedding/RMSNorm/QKV/position composition. Ten canonical geometric
+TikZ plates and Labs 49-58 accompany the chapter.
+
+All 218 unit/integration tests plus two compile-fail doctests pass, including
+25 new RoPE tests. Rust format/check/Clippy, all five chapter parity gates,
+65-scene generation, native TikZ parity, industrial-plan/mutation gates,
+structure/links/math/legacy diagram checks and browser QA pass. Maximum oracle
+discrepancy is below 1e-6 for the checked fixture outputs.
+
+The native LaTeX ebook is 187 pages across nine written chapters; conventional
+vector PDF is 182 pages, standalone Chapter 9 is 19 pages, and the atlas has
+65 plates (52 canonical chapter figures, nine prototypes, four architecture
+references). All new pages and plates were reviewed; color/grayscale, offline
+MathML/SVG, 1024/768/390px and page-bound checks pass. A long inline vector was
+moved to display math; the native log has no overfull boxes or missing glyphs.
+See [the technical/editorial review](../research/part-02/chapter-09-position-rope.md).
+
+Next: **Chapter 10 - Causal Self-Attention**. No attention, KV cache, model-specific
+scaling, optimized RoPE candidate or new benchmark is claimed. The training
+book remains unchanged. Dated entries below preserve milestone-time counts
+and next-step recommendations; this entry and the current ledger supersede them.
+
 ## Chapter 8 — verified QKV milestone, 2026-09-12
 
 COMPLETE: a 5,215-word projection chapter with ten canonical vector/TikZ
@@ -130,7 +157,7 @@ tracked separately below.
 
 | Scope | Status | Evidence / next gate |
 | --- | --- | --- |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–8 complete; position and attention remain future work |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–9 complete; causal attention is next |
 | Chapter 5 — Tensors Without Magic | COMPLETE | 7,468-word regenerated chapter, eight embedded vector plates, thirteen retained legacy diagrams, fresh production source review, traversal record and independent visual/offset oracles |
 | Tensor Substrate v1 | COMPLETE | Owned canonical `f32` tensors, immutable strided views, exclusive canonical mutation, checked indexing/extent arithmetic, explicit materialization, and ENGINE-1 parameter migration |
 | Labs 16–21 — Tensor memory | COMPLETE | Hand offsets, metadata transpose, reshape gate, non-contiguous copy, overflow failures, and aliasing/mutation exercises |
@@ -142,12 +169,14 @@ tracked separately below.
 | Labs 30–38 — Embeddings and normalization | COMPLETE | Table layout, checked lookup, view/copy ownership, hand RMS, implementation, epsilon, scale, magnitude, and Rust/Python equivalence exercises |
 | Chapter 8 — Queries, Keys, and Values | COMPLETE | Checked QKV/head API, 15 new Rust tests, independent oracle and full component trace, ten canonical native-vector plates, Labs 39–48 and source-classified production review |
 
+| Chapter 9 - Position: RoPE From First Principles | COMPLETE | Checked two-layout/partial-prefix RoPE, 25 new tests, independent complex oracle, full positioned Q/K/V trace, ten TikZ plates and Labs 49-58 |
+
 ## Curriculum status
 
 | Scope | Status | Milestone |
 | --- | --- | --- |
 | Part I (Ch. 1–4) | COMPLETE | ENGINE-1 is the smallest complete autoregressive inference engine |
-| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–8, Tensor Substrate v1, ENGINE-2, Transformer Primitives v1 and checked QKV complete; Chapter 9 is next |
+| Part II (Ch. 5–13) | IN PROGRESS | Chapters 5–9, Tensor Substrate v1, ENGINE-2, Transformer Primitives v1, checked QKV and standard RoPE complete; Chapter 10 is next |
 | Part III (Ch. 14–18) | PLANNED | ENGINE-3 |
 | Part IV (Ch. 19–22) | PLANNED | ENGINE-4 |
 | Part V (Ch. 23–27) | PLANNED | ENGINE-5 / ENGINE-6 |
@@ -173,9 +202,10 @@ tracked separately below.
 
 ## Next recommended task
 
-Complete only Chapter 9 — Position: RoPE From First Principles. Begin with a
-fresh source trace and an explicit coordinate-pairing convention; derive the
-rotation, norm preservation and relative-position identity, then implement a
-checked scalar operator with independent oracle and native TikZ diagrams.
-Do not begin attention scores, masking, attention softmax, value aggregation,
-KV caching, GGUF, quantization, SIMD intrinsics, GPU execution or autograd.
+Complete only Chapter 10 - Causal Self-Attention. Start with positioned Q/K
+and unchanged V. Derive scaled scores, causal visibility, stable softmax and
+value mixing, including explicit MHA/GQA/MQA geometry. Implement a checked
+dense scalar reference, independent oracle, tests, labs and native TikZ plates.
+Inspect current production source without claiming a paged backend is the
+default. Do not begin persistent KV caching, FFN, a full decoder, GGUF,
+quantization, SIMD, GPU execution or autograd.

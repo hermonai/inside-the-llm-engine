@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">A token position is not a storage address</title><desc id="desc">Distinguish the logical sequence coordinate from batching and physical placement. RoPE phase uses logical token position, independent of row order or allocated block number. The scheduling and paging context is derived future design, not implemented teaching code.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH09-POSITIONS  /  CANONICAL / CHAPTER 9</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">A token position is not a storage address</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Distinguish the logical sequence coordinate from batching and physical placement.</text>
+<text x="50" y="219" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Request</text>
+<text x="260" y="219" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Logical p</text>
+<text x="485" y="219" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Batch row</text>
+<text x="720" y="219" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Physical block</text>
+<rect x="50" y="247" width="895" height="62" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="276" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="70" y="287" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">A</text>
+<text x="280" y="287" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">127</text>
+<text x="510" y="287" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">0</text>
+<text x="755" y="287" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">9</text>
+<rect x="50" y="332" width="895" height="62" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="361" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="70" y="372" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">B</text>
+<text x="280" y="372" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">3</text>
+<text x="510" y="372" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">1</text>
+<text x="755" y="372" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">2</text>
+<rect x="50" y="417" width="895" height="62" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="446" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="70" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">C</text>
+<text x="280" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">48</text>
+<text x="510" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">2</text>
+<text x="755" y="457" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="24" text-anchor="start">7</text>
+<text x="50" y="548" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">RoPE consumes 127, 3, 48. Sorting batch rows or relocating blocks does not change p.</text>
+<text x="50" y="581" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Scheduling and paging shown as derived contracts, not implemented runtime features.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">RoPE phase uses logical token position, independent of row order or allocated block number.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">The scheduling and paging context is derived future design, not implemented teaching code.</text>
+</svg>

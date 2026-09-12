@@ -1,0 +1,22 @@
+FIG-CH09-FREQUENCIES
+One position drives several frequency clocks
+CANONICAL / CHAPTER 9
+
+Compare the two coordinate planes of a four-channel rotary prefix.
+R = 4 and theta = 100 produce frequencies 1 and 0.1 radians per token.
+Position 1 rotates each unit basis vector by its own frequency; these are not learned vectors.
+Independent adjacent result: [-1.1426396637476532, 1.922075596544176, 2.5856788292467647,
+4.279516911052588, -1.922075596544176, -1.1426396637476532, 0.7970023325794974,
+-2.9350957875106634]
+Position rotates Q and K; V stays unchanged. No attention or cache executes.
+
+Compare the two coordinate planes of a four-channel rotary prefix.
+
+R = 4 and theta = 100 produce frequencies 1 and 0.1 radians per token.
+
+Position 1 rotates each unit basis vector by its own frequency; these are not learned vectors.
+
+Fixture: {"source": "code/reference/fixtures/chapter09-rope.json"}
+
+Source: figures/src/ch09-frequencies.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/rope.rs

@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-RELATIVE",
+  "chapter": 9,
+  "kind": "ch09-relative",
+  "title": "Absolute rotations reveal relative separation",
+  "purpose": "Cancel the query rotation and retain the key-minus-query phase difference.",
+  "contract": [
+    "For fixed raw vectors and frequencies: rotated_q(p) dot rotated_k(n) = q dot R(n-p)k.",
+    "The ray diagram is illustrative; the independent four-channel fixture supplies the numerical score."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Cancel the query rotation and retain the key-minus-query phase difference. For fixed raw vectors and frequencies: rotated_q(p) dot rotated_k(n) = q dot R(n-p)k. The ray diagram is illustrative; the independent four-channel fixture supplies the numerical score.",
+  "alt": "Cancel the query rotation and retain the key-minus-query phase difference. For fixed raw vectors and frequencies: rotated_q(p) dot rotated_k(n) = q dot R(n-p)k. The ray diagram is illustrative; the independent four-channel fixture supplies the numerical score.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}

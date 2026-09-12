@@ -105,12 +105,12 @@ and print legibility. More detail belongs in a linked zoom, not smaller type.
 ## Chapter 9 — Position: RoPE From First Principles
 
 - **Reader question:** Derive how a position-dependent rotation lets attention distinguish token order.
-- **Planned visual content / experiment:** Rotating coordinate pairs and relative-position dot product; compute positions 0/1 by hand and test extrapolation settings.
+- **Planned visual content / experiment:** Rotating coordinate pairs and relative-position dot product; compute positions 0/1 by hand; compare analytical interpolation/base slopes without claiming model quality.
 - **Visual grammar:** Typed tensor and algorithm trace. Owners: weight owner / activation buffer.
 - **Required counterexample / boundary:** shape, mask or numerical mismatch.
-- **Test anchor:** Norm preservation, position zero, odd/partial rotary dimension policy, reference tolerance; compare table versus compute only under defined sequence range.
+- **Test anchor:** Norm preservation, position zero, odd/partial rotary dimension policy, reference tolerance, position precision and late-overflow atomicity; table-versus-compute remains a specified future experiment, not a measured result.
 - **Industrial refinement:** Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.
-- **Existing manifest assets (mixed status, not proof of chapter completion):** FIG-ROPE-ROTATION-001.
+- **Existing manifest assets (mixed status, not proof of chapter completion):** FIG-CH09-JOURNEY, FIG-CH09-PLANE, FIG-CH09-FREQUENCIES, FIG-CH09-RELATIVE, FIG-CH09-PAIRING, FIG-CH09-PARTIAL, FIG-CH09-TRANSACTION, FIG-CH09-POSITIONS, FIG-CH09-SCALING, FIG-CH09-SOURCE, FIG-ROPE-ROTATION-001.
 - **Next scene IDs:** FIG-CH09-MECHANISM-001 and FIG-CH09-BOUNDARY-001 (reserved plan only; reuse a matching existing plate before creating another).
 
 ## Chapter 10 — Causal Self-Attention
@@ -193,7 +193,7 @@ and print legibility. More detail belongs in a linked zoom, not smaller type.
 ## Chapter 17 — Packed Matrix Multiplication
 
 - **Reader question:** Multiply packed weights without materializing a full F32 copy.
-- **Planned visual content / experiment:** Packed row to accumulator flow; Lab 42 bandwidth/compute decomposition over sizes and formats.
+- **Planned visual content / experiment:** Packed row to accumulator flow; Lab 62 bandwidth/compute decomposition over sizes and formats.
 - **Visual grammar:** Byte layout and decoding trace. Owners: mapped artifact / decoded tensor.
 - **Required counterexample / boundary:** truncation, alignment or unsupported encoding.
 - **Test anchor:** Golden packed rows, partial/invalid groups, double/F32 oracle tolerances, accumulation semantics; report build, CPU, bytes, and control.
@@ -512,7 +512,7 @@ and print legibility. More detail belongs in a linked zoom, not smaller type.
 ## Chapter 46 — Metal and Unified Memory
 
 - **Reader question:** Execute planned attention on Apple GPU while reasoning precisely about shared physical memory and synchronization.
-- **Planned visual content / experiment:** Command lifecycle and shared-memory residency; Lab 47 Metal/CPU crossover sweep.
+- **Planned visual content / experiment:** Command lifecycle and shared-memory residency; Lab 67 Metal/CPU crossover sweep.
 - **Visual grammar:** Hardware execution and transfer diagram. Owners: host / device / completion event.
 - **Required counterexample / boundary:** dispatch mismatch or uncharged transfer.
 - **Test anchor:** Scalar differential by shape/dtype, unsupported fallback, command failure, buffer lifetime; warm/cold pipeline and synchronization included.

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Position enters after projection</title><desc id="desc">Trace Q and K through RoPE while preserving the value activation. One token; Q [Hq,Dh], K and V [Hkv,Dh]; F32 activations. Standard RoPE rotates Q and K at the same logical token position; it does not rotate V.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH09-JOURNEY  /  CANONICAL / CHAPTER 9</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Position enters after projection</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Trace Q and K through RoPE while preserving the value activation.</text>
+<rect x="50" y="205" width="235" height="91" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Raw Q</text>
+<text x="68" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">[H,Dh] / F32</text>
+<rect x="395" y="205" width="235" height="91" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="409" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="413" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Rotate at p</text>
+<text x="413" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">explicit pairing + R</text>
+<rect x="740" y="205" width="205" height="91" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="754" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="758" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Positioned Q</text>
+<text x="758" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">same shape / owner</text>
+<line x1="285" y1="250" x2="395" y2="250" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="395.00,250.00 386.00,254.35 386.00,245.65"/>
+<line x1="630" y1="250" x2="740" y2="250" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="740.00,250.00 731.00,254.35 731.00,245.65"/>
+<rect x="50" y="325" width="235" height="91" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="354" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="355" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Raw K</text>
+<text x="68" y="389" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">[H,Dh] / F32</text>
+<rect x="395" y="325" width="235" height="91" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="409" y="354" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="413" y="355" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Rotate at p</text>
+<text x="413" y="389" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">explicit pairing + R</text>
+<rect x="740" y="325" width="205" height="91" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="754" y="354" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="758" y="355" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Positioned K</text>
+<text x="758" y="389" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">same shape / owner</text>
+<line x1="285" y1="370" x2="395" y2="370" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="395.00,370.00 386.00,374.35 386.00,365.65"/>
+<line x1="630" y1="370" x2="740" y2="370" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="740.00,370.00 731.00,374.35 731.00,365.65"/>
+<rect x="50" y="445" width="235" height="91" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="474" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="475" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Raw V</text>
+<text x="68" y="509" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">[H,Dh] / F32</text>
+<rect x="395" y="445" width="235" height="91" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="409" y="474" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="413" y="475" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Unchanged</text>
+<text x="413" y="509" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">no RoPE in this model</text>
+<rect x="740" y="445" width="205" height="91" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="754" y="474" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="758" y="475" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Original V</text>
+<text x="758" y="509" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">same shape / owner</text>
+<line x1="285" y1="490" x2="395" y2="490" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="395.00,490.00 386.00,494.35 386.00,485.65"/>
+<line x1="630" y1="490" x2="740" y2="490" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="740.00,490.00 731.00,494.35 731.00,485.65"/>
+<text x="50" y="591" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">The logical position is an input. No attention scores or KV cache exist in this chapter.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">One token; Q [Hq,Dh], K and V [Hkv,Dh]; F32 activations.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Standard RoPE rotates Q and K at the same logical token position; it does not rotate V.</text>
+</svg>

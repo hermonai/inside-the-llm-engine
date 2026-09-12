@@ -14,6 +14,7 @@ pub mod linear;
 pub mod model;
 pub mod normalization;
 pub mod qkv;
+pub mod rope;
 pub mod sampling;
 pub mod tensor;
 pub mod tokenizer;

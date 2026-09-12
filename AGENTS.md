@@ -111,11 +111,11 @@ paths. Never push unless the user explicitly authorizes it.
 ## Current state and next task
 
 Phase 0 repository architecture and Phase 1 are complete. Phase 2 is in
-progress: Chapters 5–8, Tensor Substrate v1, ENGINE-2's checked reference and
-blocked scalar kernels, Transformer Primitives v1, checked QKV and Labs 16–48
-are complete. The 55-plate atlas has native TikZ counterparts; legacy diagrams
-are geometrically rendered in the 169-page native edition.
-The full suite contains 193 unit/integration tests and two compile-fail doctests.
+progress: Chapters 5–9, Tensor Substrate v1, ENGINE-2's checked reference and
+blocked scalar kernels, Transformer Primitives v1, checked QKV, standard RoPE and Labs 16–58
+are complete. The 65-plate atlas has native TikZ counterparts; legacy diagrams
+are geometrically rendered in the 187-page native edition.
+The full suite contains 218 unit/integration tests and two compile-fail doctests.
 The authoritative state and next task are in
 `docs/STATUS.md`.
 
@@ -125,11 +125,12 @@ independent oracle and checked fixture. Pass D in `ASTRA_REGENERATION_PLAN.md`
 is complete. Chapter 6
 now has fourteen canonical vector plates, two step sequences and executable
 Rust/Python/figure/source parity; its three historical benchmark records remain
-unchanged. Chapter 8 adds QKV without implementing position or attention.
+unchanged. Chapter 8 adds QKV; Chapter 9 adds positioned Q/K and unchanged V,
+with explicit pairing, partial prefix, F64 phases and failure-atomic in-place mutation.
 
-The next new curriculum chapter is Chapter 9 — Position: RoPE From First
-Principles. Start from Chapter 8's raw Q/K heads; inspect current source and
-declare coordinate pairing before deriving and implementing scalar rotations.
-Prove norm preservation, inverse and relative-position behavior with an
-independent oracle. Do not begin attention scores, masking, attention softmax,
-value aggregation, KV caching, GGUF, quantization, SIMD, BLAS or accelerator execution.
+The next new curriculum chapter is Chapter 10 — Causal Self-Attention. Start
+from Chapter 9 positioned Q/K and unchanged V; derive scaled scores, per-query
+causal visibility, stable softmax and value mixing with explicit MHA/GQA/MQA
+geometry. Build a checked dense scalar reference, independent oracle and native
+TikZ mechanism plates. Preserve all earlier tests. Do not begin persistent KV
+caching, FFN, a complete decoder, GGUF, quantization, SIMD, BLAS or accelerators.

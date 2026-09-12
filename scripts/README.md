@@ -17,7 +17,10 @@ four actual Rust source excerpts and fourteen embedded canonical figures.
 `check-qkv-visual-parity.py` compares full raw/composed Rust projections with
 the independent Chapter 8 oracle, including the borrowed head, offsets,
 analytical costs, ten scene links and deliberately corrupted candidates.
+`check-rope-visual-parity.py` compares both coordinate layouts, the relative-score
+identity and complete positioned Q/K/V composition against a complex-number
+oracle; it binds ten scenes and checks analytical phase/table claims.
 `check-figure-browser.cjs` exercises all six step sequences, offline Chapters
-5/6/7/8 images and MathML, keyboard/reduced-motion controls, three viewport widths,
-SVG text bounds and Chapter 8 panel-border crossings. Publication structure and visual review helpers
+5/6/7/8/9 images and MathML, keyboard/reduced-motion controls, three viewport widths,
+SVG text bounds and Chapter 8/9 panel-border crossings. Publication structure and visual review helpers
 are documented in `docs/FIGURE_BUILD.md`.

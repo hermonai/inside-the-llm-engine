@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-PAIRING",
+  "chapter": 9,
+  "kind": "ch09-pairing",
+  "title": "Same planes, different channel order",
+  "purpose": "Match adjacent and split-half pairing to an explicit permutation of projected channels.",
+  "contract": [
+    "Adjacent pairs (0,1),(2,3); split-half pairs (0,2),(1,3) for R = 4.",
+    "Permuting both vectors and rotation consistently is equivalent; switching the mode alone is not."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Match adjacent and split-half pairing to an explicit permutation of projected channels. Adjacent pairs (0,1),(2,3); split-half pairs (0,2),(1,3) for R = 4. Permuting both vectors and rotation consistently is equivalent; switching the mode alone is not.",
+  "alt": "Match adjacent and split-half pairing to an explicit permutation of projected channels. Adjacent pairs (0,1),(2,3); split-half pairs (0,2),(1,3) for R = 4. Permuting both vectors and rotation consistently is equivalent; switching the mode alone is not.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}

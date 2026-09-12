@@ -193,13 +193,23 @@
       8
     ],
     "question": "Derive how a position-dependent rotation lets attention distinguish token order.",
-    "visual_content": "Rotating coordinate pairs and relative-position dot product; compute positions 0/1 by hand and test extrapolation settings.",
+    "visual_content": "Rotating coordinate pairs and relative-position dot product; compute positions 0/1 by hand; compare analytical interpolation/base slopes without claiming model quality.",
     "grammar": "Typed tensor and algorithm trace",
     "owners": "weight owner / activation buffer",
     "failure": "shape, mask or numerical mismatch",
-    "acceptance": "Norm preservation, position zero, odd/partial rotary dimension policy, reference tolerance; compare table versus compute only under defined sequence range.",
+    "acceptance": "Norm preservation, position zero, odd/partial rotary dimension policy, reference tolerance, position precision and late-overflow atomicity; table-versus-compute remains a specified future experiment, not a measured result.",
     "amendment": "Keep the existing chapter contract; add no vendor-specific detour without a claim-level primary source and a reproducible acceptance test.",
     "existing_manifest_ids": [
+      "FIG-CH09-JOURNEY",
+      "FIG-CH09-PLANE",
+      "FIG-CH09-FREQUENCIES",
+      "FIG-CH09-RELATIVE",
+      "FIG-CH09-PAIRING",
+      "FIG-CH09-PARTIAL",
+      "FIG-CH09-TRANSACTION",
+      "FIG-CH09-POSITIONS",
+      "FIG-CH09-SCALING",
+      "FIG-CH09-SOURCE",
       "FIG-ROPE-ROTATION-001"
     ]
   },
@@ -333,7 +343,7 @@
       16
     ],
     "question": "Multiply packed weights without materializing a full F32 copy.",
-    "visual_content": "Packed row to accumulator flow; Lab 42 bandwidth/compute decomposition over sizes and formats.",
+    "visual_content": "Packed row to accumulator flow; Lab 62 bandwidth/compute decomposition over sizes and formats.",
     "grammar": "Byte layout and decoding trace",
     "owners": "mapped artifact / decoded tensor",
     "failure": "truncation, alignment or unsupported encoding",
@@ -838,7 +848,7 @@
       45
     ],
     "question": "Execute planned attention on Apple GPU while reasoning precisely about shared physical memory and synchronization.",
-    "visual_content": "Command lifecycle and shared-memory residency; Lab 47 Metal/CPU crossover sweep.",
+    "visual_content": "Command lifecycle and shared-memory residency; Lab 67 Metal/CPU crossover sweep.",
     "grammar": "Hardware execution and transfer diagram",
     "owners": "host / device / completion event",
     "failure": "dispatch mismatch or uncharged transfer",

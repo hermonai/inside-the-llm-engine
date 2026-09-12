@@ -1,6 +1,6 @@
 # Mathematical Index
 
-This index names the reusable equations established in completed Chapters 1–7.
+This index names the reusable equations established in completed Chapters 1–9.
 The identifiers are semantic and stable even if manuscript line numbers move.
 
 | ID | Equation or contract | Chapter | Meaning |
@@ -30,12 +30,17 @@ The identifiers are semantic and stable even if manuscript line numbers move.
 | `ROOT-MEAN-SQUARE` | $\sqrt{D^{-1}\sum_i x_i^2}$ | 7 | Defines the uncentered magnitude statistic over one model-width vector. |
 | `RMSNORM` | $y_i=x_iw_i/\sqrt{D^{-1}\sum_jx_j^2+\epsilon}$ | 7 | Defines epsilon-inside-root rescaling followed by learned element-wise scale. |
 | `RMSNORM-PAYLOAD` | $Q\approx16D$ bytes | 7 | Models two input reads, one weight read, and one output write for F32 payload. |
-
 | `QKV-PROJECTION` | $\mathbf{q}=\mathbf{W}_Q\widehat{\mathbf{x}}$ | 8 | Three bias-free learned maps; [mechanism](../figures/generated/ch08-trace.svg). |
 | `HEAD-OFFSET` | $o(h,j)=hD_h+j$ | 8 | Head-major element offset, distinct from bytes; [plate](../figures/generated/ch08-heads.svg). |
 | `GQA-GROUP` | $g(h)=\lfloor h/G\rfloor$ | 8 | Future contiguous query-to-KV association, not executed by projection. |
 | `QKV-WORK` | $F=2D(P_Q+2P_{KV})$ FLOPs | 8 | Declared multiply/add counting convention; not timing. |
 | `KV-PAYLOAD` | $B=2LTH_{kv}D_hs$ bytes | 8 / later cache chapters | Analytical future dense K/V payload; excludes metadata and workspace. |
+
+| `ROPE-ROTATION` | $\mathbf{R}(\phi)$ | 9 | Two-dimensional basis-derived rotation; [plane](../figures/generated/ch09-plane.svg). |
+| `ROPE-FREQUENCY` | $\omega_i=\theta^{-2i/R}$ | 9 | Standard fixed prefix-frequency schedule; radians per token interval. |
+| `ROPE-RELATIVE` | $\widetilde{\mathbf{q}}_p^{\mathsf T}\widetilde{\mathbf{k}}_n=\mathbf{q}^{\mathsf T}\mathcal{R}_{n-p}\mathbf{k}$ | 9 | Key-minus-query relative phase for fixed raw vectors and contract. |
+| `ROPE-PHASE-ERROR` | chord length bounded by vector norm times phase error | 9 | Isolates phase sensitivity from coefficient/output rounding. |
+| `ROPE-TABLE-BYTES` | $B=TRs_c$ bytes | 9 | Two coefficients per plane per position; not KV payload. |
 
 Local symbol tables in each chapter remain authoritative for scope-specific
 meaning. See [`MATH_STYLE.md`](MATH_STYLE.md) for notation and review rules.

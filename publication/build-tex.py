@@ -189,7 +189,7 @@ def main():
 {\Large From model weights and KV memory\\to industrial inference serving.\par}
 \vspace{18mm}\rule{.7\linewidth}{.6pt}\par\vspace{8mm}
 {\sffamily Native LaTeX and vector-illustrated working edition\par}
-\vfill Eight completed chapters\par September 2026
+\vfill Nine completed chapters\par September 2026
 \end{titlepage}\hypersetup{pageanchor=true}}
 \let\editioncontents\tableofcontents
 \renewcommand{\tableofcontents}{\clearpage\editioncontents\clearpage}

@@ -1,0 +1,22 @@
+FIG-CH09-POSITIONS
+A token position is not a storage address
+CANONICAL / CHAPTER 9
+
+Distinguish the logical sequence coordinate from batching and physical placement.
+RoPE phase uses logical token position, independent of row order or allocated block number.
+The scheduling and paging context is derived future design, not implemented teaching code.
+Independent adjacent result: [-1.1426396637476532, 1.922075596544176, 2.5856788292467647,
+4.279516911052588, -1.922075596544176, -1.1426396637476532, 0.7970023325794974,
+-2.9350957875106634]
+Position rotates Q and K; V stays unchanged. No attention or cache executes.
+
+Distinguish the logical sequence coordinate from batching and physical placement.
+
+RoPE phase uses logical token position, independent of row order or allocated block number.
+
+The scheduling and paging context is derived future design, not implemented teaching code.
+
+Fixture: {"source": "code/reference/fixtures/chapter09-rope.json"}
+
+Source: figures/src/ch09-positions.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/rope.rs

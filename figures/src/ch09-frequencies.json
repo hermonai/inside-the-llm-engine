@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-FREQUENCIES",
+  "chapter": 9,
+  "kind": "ch09-frequencies",
+  "title": "One position drives several frequency clocks",
+  "purpose": "Compare the two coordinate planes of a four-channel rotary prefix.",
+  "contract": [
+    "R = 4 and theta = 100 produce frequencies 1 and 0.1 radians per token.",
+    "Position 1 rotates each unit basis vector by its own frequency; these are not learned vectors."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Compare the two coordinate planes of a four-channel rotary prefix. R = 4 and theta = 100 produce frequencies 1 and 0.1 radians per token. Position 1 rotates each unit basis vector by its own frequency; these are not learned vectors.",
+  "alt": "Compare the two coordinate planes of a four-channel rotary prefix. R = 4 and theta = 100 produce frequencies 1 and 0.1 radians per token. Position 1 rotates each unit basis vector by its own frequency; these are not learned vectors.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}

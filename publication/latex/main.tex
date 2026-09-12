@@ -102,7 +102,7 @@
 {\Large From model weights and KV memory\\to industrial inference serving.\par}
 \vspace{18mm}\rule{.7\linewidth}{.6pt}\par\vspace{8mm}
 {\sffamily Native LaTeX and vector-illustrated working edition\par}
-\vfill Eight completed chapters\par September 2026
+\vfill Nine completed chapters\par September 2026
 \end{titlepage}\hypersetup{pageanchor=true}}
 \let\editioncontents\tableofcontents
 \renewcommand{\tableofcontents}{\clearpage\editioncontents\clearpage}
@@ -117,7 +117,7 @@
 
 From model weights and KV memory to industrial inference serving.
 
-Working edition: eight completed chapters. Chapters 5--8 have canonical
+Working edition: nine completed chapters. Chapters 5--9 have canonical
 visual editions. Later visual atlas mechanisms remain prototypes or
 explicitly labeled architecture references.
 
@@ -11649,6 +11649,854 @@ evidence}\label{primary-references-and-evidence}
   \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/code/reference/python/chapter08_qkv_oracle.py}{Independent
   numerical oracle} and
   \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/scripts/check-qkv-visual-parity.py}{visual/implementation
+  parity gate}.
+\end{itemize}
+
+\clearpage
+
+\section{Chapter 9 - Position: RoPE From First
+Principles}\label{chapter-9---position-rope-from-first-principles}
+
+A decoder produces sensible output for a short prompt, then becomes
+unreliable when requests are batched or a cached prefix is reused. Every
+tensor still has the expected shape. Every number is finite. What
+changed? Perhaps the engine used a batch-row index as a token position.
+Perhaps it rotated channels using the wrong pairing convention. Perhaps
+a key that already contained position information was rotated a second
+time. None of these errors needs to crash.
+
+Position is therefore not a decorative label attached to a vector. It is
+an input to a numerical transformation whose convention must survive
+projection, layout conversion, scheduling, and eventually persistent
+state. This chapter builds that transformation from two-dimensional
+geometry, then turns the geometry into an explicit, tested ownership
+contract.
+
+We implement \textbf{standard rotary position embedding}, or RoPE, for
+one token's head tensors. The new endpoint is positioned Q and K, with V
+unchanged. We do not yet compute attention scores, causal masks,
+softmax, or a KV cache. The absence of those later mechanisms is useful:
+when a rotation is wrong, there is no attention implementation behind
+which the error can hide.
+
+\subsection{Give position a precise place in the
+pipeline}\label{give-position-a-precise-place-in-the-pipeline}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-journey.tex}}\caption{Raw query and key owners pass through position-dependent rotations; the value owner bypasses RoPE.}\end{figure}
+
+Chapter 8 produces raw query, key, and value activations from a
+normalized residual. Equal residuals under equal weights produce equal
+raw projections. RoPE adds a new dependency: a logical token position.
+In the decoder convention we are building, it transforms Q and K after
+projection and before their future comparison. It leaves V alone. This
+is an architecture choice, not a rule that every operation named
+positional embedding must obey. Meta's Llama reference performs complex
+rotations on Q and K at this boundary.
+\href{https://raw.githubusercontent.com/meta-llama/llama-models/main/models/llama3/model.py}{Meta
+model source}
+
+For one token at logical position \(p\), the activation owners represent
+
+\[
+\mathbf{Q}_p\in\mathbb{R}^{H_q\times D_h},\qquad
+\mathbf{K}_p,\mathbf{V}_p\in\mathbb{R}^{H_{kv}\times D_h}.
+\]
+
+Subscript \(p\) identifies the token; it does not say the raw projection
+has already been rotated. A tilde will identify a positioned activation.
+Head counts can differ, as in grouped-query attention, but the Q/K head
+width and rotary convention must agree for the comparisons we will
+derive. Rotation acts independently within each head; it neither mixes
+heads nor reads a different token's activation.
+
+The scalar implementation accepts a generic \(\mathbf{X}\in
+\mathbb{R}^{H\times D_h}\), used once for Q and once for K. Storage is
+F32. Phase construction and pair arithmetic use F64, followed by an F32
+output cast. The fresh-output API accepts validated immutable strided
+views; the in-place API requires an exclusive canonical owner. Shape is
+unchanged in both cases. These are physical contracts beyond the
+real-number equation.
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Symbol
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Meaning
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Unit or constraint
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\(H\) & Heads in this call & Positive count \\
+\(D_h\) & Coordinates per head & Positive count \\
+\(R\) & Rotated prefix width & Positive, even, \(R\le D_h\) \\
+\(i\) & Coordinate-plane index & \(0\le i<R/2\) \\
+\(p,n\) & Logical token positions & Token intervals from an origin \\
+\(\theta\) & Frequency base & Positive finite, dimensionless \\
+\(\omega_i\) & Angular frequency of plane \(i\) & Radians per token
+interval \\
+\(\phi_i(p)\) & Rotation angle & Radians \\
+\end{longtable}
+}
+
+\subsection{Construct a rotation instead of memorizing
+one}\label{construct-a-rotation-instead-of-memorizing-one}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-plane.tex}}\caption{A coordinate plane shows a counterclockwise rotation, with basis-vector images and a numerical pair calculation.}\end{figure}
+
+Start with a plane whose horizontal coordinate is \(a\) and vertical
+coordinate is \(b\). A positive angle turns counterclockwise. A unit
+horizontal vector rotated through \(\phi\) ends at
+\((\cos\phi,\sin\phi)\). A unit vertical vector starts a quarter-turn
+ahead, so its image is \((-\sin\phi,\cos\phi)\). Every vector \((a,b)\)
+is a weighted sum of those two basis vectors. Rotating that sum gives
+the matrix and its scalar meaning:
+
+\[
+\begin{aligned}
+\mathbf{R}(\phi)&=
+\begin{bmatrix}\cos\phi&-\sin\phi\\\sin\phi&\cos\phi\end{bmatrix},\\
+\begin{bmatrix}a'\\b'\end{bmatrix}
+&=\mathbf{R}(\phi)\begin{bmatrix}a\\b\end{bmatrix}
+=\begin{bmatrix}a\cos\phi-b\sin\phi\\a\sin\phi+b\cos\phi\end{bmatrix}.
+\end{aligned}
+\]
+
+This is a \(2\times2\) linear map, not an addition of a learned position
+vector. It changes direction without changing real-arithmetic length.
+Expanding both squares makes the cancellation visible:
+
+\[
+(a')^2+(b')^2
+=(a^2+b^2)(\cos^2\phi+\sin^2\phi)=a^2+b^2.
+\]
+
+The mixed terms cancel because they have opposite signs. This
+calculation also explains a common implementation bug. If the code
+writes \(a'\) before reading the old \(a\) for the second equation, it
+no longer implements the map above. Copy both original coordinates into
+local variables before either store. An in-place algorithm needs no full
+activation copy, but it does need that two-value dependency to remain
+intact.
+
+At position zero, the first plane's angle is zero, so \([1,2]\) remains
+\([1,2]\). At position one, with frequency one radian per token, the
+same pair becomes
+
+\[
+\begin{aligned}
+a'&=\cos 1-2\sin 1\approx-1.142640,\\
+b'&=\sin 1+2\cos 1\approx 1.922076.
+\end{aligned}
+\]
+
+The squared norm is still approximately five. The angle is \textbf{one
+radian}, not one degree and not one complete revolution. A hand
+calculation in degrees can look like a small harmless discrepancy while
+testing a different operator. The executable fixture checks these values
+against the scalar Rust result.
+
+RoFormer introduces RoPE as a multiplicative positional transformation
+whose query/key inner products expose relative position. We use that
+mechanism as the starting point; the following elementary derivations
+and engine contracts make its conventions explicit for this
+implementation. \href{https://arxiv.org/html/2104.09864v5}{Su et al.,
+RoFormer}
+
+\subsection{Build a head from independent frequency
+planes}\label{build-a-head-from-independent-frequency-planes}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-frequencies.tex}}\caption{Two unit-circle clocks receive the same position but rotate at frequencies one and one tenth.}\end{figure}
+
+A head is not one enormous two-dimensional rotation. Its rotary prefix
+is partitioned into \(R/2\) planes. For the standard schedule selected
+here,
+
+\[
+\omega_i=\theta^{-2i/R},\qquad
+\phi_i(p)=p\omega_i,\qquad 0\le i<R/2.
+\]
+
+The base controls how frequency varies across planes. For \(\theta>1\),
+later planes rotate more slowly. The first plane has \(\omega_0=1\)
+regardless of base. A mathematically positive base below one is accepted
+by our API but reverses this ordering; accepting the parameter does not
+mean a checkpoint was trained with it. Very small bases can also make
+phases unrepresentable, which the execution path rejects before
+mutation.
+
+For \(R=4\) and \(\theta=100\), the two frequencies are \(1\) and
+\(0.1\). Their continuous rotation periods are \(2\pi\) and \(20\pi\)
+token intervals. These periods are not assertions that integer token
+positions recur exactly, since neither period is an integer. Multiple
+clocks give a richer phase pattern than a single clock; they do not
+constitute a proof that arbitrary lengths remain distinguishable under
+finite precision or useful to a trained model.
+
+For adjacent pairing, the whole-head map is block diagonal:
+
+\[
+\mathcal{R}_p=
+\operatorname{diag}\!\left(
+\mathbf{R}(p\omega_0),\ldots,
+\mathbf{R}(p\omega_{R/2-1}),\mathbf{I}_{D_h-R}\right)
+\in\mathbb{R}^{D_h\times D_h}.
+\]
+
+If \(R=D_h\), omit the identity tail. This matrix describes semantics;
+the implementation never allocates it. It stores two coefficients per
+plane and applies the two scalar equations directly. Materializing a
+dense matrix would turn linear work into unnecessary quadratic storage
+and arithmetic.
+
+Our four-channel input \([1,2,3,4]\) at position one becomes
+approximately
+
+\[
+[-1.142640,\;1.922076,\;2.585679,\;4.279517].
+\]
+
+The first two coordinates use angle one; the last two use angle \(0.1\).
+Rotating the whole array with one sine/cosine pair would pass a norm
+test and still be the wrong frequency schedule.
+
+\begin{quote}
+\textbf{ENGINEERING FAILURE} Chapter 8's two-channel heads cannot test
+base sensitivity. With \(R=2\), there is only plane zero, whose
+frequency is always one. Keep that historical fixture for composition,
+but add a four-channel fixture before claiming that changing the base
+has been tested.
+\end{quote}
+
+\subsection{Why an absolute position produces a relative
+score}\label{why-an-absolute-position-produces-a-relative-score}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-relative.tex}}\caption{Two rotation rays reveal a relative phase gap; a four-channel numerical trace checks the key-minus-query sign.}\end{figure}
+
+The key identity is not simply that rotations preserve length. It is
+that rotations at different positions compose predictably. The transpose
+undoes a rotation, and consecutive rotations add angles:
+
+\[
+\mathbf{R}(\alpha)^{\mathsf T}=\mathbf{R}(-\alpha),\qquad
+\mathbf{R}(\alpha)\mathbf{R}(\beta)=\mathbf{R}(\alpha+\beta).
+\]
+
+The first equality follows by transposing the two off-diagonal sine
+entries. The second follows by expanding the matrix product and applying
+the sine and cosine angle-addition identities. Because the whole-head
+map applies these identities independently to disjoint planes, they also
+hold for \(\mathcal{R}\) under one fixed frequency and pairing contract.
+
+Let \(\mathbf{q},\mathbf{k}\in\mathbb{R}^{D_h}\) be fixed raw head
+vectors, with query position \(p\) and key position \(n\). Their
+positioned versions are
+\(\widetilde{\mathbf{q}}_p=\mathcal{R}_p\mathbf{q}\) and
+\(\widetilde{\mathbf{k}}_n=\mathcal{R}_n\mathbf{k}\). Now move the
+query's rotation across the inner product:
+
+\[
+\begin{aligned}
+\widetilde{\mathbf{q}}_p^{\mathsf T}\widetilde{\mathbf{k}}_n
+&=(\mathcal{R}_p\mathbf{q})^{\mathsf T}
+  (\mathcal{R}_n\mathbf{k})\\
+&=\mathbf{q}^{\mathsf T}\mathcal{R}_p^{\mathsf T}
+  \mathcal{R}_n\mathbf{k}\\
+&=\mathbf{q}^{\mathsf T}\mathcal{R}_{n-p}\mathbf{k}.
+\end{aligned}
+\]
+
+The explicit positional dependency is \textbf{key position minus query
+position}. The sign matters for arbitrary vectors. In our fixture,
+\(\mathbf{q}=[1,2,3,4]^{\mathsf T}\),
+\(\mathbf{k}=[2,-1,1,3]^{\mathsf T}\), \(p=2\), \(n=5\), \(R=4\), and
+\(\theta=100\). Both routes yield approximately \(13.558047\); the Rust
+paths differ by about \(5.25\times10^{-7}\) because they round different
+intermediate F32 vectors. Using \(p-n\) on the right gives a different
+score, not a rounding variant of the same identity.
+
+This proof has several precise consequences. At the same position, the
+raw dot product is preserved. Adding the same offset to both positions
+leaves the fixed-vector score unchanged. Applying position \(p\) twice
+yields position \(2p\), not position \(p\) again. Applying \(-p\) is an
+inverse in real arithmetic, though F32 casts make a round trip
+approximate.
+
+It also has limits. Raw activations in a full decoder may already depend
+on context and position through earlier layers; holding them fixed is a
+premise of this identity. A causal visibility rule can change which keys
+are compared. Changing a scaling configuration can invalidate the
+shared-frequency premise. Common-shift invariance is not permission to
+reset new query positions while leaving previously rotated keys in the
+old coordinate system.
+
+Nor does the identity make similarity decrease monotonically with
+distance. Choose a one-plane
+\(\mathbf{q}=\mathbf{k}=[1,0]^{\mathsf T}\). The score is \(\cos(n-p)\),
+which rises again after falling. Claims about distributions of
+frequencies, learned behavior, or long-distance envelopes are different
+from a pointwise monotonicity guarantee. A researcher should test the
+precise claim being made; an engineer should not build a pruning rule
+from a stronger claim that the algebra does not support.
+
+\subsection{Pairing is part of the checkpoint
+interface}\label{pairing-is-part-of-the-checkpoint-interface}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-pairing.tex}}\caption{Adjacent and split-half storage orders connect the same named plane coordinates through different index pairs.}\end{figure}
+
+The phrase ``rotate pairs'' leaves an essential question unanswered:
+which coordinates are partners? For a prefix of width \(R\), this
+chapter supports two explicit choices:
+
+\[
+\begin{aligned}
+\text{Adjacent:}\quad &(a_i,b_i)=(x_{2i},x_{2i+1}),\\
+\text{Split half:}\quad &(a_i,b_i)=(x_i,x_{i+R/2}).
+\end{aligned}
+\]
+
+With four channels, adjacent order is \([a_0,b_0,a_1,b_1]\) and
+split-half order is \([a_0,a_1,b_0,b_1]\). Let permutation matrix
+\(\mathbf{P}\) perform this reordering. The equivalent split-half
+operator is
+
+\[
+\mathcal{R}^{\mathrm{split}}_p
+=\mathbf{P}\mathcal{R}^{\mathrm{adj}}_p\mathbf{P}^{\mathsf T},\qquad
+\mathcal{R}^{\mathrm{split}}_p(\mathbf{P}\mathbf{x})
+=\mathbf{P}(\mathcal{R}^{\mathrm{adj}}_p\mathbf{x}).
+\]
+
+Equivalence requires the operand to be permuted too. Switching a mode
+flag while leaving projected coordinates unchanged is generally wrong.
+If a conversion changes head coordinate order, the corresponding Q/K
+weight rows must produce that order consistently. Conversion may also
+interact with quantization groups and packed storage; it is not
+necessarily an inexpensive metadata edit at model load time.
+
+Both wrong and right conventions preserve norms. Both can produce finite
+arrays with identical shapes. Therefore norm, finiteness, and length
+checks are necessary but insufficient. Our coordinate oracle checks
+complete output vectors for both conventions, and a permutation test
+verifies equivalence only when data and operator are transformed
+together. The unpermuted results must differ on the asymmetric fixture.
+
+An integer constant in a backend cannot be interpreted from its name
+alone. The pinned GGML CPU path supports adjacent NORMAL pairing and
+split-half NEOX-style pairing. Hermon's paged preview helper uses
+adjacent coordinates. These are source-verified paths, not
+interchangeable defaults for every model. The exact implementation
+record appears in the case study below.
+
+\subsection{Partial rotation is a declared policy, not an odd-size
+accident}\label{partial-rotation-is-a-declared-policy-not-an-odd-size-accident}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-partial.tex}}\caption{A five-channel head rotates its first four coordinates and preserves the last coordinate, including negative-zero bits.}\end{figure}
+
+Our configuration requires \(0<R\le D_h\) and even \(R\). It does
+\textbf{not} require an even head width when only a prefix is rotated.
+Thus \(D_h=5,R=4\) is valid; the last coordinate follows the identity
+map. Conversely, \(D_h=4,R=3\) is invalid because one coordinate in the
+requested prefix would lack a partner. We reject \(R=0\) rather than
+interpreting it as a hidden disable switch.
+
+Frequencies use denominator \(R\), the rotated prefix width. This is a
+selected contract, not a universal promise about all partial-RoPE
+architectures. A model adapter must inspect its actual definition.
+Confusing full head width with rotary width changes every nonzero-index
+plane even when all accesses remain within bounds.
+
+Trailing finite values retain their exact F32 bits in both APIs. We
+still validate the tail for finiteness. This intentionally makes the API
+a checked finite-activation boundary, not merely a transform that
+ignores invalid data outside its prefix. Position zero validates the
+complete input and phases, then returns the unchanged finite payload;
+the fresh-output route still owns a separate allocation. Signed zero is
+preserved instead of being perturbed by an unnecessary multiply-add
+sequence.
+
+\subsection{Turn geometry into a failure-safe ownership
+contract}\label{turn-geometry-into-a-failure-safe-ownership-contract}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-transaction.tex}}\caption{Validation and an immutable arithmetic preflight precede the first write; commit retains the activation allocation.}\end{figure}
+
+The executable implementation lives in
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/code/mini-engine/crates/engine0/src/rope.rs}{rope.rs}.
+Its two entry points separate borrowing from mutation:
+
+\begin{verbatim}
+pub fn rope_reference(
+    input: &TensorView<'_>,
+    position: i64,
+    config: RopeConfig,
+) -> Result<OwnedTensor, RopeError>
+
+pub fn rope_in_place(
+    output: &mut OwnedTensor,
+    position: i64,
+    config: RopeConfig,
+) -> Result<(), RopeError>
+\end{verbatim}
+
+These are API signatures, not complete function bodies. The linked
+source contains all validation and execution.
+\texttt{\seqsplit{RopeConfig::try\_new}} validates the dimensions and
+base; private fields prevent callers from constructing an invalid
+configuration behind the checks. The execution path then verifies a
+nonempty rank-two tensor of the configured width, the position
+conversion policy, every input coordinate, every frequency and angle,
+and every output pair's representability as F32.
+
+The last check matters. A finite rotation can concentrate a pair's
+length into one coordinate. Two large finite F32 inputs can therefore
+produce a coordinate outside finite F32 range even though the
+real-number norm is preserved. F64 arithmetic postpones that overflow
+but cannot make the final F32 storage represent it. Rejecting only
+non-finite inputs is insufficient.
+
+The in-place implementation uses three phases. First it validates input
+and prepares one F64 sine/cosine pair per plane. Second it dry-runs
+every pair without writing. Third it commits using the already validated
+shape and phase plan. A failure in the last head's last plane cannot
+leave earlier heads partially rotated. Every returned error preserves
+the entire payload bit for bit, including NaN payloads in a rejected
+input.
+
+This is transactional behavior at a local numerical API boundary, not a
+database transaction or recovery from process termination. Allocator
+failure follows Rust's \texttt{Vec} behavior rather than returning a
+\texttt{RopeError}. The phase scratch is \(O(R)\); the API is not
+allocation-free. A process abort or hardware fault is outside the
+returned-error guarantee. Naming those limits is part of the contract,
+not a weakness to conceal.
+
+After preflight, commit reads both old coordinates, evaluates the two
+scalar equations, and stores both outputs. The exclusive owner prevents
+a concurrent safe-Rust borrower from observing intermediate writes. The
+operation retains the activation's payload pointer. By contrast,
+\texttt{rope\_reference} prepares from the immutable view, materializes
+a fresh contiguous owner, then commits there. It accepts padded, offset,
+or broadcast input views because Chapter 5's logical indexing resolves
+their physical addresses.
+
+\begin{quote}
+\textbf{PROVE IT} Test a late overflow in the second head, not only an
+invalid first value. Snapshot every F32 bit before the call. After the
+named error, compare the entire snapshot. A local pair test cannot prove
+whole-owner failure atomicity.
+\end{quote}
+
+\subsection{Position precision is a separate numerical
+problem}\label{position-precision-is-a-separate-numerical-problem}
+
+An integer position must eventually participate in floating-point phase
+construction. F32 represents every integer only through \(2^{24}\). In
+the usual round-to-nearest conversion, \(2^{24}\) and \(2^{24}+1\)
+become the same F32 value. If phase construction starts from those
+identical values, it has already lost the distinction between the
+positions. Better trigonometric evaluation cannot recover a distinction
+discarded before the call.
+
+Our API accepts signed 64-bit positions but restricts magnitude to
+\(2^{53}\), the contiguous exact-integer range of F64. It rejects
+out-of-policy positions before conversion, including both integer
+extremes. Negative positions are useful for inverse and algebraic tests;
+this is not a claim that a serving request should accept negative token
+positions.
+
+Exact integer conversion does not guarantee exact phase multiplication.
+Frequency approximation, multiplication rounding, trigonometric argument
+reduction, coefficient rounding, and final activation rounding remain. A
+useful local sensitivity result comes directly from plane geometry. If a
+phase error is \(\delta\) radians and \(\mathbf{x}\in\mathbb{R}^2\),
+then
+
+\[
+\left\|\mathbf{R}(\phi+\delta)\mathbf{x}
+      -\mathbf{R}(\phi)\mathbf{x}\right\|_2
+=2\|\mathbf{x}\|_2\left|\sin\frac{\delta}{2}\right|
+\le\|\mathbf{x}\|_2|\delta|.
+\]
+
+The equality is the chord length between two points on a circle of
+radius \(\|\mathbf{x}\|_2\). The bound uses \(|\sin z|\le|z|\). It
+isolates phase sensitivity, not the combined error of every
+floating-point operation. A phase error can move a vector substantially
+while preserving its norm almost perfectly. Again, norm preservation
+alone is not a sufficient quality gate.
+
+Tests at positions \(1,7,2048,32768\) and \(-7\) exercise moderate-range
+inverse and norm behavior with explicit F32 tolerances. Acceptance at
+\(\pm2^{53}\) checks only that the conversion policy and finite-output
+path hold. It does not certify accurate adjacent-position phases there,
+let alone trained-model quality at that context length. Context
+capacity, numerical distinguishability, and useful model behavior are
+three different claims.
+
+\subsection{Follow a token through the executable
+composition}\label{follow-a-token-through-the-executable-composition}
+
+Run the trace from the mini-engine workspace:
+
+\begin{verbatim}
+cargo run --quiet --example chapter09_rope_trace
+\end{verbatim}
+
+The example reuses Chapter 8's nonidentity projection fixture. It
+selects embedding row one, normalizes with the learned gain, computes
+three separate projections, transfers ownership of their head tensors,
+and rotates Q and K at logical position seven. There are two heads of
+width two, so only the first frequency exists. The resulting flattened
+owners are approximately:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Owner & Four stored coordinates after the new step \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Positioned Q & \([4.778205,1.742237,2.512963,2.674260]\) \\
+Positioned K & \([0.176943,2.575917,0.310675,0.755081]\) \\
+Original V & \([-0.365148,3.651481,0.182574,1.825741]\) \\
+\end{longtable}
+}
+
+The separate four-channel fixture checks both frequencies and both
+pairing modes. The Python oracle represents a pair as the complex number
+\(a+\mathrm{i}b\) and multiplies by \(\exp(\mathrm{i}\phi)\). It does
+not import Rust or reproduce the runtime's tensor indexing. It uses
+independent real-arithmetic projection and normalization for the
+preceding pipeline, so small F32 differences are expected rather than
+hidden.
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/scripts/check-rope-visual-parity.py}{parity
+gate} compares all coordinates, both relative-dot routes, and the
+complete composed Q/K/V against this oracle with \(10^{-5}+10^{-5}|y|\)
+tolerance. This is a fixture acceptance criterion, not a universal error
+theorem. The gate also deliberately alters and truncates outputs to
+prove its comparator rejects bad candidates. The scene manifest binds
+all ten figures to the same input-only fixture and requires each plate
+to appear exactly once in this chapter.
+
+\subsection{Logical coordinates must survive physical
+rearrangement}\label{logical-coordinates-must-survive-physical-rearrangement}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-positions.tex}}\caption{Three requests have different logical positions, batch rows and physical block identifiers; only logical positions feed RoPE.}\end{figure}
+
+In a future batched engine, row zero may contain request A at position
+127 while row one contains request B at position three. The row number
+is an execution location; the token position is a sequence coordinate.
+Sorting rows by length or priority must not silently change the latter.
+Similarly, moving a stored key from one physical block to another
+changes where its bytes live, not which rotation has already been
+applied to them.
+
+A multi-token prefill chunk beginning at logical position \(s\) would
+rotate its token row \(t\) at \(s+t\), with checked integer addition. A
+decode call would use the next logical position for that request. The
+same per-token rotation law applies; scheduling determines which
+positions enter the call. Our API accepts only one position and one
+token's heads, so it does not implement this sequence wrapper or its
+overflow checks by implication.
+
+These observations define a future KV-state compatibility boundary. If
+keys are stored after rotation, their interpretation depends on
+positions, frequency schedule, pairing, rotary width, and model
+parameters. Prefix reuse must preserve that interpretation. A matching
+byte length or token string does not by itself prove compatible cached
+activations. This is a derived design requirement, not a cache feature
+shipped in this chapter.
+
+Double rotation is particularly easy to disguise. An operation called
+``prepare keys'' may rotate a fresh projection on one path and a
+previously positioned key on another. Shapes and norms agree, but phase
+now corresponds to the sum of both applications. Keep stage names
+explicit: raw projection, positioned activation, and eventually stored
+state. A future type-level state distinction can make accidental
+repeated transformation harder to express.
+
+\subsection{Long context changes geometry, not only a limit
+field}\label{long-context-changes-geometry-not-only-a-limit-field}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-scaling.tex}}\caption{Analytical phase lines compare the original schedule, position interpolation and a changed base, with a first-plane counterexample to equivalence.}\end{figure}
+
+Suppose the desired context is longer than the training context. Merely
+allowing larger position integers exposes the model to a different range
+of relative phases. It does not supply evidence that the model has
+learned to use those phases. Context-extension methods address this
+issue with modified geometry and empirical evaluation. Position
+Interpolation studies rescaling positions into a shorter range; YaRN
+develops a more elaborate extension method. Neither paper's reported
+results automatically transfer to a custom inference implementation.
+\href{https://arxiv.org/abs/2306.15595}{Position Interpolation},
+\href{https://arxiv.org/abs/2309.00071}{YaRN}
+
+The distinction between changing position and changing base is
+algebraic. For an interpolation factor \(s>1\),
+
+\[
+\phi_i^{\mathrm{interp}}(p)=\frac{p}{s}\theta^{-2i/R}.
+\]
+
+Every plane's phase slope is divided by \(s\). By contrast, replacing
+base \(\theta\) with \(\theta'\) changes each frequency by
+
+\[
+\frac{\omega_i'}{\omega_i}
+=\left(\frac{\theta'}{\theta}\right)^{-2i/R}.
+\]
+
+That ratio depends on plane index. At \(i=0\) it is one: the first plane
+does not change at all. Thus a base change cannot generally reproduce
+uniform position interpolation. The plotted \(R=4\) example uses
+\(\theta=100\), \(s=4\), and \(\theta'=10000\). The slower-plane slopes
+are respectively \(0.1\), \(0.025\), and \(0.01\) radians per token. The
+first-plane slopes are \(1\), \(0.25\), and \(1\).
+
+Some real implementations use per-frequency factors, transition bands,
+or amplitude adjustments. If coefficients include an amplitude
+multiplier, unit-norm preservation is no longer the applicable invariant
+without accounting for that multiplier. If a frequency schedule changes
+with current sequence length, old and new keys cannot be assumed to
+share a fixed rotation contract. Inspect the actual model configuration
+and runtime behavior before reusing a proof derived for standard
+fixed-frequency RoPE.
+
+This chapter intentionally implements none of those scaling extensions.
+Future support needs explicit configuration identity, checkpoint
+compatibility, reference vectors, boundary tests around transition
+regions, and task-level quality evaluation. A parameter accepted by a
+loader is not the same thing as a model supported correctly.
+
+\subsection{Price the implementation without inventing a speed
+result}\label{price-the-implementation-without-inventing-a-speed-result}
+
+With cached coefficients, one plane rotation uses four scalar multiplies
+and two additions/subtractions. Counting each as one FLOP gives six
+FLOPs per plane, hence \(3HR\) FLOPs per token tensor for the
+transformation alone. Our preflight repeats that arithmetic before
+commit, so it uses \(6HR\) FLOPs for pair evaluation at nonzero
+positions. Frequency powers, trigonometric evaluation, checks, indexing,
+allocation, and conversions are excluded from that count; those
+exclusions can dominate the small scalar workload.
+
+For F32 activation storage, a source-level access model for the in-place
+nonzero path is
+
+\[
+B_{\mathrm{activation}}
+=4HD_h+4HR+8HR
+=4HD_h+12HR\quad\text{bytes}.
+\]
+
+The first term scans all input coordinates for finiteness. The second
+reads rotary coordinates in preflight. The last reads and writes those
+coordinates in commit. This counts logical payload accesses, not
+measured DRAM traffic. Cache reuse, compiler decisions, metadata checks,
+and coefficient accesses are outside the model. The fresh-owner
+reference adds a full activation copy and allocation. Its clearer
+borrowing contract is useful as an oracle-facing path, not evidence of
+performance parity with in-place execution.
+
+The phase plan stores \(R/2\) pairs of F64 values, or \(8R\) payload
+bytes, shared across heads of the token. A precomputed table for \(T\)
+positions stores \(TR\) coefficients. At \(s_c\) bytes per coefficient,
+
+\[
+B_{\mathrm{table}}=TRs_c\quad\text{bytes}.
+\]
+
+For \(T=32768,R=128,s_c=4\), that is 16 MiB, not counting metadata. A
+table can be shared across heads, and potentially layers, only when
+their complete frequency contracts agree. It is a phase table, not a KV
+cache: it contains no token-dependent projected activations.
+Lower-precision coefficients reduce table bytes but introduce different
+phase and norm errors.
+
+Direct computation pays for powers and trigonometric evaluation. A table
+pays build time, memory footprint, indexing, and coefficient traffic.
+Recurrence can update coefficients using angle addition but accumulates
+drift and needs a reseeding policy. Fusion can avoid intermediate
+activation traffic but complicates ownership, rounding, and the boundary
+available for debugging. None of these candidates is implemented or
+benchmarked here.
+
+A valid future table-versus-compute experiment must compare identical
+positions, \(H,D_h,R\), pairing, base, precision, and output tolerance.
+Separate table construction from warm lookup; report cold-start cost
+too. Declare allocation and preflight policies, contiguous versus
+strided inputs, timing boundary, hardware, compiler, repetitions, and
+raw results. Measure complete Q/K preparation as a second boundary
+before claiming an end-to-end benefit. There is no reason to multiply a
+kernel ratio into a serving throughput claim.
+
+\subsection{Inside Hermon: follow the actual execution
+route}\label{inside-hermon-follow-the-actual-execution-route}
+
+\begin{figure}[H]\centering\resizebox{\linewidth}{!}{\input{figures/ch09-source.tex}}\caption{Default Batched execution, opt-in paged preview and the teaching implementation have distinct precision and configuration contracts.}\end{figure}
+
+\begin{quote}
+\textbf{INSIDE HERMON - CURRENT / PREVIEW / LIBRARY} Source inspected at
+Hermon \texttt{2a3fd521} and its pinned llama.cpp \texttt{389ff61d} on
+2026-09-12. Unset runtime mode selects Batched; paged remains opt-in
+preview. A helper's existence is not evidence that the default route
+calls it.
+\end{quote}
+
+The default route delegates model execution to llama.cpp. Its Llama
+graph builds Q/K/V, then invokes \texttt{ggml\_rope\_ext} separately for
+Q and K with the position input, rotary dimensions, mode, and
+model/runtime scaling parameters. The pinned CPU kernel supports
+multiple pairing modes, prepares phase terms for reuse across a token's
+heads, and copies trailing non-rotary channels. Its extended path is
+broader than the standard schedule implemented here.
+
+Hermon's paged preview has a distinct \texttt{rope\_inplace} helper. It
+iterates token rows and heads, pairs adjacent coordinates, computes
+phases in F32, and optionally divides each frequency by a loaded factor.
+Model construction checks the positive finite base, even head width, and
+factor length/values. The helper also contains debug assertions; these
+are not the same guarantee as a public API that returns typed errors in
+a release build. The forward path rotates Q and K before subsequent KV
+writes and attention.
+
+The teaching implementation intentionally differs: F64 phases and pair
+arithmetic, explicit partial-prefix policy, two pairing modes, and
+preflight failure atomicity. It is not a claim of bitwise equality with
+either production path. Source tests for scrambled physical block tables
+and incremental decode illustrate why logical position must remain
+separate from placement, but no real-model equivalence or hardware
+performance run was performed for this milestone. The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-02/chapter-09-position-rope.md}{pinned
+source record} identifies the exact paths and evidence classifications.
+
+\subsection{Test the invariants that a plausible picture can
+miss}\label{test-the-invariants-that-a-plausible-picture-can-miss}
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/code/mini-engine/crates/engine0/tests/rope.rs}{focused
+Rust tests} cover hand coordinates, both pairings, norm and inverse
+behavior, rotation composition, the relative-score sign, common shifts,
+exact tail bits, and fresh-versus-in-place ownership. Invalid
+dimensions, bases, shapes, positions, non-finite inputs, unrepresentable
+phases, and late F32 overflow exercise the failure contract.
+Offset/strided and broadcast views separate mathematical coordinates
+from contiguous storage assumptions.
+
+Each test has a counterexample in mind. A norm test misses wrong pairing
+and wrong frequency. An identity test at position zero misses nearly all
+phase bugs. A first-head test misses bad head strides. A finite-input
+test misses output overflow. A successful inverse does not prove useful
+long-context quality. A same-buffer comparison cannot establish oracle
+independence.
+
+The implementation is safe Rust with no new dependencies. It remains
+scalar and deliberately repeats arithmetic to make whole-owner failure
+atomicity easy to prove. An optimized candidate may choose a different
+policy, but it must name that policy rather than silently removing a
+guarantee on which callers rely.
+
+\subsection{Exercises: geometry, coordinates, and failure
+boundaries}\label{exercises-geometry-coordinates-and-failure-boundaries}
+
+The
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-49-rope-position-workbench.md}{RoPE
+workbench} specifies Labs 49-58, including inputs, expected artifacts,
+deliberate breaks, and cleanup. Begin with the small numbers before
+proposing a faster kernel.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{CHECK:} Rotate \([1,2]\) at positions zero and one by hand.
+  Explain the sign of each term and prove squared-norm preservation by
+  expansion.
+\item
+  \textbf{CHECK:} Derive the relative-score identity with explicit
+  transposes. Use asymmetric Q/K to make the reversed-sign version fail.
+\item
+  \textbf{BUILD:} Implement split-half pairing and its explicit
+  permutation test. Show why a norm-only suite would accept the wrong
+  coordinate order.
+\item
+  \textbf{BREAK:} Overwrite the first coordinate before calculating the
+  second. Record which coordinate, norm, and inverse tests detect the
+  mutation.
+\item
+  \textbf{CHECK:} Compare the old width-two fixture with the width-four
+  fixture under a changed base. Identify the plane that cannot change.
+\item
+  \textbf{BREAK:} Place F32 maximum values in a late pair and verify
+  that the entire owner remains unchanged after output-overflow
+  rejection.
+\item
+  \textbf{BUILD:} Pass a padded or broadcast view to the fresh-output
+  API and compare every coordinate with a contiguous input of equal
+  logical values.
+\item
+  \textbf{EXTEND:} Design a phase-table key and a raw/positioned
+  activation type boundary. State which mismatches must fail before
+  cached state is reused.
+\item
+  \textbf{CHECK:} Derive phase-error sensitivity from a circle chord.
+  Explain why nearly perfect norms can coexist with a large coordinate
+  error.
+\item
+  \textbf{EXTEND:} Specify a reproducible table-versus-compute
+  experiment. Keep quality evaluation separate from kernel accuracy and
+  timing.
+\end{enumerate}
+
+\subsection{What this chapter establishes, and what comes
+next}\label{what-this-chapter-establishes-and-what-comes-next}
+
+Position now enters the executable engine through a checked numerical
+API. Its meaning is visible in the basis vectors, frequency schedule,
+relative inner-product identity, channel permutation, logical position,
+and ownership transition. The implementation handles one token's heads;
+it cannot silently substitute batching or cache placement for position
+because neither exists inside the operator.
+
+The next chapter consumes positioned Q and K to construct causal
+attention. It must explain score scaling, visibility, stable softmax,
+and value mixing without weakening the layout or precision contracts
+established here. We have built the coordinates of comparison. We have
+not yet built the comparison engine or the service that schedules it.
+
+\subsubsection{Primary references and executable
+evidence}\label{primary-references-and-executable-evidence}
+
+\begin{itemize}
+\tightlist
+\item
+  Su et al., \href{https://arxiv.org/html/2104.09864v5}{RoFormer}:
+  rotary positional mechanism and its relative-position motivation.
+\item
+  \href{https://raw.githubusercontent.com/meta-llama/llama-models/main/models/llama3/model.py}{Meta
+  Llama reference model}: complex Q/K rotation and architecture-specific
+  frequency handling.
+\item
+  Chen et al., \href{https://arxiv.org/abs/2306.15595}{Position
+  Interpolation}, and Peng et al.,
+  \href{https://arxiv.org/abs/2309.00071}{YaRN}: context-extension
+  research, not measured results of this teaching engine.
+\item
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-02/chapter-09-position-rope.md}{Hermon
+  source and review record},
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/code/reference/python/chapter09_rope_oracle.py}{complex
+  oracle}, and
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/scripts/check-rope-visual-parity.py}{Rust/visual
   parity gate}.
 \end{itemize}
 

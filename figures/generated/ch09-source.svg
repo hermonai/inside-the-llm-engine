@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">One operation, three execution contracts</title><desc id="desc">Locate standard teaching RoPE against default, preview and library source paths. CURRENT Batched delegates to llama.cpp; Hermon paged execution remains PREVIEW. Teaching F64 phases and typed error guarantees are not production bitwise-equivalence claims.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH09-SOURCE  /  CANONICAL / CHAPTER 9</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">One operation, three execution contracts</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Locate standard teaching RoPE against default, preview and library source paths.</text>
+<rect x="50" y="205" width="430" height="177" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">CURRENT / default Batched</text>
+<text x="68" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">llama.cpp model graph</text>
+<text x="68" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Q/K → ggml_rope_ext</text>
+<text x="68" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">GGML CPU supports pair modes</text>
+<text x="68" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">model/runtime scaling parameters</text>
+<rect x="515" y="205" width="430" height="177" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="529" y="234" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="533" y="235" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">PREVIEW / opt-in paged</text>
+<text x="533" y="269" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Hermon rope_inplace</text>
+<text x="533" y="296" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">adjacent pairs, F32 phases</text>
+<text x="533" y="323" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">optional per-pair divisors</text>
+<text x="533" y="350" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Q/K rotation before KV write</text>
+<rect x="50" y="429" width="895" height="145" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="458" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="459" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">TEACHING / deliberately narrower</text>
+<text x="68" y="493" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Standard RoPE, explicit adjacent or split-half prefix, F64 phases and F32 output.</text>
+<text x="68" y="520" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Checked errors, immutable reference or exclusive in-place owner; no model-quality claim.</text>
+<text x="68" y="547" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">Hermon 2a3fd521 / llama.cpp 389ff61d; inspected 2026-09-12.</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">CURRENT Batched delegates to llama.cpp; Hermon paged execution remains PREVIEW.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Teaching F64 phases and typed error guarantees are not production bitwise-equivalence claims.</text>
+</svg>

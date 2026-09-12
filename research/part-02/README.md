@@ -10,7 +10,7 @@ at a time.
 | [6](chapter-06-matrix-multiplication-the-engine-room.md) | How should reference and blocked matrix multiplication expose work and traffic? | COMPLETE |
 | [7](chapter-07-embeddings-and-normalization.md) | How do embedding lookup and RMSNorm transform typed tensors? | COMPLETE |
 | [8](chapter-08-queries-keys-and-values.md) | How do Q/K/V projections create head-shaped activations? | COMPLETE |
-| 9 | How does RoPE encode position without hiding layout? | PLANNED |
+| [9](chapter-09-position-rope.md) | How does RoPE encode position without hiding layout? | COMPLETE |
 | 10 | How does causal attention combine scores, masks, softmax, and values? | PLANNED |
 | 11 | How does the feed-forward network transform each token? | PLANNED |
 | 12 | How do those operations compose into one decoder layer? | PLANNED |

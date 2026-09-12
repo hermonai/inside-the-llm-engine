@@ -1,0 +1,22 @@
+FIG-CH09-SCALING
+Changing position is not changing the base
+CANONICAL / CHAPTER 9
+
+Compare analytical phase slopes instead of promising unmeasured long-context quality.
+R = 4: standard theta = 100, interpolation p/4, and changed theta = 10000.
+Only the slower plane is plotted; first-plane frequency stays 1 under a base change.
+Independent adjacent result: [-1.1426396637476532, 1.922075596544176, 2.5856788292467647,
+4.279516911052588, -1.922075596544176, -1.1426396637476532, 0.7970023325794974,
+-2.9350957875106634]
+Position rotates Q and K; V stays unchanged. No attention or cache executes.
+
+Compare analytical phase slopes instead of promising unmeasured long-context quality.
+
+R = 4: standard theta = 100, interpolation p/4, and changed theta = 10000.
+
+Only the slower plane is plotted; first-plane frequency stays 1 under a base change.
+
+Fixture: {"source": "code/reference/fixtures/chapter09-rope.json"}
+
+Source: figures/src/ch09-scaling.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/rope.rs

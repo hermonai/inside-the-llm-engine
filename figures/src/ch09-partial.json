@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-PARTIAL",
+  "chapter": 9,
+  "kind": "ch09-partial",
+  "title": "A rotary prefix leaves an exact identity tail",
+  "purpose": "Separate the even rotated prefix from trailing channels in an odd-width head.",
+  "contract": [
+    "Dh = 5, R = 4, theta = 100, position 1; frequencies use the selected prefix width R.",
+    "Every finite trailing F32 value retains its original bits, including negative zero."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Separate the even rotated prefix from trailing channels in an odd-width head. Dh = 5, R = 4, theta = 100, position 1; frequencies use the selected prefix width R. Every finite trailing F32 value retains its original bits, including negative zero.",
+  "alt": "Separate the even rotated prefix from trailing channels in an odd-width head. Dh = 5, R = 4, theta = 100, position 1; frequencies use the selected prefix width R. Every finite trailing F32 value retains its original bits, including negative zero.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}

@@ -51,7 +51,7 @@ to claim those older plates have already received the same editorial redesign.
 | D | Chapter 7 normalization — COMPLETE | Ten vector plates, two-pass sequence, epsilon curve and overflow gates; unchanged operators and historical stress tests |
 | E | Chapter 8 — COMPLETE | Preserved research implemented; checked QKV/head API, independent oracle, tests, labs, prose and ten native-vector figures; no attention yet |
 | F | Chapters 1–4 | Progressive architecture, bytes, historical tiny model, sampling and lifecycle; retain all regressions |
-| G | Chapters 9–13 | Position then attention then FFN then block then stack; prototype designs become canonical only after reference/oracle parity |
+| G | Chapters 9–13 — IN PROGRESS | Chapter 9 COMPLETE: checked scalar RoPE, 25 tests, independent complex oracle and ten native geometry plates. Attention, FFN, block and stack remain next. |
 | H | Parts III–VI | File bytes and packed weights, profiling, dense KV then paging, request state then batching; measured claims gated |
 | I | Parts VII–XII | Kernel/backend boundary, hardware, speculation, MoE, correctness and operations |
 | J | Parts XIII–XV | Fresh production tours, explicitly future architecture, final integrated engine |
@@ -66,8 +66,10 @@ their mathematical prerequisites.
 Before prose changes, record hero/where-we-are, components, mechanism, changed
 data, equation, physical layout, actual software, experiment, production
 comparison, and synthesis. The [structured storyboard](figures/storyboards.md)
-covers all seven existing chapters and the coming QKV/position/attention lessons.
-Use D=4, H=2, head width 2 for new Transformer visuals; retain D=3 for ENGINE-1
+covers the original seven-chapter regeneration and the QKV/position/attention sequence;
+Chapter 9 adds its verified ten-plate storyboard in the research record.
+Use D=4, H=2, head width 2 for the component-composition fixture; Chapter 9
+uses a separate head-width-4 fixture to expose nonzero-index frequency behavior; retain D=3 for ENGINE-1
 regressions and chapter-specific stress fixtures. No silent fixture migration.
 
 Each rewritten chapter must pass prose/math, math/code, code/oracle,

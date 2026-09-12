@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-TRANSACTION",
+  "chapter": 9,
+  "kind": "ch09-transaction",
+  "title": "Validate, preflight, then mutate",
+  "purpose": "Make failure atomicity visible without hiding an activation-sized copy.",
+  "contract": [
+    "An immutable dry run checks every output pair before the first write.",
+    "Commit needs exclusive canonical ownership; phase scratch is O(R), not allocation-free."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Make failure atomicity visible without hiding an activation-sized copy. An immutable dry run checks every output pair before the first write. Commit needs exclusive canonical ownership; phase scratch is O(R), not allocation-free.",
+  "alt": "Make failure atomicity visible without hiding an activation-sized copy. An immutable dry run checks every output pair before the first write. Commit needs exclusive canonical ownership; phase scratch is O(R), not allocation-free.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}

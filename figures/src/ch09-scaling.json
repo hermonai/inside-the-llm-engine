@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-SCALING",
+  "chapter": 9,
+  "kind": "ch09-scaling",
+  "title": "Changing position is not changing the base",
+  "purpose": "Compare analytical phase slopes instead of promising unmeasured long-context quality.",
+  "contract": [
+    "R = 4: standard theta = 100, interpolation p/4, and changed theta = 10000.",
+    "Only the slower plane is plotted; first-plane frequency stays 1 under a base change."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Compare analytical phase slopes instead of promising unmeasured long-context quality. R = 4: standard theta = 100, interpolation p/4, and changed theta = 10000. Only the slower plane is plotted; first-plane frequency stays 1 under a base change.",
+  "alt": "Compare analytical phase slopes instead of promising unmeasured long-context quality. R = 4: standard theta = 100, interpolation p/4, and changed theta = 10000. Only the slower plane is plotted; first-plane frequency stays 1 under a base change.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}

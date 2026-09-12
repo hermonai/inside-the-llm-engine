@@ -1,0 +1,22 @@
+FIG-CH09-PLANE
+Build a rotation from two basis vectors
+CANONICAL / CHAPTER 9
+
+Read a positive one-radian rotation as geometry and as a checked coordinate calculation.
+Positive angles rotate counterclockwise; coordinate axes are a and b.
+For [1,2], squared norm is 5 before and after rotation, up to floating-point error.
+Independent adjacent result: [-1.1426396637476532, 1.922075596544176, 2.5856788292467647,
+4.279516911052588, -1.922075596544176, -1.1426396637476532, 0.7970023325794974,
+-2.9350957875106634]
+Position rotates Q and K; V stays unchanged. No attention or cache executes.
+
+Read a positive one-radian rotation as geometry and as a checked coordinate calculation.
+
+Positive angles rotate counterclockwise; coordinate axes are a and b.
+
+For [1,2], squared norm is 5 before and after rotation, up to floating-point error.
+
+Fixture: {"source": "code/reference/fixtures/chapter09-rope.json"}
+
+Source: figures/src/ch09-plane.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/rope.rs

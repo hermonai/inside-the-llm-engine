@@ -1,13 +1,13 @@
 # Native LaTeX edition
 
-Build from this directory with `make`. `main.tex` contains all eight written
+Build from this directory with `make`. `main.tex` contains all nine written
 chapters and uses native TikZ `.tex` illustrations: no rasterized labels,
 no embedded PDF plates and no verbatim character-box graphs.
 
-The 55 semantic SVG plates have a deterministic, fail-closed TikZ translation.
+The 65 semantic SVG plates have a deterministic, fail-closed TikZ translation.
 Legacy diagrams preserve their reviewed topology using vector strokes and
 proportional typeset labels. This mechanical migration is not a claim that each
-legacy plate has received the detailed Chapter 5–7 editorial redesign.
+legacy plate has received the detailed Chapter 5–9 editorial redesign.
 
 To synchronize prose and figures, run `publication/build.py`, then
 `publication/build-tex.py` from the repository root. Commit generated `.tex`

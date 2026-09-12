@@ -17,6 +17,7 @@ import chapter05
 import chapter06
 import chapter07
 import chapter08
+import chapter09
 import industrial
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,7 +68,9 @@ class Drawing:
 
 def render(s, frame=None):
     d, f, k = Drawing(s), s['fixture'], s['kind']
-    if k.startswith('ch08-'):
+    if k.startswith('ch09-'):
+        chapter09.render(s,d,frame)
+    elif k.startswith('ch08-'):
         chapter08.render(s,d,frame)
     elif k.startswith('ch07-'):
         chapter07.render(s,d,frame)
@@ -172,7 +175,10 @@ def render(s, frame=None):
 
 def validate_fixture(s):
     f,k=s['fixture'],s['kind']
-    if k.startswith('ch08-'):
+    if k.startswith('ch09-'):
+        assert f['source']=='code/reference/fixtures/chapter09-rope.json'
+        assert abs(chapter09.fixture()['relative_lhs']-chapter09.fixture()['relative_rhs'])<1e-12
+    elif k.startswith('ch08-'):
         assert f['source']=='code/reference/fixtures/chapter08-qkv.json'
         assert chapter08.fixture()['raw']['query']==[[7,2],[-2,-3]]
     elif k.startswith('ch07-'):
@@ -239,7 +245,9 @@ def main():
             'batch':['iteration   0   1   2   3', 'Request A   P   D   D   ·', 'Request B   ·   P   D   D', 'Request C   ·   ·   P   D'],
             'sequence':['API ──▶ submit queue ──▶ worker ──▶ Context::decode_batch', 'API ◀┄┄ sample/stream ◀┄┄ worker ◀┄┄ logits/status', 'Legend: solid call; dashed return; worker owns Context and Batch.'],
             'architecture':['Client ┄┄▶ API ┄┄▶ Dispatcher ┄┄▶ Batched worker [CURRENT]', '                                   │', '                                   ▼', 'parameters ══▶ llama.cpp graph ◀── context / KV state', '                     │', '                     ▼', '             backend ──▶ configured CPU / GPU', 'PREVIEW: paged runtime; LIBRARY: native components; separate integration gates.']}
-        if s['kind'].startswith('ch08-'):
+        if s['kind'].startswith('ch09-'):
+            diagram_lines=[line for raw in chapter09.text_lines(s) for line in (textwrap.wrap(raw,94) or [''])]
+        elif s['kind'].startswith('ch08-'):
             diagram_lines=[line for raw in chapter08.text_lines(s) for line in (textwrap.wrap(raw,94) or [''])]
         elif s['kind'].startswith('ch07-'):
             diagram_lines=[line for raw in chapter07.text_lines(s) for line in (textwrap.wrap(raw,94) or [''])]

@@ -357,10 +357,11 @@ Common confusion: “4-bit” does not fully identify a format or quality level.
 ### RoPE
 
 **Short:** Rotary positional embedding applied to paired query/key dimensions.
-**Precise:** Position-dependent rotations encode relative positional structure
-without adding a learned vector to the hidden state. First introduced: Chapter
-9. Common confusion: implementation details such as dimension ordering and
-scaling are part of model support.
+**Precise:** This book applies a fixed-frequency block-diagonal rotation to
+projected Q and K, with explicit adjacent or split-half pairing and an optional
+identity tail. First derived and implemented: Chapter 9. Common confusion:
+norm preservation does not prove correct pairing, phase accuracy, or
+long-context model quality. Layout and scaling are part of model support.
 
 ### Request / inference request
 
@@ -986,3 +987,11 @@ formula for tile payload does not prove the hardware retains it.
 are part of a kernel contract and may be host or device resident. First
 introduced: Chapter 36. Common confusion: workspace is not persistent model or
 KV state.
+
+### Phase table
+
+**Short:** Precomputed sine/cosine coefficients indexed by position and plane.
+**Precise:** Its identity includes the frequency schedule, rotary width,
+precision and scaling configuration. It can be shared only across compatible
+consumers. First introduced: Chapter 9. Common confusion: it is not a KV cache
+and contains no token-dependent projected activations.

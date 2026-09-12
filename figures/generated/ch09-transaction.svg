@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Validate, preflight, then mutate</title><desc id="desc">Make failure atomicity visible without hiding an activation-sized copy. An immutable dry run checks every output pair before the first write. Commit needs exclusive canonical ownership; phase scratch is O(R), not allocation-free.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH09-TRANSACTION  /  CANONICAL / CHAPTER 9</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Validate, preflight, then mutate</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Make failure atomicity visible without hiding an activation-sized copy.</text>
+<rect x="50" y="235" width="270" height="175" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="265" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">01 / Validate</text>
+<text x="68" y="299" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">shape and position</text>
+<text x="68" y="326" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">all input values</text>
+<text x="68" y="353" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">finite phases</text>
+<rect x="365" y="235" width="270" height="175" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="379" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="383" y="265" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">02 / Preflight</text>
+<text x="383" y="299" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">read every pair</text>
+<text x="383" y="326" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">check F32 outputs</text>
+<text x="383" y="353" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">write nothing</text>
+<rect x="680" y="235" width="270" height="175" fill="#dcefe7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="694" y="264" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="698" y="265" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">03 / Commit</text>
+<text x="698" y="299" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">read both old values</text>
+<text x="698" y="326" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">then write the pair</text>
+<text x="698" y="353" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">tail untouched</text>
+<line x1="320" y1="320" x2="365" y2="320" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="365.00,320.00 356.00,324.35 356.00,315.65"/>
+<line x1="635" y1="320" x2="680" y2="320" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="680.00,320.00 671.00,324.35 671.00,315.65"/>
+<rect x="50" y="467" width="585" height="107" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="64" y="496" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="68" y="497" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Any typed error before commit</text>
+<text x="68" y="531" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">entire owner payload remains bit-identical</text>
+<rect x="680" y="467" width="270" height="107" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="694" y="496" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="698" y="497" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Scratch / O(R)</text>
+<text x="698" y="531" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">F64 sin/cos per plane</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">An immutable dry run checks every output pair before the first write.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Commit needs exclusive canonical ownership; phase scratch is O(R), not allocation-free.</text>
+</svg>

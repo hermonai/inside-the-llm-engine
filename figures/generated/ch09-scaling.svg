@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc"><title id="title">Changing position is not changing the base</title><desc id="desc">Compare analytical phase slopes instead of promising unmeasured long-context quality. R = 4: standard theta = 100, interpolation p/4, and changed theta = 10000. Only the slower plane is plotted; first-plane frequency stays 1 under a base change.</desc>
+<rect width="1000" height="720" fill="white"/>
+<text x="40" y="38" fill="#465c6b" font-family="DejaVu Sans, sans-serif" font-size="14" text-anchor="start">FIG-CH09-SCALING  /  CANONICAL / CHAPTER 9</text>
+<text x="40" y="84" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="30" text-anchor="start">Changing position is not changing the base</text>
+<line x1="40" y1="109" x2="960" y2="109" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="140" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">Compare analytical phase slopes instead of promising unmeasured long-context quality.</text>
+<line x1="115" y1="505" x2="625" y2="505" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="625.00,505.00 616.00,509.35 616.00,500.65"/>
+<line x1="115" y1="505" x2="115" y2="235" stroke="#152b3c" stroke-width="2.5"/>
+<polygon fill="#152b3c" points="115.00,235.00 119.35,244.00 110.65,244.00"/>
+<line x1="115.0" y1="505" x2="115.0" y2="510" stroke="#152b3c" stroke-width="1.5"/>
+<text x="115.0" y="532" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="middle">0</text>
+<line x1="237.5" y1="505" x2="237.5" y2="510" stroke="#152b3c" stroke-width="1.5"/>
+<text x="237.5" y="532" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="middle">8</text>
+<line x1="360.0" y1="505" x2="360.0" y2="510" stroke="#152b3c" stroke-width="1.5"/>
+<text x="360.0" y="532" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="middle">16</text>
+<line x1="482.5" y1="505" x2="482.5" y2="510" stroke="#152b3c" stroke-width="1.5"/>
+<text x="482.5" y="532" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="middle">24</text>
+<line x1="605.0" y1="505" x2="605.0" y2="510" stroke="#152b3c" stroke-width="1.5"/>
+<text x="605.0" y="532" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="middle">32</text>
+<line x1="110" y1="425.3125" x2="115" y2="425.3125" stroke="#152b3c" stroke-width="1.5"/>
+<text x="99" y="430.3125" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="end">1</text>
+<line x1="110" y1="345.625" x2="115" y2="345.625" stroke="#152b3c" stroke-width="1.5"/>
+<text x="99" y="350.625" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="end">2</text>
+<line x1="110" y1="265.9375" x2="115" y2="265.9375" stroke="#152b3c" stroke-width="1.5"/>
+<text x="99" y="270.9375" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="17" text-anchor="end">3</text>
+<text x="55" y="222" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">φ / rad</text>
+<text x="330" y="570" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start">position / tokens</text>
+<line x1="115" y1="505" x2="605" y2="250.0" stroke="#152b3c" stroke-width="3"/>
+<line x1="115" y1="505" x2="605" y2="441.25" stroke="#237c69" stroke-width="3" stroke-dasharray="6 5"/>
+<line x1="115" y1="505" x2="605" y2="479.5" stroke="#465c6b" stroke-width="3"/>
+<rect x="665" y="223" width="285" height="135" fill="#dcecf7" stroke="#152b3c" stroke-width="1.4"/>
+<text x="679" y="252" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="683" y="253" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Plane 1 / R = 4</text>
+<text x="683" y="287" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">θ = 100: slope 0.1</text>
+<text x="683" y="314" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">p/4: slope 0.025</text>
+<text x="683" y="341" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">θ = 10000: slope 0.01</text>
+<rect x="665" y="402" width="285" height="153" fill="#f4ead2" stroke="#152b3c" stroke-width="1.4"/>
+<text x="679" y="431" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="19" text-anchor="start"></text>
+<text x="683" y="432" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="21" text-anchor="start">Plane 0 distinguishes</text>
+<text x="683" y="466" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">base change: ω0 = 1</text>
+<text x="683" y="493" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">interpolation: ω0 = 1/4</text>
+<text x="683" y="520" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="18" text-anchor="start">These are not equivalent</text>
+<line x1="40" y1="608" x2="960" y2="608" stroke="#152b3c" stroke-width="1.5"/>
+<text x="40" y="638" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">R = 4: standard theta = 100, interpolation p/4, and changed theta = 10000.</text>
+<text x="40" y="659" fill="#152b3c" font-family="DejaVu Sans, sans-serif" font-size="15" text-anchor="start">Only the slower plane is plotted; first-plane frequency stays 1 under a base change.</text>
+</svg>

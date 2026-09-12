@@ -53,19 +53,29 @@ expected artifact, oracle, failure injection, measurement (if any), and cleanup.
 | [46. Independent oracle](../labs/lab-39-qkv-projection-workbench.md) | 8 | Checked QKV workbench | Fixture, explicit expected artifact and deliberate-break checkpoint |
 | [47. Position blindness](../labs/lab-39-qkv-projection-workbench.md) | 8 | Checked QKV workbench | Fixture, explicit expected artifact and deliberate-break checkpoint |
 | [48. Analytical cost](../labs/lab-39-qkv-projection-workbench.md) | 8 | Checked QKV workbench | Fixture, explicit expected artifact and deliberate-break checkpoint |
-| 49. Implement naive attention | 10 | Dense causal scalar attention | Expose mask and stability failures |
-| 50. Decode with and without KV | 21 | Add per-layer KV reuse | Greedy logits agree across both paths |
-| 51. Parse a GGUF tensor directory | 15 | Bounds-checked metadata/tensor index | Reject truncation, overflow, and invalid alignment |
-| 52. Measure quantized matvec bandwidth | 17 | Packed matvec benchmark | Separate bytes, dequantization, compute, and control |
-| 53. Build a continuous batching simulator | 26 | Iteration scheduler | Inject skew, cancellation, and head-of-line blocking |
-| 54. Implement a block allocator | 30 | Allocate/incref/decref/free | Boundary, exhaustion, and concurrent lifetime tests |
-| 55. Demonstrate prefix COW corruption | 32 | Share aligned prefix pages | Disable COW on partial tail and reproduce corruption |
-| 56. Compare scalar and SIMD attention | 42–44 | ISA-specialized microkernel | Differential shapes, dispatch fallback, sanitizer |
-| 57. Measure CPU/GPU attention crossover | 48 | Shape-gated provider A/B | Find the launch/transfer break-even, including losing cases |
-| 58. Build an expert pager | 56–57 | Pack, acquire, pin, prefetch, evict | Inject short reads, queue pressure, and pin leaks |
-| 59. Cancel during decode | 27/69/71 | End-to-end cancellation propagation | Prove leases, slots, and streams release exactly once |
-| 60. Run model equivalence tests | 66 | Compare real-model token logits | Vary context, GQA, quantization, and reduction tolerance |
-| 61. Benchmark without cache contamination | 73 | Reproducible warm/cold harness | Detect accidental prefix/model/OS-cache leakage |
+| [49. Build the two-dimensional map](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [50. Use two clocks](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [51. Prove relative position](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [52. Reorder coordinates](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [53. Preserve partial tails](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [54. Make failure atomic](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [55. Separate storage from coordinates](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [56. Identify precision boundaries](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [57. Follow composed Q/K/V](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| [58. Design a measurable candidate](../labs/lab-49-rope-position-workbench.md) | 9 | Checked RoPE workbench | Explicit fixture, expected artifact, deliberate break and cleanup |
+| 59. Implement naive attention | 10 | Dense causal scalar attention | Expose mask and stability failures |
+| 60. Decode with and without KV | 21 | Add per-layer KV reuse | Greedy logits agree across both paths |
+| 61. Parse a GGUF tensor directory | 15 | Bounds-checked metadata/tensor index | Reject truncation, overflow, and invalid alignment |
+| 62. Measure quantized matvec bandwidth | 17 | Packed matvec benchmark | Separate bytes, dequantization, compute, and control |
+| 63. Build a continuous batching simulator | 26 | Iteration scheduler | Inject skew, cancellation, and head-of-line blocking |
+| 64. Implement a block allocator | 30 | Allocate/incref/decref/free | Boundary, exhaustion, and concurrent lifetime tests |
+| 65. Demonstrate prefix COW corruption | 32 | Share aligned prefix pages | Disable COW on partial tail and reproduce corruption |
+| 66. Compare scalar and SIMD attention | 42–44 | ISA-specialized microkernel | Differential shapes, dispatch fallback, sanitizer |
+| 67. Measure CPU/GPU attention crossover | 48 | Shape-gated provider A/B | Find the launch/transfer break-even, including losing cases |
+| 68. Build an expert pager | 56–57 | Pack, acquire, pin, prefetch, evict | Inject short reads, queue pressure, and pin leaks |
+| 69. Cancel during decode | 27/69/71 | End-to-end cancellation propagation | Prove leases, slots, and streams release exactly once |
+| 70. Run model equivalence tests | 66 | Compare real-model token logits | Vary context, GQA, quantization, and reduction tolerance |
+| 71. Benchmark without cache contamination | 73 | Reproducible warm/cold harness | Detect accidental prefix/model/OS-cache leakage |
 
 Every lab evolves through CHECK, BUILD, BREAK, and EXTEND prompts. Performance
 labs follow `BENCHMARK_POLICY.md`; numerical labs use independent oracles.

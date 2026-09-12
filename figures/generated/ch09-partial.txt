@@ -1,0 +1,22 @@
+FIG-CH09-PARTIAL
+A rotary prefix leaves an exact identity tail
+CANONICAL / CHAPTER 9
+
+Separate the even rotated prefix from trailing channels in an odd-width head.
+Dh = 5, R = 4, theta = 100, position 1; frequencies use the selected prefix width R.
+Every finite trailing F32 value retains its original bits, including negative zero.
+Independent adjacent result: [-1.1426396637476532, 1.922075596544176, 2.5856788292467647,
+4.279516911052588, -1.922075596544176, -1.1426396637476532, 0.7970023325794974,
+-2.9350957875106634]
+Position rotates Q and K; V stays unchanged. No attention or cache executes.
+
+Separate the even rotated prefix from trailing channels in an odd-width head.
+
+Dh = 5, R = 4, theta = 100, position 1; frequencies use the selected prefix width R.
+
+Every finite trailing F32 value retains its original bits, including negative zero.
+
+Fixture: {"source": "code/reference/fixtures/chapter09-rope.json"}
+
+Source: figures/src/ch09-partial.json
+Implementation/evidence: code/mini-engine/crates/engine0/src/rope.rs

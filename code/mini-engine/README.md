@@ -127,10 +127,16 @@ The historical Chapter 6 oracle and benchmark records remain separate regression
 - [`engine-0-oracle.md`](../reference/engine-0-oracle.md) records the historical
   fake candidate milestone.
 
-Guided work is in [Labs 1–48](../../docs/LABS.md). Chapter 8 adds checked Q/K/V
+Guided work is in [Labs 1–58](../../docs/LABS.md). Chapter 8 adds checked Q/K/V
 projection semantics and borrowed head views on this substrate. Run
 `cargo run --example chapter08_qkv_trace`, `cargo test --test qkv`, and the
 repository-root `python3 scripts/check-qkv-visual-parity.py` for the independent
-full-vector, head-offset and analytical-cost checks. The project intentionally adds no
+full-vector, head-offset and analytical-cost checks. Chapter 9 adds standard
+RoPE with explicit pairing, partial prefix, F64 phases/F32 output and
+failure-safe in-place mutation. Run `cargo test --test rope`,
+`cargo run --example chapter09_rope_trace`, and repository-root
+`python3 scripts/check-rope-visual-parity.py`. The latter checks complete
+positioned Q/K and unchanged V against an independent complex oracle.
+The project intentionally adds no
 training, complete Transformer layer, attention, general tensor framework,
 BLAS, accelerator, or GGUF dependency yet.

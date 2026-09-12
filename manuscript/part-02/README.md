@@ -17,7 +17,7 @@ the historical ENGINE-1 fixture.
 | [6. Matrix Multiplication: The Engine Room](chapter-06-matrix-multiplication-the-engine-room.md) | How do we multiply them correctly and efficiently? | COMPLETE |
 | [7. Embeddings and Normalization](chapter-07-embeddings-and-normalization.md) | How do lookup and RMSNorm transform them? | COMPLETE |
 | [8. Queries, Keys, and Values](chapter-08-queries-keys-and-values.md) | How do projections create head-shaped activations? | COMPLETE |
-| 9. Position: RoPE From First Principles | How does position enter Q/K geometry? | PLANNED |
+| [9. Position: RoPE From First Principles](chapter-09-position-rope.md) | How does position enter Q/K geometry? | COMPLETE |
 | 10. Causal Self-Attention | How do scores, masking, softmax, and values combine? | PLANNED |
 | 11. The Feed-Forward Network | How does the token-wise nonlinear path work? | PLANNED |
 | 12. One Complete Transformer Layer | How do the operations compose safely? | PLANNED |

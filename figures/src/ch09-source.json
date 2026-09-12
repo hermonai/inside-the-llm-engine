@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-SOURCE",
+  "chapter": 9,
+  "kind": "ch09-source",
+  "title": "One operation, three execution contracts",
+  "purpose": "Locate standard teaching RoPE against default, preview and library source paths.",
+  "contract": [
+    "CURRENT Batched delegates to llama.cpp; Hermon paged execution remains PREVIEW.",
+    "Teaching F64 phases and typed error guarantees are not production bitwise-equivalence claims."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Locate standard teaching RoPE against default, preview and library source paths. CURRENT Batched delegates to llama.cpp; Hermon paged execution remains PREVIEW. Teaching F64 phases and typed error guarantees are not production bitwise-equivalence claims.",
+  "alt": "Locate standard teaching RoPE against default, preview and library source paths. CURRENT Batched delegates to llama.cpp; Hermon paged execution remains PREVIEW. Teaching F64 phases and typed error guarantees are not production bitwise-equivalence claims.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}

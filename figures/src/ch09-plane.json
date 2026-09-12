@@ -1,0 +1,21 @@
+{
+  "id": "FIG-CH09-PLANE",
+  "chapter": 9,
+  "kind": "ch09-plane",
+  "title": "Build a rotation from two basis vectors",
+  "purpose": "Read a positive one-radian rotation as geometry and as a checked coordinate calculation.",
+  "contract": [
+    "Positive angles rotate counterclockwise; coordinate axes are a and b.",
+    "For [1,2], squared norm is 5 before and after rotation, up to floating-point error."
+  ],
+  "status": "CANONICAL / CHAPTER 9",
+  "publication_status": "canonical",
+  "code": "code/mini-engine/crates/engine0/src/rope.rs",
+  "legacy": null,
+  "animate": false,
+  "caption": "Read a positive one-radian rotation as geometry and as a checked coordinate calculation. Positive angles rotate counterclockwise; coordinate axes are a and b. For [1,2], squared norm is 5 before and after rotation, up to floating-point error.",
+  "alt": "Read a positive one-radian rotation as geometry and as a checked coordinate calculation. Positive angles rotate counterclockwise; coordinate axes are a and b. For [1,2], squared norm is 5 before and after rotation, up to floating-point error.",
+  "fixture": {
+    "source": "code/reference/fixtures/chapter09-rope.json"
+  }
+}
