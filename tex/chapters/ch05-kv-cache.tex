@@ -1,41 +1,247 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 5 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md
 \chapter{The KV Cache: Inference's Central Data Structure}\label{ch:kv-cache}
 
 \begin{ChapterIntent}
-Every token a model generates attends to every token before it.
-Recomputing their keys and values at each step would make generation
-quadratic; caching them makes it linear, and turns the engine into a memory
-manager. This chapter derives what is cached and when, computes its size for
-real models --- from half a megabyte to a few tens of kilobytes per token,
-depending on the architecture --- and shows how the cache, not the weights,
-comes to dominate memory capacity at long context and large batch, and the
-bytes read per step at long context. Nearly every chapter in
-Part~\ref{part:serving} manages this one data structure.
+Every token a model generates attends to every token before it. Recomputing
+their keys and values at each step would make generation quadratic; caching
+them makes it linear, and turns the engine into a memory manager. This chapter
+derives what is cached and when, computes its size for real models --- from
+half a megabyte to a few tens of kilobytes per token, depending on the
+architecture --- and shows how the cache, not the weights, comes to dominate
+memory capacity at long context and large batch, and the bytes read per step at
+long context. Nearly every chapter in Part~\ref{part:serving} manages this one
+data structure.
 \end{ChapterIntent}
 
 \OpeningSection{At 32K tokens the cache outweighs the model}
 
+When llama.cpp loaded Llama~3.2~3B on the M1 of \Chref{roofline} with room for
+8,192 tokens of context, it reported the memory it had set aside for the KV
+cache: \textbf{896~MiB} --- 448~MiB of keys and 448~MiB of values, in 16-bit
+floats (measured; the allocation is in the record). That is 112~KiB for every
+token of context, and it matches the model's shape exactly: 2 tensors (keys and
+values) $\times$ 28 layers $\times$ 8 key/value heads $\times$ 128 numbers per
+head $\times$ 2 bytes.
+
+The weights of the same model occupy 2.01~GB. At 32,768 tokens of context ---
+the length of a long document, or a few hours of agent conversation --- one
+sequence's cache is 3.5~GiB (derived from the measured 112~KiB per token):
+\textbf{nearly twice the size of the model}. Serve eight such conversations
+and the cache is fifteen times the model.
+
+A language model's weights are fixed and shared by every request. Its KV cache
+is per request, grows with every token, is written once and read at every
+later step, and must be released when the request ends. Managing it is most of
+what distinguishes an inference engine from a model runner.
+
 \NapkinSection{Napkin math: bytes per token, sequences per GPU}
+
+For a model with $L$ attention layers, $H_{kv}$ key/value heads of width $d_h$,
+and a cache element of $b_{kv}$ bytes, each token of context costs
+\begin{equation}
+m_{kv} = 2\,L\,H_{kv}\,d_h\,b_{kv}\quad[\text{bytes/token}].
+\label{eq:kv-per-token}
+\end{equation}
+The factor 2 counts keys and values. The number of \emph{query} heads does not
+appear: grouped-query attention lets several query heads share one key/value
+head, and that sharing is the main reason 2026's models cache far less per
+token than 2022's (\Chref{shrinking-kv}).
+
+\EngineFigure{ch05-kv-per-token}{KV-cache bytes per token for real model
+configurations with a 16-bit cache (derived from their published
+configurations; Llama~3.2~3B confirmed by llama.cpp's allocation). For
+gpt-oss-120b and Qwen3.5, only full-attention layers are counted: gpt-oss adds
+sliding-window layers capped at 128 tokens, and Qwen3.5 adds a fixed-size
+recurrent state per sequence (\Chref{hybrid-models}).}{fig:ch05-kv-per-token}
+
+Capacity follows by division. An H100 has 80~GB. Qwen3-8B in BF16 takes
+16.4~GB; set aside about 4~GB for activations and workspace (illustrative),
+leaving about 60~GB for caches. At 144~KiB per token, that is about 400,000
+tokens of context in total (derived) --- 49 sequences of 8,192 tokens, or
+twelve of 32,768. Every one of those sequences must be resident for
+the engine to decode it. At long context, \textbf{memory capacity decides the
+batch size}, and \Chref{roofline} showed that batch size decides throughput.
+
+A larger model makes it worse. Llama~3~70B has 80 layers, so 320~KiB per
+token. Stored in FP8 it needs about 71~GB for weights, leaving an 80~GB H100,
+with the same 4~GB set aside, room for roughly 16,000 tokens of cache in
+total: one long conversation, or a handful of short ones. On an H200's
+141~GB, the same model has room for about 200,000 tokens (derived).
+
+Bandwidth follows too. A decode step for $B$ sequences with contexts $S_i$
+reads
+\begin{equation}
+W_{\text{step}} = W_{\text{weights}} + m_{kv}\sum_{i=1}^{B} S_i
+\quad[\text{bytes}],
+\label{eq:decode-bytes}
+\end{equation}
+and only the first term is shared across the batch. \Chref{prefill-decode}
+found the crossover for Qwen3-8B: with 32 sequences, the cache term overtakes
+the weights at about 3,200 tokens each.
 
 \section{Why recomputation is quadratic}
 
+Attention at position $t$ compares the query of token $t$ with the keys of
+tokens $1$ to $t$ and mixes their values. Those keys and values are
+projections of each earlier token's hidden state, layer by layer. A model
+without a cache would recompute them at every step: generating $n$ tokens
+would project $1+2+\dots+n \approx n^{2}/2$ token positions through every
+layer, instead of $n$.
+
+The keys and values of earlier tokens do not change when a later token
+arrives: causal attention means token $j$'s state depends only on tokens
+$\le j$. So they can be computed once and kept. This is the entire idea of
+the \Term{KV cache}, and it changes the cost of generation from quadratic in
+projections to linear. What remains quadratic --- each step attending over all
+previous tokens --- is now a memory read rather than a recomputation.
+
 \section{What is cached, and when}
+
+For each layer and each token, the cache holds that token's key vector for
+every key/value head --- after rotary position embedding has been applied
+(\Appref{rope}) --- and its value vector. Queries are not cached; each is used
+once, in the step that computes it.
+
+Prefill writes the cache for every prompt token at once. Each decode step
+writes one new entry per layer and reads all previous entries. A
+multi-head-latent-attention model such as DeepSeek-V3 caches a compressed
+latent of 512 numbers plus a 64-number rotary key per layer instead of full
+keys and values --- 576 numbers where multi-head attention with the same heads
+would store 40,960 (derived from its configuration; \Chref{shrinking-kv}).
 
 \section{State that grows, per request}
 
+The cache has an awkward lifecycle for a memory allocator. Its size is not
+known in advance, because the number of output tokens is not. It grows one
+token per step. It belongs to one request --- unless requests share a prefix,
+when its first blocks could be shared (\Chref{prefix-caching}). It must be freed
+the moment its request finishes, fails or is cancelled
+(\Chref{request-lifecycle}). An engine that reserves memory for each request's
+maximum length wastes most of it; an engine that grows allocations in place
+fragments its memory. \Chref{paged-kv} applies the operating system's answer:
+fixed-size pages and a table per request.
+
 \section{Reading the whole cache every step}
+
+Weights are read once per step for the whole batch. The cache is read once per
+step \emph{per sequence}: every decoding sequence reads all of its own keys and
+values in every layer. At short context the weights dominate the bytes of a
+step; at long context and large batch, equation~\eqref{eq:decode-bytes} says
+the cache does. Batching amortizes the first term and multiplies the second, so
+past the crossover, adding sequences no longer makes decode more efficient per
+byte --- it only adds cache reads. This is why long-context serving is
+bandwidth-bound even at batch sizes that would make short-context serving
+compute-bound, and why shrinking the cache (\Chref{shrinking-kv}) and
+quantizing it (\Chref{kv-quantization}) pay off twice: in capacity and in
+bandwidth.
 
 \section{Layout: layers, heads and tokens}
 
+A cache has at least four logical dimensions --- layer, key or value, token
+and head, each head a vector of $d_h$ numbers --- and the order in which they
+are laid out in memory decides how efficiently attention can read it. Decode
+attention for one layer and one head reads all tokens of that head, so tokens
+should be adjacent for each head; writing a new token touches every head, so
+heads should be adjacent for each token. No layout serves both perfectly, and
+engines choose based on which kernel they want to make fast. llama.cpp's
+measured allocation above keeps keys and values in separate buffers, one per
+layer. Paged caches (\Chref{paged-kv}) add a level of indirection: tokens are
+grouped into fixed-size blocks, and a table maps each sequence's logical
+positions to physical blocks.
+
+\FigureIntent{The same cache drawn three ways: contiguous per sequence, with
+the waste of a maximum-length reservation; token-major within layer and head;
+and paged, with a block table mapping logical token positions to scattered
+physical blocks.}
+
 \section{Where the bytes go on a real accelerator}
+
+An engine's memory budget has four lines: weights, KV cache, activations and
+workspace, and fragmentation. Weights are fixed. Activations are small at
+decode and large at prefill --- prefill of a long prompt materializes
+activations for every prompt token, which is one reason engines limit how many
+prompt tokens enter a step (\Chref{chunked-prefill}). Workspace is kernel
+scratch: attention's split partials, communication buffers, captured graphs.
+Everything left is cache, and the engine converts it into concurrency:
+\begin{equation}
+B_{\max} \approx \frac{M_{\text{HBM}} - M_{\text{weights}} - M_{\text{act}}}
+{m_{kv}\,\bar{S}},
+\label{eq:max-batch}
+\end{equation}
+for an average context $\bar{S}$. Every technique in Part~\ref{part:serving}
+that raises the numerator or lowers the denominator raises throughput.
 
 \LedgerSection
 
+\begin{ConstraintLedger}
+Compute & buys & Each token's keys and values are projected once instead of at every later step: quadratic recomputation becomes linear. \\
+Latency & buys & Decode steps cost one token's projections, not the whole context's. \\
+Memory capacity & spends & $m_{kv}$ per token per sequence: 112~KiB for Llama~3.2~3B (measured), 320~KiB for Llama~3~70B (derived). \\
+Memory bandwidth & spends & Every step reads every sequence's whole cache; batching does not amortize it. \\
+Correctness & risks & A cached entry is valid only for the exact token prefix, positions and model that produced it (\Chref{prefix-caching}). \\
+\end{ConstraintLedger}
+
 \LabSection{a cache you can prove correct}
+
+\LabIntent{In \texttt{code/labs/ch05-kv-cache/}, a single-layer causal
+attention in Rust, run twice: once recomputing every key and value at each
+step, once with a cache. The two must produce the same outputs within a stated
+floating-point tolerance at every step --- the oracle is the uncached version.
+The program counts projection FLOPs and cache bytes for both and prints the
+crossover context at which cache reads exceed weight reads for the reader's
+chosen model shape. Break it: evict one cached token and watch the outputs
+diverge.}
 
 \HappenedSection{537 megabytes per decode step}
 
-\FrontierSection{}
+When Hermon's paged-attention kernels were ported from Apple silicon to an
+NVIDIA RTX 5060 Ti, the cache had to move. On Apple's unified memory the
+kernel could read a cache that lived in ordinary host memory at full speed. On
+a discrete GPU, Hermon's developers measured \textbf{448~GB/s} from the card's
+own memory against \textbf{17.8~GB/s} across PCIe from pinned host memory ---
+a 25-fold gap. A decode step of Llama-3-8B at 4,096 tokens of context reads
+about 537~MB of cache (derived: $4{,}096\times128$~KiB), about 1.2~ms from
+video memory and about 30~ms across PCIe: a ceiling of 33 tokens per second
+from the interconnect alone. The design followed from the arithmetic: the
+cache arena lives on the device, and each new token's entry is written through
+to it --- cheap, because decode writes one token and reads the whole context
+(Hermon \texttt{docs/KERNEL\_DESIGN.md}, section K5; the native kernel path is
+selected with \texttt{HERMON\_PAGED\_KERNELS}, so PREVIEW
+\todo{verify the section's measurements and status against source at
+\texttt{2a3fd52}}). \Chref{offloading} returns to what happens when the cache
+does not fit on the device at all.
+
+\FrontierSection{2026-09-23}
+
+The cache per token is the architectural number that moved most between 2023
+and 2026. Grouped-query attention cut it by the sharing factor; multi-head
+latent attention cut it several-fold again \cite{deepseek2024v2,deepseek2024v3}.
+The 2026 flagships go further by making most layers keep no growing cache at
+all: Qwen3.5-397B-A17B has 15 full-attention layers among 60, each with two
+key/value heads, for 30~KiB per token plus a fixed recurrent state
+\cite{qwen2026qwen35config}; Kimi~K3 pairs 69 Kimi Delta Attention layers
+with 24 gated latent-attention layers \cite{moonshot2026kimik3}
+\todo{verify: read the Kimi Delta Attention paper before describing its state}. DeepSeek-V4 compresses the
+cache along the sequence and reports 10\% of DeepSeek-V3.2's cache at a
+million tokens \cite{deepseek2026v4}. Meanwhile the cache is increasingly
+stored in eight bits or fewer (\Chref{kv-quantization}) and in tiers beyond the
+GPU (\Chref{kv-storage-tier}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:kv-per-token}, compute the
+cache per token of Llama~3~405B in BF16 and in FP8. How many 128K-token
+sequences fit beside its FP8 weights on eight H200s?
+\item \emph{Prediction.} For Qwen3-8B on one H100, at what context does a
+batch of 64 sequences read more cache than weights per step? At what context
+does it run out of memory?
+\item \emph{Implementation.} Extend the chapter's lab to grouped-query
+attention with a configurable number of key/value heads, and verify that its
+outputs match multi-head attention when every head has its own keys.
+\item \emph{Falsification.} Find a model configuration for which
+equation~\eqref{eq:kv-per-token} gives the wrong answer, and explain which
+architectural feature it ignores.
+\end{enumerate}

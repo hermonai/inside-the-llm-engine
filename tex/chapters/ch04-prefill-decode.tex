@@ -1,42 +1,260 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 4 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md
 \chapter{Prefill and Decode: Two Workloads, One Model}\label{ch:prefill-decode}
 
 \begin{ChapterIntent}
-Processing a prompt and generating a reply use the same weights and
-almost nothing else in common. Prefill multiplies the weights by a matrix of
-prompt tokens and is limited by compute; decode multiplies them by one vector
-per sequence and is limited by memory bandwidth. This chapter measures both
-phases on one machine, derives time to first token and time per output token
-from the roofline, and shows why each phase wants a different batch size, a
-different kernel, a different scheduler and --- at scale --- different
-hardware. The tension between them drives chunked prefill
-(\Chref{chunked-prefill}) and disaggregated serving
-(\Chref{disaggregated-serving}).
+Processing a prompt and generating a reply use the same weights and almost
+nothing else in common. Prefill multiplies the weights by a matrix of prompt
+tokens and is limited by compute; decode multiplies them by one vector per
+sequence and is limited by memory bandwidth. This chapter measures both phases
+on one machine, derives time to first token and time per output token from the
+roofline, and shows why each phase wants a different batch size, a different
+kernel, a different scheduler and --- at scale --- different hardware. The
+tension between them drives chunked prefill (\Chref{chunked-prefill}) and
+disaggregated serving (\Chref{disaggregated-serving}).
 \end{ChapterIntent}
 
-\OpeningSection{The same model reads thirty times faster than it writes}
+\OpeningSection{The same model reads twelve times faster than it writes}
+
+On the M1 laptop of \Chref{roofline}, llama.cpp processed a 512-token prompt
+through Llama~3.2~3B at \textbf{248 tokens per second}, then generated at
+\textbf{21 tokens per second} (measured; same record). Both numbers come from
+the same weights, the same GPU and the same arithmetic: every token, read or
+written, costs about 6.4~GFLOP. Reading costs 4.0~ms per token. Writing costs
+47.6~ms per token --- twelve times as much.
+
+Nothing in the model explains the difference. A prompt token and a generated
+token pass through identical layers. What differs is how many of them arrive
+at once. The 512 prompt tokens are all known before the first layer runs, so
+one pass over the weights serves all of them; a generated token does not exist
+until the previous one has been sampled, so each needs its own pass. Prefill
+is a matrix--matrix product and decode is a matrix--vector product, and
+\Chref{roofline} showed which roof each one hits.
+
+Every user feels both phases. The prompt's cost arrives as the wait before
+the first word; the reply's cost arrives as the pace of the words after it.
+They are different quantities with different physics, and an engine that
+treats them alike serves both badly.
 
 \NapkinSection{Napkin math: time to first token and time per output token}
 
+Let a model have $P$ parameters in its layers, stored at $b_w$ bytes each,
+and let a machine provide bandwidth $\beta$ and effective compute
+$\eta\pi$, where $\eta$ is the fraction of peak a real kernel achieves. A
+prompt of $S$ tokens costs about $2PS$ FLOPs in the layers, plus the output
+projection once, for the last token only --- an engine does not need logits
+for positions whose next token it already knows. It also reads the weights at
+least once. Prefill time is therefore about
+\begin{equation}
+t_{\text{prefill}}(S) \approx \max\!\left(\frac{P\,b_w}{\beta},\;
+\frac{2PS}{\eta\pi}\right).
+\label{eq:prefill-time}
+\end{equation}
+The two terms are equal at $S \approx b_w\eta\pi/(2\beta)$ --- the same
+$B^{*}$ as batched decode in \Chref{roofline}, now counted in prompt tokens.
+On the M1 it is a dozen or so tokens; on an H100 with BF16 weights, one to
+three hundred, depending on $\eta$. Beyond it, prefill time grows linearly with the prompt.
+
+Decode, one sequence at a time, is the other term's opposite:
+\begin{equation}
+t_{\text{decode}} \approx \frac{W}{\beta}
+\label{eq:decode-time}
+\end{equation}
+per token, where $W$ is the bytes read per step --- the weights, plus the KV
+cache once contexts grow (\Chref{kv-cache}).
+
+For the M1: a 512-token prompt costs 2.07~s (measured, $512/247.75$) and each
+generated token 48~ms (measured). For Qwen3-8B in BF16 on an H100, with
+$\eta = 0.6$ (illustrative) and 6.95~billion layer parameters (derived from
+its configuration): a 2,000-token prompt costs about
+$2\times 6.95\times10^{9}\times 2{,}000 / (0.6\times 989\times10^{12})
+\approx 47$~ms, and each generated token at least
+$15.1~\text{GB}/3.35~\text{TB/s}\approx 4.5$~ms. The phases scale with
+different hardware resources, so moving between machines changes them by
+different factors. An H100 has about 380 times the M1's peak compute (989
+dense BF16 TFLOP/s against 2.6 TFLOP/s, whose precision Apple does not state)
+but only about 49 times its bandwidth (3.35~TB/s against 68~GB/s): moving from
+the laptop to the data center speeds prefill far more than it speeds decode.
+
 \section{Prefill: a matrix of tokens}
+
+During prefill the activations for all $S$ prompt tokens form a matrix
+$\mathbf{X}\in\mathbb{R}^{S\times d}$, and each linear layer computes
+$\mathbf{X}\mathbf{W}$ for a weight matrix
+$\mathbf{W}\in\mathbb{R}^{d\times d'}$. Each weight is loaded once and used $S$
+times; the intensity is about $2S/b_w$ FLOPs per byte. For any prompt longer
+than a few hundred tokens that is past the ridge of every machine in
+\Chref{roofline}, and prefill runs under the compute roof --- 61\% of peak on
+the M1 (measured).
+
+Prefill also writes the KV cache: for every prompt token and every layer, a
+key and a value vector, the state that decode will read
+(\Chref{kv-cache}). And it computes causal attention among the prompt tokens,
+an $S\times S$ interaction whose cost \Chref{flashattention} tames.
 
 \section{Decode: one token at a time}
 
+During decode each sequence contributes one new token per step. Its
+activations are a vector, each linear layer is a matrix--vector product, and
+the intensity is $2/b_w$ --- one to four FLOPs per byte. The step reads every
+weight and, for attention, the sequence's whole KV cache, to produce one
+token. Batching $B$ sequences multiplies the useful work per weight byte by
+$B$, but not per cache byte: each sequence reads its own cache.
+
+Decode is also sequential in a way prefill is not. The next step's input is
+the token the current step samples, so the steps of one sequence cannot
+overlap. Everything the engine does between steps --- sampling, detokenizing,
+checking stop conditions, scheduling the next batch --- sits on the critical
+path of every token (\Chref{request-lifecycle}).
+
 \section{Attention's share grows with context}
+
+The napkin math above counted only the linear layers. Attention adds two costs
+that grow with context, one per phase.
+
+In prefill, causal attention over $S$ tokens costs about $2S^{2}H_qd_h$ FLOPs
+per layer, against $2P_{\ell}S$ for a layer's linear parameters $P_{\ell}$.
+They are equal at $S\approx P/(H_qd_hL)$. For Qwen3-8B that is
+$6.95\times10^{9}/(4{,}096\times36)\approx 47{,}000$ tokens (derived): below
+it, prefill is mostly matrix multiplication; above it, mostly attention.
+
+In decode, attention's cost is bytes: each step reads $S$ tokens of KV cache
+per sequence. For Qwen3-8B the cache is 144~KiB per token (derived from its
+configuration: $2\times36$ layers $\times\,8$ KV heads $\times\,128\times2$
+bytes), so a single sequence's cache equals the 15.1~GB of weights at about
+100,000 tokens. With 32 sequences in a batch, whose weight reads are shared
+but whose cache reads are not, the cache overtakes the weights at about 3,200
+tokens per sequence. In a busy server, long-context decode is a
+cache-reading workload. \Chref{kv-cache} and Part~\ref{part:serving} are about
+exactly that.
 
 \section{Latency, defined: TTFT, TPOT, ITL and end to end}
 
+Four measurements describe what a user experiences, and the book uses them
+precisely. Following DistServe \cite{zhong2024distserve}:
+
+\begin{itemize}
+\item \Term{Time to first token} (TTFT): from the request's arrival to the
+first generated token. It includes queueing as well as prefill, whose last
+position yields the first token.
+\item \Term{Time per output token} (TPOT): the average time between generated
+tokens after the first, for one request.
+\item \Term{Inter-token latency} (ITL): the individual gaps between
+consecutive tokens. Its distribution matters more than its mean; a stall
+shows up here and nowhere else.
+\item \Term{End-to-end latency}: arrival to last token, about
+$\text{TTFT}+(n-1)\,\text{TPOT}$ for $n$ output tokens.
+\end{itemize}
+
+\Chref{request-lifecycle} defines where each timestamp is taken; a token is
+not the same event as a byte a client can display. Throughput metrics come
+later, in \Chref{napkin-math} and \Chref{benchmarking}: an engine can raise
+aggregate tokens per second while every user's TPOT gets worse.
+
 \section{Where the phases collide}
+
+An engine that serves many users runs both phases at once, and they interfere.
+If a 2,000-token prompt joins a batch of decoding sequences, the step that
+processes it takes as long as the prompt's prefill. On the M1, a 512-token
+prefill takes about two seconds; every sequence decoding alongside it would
+see a two-second gap between two of its tokens --- forty ordinary decode steps
+(derived from the measured rates). On an H100, a 2,000-token prompt for
+Qwen3-8B would open a gap of about 47~ms, ten times an ordinary step.
+
+The reverse interference is subtler. If the scheduler admits prompts only
+between decode steps, new requests queue behind the running batch, and TTFT
+grows with the load rather than with the prompt. Neither phase can be
+optimized without deciding how the other is treated. \Chref{chunked-prefill}
+splits prompts into pieces that fit beside the decodes;
+\Chref{scheduling} decides who waits.
+
+\FigureIntent{A timeline of one GPU serving three requests: a long prefill
+lands in a batch of decoding sequences and stretches one step; below it, the
+same arrivals with the prefill split into chunks, showing bounded gaps between
+tokens and a later first token for the new request.}
 
 \section{Two phases, two ideal machines}
 
+Taken separately, the phases want different hardware. Prefill wants compute:
+tensor-core throughput, and low-precision formats that double it
+(\Chref{low-precision-float}). Decode wants memory bandwidth and capacity: HBM
+to stream weights and caches, and room for many sequences' caches at once.
+They also want different parallelism: prefill tolerates splitting a model
+across many GPUs because its large matrices amortize communication; decode's
+small steps do not (\Chref{model-parallelism}).
+
+Running each phase on hardware and parallelism chosen for it, and moving the
+KV cache between them, is disaggregated serving
+(\Chref{disaggregated-serving}). DistServe reported serving up to 7.4 times
+more requests within latency targets by separating the phases onto different
+GPUs \cite{zhong2024distserve} (reported by the authors; not reproduced here).
+
 \LedgerSection
+
+This chapter's technique is the simplest one an engine can apply to the two
+phases: mixing a prefill into a running decode batch rather than making it
+wait.
+
+\begin{ConstraintLedger}
+Compute & buys & The prompt's large matrices raise the step's arithmetic intensity; the GPU is busier. \\
+Latency (TTFT) & buys & New requests start without waiting for the batch to drain. \\
+Latency (ITL) & spends & Every decoding sequence in the step waits for the prefill: about forty ordinary steps' worth for a 512-token prompt on the M1 (derived). \\
+Memory capacity & spends & The new request's KV cache is allocated immediately. \\
+\end{ConstraintLedger}
 
 \LabSection{time the two phases}
 
-\HappenedSection{interference in a shared batch}
+\LabIntent{In \texttt{code/labs/ch04-prefill-decode/}, a Rust program that
+runs the same weight matrices over a matrix of $S$ tokens and over $S$
+separate vectors, checking that both produce identical results against a naive
+oracle, then times each for $S = 1$ to 1,024. The reader predicts from
+equation~\eqref{eq:prefill-time} where the two curves diverge, then reproduces
+the chapter's llama.cpp measurement with \texttt{llama-bench -p 512 -n 128} on
+their own machine and compares the ratio.}
 
-\FrontierSection{}
+\HappenedSection{a decode speedup hidden by prefill}
+
+Hermon records a measurement that shows why the phase split matters for every
+optimization. Its prompt-lookup speculation (\Chref{speculative-decoding}) was
+tested on a retrieval workload in which the model quotes a passage from its
+prompt: eight concurrent requests, Qwen2.5-1.5B, two CUDA GPUs. Speculation
+worked as designed. It cut the decode steps from about 22 to 12, with 60\% of
+drafted tokens accepted. The wall-clock time improved by only
+\textbf{1.09$\times$}, against the 1.5--2.5$\times$ its developers had
+predicted, because the model stopped after about eleven tokens per request:
+the long passages' prefill dominated each request, and speculation does
+nothing for prefill (Hermon \texttt{docs/PERFORMANCE.md}, measured 2026-05-12;
+the feature is enabled by environment variable, so PREVIEW
+\todo{verify status against Hermon source at \texttt{2a3fd52}}).
+
+The same optimization had measured 1.33$\times$ on a workload with longer
+replies. An optimization's benefit is bounded by the share of time spent in
+the phase it accelerates --- Amdahl's law, applied per request.
+
+\FrontierSection{2026-09-23}
+
+The balance between the phases is moving in both directions at once.
+Reasoning models generate thousands of hidden tokens before answering, making
+serving more decode-bound (\Chref{reasoning-workloads}); agents resend long,
+growing contexts on every turn, making it more prefill-bound, unless prefixes
+are cached (\Chref{prefix-caching}). Separating the phases has moved from a
+research result \cite{zhong2024distserve} to production architectures
+\cite{qin2024mooncake} \todo{verify current adoption of disaggregation and
+chunked prefill in vLLM, SGLang and NVIDIA Dynamo at pinned versions}.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Prediction.} Using equation~\eqref{eq:prefill-time} and the M1's
+measured rates, predict the TTFT of a 4,096-token prompt. Which term did you
+neglect, and in which direction is your prediction wrong?
+\item \emph{Derivation.} Show that prefill of $S$ tokens and batched decode of
+$B$ sequences have the same arithmetic intensity when $S=B$, and explain why
+they nevertheless do not cost the same once contexts are long.
+\item \emph{Implementation.} Measure your own machine's prefill-to-decode
+ratio with \texttt{llama-bench}. Does it match the ratio of your GPU's compute
+and bandwidth roofs?
+\item \emph{Falsification.} Construct a workload in which a decode
+optimization that halves TPOT improves end-to-end latency by less than 10\%.
+\end{enumerate}
