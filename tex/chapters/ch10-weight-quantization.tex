@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 10 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-23-m1-part2.md
 \chapter{Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants}\label{ch:weight-quantization}
 
 \begin{ChapterIntent}
@@ -16,32 +17,236 @@ accuracy.
 
 \OpeningSection{Fewer bits, more tokens}
 
+Take one model, Llama~3.2~3B, and store it six ways, from llama.cpp's 8-bit
+format down to its 2-bit K-quant. On the M1 of \Chref{roofline}, the files
+range from 3.41~GB to 1.36~GB, and decode speed runs the other way: from
+\textbf{15.0 to 28.8 tokens per second} as the file shrinks
+(measured; record \texttt{2026-09-23-m1-part2};
+Figure~\ref{fig:ch10-quant-sweep}). Multiply each file's size by its tokens
+per second and the product --- the bandwidth it effectively reads at --- stays
+between 39 and 51~GB/s. Decode speed is, to first order, the inverse of the
+bytes in the file. (A first run of the same sweep, while the machine was busy
+with other work, measured every format about 20 to 30 percent slower; the
+record keeps both runs, and the numbers here are from the second.)
+
+\EngineFigure{ch10-quant-sweep}{Decode speed against file size for six
+llama.cpp formats of Llama~3.2~3B on the M1 (measured, second run). Each curve
+is a constant effective bandwidth: points on one curve read their bytes equally
+fast. The 8-bit file sits on the 51~GB/s curve, the 3- and 2-bit files on the
+39~GB/s curve.}{fig:ch10-quant-sweep}
+
+Prefill does not care. The same six files process a 512-token prompt at
+246--281 tokens per second, with no trend in size: prefill is compute-bound
+(\Chref{prefill-decode}), and fewer bytes per weight do not reduce the
+arithmetic.
+
+Two caveats frame the rest of the chapter. First, these files were made by
+re-quantizing the 4-bit file, so they measure speed only; their accuracy is
+not representative of the formats. llama.cpp's own quantizer publishes the
+accuracy side: on Llama-3-8B its table lists perplexity increases of 0.02 for
+6-bit, 0.06 for 5-bit, 0.66 for 3-bit and 3.52 for 2-bit K-quants (the
+quantizer's built-in help, build \texttt{d00685831}; the maintainers'
+measurement, not reproduced here). Second, the smallest formats are not
+proportionally faster. The 8-bit file is read at 51~GB/s, about what a plain
+streaming kernel reached in \Chref{roofline}; the 4- to 6-bit K-quants at
+46--48; the 3- and 2-bit files at 39. Q3\_K\_M is 17\% smaller than Q4\_K\_M
+and only 3\% faster. Unpacking the weights has started to cost arithmetic that
+the bandwidth no longer hides. That trade --- bytes saved against work added
+and accuracy lost --- is this chapter's subject.
+
 \NapkinSection{Napkin math: bits per weight to tokens per second}
+
+A weight-quantized model reads $P\,b_w/8$ bytes per decode step, where $b_w$
+is the average bits per weight \emph{including} scales. So
+\begin{equation}
+r_{\max} = \frac{8\beta}{P\,b_w}\quad[\text{tokens/s}],
+\label{eq:quant-ceiling}
+\end{equation}
+and halving $b_w$ doubles the ceiling. The averages are larger than format
+names suggest. llama.cpp's ``Q4\_K\_M'' Llama~3.2~3B file averages
+\textbf{5.0 bits per parameter}: its K-quant blocks cost 4.5 bits per weight
+including scales \cite{kawrakow2023kquants}, and the mix keeps the vocabulary
+table and, in half the layers, the value and FFN-down projections in the
+6.56-bit Q6\_K format (read from the file; record
+\texttt{2026-09-23-gguf-tensor-bytes}). For a 70-billion-parameter model on an
+H100, equation~\eqref{eq:quant-ceiling} gives 24 tokens per second at 16 bits,
+48 at 8 and about 85 at a real 4.5-bit average --- if it fits: only the last
+two do, in 80~GB.
 
 \section{What a quantized weight is}
 
+A quantized weight is an integer code $q$ with $b$ bits and a rule for turning
+it back into a number. The usual rule is affine:
+\begin{equation}
+w \approx s\,(q - z),\qquad q\in\{0,\dots,2^{b}-1\},
+\label{eq:affine-quant}
+\end{equation}
+with a scale $s$ and a zero point $z$ shared by a group of weights. Quantizing
+chooses $s$, $z$ and each $q$; dequantizing computes $s(q-z)$ inside the
+kernel, just before the multiply. A symmetric scheme fixes $z$ at the middle of
+the range and stores only $s$.
+
 \section{Scales, zero points and groups}
+
+One scale for a whole matrix wastes the grid on its few largest values. One
+scale per group of $g$ consecutive weights adapts to local ranges at a cost of
+$(b_s+b_z)/g$ extra bits per weight --- 0.25 bits for a 16-bit scale and a
+16-bit zero shared by 128 weights. llama.cpp's K-quants go a level further:
+super-blocks of 256 weights, split into sub-blocks with their own scales, which
+are themselves quantized to 6 bits against a super-block scale
+\cite{kawrakow2023kquants}. Q4\_K spends 4.5 bits per weight this way; Q6\_K,
+6.5625; Q2\_K, 2.5625.
 
 \section{Round-to-nearest and why it fails}
 
+The obvious quantizer rounds each weight to its nearest grid point. It is fast
+and needs no data, and at 8 bits it is nearly lossless. At 4 bits and below it
+fails, for a reason that is not about weights at all: the error that matters is
+in the layer's \emph{output}, $\mathbf{W}\mathbf{x}$, and a few input channels
+of $\mathbf{x}$ carry much larger values than the rest. Small rounding errors
+in the weights that multiply those channels are amplified; large errors
+elsewhere barely matter. Every method below uses data about the activations to
+decide where the error goes.
+
 \section{GPTQ: second-order error correction}
+
+GPTQ quantizes a weight matrix one column at a time and, after each column,
+adjusts the columns not yet quantized to compensate for the error just made,
+using second-order information estimated from a small set of calibration
+activations \cite{frantar2023gptq}. It is one-shot --- no retraining --- and
+its authors quantized 175-billion-parameter models to 3--4 bits in about four
+GPU hours with little loss.
 
 \section{AWQ: protect the salient channels}
 
+AWQ observes that protecting about 1\% of weights --- those that multiply the
+largest-magnitude activation channels --- removes most of the error, and that
+it can protect them without storing them separately: scale those input
+channels up in the weights and down in the activations, an equivalent
+transformation, before quantizing \cite{lin2024awq}. It needs no gradient or
+reconstruction, only activation statistics; its authors ran the resulting
+4-bit models, up to Llama-2-70B, on desktop and mobile GPUs with their own
+runtime.
+
 \section{Weights and activations: SmoothQuant and W8A8}
+
+Quantizing activations too lets the matrix product itself run in low-precision
+integer arithmetic rather than dequantizing to 16 bits first --- a compute
+saving for prefill, where compute binds. Activations are harder to quantize
+than weights because of those outlier channels. SmoothQuant migrates the
+difficulty into the weights with the same kind of equivalent scaling, enabling
+8-bit weights and activations \cite{xiao2023smoothquant}. At 4 bits,
+rotation-based methods multiply activations and weights by orthogonal matrices
+that spread outliers evenly across channels without changing the layer's
+output: QuaRot uses Hadamard rotations and quantizes weights, activations and
+KV cache all to 4 bits \cite{ashkboos2024quarot}; SpinQuant learns the
+rotations \cite{liu2025spinquant}.
 
 \section{K-quants and mixed-precision files}
 
+A quantized checkpoint need not use one format. llama.cpp's mixes assign
+formats per tensor type and layer, spending bits where the model is most
+sensitive: in the Q4\_K\_M file above, 6-bit K-quants for the vocabulary table
+and for value and FFN-down projections in half of the layers, 4.5-bit K-quants
+for everything else, and 32-bit floats for norms. The name describes the
+majority format, not the average.
+
 \section{Dequantization inside the kernel}
+
+A weight-only quantized matrix product loads packed codes, unpacks them,
+applies scales, and multiplies in 16- or 32-bit arithmetic --- extra work per
+weight that the bandwidth saving must pay for. At batch one there is spare
+arithmetic, and the kernel stays bandwidth-bound; the opening measurement's
+46--51~GB/s for the 4- to 8-bit files is that regime, and the fall to
+39~GB/s at 2 and 3 bits is the unpacking beginning to show. As the batch grows, the unpacking is repeated
+work per weight that batching does not amortize the same way, and a
+quantized kernel can become compute-bound before a 16-bit one would.
+Specialized kernels push that point out: Marlin, an FP16$\times$INT4 kernel,
+stays close to the ideal 4$\times$ speedup up to batches of 16--32
+\cite{frantar2024marlin}, and vLLM's Machete kernel does the same job with
+Hopper's asynchronous copies and warpgroup MMA (vLLM pull request 7174). The
+fastest CPU kernels avoid floating point altogether and compute dot products
+directly on the integer codes, applying scales once at the end.
 
 \section{Measuring what you lost}
 
+Quantization's cost is a change in the model's output distribution, and the
+honest way to measure it is to compare distributions. Perplexity on a text
+corpus is a coarse average; the Kullback--Leibler divergence between the
+quantized and unquantized models' next-token distributions, token by token,
+shows where and how often they disagree; task evaluations show whether the
+disagreements matter. \Chref{fast-wrong-answers} builds the harness. A
+quantized model whose perplexity barely moves can still change the answers to
+the questions a particular application asks.
+
 \LedgerSection
+
+Weight-only quantization from 16 bits to llama.cpp's Q4\_K\_M mix, 5.0 bits per weight on average:
+
+\begin{ConstraintLedger}
+Memory bandwidth & buys & About 3.2$\times$ fewer bytes per decode step than 16-bit weights (derived); on the M1, going from 8-bit to Q4\_K\_M cut the bytes 1.70$\times$ and raised decode speed 1.52$\times$ (measured). \\
+Memory capacity & buys & The same factor in resident weight bytes. \\
+Compute & spends & Unpacking and scaling per weight; visible at 2--3 bits and at larger batches. \\
+Correctness & risks & Perplexity and task accuracy fall as bits fall; measure per model (llama.cpp's own table: +0.66 perplexity at 3 bits on Llama-3-8B). \\
+\end{ConstraintLedger}
 
 \LabSection{quantize a matrix three ways}
 
+\LabIntent{In \texttt{code/labs/ch10-weight-quant/}, a Rust program that takes
+a real weight matrix (dequantized from a GGUF file) and real activations from
+the mini-engine, quantizes the weights by per-tensor round-to-nearest,
+per-group round-to-nearest, and an AWQ-style activation-aware scaling, and
+reports the error in the layer's \emph{output} rather than in the weights. A
+second part times a dequantizing matrix--vector product against the 32-bit
+one, checking both against a float64 oracle, and finds the batch size at which
+the quantized kernel stops winning.}
+
 \HappenedSection{a SIMD matrix--vector kernel slower than scalar}
 
-\FrontierSection{}
+Hermon's expert-streaming work needed a matrix--vector product over K-quant
+weights, and its first version was scalar. The obvious vectorization ---
+unpack each 16- or 32-weight sub-block to floats and call an already
+vectorized dot product --- made it \textbf{slower}: 0.62 tokens per second
+against the scalar 0.72 on the same trace. Every short dot product ended in a
+horizontal reduction across the vector lanes, and on 16 elements the reduction
+cost more than the multiply--adds it summed. Folding each sub-block's scale into
+the unpacking let a whole 256-weight super-block be reduced once, eight times
+fewer reductions, and the result was about \textbf{1.3$\times$} faster than
+scalar on an x86 machine with AVX2 --- far from the 8--19$\times$ the same
+team had measured vectorizing other kernels (Hermon
+\texttt{docs/STORAGE\_ARCHITECTURE.md}, section 5.8, commit \texttt{a7c0597}).
+Its authors located the remaining multiple precisely: the fast implementations
+never convert the codes to floating point, computing integer dot products and
+scaling once at the end. Correctness held throughout: the vectorized path
+reproduced a NumPy reference on real Qwen3 weights exactly. The kernel is
+callable through the kernel crate's public interface, but no request path
+calls it at commit \texttt{2a3fd52}, so LIBRARY.
+
+\FrontierSection{2026-09-24}
+
+Post-training weight quantization is becoming one option among several.
+Models increasingly arrive already quantized or trained for a format
+(\Chref{low-precision-float}); rotation-based methods push weights,
+activations and cache together to 4 bits \cite{ashkboos2024quarot,liu2025spinquant};
+and serving engines carry specialized mixed-precision kernels per GPU
+generation \cite{frantar2024marlin}. At the low end, llama.cpp's i-quants
+replace uniform grids with fixed code books: an index selects a pattern of
+eight (IQ2) or four (IQ3) weight magnitudes from a 256-entry table, and the IQ4
+formats use sixteen non-uniform levels. Scales included, they run from 1.5625
+bits per weight (IQ1\_S) through 2.0625 (IQ2\_XXS) and 3.0625 (IQ3\_XXS) to
+4.25 (IQ4\_XS) (block definitions in llama.cpp
+\texttt{ggml/src/ggml-common.h} at commit \texttt{389ff61d}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Compute the average bits per weight of a file that
+stores 90\% of its weights in Q4\_K and 10\% in Q6\_K. What decode speed does
+equation~\eqref{eq:quant-ceiling} predict on your machine?
+\item \emph{Prediction.} Before running the lab, predict the batch size at
+which a dequantizing kernel stops beating the 16-bit one on your CPU.
+\item \emph{Implementation.} Add group-wise zero points to the lab's
+round-to-nearest quantizer and measure whether they help at 4 and 3 bits.
+\item \emph{Falsification.} Construct a weight matrix and activation
+distribution for which round-to-nearest beats an activation-aware scaling.
+\end{enumerate}

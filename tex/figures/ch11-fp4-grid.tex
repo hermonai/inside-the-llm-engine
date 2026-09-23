@@ -1,0 +1,22 @@
+% The eight non-negative values of FP4 (E2M1), from NVIDIA's NVFP4 description
+% and the OCP MX element format, against a uniform 3-bit magnitude grid with the
+% same maximum. Sign bit omitted: both formats mirror these values below zero.
+\begin{tikzpicture}[x=18mm]
+\draw[thick,BookBlue] (0,0) -- (6.3,0);
+\foreach \v/\l in {0/0, 0.5/0.5, 1/1, 1.5/1.5, 2/2, 3/3, 4/4, 6/6} {
+  \fill[BookBlue] (\v,0) circle (2.2pt);
+  \node[font=\small, above=3pt] at (\v,0) {\l};
+}
+\node[note, anchor=east] at (-0.15,0) {FP4 E2M1};
+\draw[thick,BookBlue] (0,-1.1) -- (6.3,-1.1);
+\foreach \k in {0,...,7} {
+  \pgfmathsetmacro{\v}{\k*6/7}
+  \draw[BookBlue, fill=white, thick] (\v,-1.1) circle (2.2pt);
+}
+\node[font=\small, below=3pt] at (0,-1.1) {0};
+\node[font=\small, below=3pt] at (6,-1.1) {6};
+\node[note, anchor=east] at (-0.15,-1.1) {uniform 3-bit grid};
+\draw[<->, thin] (0,0.75) -- node[font=\footnotesize, above] {spacing 0.5} (0.5,0.75);
+\draw[<->, thin] (4,0.75) -- node[font=\footnotesize, above] {spacing 2} (6,0.75);
+\draw[<->, thin] (0,-1.75) -- node[font=\footnotesize, below] {spacing $6/7$ everywhere} ({6/7},-1.75);
+\end{tikzpicture}
