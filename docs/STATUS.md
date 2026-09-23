@@ -27,7 +27,7 @@ if this table is stale. Words are approximate prose words.
 | ---: | --- | --- | ---: | ---: |
 | 1 | Why Inference Is Its Own Discipline | SKELETON | 185 | 0 |
 | 2 | The Forward Pass, Compressed | SKELETON | 200 | 0 |
-| 3 | The Roofline: Why Decode Leaves Your GPU Idle | SKELETON | 188 | 0 |
+| 3 | The Roofline: Why Decode Leaves Your GPU Idle | ZERO | 2,873 | 6 |
 | 4 | Prefill and Decode: Two Workloads, One Model | SKELETON | 175 | 0 |
 | 5 | The KV Cache: Inference's Central Data Structure | SKELETON | 177 | 0 |
 | 6 | Napkin Math: Latency, Throughput and Cost per Token | SKELETON | 174 | 0 |

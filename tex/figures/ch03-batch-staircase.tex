@@ -1,0 +1,29 @@
+% Step time of batched decode against batch size, Apple M1, llama.cpp Metal.
+% Data: research/measurements/2026-09-23-m1-llama32-3b.md (second run).
+% Kernel regimes: ggml-metal-ops.cpp and ggml-metal-device.cpp at llama.cpp
+% commit 389ff61d (as vendored in Hermon); measured binary is build d00685831.
+\begin{tikzpicture}
+\begin{axis}[
+  width=13cm, height=7.2cm,
+  xmin=0, xmax=34, ymin=0, ymax=225,
+  xlabel={Sequences decoded together, $B$},
+  ylabel={Time per decode step (ms)},
+  xtick={1,2,3,4,5,6,8,12,16,24,32},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.98,0.04)}, anchor=south east, draw=black!30},
+  legend cell align=left,
+]
+\fill[BookPale] (axis cs:0.5,0) rectangle (axis cs:3.5,225);
+\fill[BookGold!60] (axis cs:3.5,0) rectangle (axis cs:8.5,225);
+\fill[BookGreen] (axis cs:8.5,0) rectangle (axis cs:34,225);
+\addplot[BookBlue, dashed, thick, domain=1:32, samples=2] {49.8};
+\addlegendentry{batch one (weights read once)}
+\addplot[only marks, mark=*, mark size=2.6pt, color=red!70!black]
+  coordinates {(1,49.8) (2,86.5) (3,137.0) (4,86.2) (5,99.8) (6,135.1) (8,164.5) (12,153.2) (16,158.2) (24,170.3) (32,182.0)};
+\addlegendentry{measured step time}
+\node[font=\scriptsize, align=center] at (axis cs:2,208) {1 col.\\/pass};
+\node[font=\scriptsize, align=center] at (axis cs:6,208) {3--5 cols.\\/pass};
+\node[font=\scriptsize, align=center] at (axis cs:21,208) {one 32-column tile of a\\matrix--matrix kernel};
+\end{axis}
+\end{tikzpicture}
