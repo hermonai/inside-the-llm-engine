@@ -1,10 +1,11 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 8 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-23-m1-part2.md
 \chapter{Attention as a Memory Problem: From Online Softmax to FlashAttention}\label{ch:flashattention}
 
 \begin{ChapterIntent}
-Standard attention materializes a score matrix that grows with the square
-of the sequence length and moves it through slow memory several times.
+Standard attention materializes a score matrix that grows with the square of
+the sequence length and moves it through slow memory several times.
 FlashAttention's insight is that attention's cost is memory traffic: with an
 online softmax, attention can be computed tile by tile in on-chip memory
 without ever writing the score matrix. This chapter derives the online
@@ -16,28 +17,232 @@ exponential because the tensor cores outran everything else.
 
 \OpeningSection{Attention that runs out of memory before it runs out of time}
 
+Take eight heads of causal attention with head width 128 --- a quarter of
+one layer of an 8-billion-parameter model --- and run them on the M1's GPU
+with PyTorch, three ways, at longer and longer sequences. The inputs and output
+are small: at 8,192 tokens, queries, keys, values and output together are
+64~MiB in 16-bit floats. So that failures would be clean rather than a
+swapping laptop, we capped PyTorch's GPU allocator at 6~GiB, and every run that
+completed was checked against a float64 computation of three query rows,
+including the last, which attends to every key (record
+\texttt{2026-09-23-m1-part2}).
+
+\begin{center}\small
+\begin{tabular}{@{}r>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.2\linewidth}@{}}
+\toprule
+Tokens & Scores materialized & PyTorch's fused attention & Blockwise online softmax \\
+\midrule
+4,096 & 120 ms & 122 ms & 103 ms \\
+8,192 & refused at the 6~GiB cap & ran once with 4.1~GiB of internal buffers; refused on repeat & 340 ms \\
+16,384 & refused & ran once with 16.5~GiB of internal buffers & 1.29 s \\
+32,768 & refused: a 16~GiB buffer & refused: a 16~GiB buffer & 4.65 s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The textbook version --- compute every score, mask, softmax, multiply by the
+values --- ran at 4,096 tokens and failed at 8,192. Its 16-bit score matrix is
+1~GiB there, and a softmax computed in 32-bit floats needs two more copies at
+twice that size; the allocator refused the last one. PyTorch's fused
+\texttt{scaled\_dot\_product\_attention} did not avoid the matrix on this GPU.
+Its internal buffers, which the cap does not govern, took 4.1~GiB at 8,192
+tokens and 16.5~GiB at 16,384 --- more than the machine's 16~GB of memory ---
+and at 32,768 it asked Metal for a single 16~GiB buffer and was refused. The
+third version, two dozen lines of PyTorch that walk the keys in blocks of
+1,024 while keeping a running maximum and a running sum for each query row,
+ran at every length. Its temporaries are a few 32~MiB blocks of scores,
+however long the sequence (derived), and it agreed with float64 to within
+$3\times10^{-5}$. At 4,096 tokens, where all three ran, it was also the fastest.
+
+The arithmetic was never the problem: all three versions do the same
+multiplications. The problem is a matrix, quadratic in the sequence length,
+that exists only to be summed away. This chapter is about never writing it
+down.
+
 \NapkinSection{Napkin math: counting attention's bytes}
+
+For one head, a sequence of $S$ tokens and head width $d_h$, causal attention
+computes a score matrix $\mathbf{S}=\mathbf{Q}\mathbf{K}^{\top}/\sqrt{d_h}$ of
+shape $S\times S$, applies a row-wise softmax, and multiplies by
+$\mathbf{V}$. The arithmetic is about $4S^{2}d_h$ FLOPs per head (two matrix
+products), halved by causal masking. The inputs and output --- $\mathbf{Q}$,
+$\mathbf{K}$, $\mathbf{V}$, $\mathbf{O}$ --- are $4Sd_h$ numbers.
+
+A naive implementation writes the $S^{2}$ scores to memory, reads them back
+to compute the softmax, writes the probabilities, and reads them again for the
+second product: about $4S^{2}$ numbers of traffic against $4Sd_h$ for the
+inputs and output. With $d_h=128$ the score traffic is $S/128$ times the
+input traffic --- 64 times at 8,192 tokens, 256 times at 32,768. Capacity
+suffers first: at 32,768 tokens the scores of one 32-head layer are
+$32\times32{,}768^{2}\times2$ bytes, 64~GiB in 16-bit floats (derived) ---
+four times the 16~GiB buffer that Metal refused for the opening's eight
+heads --- for a matrix whose only purpose is to be summed away. The napkin math says the
+problem is not arithmetic. It is a matrix that never needed to exist in slow
+memory.
 
 \section{Softmax needs the whole row --- or does it?}
 
+The softmax of a row of scores $x_1,\dots,x_n$ is
+$e^{x_j-m}/\sum_i e^{x_i-m}$, where subtracting the row maximum $m$ keeps the
+exponentials from overflowing (Appendix~\ref{app:sampling}). Written that way
+it seems to need two passes over the whole row --- one for $m$, one for the
+sum --- before any output can be produced, which is why a naive implementation
+materializes the row. It does not. Both the maximum and the sum can be
+maintained incrementally, and the weighted sum of values with them.
+
 \section{The online softmax}
+
+Process the row in pieces. Keep a running maximum $m$, a running denominator
+$\ell=\sum e^{x_i-m}$ and a running output $\mathbf{o}=\sum
+e^{x_i-m}\mathbf{v}_i$. When a new piece raises the maximum from $m$ to
+$m'$, every earlier term was scaled against the old maximum, so rescale
+\begin{equation}
+\ell \leftarrow \ell\,e^{m-m'} + \sum_{\text{new}} e^{x_i-m'},\qquad
+\mathbf{o} \leftarrow \mathbf{o}\,e^{m-m'} + \sum_{\text{new}} e^{x_i-m'}\mathbf{v}_i,
+\label{eq:online-softmax}
+\end{equation}
+and at the end divide: the attention output is $\mathbf{o}/\ell$. The result
+is exactly the softmax-weighted sum, computed in one pass with a constant
+amount of state per query row. Milakov and Gimelshein published the running
+normalizer in 2018 \cite{milakov2018online}; applied to attention, it is the
+core of FlashAttention.
 
 \section{Tiling attention}
 
+FlashAttention \cite{dao2022flashattention} loads a block of queries into
+on-chip memory, then streams blocks of keys and values past it. For each
+key/value block it computes the block's scores on chip, updates each query
+row's $(m,\ell,\mathbf{o})$ with equation~\eqref{eq:online-softmax}, and moves
+on. The score matrix exists only one tile at a time, in shared memory and
+registers; slow-memory traffic is the inputs and the output. Causal masking
+skips every tile that lies entirely above the diagonal. The result is exact ---
+the same mathematics in a different order of floating-point operations --- and
+its memory is linear in $S$.
+
+\FigureIntent{A query block held on chip while key/value blocks stream past;
+beside it, one query row's running maximum, denominator and output vector
+being rescaled as each block arrives; tiles above the causal diagonal drawn
+empty.}
+
 \section{FlashAttention-2: parallelism and work partitioning}
+
+The first version was IO-optimal but left parallelism on the table. The second
+reorganized the work: parallel across the sequence as well as batch and heads,
+fewer non-matrix-multiply operations, and a better split of work among the warps
+of a block, reaching 50--73\% of an A100's theoretical peak \cite{dao2023flashattention2}.
+The lesson recurs in every later chapter: an algorithm that moves the minimum
+bytes is only fast if it also keeps every unit of the machine busy.
 
 \section{FlashAttention-3: asynchrony and FP8 on Hopper}
 
+Hopper added hardware that a synchronous kernel cannot use: TMA copies issued
+by a single thread and warpgroup matrix instructions that run asynchronously
+(\Chref{matmul-hardware}). FlashAttention-3 specializes warps --- some load, some
+compute --- and interleaves the softmax of one block with the matrix
+multiplication of the next, so the tensor cores rarely wait. It reaches
+740~TFLOP/s in FP16, 75\% of H100 peak, and approaches 1.2~PFLOP/s in FP8, with
+block quantization and a rotation that makes its FP8 variant 2.6 times more
+accurate than a baseline FP8 attention \cite{shah2024flashattention3}.
+
 \section{FlashAttention-4: when the exponential becomes the bottleneck}
+
+On Blackwell, tensor-core throughput roughly doubled while the other units
+did not \cite{zadouri2026flashattention4}. Attention's softmax needs one
+exponential per score, computed by special-function units whose throughput did
+not grow with the matrix units, so at Blackwell speeds the exponentials, not
+the matrix products, set the pace. FlashAttention-4 computes some of the
+exponentials in software --- a range reduction and a polynomial on ordinary
+fused multiply--add units --- alongside the hardware unit; it skips the
+rescaling of equation~\eqref{eq:online-softmax} unless the running maximum
+jumps by more than a tunable threshold; and it holds score and probability
+tiles in Blackwell's tensor memory to relieve register pressure (the authors'
+description, \cite{zadouri2026flashattention4}). Its authors report up to 1,613~TFLOP/s in BF16
+on a B200 --- 71\% of peak --- up to 1.3 times cuDNN and 2.7 times Triton, in a
+kernel written in a Python DSL that compiles 20--30 times faster than its C++
+equivalent. As of September 2026, vLLM uses it by default on Blackwell
+\cite{vllm2026attentionbackends}.
 
 \section{Masks, variable lengths and packed batches}
 
+A serving engine rarely attends over one tidy square. Prompts in a batch have
+different lengths; engines pack them end to end with offsets rather than
+padding them to a common length, and attention kernels take those offsets as
+input. Causal masking is standard; sliding windows (\Chref{long-context}),
+attention sinks, and per-request masks for structured prompts are variations the
+kernel must support without materializing a mask. Every such feature is a
+branch in the inner loop of the most performance-critical kernel in the
+engine, which is why engines ship several attention backends and choose among
+them per request shape and hardware (\Chref{decode-attention}).
+
 \LedgerSection
+
+Tiled attention with an online softmax, against the naive three-pass kernel:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & No $S\times S$ matrix in slow memory: linear rather than quadratic memory in sequence length (measured: 32,768 tokens ran blockwise where both materializing versions were refused). \\
+Memory bandwidth & buys & Score traffic eliminated; at 8,192 tokens and $d_h=128$, about 64$\times$ the input traffic (derived). \\
+Compute & moves & The same matrix FLOPs, plus rescaling; on Blackwell the exponentials become the limit. \\
+Correctness & risks & Exact in real arithmetic; a different order of floating-point operations, so bitwise results depend on tiling. \\
+\end{ConstraintLedger}
 
 \LabSection{a tiled attention checked against a naive oracle}
 
-\HappenedSection{deterministic split attention by construction}
+\LabIntent{In \texttt{code/labs/ch08-flashattention/}, a Rust implementation
+of causal attention three ways: naive (materializing scores), a one-pass
+online softmax per query row, and a tiled version with configurable block
+sizes. All three are checked against a float64 oracle within a derived
+tolerance, and the program reports peak memory and time as the sequence
+grows. Break it: omit the rescaling in equation~\eqref{eq:online-softmax} and
+observe which inputs still pass the test --- and which do not.}
 
-\FrontierSection{}
+\HappenedSection{making the reduction order a design decision}
+
+An online softmax reorders floating-point additions, and a parallel one
+reorders them differently depending on how the work is split. Most engines
+accept that results differ in the last bits from run to run. Hermon made the
+opposite choice: its planned release gate is bit-identical output over a
+thousand prompts at temperature zero (Hermon \texttt{docs/KERNEL\_DESIGN.md},
+section 6.3; the gate itself has not yet been run, because it needs the
+real-weights path). Its attention kernels follow four rules. The number of
+splits is a function of the request's shape alone, never of core count or
+load. Split results are combined in index order, not completion order.
+Accumulators are 32-bit whatever the storage type. And the exponential is
+vendored --- a range reduction and a degree-5 polynomial in a source file of
+its own, compiled so that the compiler may not fuse its multiply--adds ---
+because the system math libraries of different platforms disagree in the last
+bit. The rules are tested, not just stated: the kernels produce identical bits
+at 1 to 64 threads and with their task order reversed, and one test checks
+directly that the split count depends on the shape and not on the hardware
+(\texttt{crates/hermon-kernels/tests/differential.rs} at commit
+\texttt{2a3fd52}; the native kernels are opt-in, so PREVIEW). The last rule is
+the mirror image of FlashAttention-4's: both replace the library exponential
+with a polynomial, one for speed and one for reproducibility.
+\Chref{fast-wrong-answers} returns to why this matters beyond one engine.
+
+\FrontierSection{2026-09-24}
+
+FlashAttention-4 moved from a paper to the default attention kernel of a major
+engine on Blackwell within six months
+\cite{zadouri2026flashattention4,vllm2026attentionbackends}. Attention kernels
+are specializing by architecture: DeepSeek's FlashMLA serves latent attention
+and, since September 2025, token-sparse attention for DeepSeek-V3.2
+\cite{deepseek2025flashmla}; sparse and compressed attention appear in
+\Chref{long-context}. The direction is set by the asymmetry FlashAttention-4
+documents: matrix units keep outrunning everything around them.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Show that equation~\eqref{eq:online-softmax} produces
+the same result regardless of how the row is divided into pieces. Where does
+floating-point rounding make the pieces matter?
+\item \emph{Prediction.} Estimate the shared memory a 128-query block needs
+for $d_h=128$ in BF16, with a 64-key block in flight, and compare with an
+H100's 228~KB per SM.
+\item \emph{Implementation.} Add a sliding-window mask to the lab's tiled
+kernel without materializing the mask, and skip tiles that lie entirely
+outside the window.
+\item \emph{Falsification.} Construct scores for which skipping the rescaling
+when the maximum changes by less than a threshold produces an error larger
+than FP16 rounding.
+\end{enumerate}

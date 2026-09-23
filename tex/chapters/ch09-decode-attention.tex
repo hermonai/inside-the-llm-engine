@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 9 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-23-m1-part2.md
 \chapter{Decode Attention: FlashDecoding, Split-K and Paged Kernels}\label{ch:decode-attention}
 
 \begin{ChapterIntent}
@@ -8,36 +9,223 @@ attention kernel leaves most of the GPU idle while one block walks a long
 cache. This chapter shows how decode attention restores parallelism by
 splitting the key/value sequence and merging partial softmaxes through their
 log-sum-exp, how grouped-query attention changes what can be shared, and what
-a paged cache costs the kernel. Its central lesson is measured: decode
-attention is often limited by occupancy rather than bandwidth, so an
-optimization that saves bytes by sacrificing parallelism can make it
+a paged cache costs the kernel. Its central lesson is measured: a
+decode-attention kernel can be limited by occupancy rather than bandwidth, and
+then an optimization that saves bytes by sacrificing parallelism makes it
 slower.
 \end{ChapterIntent}
 
-\OpeningSection{A kernel that read four times less data and ran five times slower}
+\OpeningSection{Twice the bytes, twice the time}
+
+On the M1 of \Chref{roofline}, llama.cpp decodes Llama~3.2~3B at 25.0 tokens
+per second with an empty context. With 16,384 tokens already in the cache it
+decodes at \textbf{12.4} (measured with flash attention enabled; record
+\texttt{2026-09-23-m1-part2}). The extra work is attention over the cache, and
+its bytes are easy to count: 16,384 tokens at 112~KiB is 1.88~GB of keys and
+values --- nearly as much as the model's 2.01~GB of weights, and read at every
+step beside them. The step reads 1.93 times as many bytes and takes 2.03 times
+as long.
+
+At every depth measured --- 0, 4,096, 8,192 and 16,384 tokens --- the step time
+matches its bytes read at 48--52~GB/s: the rate at which the same engine reads
+its weights, and about what a plain streaming kernel reaches on this GPU. A
+long cache costs what its bytes cost, and no more. That is an achievement, not
+a law. Each step asks the kernel to read 1.88~GB on behalf of a single query
+vector per head, and the natural way to write that kernel leaves most of the
+GPU idle. Another engine's kernel on the same M1 read its cache at about a
+seventh of this rate (the section on occupancy, below). This chapter is about
+the difference.
+
+(Absolute rates on this laptop move with its load. A first run of these
+measurements, taken while the machine was heavily loaded, recorded lower rates
+that fell further at 16,384 tokens, and \Chref{roofline}'s 21 tokens per
+second came from a busier session than this one. The record keeps every run
+with its conditions; this chapter quotes the quietest.)
 
 \NapkinSection{Napkin math: parallelism in one query}
 
+For one sequence, one layer and one key/value head, decode attention reads
+$S$ cached keys and values, $2Sd_hb_{kv}$ bytes, and performs about
+$4Sd_h$ FLOPs for each of the $g=H_q/H_{kv}$ query heads that share them. Its
+arithmetic intensity is therefore
+\begin{equation}
+I_{\text{attn}} \approx \frac{4\,g\,S\,d_h}{2\,S\,d_h\,b_{kv}} = \frac{2g}{b_{kv}}
+\quad[\text{FLOP/byte}],
+\label{eq:attn-intensity}
+\end{equation}
+one FLOP per byte for multi-head attention in 16-bit, four for a group of four,
+independent of context length. Decode attention is a bandwidth-bound workload,
+and batching does not change that: every sequence reads its own cache.
+
+The parallelism is the other number. A prefill kernel spreads work over query
+tokens; at decode there is one. The natural decomposition --- one thread block
+per (sequence, head) --- gives $B\,H_q$ blocks. For Llama~3.2~3B at batch one
+that is 24 blocks, against a GPU that needs hundreds of concurrently resident
+warps to hide memory latency. Each block then walks the entire cache alone.
+The sequence dimension is the only place left to find parallelism.
+
 \section{The shape of decode attention}
+
+For one head, decode attention is two matrix--vector products around a softmax:
+scores $\mathbf{s}=\mathbf{K}\mathbf{q}/\sqrt{d_h}$ with
+$\mathbf{K}\in\mathbb{R}^{S\times d_h}$, probabilities
+$\mathbf{p}=\operatorname{softmax}(\mathbf{s})$, output
+$\mathbf{o}=\mathbf{V}^{\top}\mathbf{p}$. No score matrix exists to be
+avoided --- the scores are a single vector of length $S$ --- so the problem
+\Chref{flashattention} solved is not this one. The problem here is reading
+$\mathbf{K}$ and $\mathbf{V}$ as fast as memory allows with far too few
+independent tasks.
 
 \section{Splitting the sequence}
 
+Flash-Decoding divides the cache into chunks and gives each chunk to its own
+thread block \cite{dao2023flashdecoding}. Each block computes attention over its
+chunk exactly as \Chref{flashattention}'s online softmax would, producing a
+partial output with its running maximum and denominator. A second, small pass
+merges the partials. With 16 chunks, a batch-one decode step has 16 times the
+parallelism. Its authors reported attention up to 50 times faster than
+FlashAttention at very long contexts and end-to-end decoding up to 8 times
+faster at batch one on CodeLlama-34B (their measurements, 2023).
+
 \section{Merging partial softmaxes}
+
+Two partials over disjoint chunks, each with maximum $m_i$, denominator
+$\ell_i$ and unnormalized output $\mathbf{o}_i$, combine exactly:
+\begin{equation}
+m = \max(m_1,m_2),\quad
+\ell = \ell_1e^{m_1-m}+\ell_2e^{m_2-m},\quad
+\mathbf{o} = \mathbf{o}_1e^{m_1-m}+\mathbf{o}_2e^{m_2-m},
+\label{eq:lse-merge}
+\end{equation}
+and the result is $\mathbf{o}/\ell$. This is equation~\eqref{eq:online-softmax}
+applied to whole chunks instead of single scores; engines often store
+$m+\log\ell$, the log-sum-exp, as a single number per partial. The merge is
+associative, so partials can be combined in any grouping --- but floating-point
+rounding makes the \emph{order} observable, and the order becomes part of the
+engine's reproducibility contract (\Chref{fast-wrong-answers}).
 
 \section{Grouped-query attention: what the heads share}
 
+With grouped-query attention, the $g$ query heads of a group read the same keys
+and values. A kernel can process the whole group in one pass over the cache,
+reading each key once instead of $g$ times, and equation~\eqref{eq:attn-intensity}
+says that multiplies the useful work per byte by $g$. On a CPU core, which has a
+fixed amount of parallelism and pays for every cache miss, packing the group
+this way is a clear gain. On a GPU the same change also divides the number of
+thread blocks by $g$, and whether it helps depends on whether bytes or
+parallelism was the limit. The case study of this chapter is what happened when
+that question was answered by experiment.
+
 \section{Reading through a block table}
+
+A paged cache (\Chref{paged-kv}) stores each sequence's keys and values in
+fixed-size blocks scattered through a pool, found through a per-sequence table.
+The kernel's inner loop gains an indirection: for each block of tokens, look up
+where it lives. The table is small and the lookups are cheap compared with the
+bytes they locate, provided blocks are large enough to be read in efficient
+bursts. Attention libraries such as FlashInfer represent paged, ragged and
+sparse layouts in one block-sparse format so that one kernel family serves them
+all \cite{ye2025flashinfer}; DeepSeek's FlashMLA serves paged latent attention
+\cite{deepseek2025flashmla}.
 
 \section{Occupancy, not bandwidth}
 
+A GPU hides memory latency by switching among many resident warps; a kernel
+that launches too few blocks cannot keep enough requests in flight to use the
+memory's bandwidth, however few bytes it needs. That is the regime of decode
+attention at small batch and moderate context, and it inverts the usual
+optimization rule. Reducing bytes helps a kernel that is waiting on bandwidth.
+It does nothing for a kernel that is waiting for work --- and if reducing bytes
+also reduces the number of blocks, it makes the kernel slower.
+
+The same GPU shows both kinds of kernel. llama.cpp's decode attention reads the
+cache at the 48--52~GB/s of the opening measurement, the bandwidth roof in
+practice. Hermon's Metal kernel, measured on the decode shape of Llama-3-8B,
+took 19.2~ms to read one layer's 134~MB of 16-bit keys and values at 32,768
+tokens: about 7~GB/s (derived from Hermon \texttt{docs/KERNEL\_DESIGN.md},
+section K4). Both read the same bytes. What differs is the kernel, and the
+case study below is its developers' account of what they learned about it.
+
 \section{Fixed split count or fixed split size}
+
+How many chunks should a sequence be split into? A fixed \emph{count} gives
+every sequence the same parallelism, but the chunk boundaries --- and so the
+floating-point order of the merge --- move with the length. A fixed
+\emph{size}, say 256 tokens per chunk, keeps the boundaries in place: the
+split, and so the result, depends only on the tokens. Thinking Machines showed
+that fixed-size splits are one of the changes needed to make attention's
+result independent of which other requests share the batch
+\cite{he2025nondeterminism}; Hermon uses a fixed size of 256 tokens, clamped to
+between 1 and 64 splits, so that its plans depend only on the shape of the
+request (Hermon \texttt{docs/KERNEL\_DESIGN.md}, section 6.3).
 
 \LedgerSection
 
+Splitting decode attention along the sequence and merging the partials:
+
+\begin{ConstraintLedger}
+Latency & buys & Parallelism for batch-one decode: 16 splits give 16 times as many independent blocks. \\
+Memory bandwidth & moves & The same cache bytes, now read fast enough to approach the bandwidth roof. \\
+Memory capacity & spends & A workspace of partial outputs, maxima and denominators per split. \\
+Compute & spends & A merge pass per head per step. \\
+Correctness & risks & The merge order is observable in the last bits; fix it by construction. \\
+\end{ConstraintLedger}
+
 \LabSection{split-K decode attention with a log-sum-exp merge}
+
+\LabIntent{In \texttt{code/labs/ch09-decode-attention/}, a Rust decode-attention
+kernel over a synthetic cache, first single-threaded, then split into $k$
+chunks run on a thread pool and merged with equation~\eqref{eq:lse-merge}. A
+float64 oracle checks every configuration. The reader measures throughput as
+$k$ grows, then implements grouped-query packing and finds whether it helps
+on their CPU --- and predicts, before reading the case study, whether it would
+help on a GPU.}
 
 \HappenedSection{the GQA fusion that lost in every shape}
 
-\FrontierSection{}
+Hermon's attention kernel for Apple GPUs gave each query head its own thread
+group. Under grouped-query attention that meant the heads of a group each read
+the same keys and values --- four times over at 32 query heads and 8
+key/value heads. On the CPU, packing a group to read the cache once was a real
+win, so the GPU analogue looked certain to help. Hermon's developers built the
+fused kernel, verified that it was bit-identical to the per-head kernel, and
+measured it on an M1. It was \textbf{slower in every shape measured}:
+0.19--1.00 times the per-head kernel's speed at decode across four head
+configurations, and 0.68--0.71 times at prefill (Hermon
+\texttt{docs/KERNEL\_DESIGN.md}, section K4.1).
+
+Both reasons invalidated the premise. Fusing divided the number of thread
+groups by the group size, and at decode the grid was already too small to fill
+the device. And the ``redundant'' reads had never cost bandwidth: the thread
+groups of a group ran concurrently and read the same cache lines, so the
+hardware had already removed the traffic the fusion set out to save. The
+developers' conclusion generalizes: on that device, decode attention is
+occupancy-bound, not bandwidth-bound, and an optimization that trades
+parallelism for bytes will lose. They recorded the failure so that it would not
+be repeated --- which is the only reason we can learn from it.
+
+\FrontierSection{2026-09-24}
+
+Decode attention kernels are now chosen per hardware and per model family.
+vLLM's documented defaults put FlashAttention first on Hopper and FlashInfer
+first on Blackwell, with separate backends for latent attention and for
+DeepSeek-V4's sparse attention \cite{vllm2026attentionbackends}; FlashMLA's
+dense decode kernel reports up to 3,000~GB/s on an H800
+\cite{deepseek2025flashmla}. Sparse decode attention, which reads only selected
+parts of the cache, changes this chapter's arithmetic (\Chref{long-context}), and
+attention over quantized caches changes the bytes (\Chref{kv-quantization}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Prove that equation~\eqref{eq:lse-merge} is
+associative, and give a floating-point example where two groupings produce
+different results.
+\item \emph{Prediction.} For Llama-3-8B at batch one and 4,096 tokens of
+context, how many 256-token splits does each head get, and how many
+independent blocks does the step launch?
+\item \emph{Implementation.} In the lab, measure the workspace memory of the
+split partials as a function of batch, heads and splits.
+\item \emph{Falsification.} Find a context length and thread count on your CPU
+at which splitting makes decode attention slower.
+\end{enumerate}

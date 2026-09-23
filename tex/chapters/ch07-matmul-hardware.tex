@@ -1,10 +1,13 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 7 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/benchmarks/chapter-06-*.md (first edition, scalar CPU),
+% research/measurements/2026-09-23-m1-part2.md (Accelerate and Metal).
 \chapter{Matrix Multiplication on Real Hardware}\label{ch:matmul-hardware}
 
 \begin{ChapterIntent}
-The same number of multiply--adds can run a hundred times faster or
-slower depending on how they are ordered. This chapter follows matrix
+The same multiply--adds can run forty times faster or slower in the same
+library on the same GPU, and a thousand times across the ladder from scalar
+loops to matrix units, depending on how they are ordered. This chapter follows matrix
 multiplication from the scalar loops of Appendix~A onto real hardware: tiles
 that live in registers and shared memory, tensor cores that multiply small
 matrices per instruction, Hopper's asynchronous warpgroup MMA and Blackwell's
@@ -14,32 +17,232 @@ kernel can use, and when split-K or a specialized matrix--vector kernel beats a
 general GEMM.
 \end{ChapterIntent}
 
-\OpeningSection{Same FLOPs, a hundred times apart}
+\OpeningSection{Same FLOPs, forty times apart}
+
+Multiply two $4{,}096\times4{,}096$ matrices of 16-bit floats on the M1's GPU
+and the product --- 137 billion floating-point operations --- takes 62~ms
+through PyTorch's MPS (Metal) backend: 2.2~TFLOP/s, about 85\% of the 2.6~TFLOP/s
+Apple quotes for the chip (record \texttt{2026-09-23-m1-part2}). Compute the
+same product as 4,096 matrix--vector products, one column of the right-hand
+matrix at a time, and it takes about 2.5~s (512 of them timed, then scaled):
+the same multiply--adds, in the same library, on the same GPU,
+\textbf{41 times} slower. Each matrix--vector product reads the whole 32~MiB
+left-hand matrix to perform 34 million FLOPs; the single product reads it once
+and uses each element 4,096 times.
+
+The ladder below the GPU is longer. This book's first edition timed a scalar
+triple loop on the M1's CPU at 2.1~GFLOP/s in the textbook $i,j,k$ order and
+19.6 in $i,k,j$ order, at size 256 (Appendix~\ref{app:matmul}). Apple's
+Accelerate library runs the $4{,}096$ product on the same CPU at 873~GFLOP/s;
+the GPU runs it at 1,604~GFLOP/s in 32-bit floats and 2,213 in 16-bit. A
+thousand-fold separates the bottom rung from the top, and none of it comes from
+doing less arithmetic. It comes from where the operands are when they are
+needed, how many times each byte is used once it is there, and whether the
+arithmetic runs on units built for matrices.
+
+One more measurement shows why an engine cannot choose one kernel and stop.
+With the same $4{,}096\times4{,}096$ matrix and $N$ right-hand columns, the
+library takes 1.77~ms at $N=8$ and 1.02~ms at $N=16$ --- twice the work in 57\%
+of the time (73\% in 32-bit floats, which show the same step). Arithmetic
+cannot explain that step; a change of kernel between the two shapes can
+\todo{verify: capture a
+Metal GPU trace to name the kernels selected at $N=8$ and $N=16$}. Decode runs
+at exactly these shapes.
 
 \NapkinSection{Napkin math: the work and the bytes of a GEMM}
 
+A product $\mathbf{C}=\mathbf{A}\mathbf{B}$ with
+$\mathbf{A}\in\mathbb{R}^{M\times K}$ and $\mathbf{B}\in\mathbb{R}^{K\times N}$
+costs $2MNK$ FLOPs and must move at least $(MK+KN+MN)\,b$ bytes. In a decode
+step, $\mathbf{A}$ is a weight matrix and $N$ is the batch: the weights
+dominate the bytes and the intensity is about $2N/b$ (\Chref{roofline}). That is
+the compulsory traffic. What a kernel actually moves depends on how it reuses
+data on chip. A kernel that computes an output tile of $T_M\times T_N$ loads
+$T_M$ rows of $\mathbf{A}$ and $T_N$ columns of $\mathbf{B}$ for each step
+along $K$, and performs $2T_MT_N$ FLOPs per $K$-element for
+$(T_M+T_N)\,b$ bytes loaded:
+\begin{equation}
+I_{\text{tile}} = \frac{2\,T_M\,T_N}{(T_M+T_N)\,b}\quad[\text{FLOP/byte}].
+\label{eq:tile-intensity}
+\end{equation}
+A $128\times128$ tile in BF16 reaches 64~FLOP/byte from slow memory --- short
+of an H100's BF16 ridge of about 300 (\Chref{roofline}), which is why fast
+kernels also reuse tiles through the L2 cache and share them between
+neighbouring blocks. The tile size is bounded by on-chip capacity: registers
+for the accumulators, shared memory for the operands, 228~KB per SM on an H100
+\cite{nvidia2026hoppertuning}. And at decode, $N$ is the batch: a
+$128\times128$ tile with $N=8$ does $8/128$ of the useful work its shape
+promises.
+
 \section{From loops to tiles}
+
+Appendix~\ref{app:matmul} builds the product as three nested loops and measures
+what the first two optimizations buy on this book's reference machine: changing
+the loop order so the innermost loop walks memory contiguously, and blocking the
+loops so a working set stays in cache. Both keep the arithmetic identical and
+change only which bytes are near the processor when they are needed. Real
+kernels continue down the same path --- blocks for the cache, sub-blocks for
+shared memory, register tiles for each thread --- until the innermost operation
+is a hardware instruction that multiplies a small matrix at once.
+
+\EngineFigure{ch06-hardware}{The same tiled product on two kinds of hardware:
+vector lanes of one CPU core working through a tile, and a GPU's cooperating
+thread groups each owning part of an output tile. First drawn for
+Appendix~\ref{app:matmul}, where the book's scalar kernels stop short of
+either.}{fig:ch07-hardware}
 
 \section{The memory hierarchy a tile lives in}
 
+A GPU matrix kernel spans five levels of storage, each much smaller and faster
+than the one below: HBM or GDDR (tens to hundreds of gigabytes, a few
+terabytes per second), a shared L2 cache (50~MB on an H100), per-SM shared
+memory (228~KB on an H100), registers, and --- on Blackwell --- tensor memory
+dedicated to matrix accumulators \cite{nvidia2026hoppertuning,nvidia2026cutlassblackwell}.
+A well-written kernel stages each operand tile down this hierarchy once and
+reuses it as many times as the output tile allows. Appendix~\ref{app:gpu}
+gives the numbers for each generation.
+
 \section{Tensor cores: matrix units}
+
+A tensor core executes a small matrix multiply--accumulate, $\mathbf{D}=
+\mathbf{A}\mathbf{B}+\mathbf{C}$ on tiles of a few dozen to a few hundred
+elements, as a single instruction. It is why a GPU's matrix throughput is an
+order of magnitude above its ordinary floating-point throughput, and why
+low-precision formats matter: each generation's tensor cores double their rate
+at each halving of operand width (\Chref{low-precision-float}). A kernel that
+does not feed the tensor cores --- because its operands are the wrong shape,
+type or layout --- runs at a fraction of the GPU's advertised peak.
 
 \section{Hopper: asynchronous warpgroup MMA and TMA}
 
+Hopper changed how kernels feed the tensor cores. Its warpgroup MMA
+instruction, \texttt{wgmma}, is issued by a warpgroup of 128 threads, reads its
+$\mathbf{B}$ operand (and optionally $\mathbf{A}$) directly from shared memory,
+keeps the accumulator in registers, and runs asynchronously: a kernel issues
+it, does other work, and waits for it with explicit fences. Each instruction
+computes a $64\times N\times K$ product with $N$ from 8 to 256
+\cite{nvidia2026cutlasswgmma}. Its partner is the Tensor Memory Accelerator,
+which copies multi-dimensional tiles between global and shared memory on the
+request of a single thread, without spending registers or instruction issue on
+address arithmetic \cite{nvidia2026hoppertuning}. Together they let a kernel
+dedicate some warps to loading and others to computing, the
+\emph{warp specialization} that FlashAttention-3 uses (\Chref{flashattention}).
+
+\FigureIntent{One output tile's journey on Hopper and on Blackwell: TMA copies
+operand tiles from HBM into shared memory while producer warps wait on
+barriers; consumer warpgroups issue \texttt{wgmma} with the accumulator in
+registers (Hopper) or \texttt{tcgen05} with the accumulator in tensor memory
+(Blackwell); the epilogue writes the tile back.}
+
 \section{Blackwell: tensor memory and two-SM MMA}
+
+Blackwell's \texttt{tcgen05} instructions are 2--4 times faster than Hopper's
+\texttt{wgmma}, depending on data type; they write accumulators into tensor
+memory, a new on-chip store, instead of registers; a pair of SMs can execute
+one larger MMA together; and block-scaled variants consume FP8, FP6 and FP4
+operands with their scale factors directly \cite{nvidia2026cutlassblackwell}.
+Freeing registers from accumulators changes kernel design: tiles can be larger,
+and the registers go to the non-matrix work --- softmax, dequantization ---
+that \Chref{flashattention} found becoming the bottleneck.
 
 \section{Occupancy, waves and tails}
 
+A GEMM's output is divided into tiles, and the tiles are handed to SMs in
+waves. If the number of tiles is not a multiple of the number of SMs, the
+last wave runs partly empty: a product with 1.1 waves' worth of tiles
+leaves most of the GPU idle for the second wave. This \Term{wave quantization}
+is invisible in FLOP counts and can cost a large fraction of a kernel's speed
+on unlucky shapes. It is also why the same model can run at different
+efficiencies on GPUs with different SM counts.
+
 \section{Skinny GEMMs at decode}
+
+At decode, a linear layer multiplies a large weight matrix by $N$ columns,
+where $N$ is the number of sequences in the batch: one, eight, sixty-four. A
+kernel tuned for square products wastes most of its tile on such a shape,
+exactly the tile-quantization effect the M1 showed at 9--32 sequences
+(\Chref{roofline}). The other side of the shape is the lever of
+\Chref{roofline} seen at kernel level. The opening's $4{,}096\times4{,}096$
+product reads its matrix at 36~GB/s for one column; with 16 columns it does 16
+times the work in 1.1 times the time, and with 128 columns, 128 times the work
+in 2.6 times the time --- until the columns are enough to make the product
+compute-bound. Engines therefore carry several kernels for the same
+product: matrix--vector kernels for $N$ of one or a few, small-$N$ tilings in
+between, and full GEMMs for prefill --- and choose among them by shape at every
+step.
 
 \section{Split-K and stream-K}
 
+When $M\times N$ yields too few tiles to fill the GPU --- a skinny product, or
+a small layer --- the $K$ dimension can be split instead: several blocks compute
+partial sums over different ranges of $K$ for the same output tile, and a final
+reduction adds them. This is the same idea as Flash-Decoding's split of the
+sequence (\Chref{decode-attention}), and it has the same cost: a reduction pass
+and a workspace. Stream-K generalizes it by giving every SM an equal share of
+the product's total inner-loop iterations, whatever the tiling, which removes
+the wave-quantization loss; its authors reported gains of up to 14 times on some
+of 32,824 shapes with a single tile configuration per precision
+\cite{osama2023streamk}.
+
 \LedgerSection
+
+Tiling a matrix product for tensor cores, against a straightforward loop:
+
+\begin{ConstraintLedger}
+Compute & buys & Access to the matrix units' peak; two to three orders of magnitude over scalar loops on the M1 (measured ladder above). \\
+Memory bandwidth & buys & Operand reuse raises the tile's intensity (equation~\eqref{eq:tile-intensity}). \\
+Memory capacity & spends & Registers, shared memory and tensor memory for the tiles --- the scarcest capacity on the chip. \\
+Latency & risks & At small $N$, a large tile wastes its columns; split-K adds a reduction pass. \\
+Correctness & risks & Accumulation precision: FP8 accumulators on Hopper keep about 14 bits (\Chref{low-precision-float}). \\
+\end{ConstraintLedger}
 
 \LabSection{tile a GEMM and watch it climb}
 
+\LabIntent{In \texttt{code/labs/ch07-gemm/}, a Rust ladder of matrix
+products --- naive, loop-reordered, cache-blocked, register-tiled with
+compiler vectorization, and multi-threaded --- each checked against a float64
+oracle before timing, plotted in GFLOP/s against the machine's roofline from
+the lab of \Chref{roofline}. A second part fixes $M=K=4096$ and varies $N$ from
+1 to 512 to reproduce the skinny-GEMM cliff, then adds a split-K variant and
+finds the shapes where it wins.}
+
 \HappenedSection{the first edition's loop-order and tiling measurements}
 
-\FrontierSection{}
+This book's own first edition measured the bottom of the ladder on the M1 and
+kept the losses (records in \texttt{research/benchmarks/}, 2026-09-03). Changing
+the loop order from $i,j,k$ to $i,k,j$ made a single-threaded scalar product
+3.4 to 9.2 times faster at sizes 64 to 256 --- identical arithmetic, contiguous
+memory. The blocked kernel's teaching default of $32\times32\times32$ tiles was
+not the best tile on that machine: 64 was, at 4.3 times the unblocked loop. The
+blocked kernel \emph{lost} at sizes 8 and 16, where its bookkeeping outweighed
+its reuse. And with a fixed $512\times512$ weight matrix, eight columns ran at
+fewer FLOPs per second through the blocked kernel than one column through the
+matrix--vector loop, while sixty-four columns ran fastest of all --- the skinny
+product's cliff, measured in scalar code before any GPU was involved. None of
+those ratios is a portable constant; all of them are the reason engines choose
+kernels by shape.
+
+\FrontierSection{2026-09-24}
+
+Each GPU generation changes the instruction that kernels are built around:
+Hopper's asynchronous warpgroup MMA and TMA \cite{nvidia2026cutlasswgmma}, then
+Blackwell's tensor memory, paired-SM MMA and native block-scaled low-precision
+operands \cite{nvidia2026cutlassblackwell}. Kernel authoring is following with
+Python-level tile languages (\Chref{kernel-languages}). \todo{verify: which
+stream-K or split-K schedules current CUTLASS and cuBLAS select by default for
+decode-shaped products}.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:tile-intensity}, find the
+smallest square tile whose intensity exceeds an H100's BF16 ridge. How much
+shared memory would its operands need?
+\item \emph{Prediction.} A product has 150 output tiles on a GPU with 132
+SMs. Predict its efficiency relative to one with 132 tiles, and propose a
+split that recovers it.
+\item \emph{Implementation.} Add a split-K path to the lab and find the
+smallest $N$ at which the ordinary tiled kernel is faster.
+\item \emph{Falsification.} Find a matrix size at which your machine's BLAS is
+slower per FLOP than at a smaller size, and explain it.
+\end{enumerate}
