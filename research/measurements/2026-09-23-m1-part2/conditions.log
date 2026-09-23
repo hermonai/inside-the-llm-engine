@@ -1,0 +1,4 @@
+--- bench-quant: 2026-09-23T18:34:11Z load { 27.42 12.97 8.40 } total = 18432.00M  used = 17600.25M  free = 831.75M  (encrypted)
+--- bench-kv: 2026-09-23T18:38:02Z load { 12.80 16.25 11.07 } total = 18432.00M  used = 17626.06M  free = 805.94M  (encrypted)
+--- torch: 2026-09-23T18:57:08Z load { 8.67 8.35 10.13 } total = 21504.00M  used = 20795.62M  free = 708.38M  (encrypted)
+--- end: 2026-09-23T18:57:37Z load { 10.62 8.85 10.25 } total = 23552.00M  used = 22424.44M  free = 1127.56M  (encrypted)

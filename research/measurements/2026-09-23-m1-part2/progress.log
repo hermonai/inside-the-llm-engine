@@ -1,0 +1,20 @@
+2026-09-23T18:32:12Z start
+2026-09-23T18:32:27Z quantize Q8_0 exit=0
+2026-09-23T18:32:50Z quantize Q6_K exit=0
+2026-09-23T18:33:26Z quantize Q5_K_M exit=0
+2026-09-23T18:33:42Z quantize Q3_K_M exit=0
+2026-09-23T18:34:11Z quantize Q2_K exit=0
+2026-09-23T18:34:44Z bench Q4_K_M exit=0
+2026-09-23T18:35:38Z bench Q8_0 exit=0
+2026-09-23T18:36:23Z bench Q6_K exit=0
+2026-09-23T18:37:02Z bench Q5_K_M exit=0
+2026-09-23T18:37:35Z bench Q3_K_M exit=0
+2026-09-23T18:38:02Z bench Q2_K exit=0
+2026-09-23T18:42:27Z kv f16 exit=0
+2026-09-23T18:47:56Z kv q8_0 exit=0
+2026-09-23T18:52:40Z kv q4_0 exit=0
+2026-09-23T18:57:08Z kv f16 nofa exit=0
+2026-09-23T18:57:10Z gemm exit=1
+2026-09-23T18:57:35Z attention exit=0
+2026-09-23T18:57:37Z launch exit=0
+2026-09-23T18:57:37Z done

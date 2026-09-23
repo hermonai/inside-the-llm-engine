@@ -1,0 +1,162 @@
+# torch.compile output for the n = 10 chain (TORCH_LOGS=output_code; log prefix stripped)
+Output code:
+# AOT ID: ['1_inference']
+from ctypes import c_void_p, c_long, c_int
+import torch
+import math
+import random
+import os
+import tempfile
+from math import inf, nan
+from cmath import nanj
+from torch._inductor.hooks import run_intermediate_hooks
+from torch._inductor.utils import maybe_profile
+from torch._inductor.codegen.memory_planning import _align as align
+from torch import device, empty_strided
+from torch._inductor.async_compile import AsyncCompile
+from torch._inductor.select_algorithm import extern_kernels
+
+aten = torch.ops.aten
+inductor_ops = torch.ops.inductor
+_quantized = torch.ops._quantized
+assert_size_stride = torch._C._dynamo.guards.assert_size_stride
+assert_alignment = torch._C._dynamo.guards.assert_alignment
+empty_strided_cpu = torch._C._dynamo.guards._empty_strided_cpu
+empty_strided_cpu_pinned = torch._C._dynamo.guards._empty_strided_cpu_pinned
+empty_strided_cuda = torch._C._dynamo.guards._empty_strided_cuda
+empty_strided_xpu = torch._C._dynamo.guards._empty_strided_xpu
+empty_strided_mtia = torch._C._dynamo.guards._empty_strided_mtia
+reinterpret_tensor = torch._C._dynamo.guards._reinterpret_tensor
+alloc_from_pool = torch.ops.inductor._alloc_from_pool
+async_compile = AsyncCompile()
+empty_strided_p2p = torch._C._distributed_c10d._SymmetricMemory.empty_strided_p2p
+from torch._inductor.runtime.runtime_utils import compile_mps_shader
+from torch._inductor.runtime.runtime_utils import compile_mps_shader
+
+
+# Topologically Sorted Source Nodes: [x, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9], Original ATen: [aten.add]
+# Source node to ATen node mapping:
+#   x => add
+#   x_1 => add_1
+#   x_2 => add_2
+#   x_3 => add_3
+#   x_4 => add_4
+#   x_5 => add_5
+#   x_6 => add_6
+#   x_7 => add_7
+#   x_8 => add_8
+#   x_9 => add_9
+# Graph fragment:
+#   %arg0_1 : Tensor "f32[1024][1]mps:0" = PlaceHolder[target=arg0_1]
+#   %add : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%arg0_1, 1), kwargs = {})
+#   %add_1 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add, 1), kwargs = {})
+#   %add_2 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_1, 1), kwargs = {})
+#   %add_3 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_2, 1), kwargs = {})
+#   %add_4 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_3, 1), kwargs = {})
+#   %add_5 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_4, 1), kwargs = {})
+#   %add_6 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_5, 1), kwargs = {})
+#   %add_7 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_6, 1), kwargs = {})
+#   %add_8 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_7, 1), kwargs = {})
+#   %add_9 : Tensor "f32[1024][1]mps:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_8, 1), kwargs = {})
+#   return %add_9
+mps_lib_0 = compile_mps_shader('''
+    #include <c10/metal/utils.h>
+    kernel void generated_kernel(
+        device float* out_ptr0,
+        constant float* in_ptr0,
+        uint xindex [[thread_position_in_grid]]
+    ) {
+        int x0 = xindex;
+        auto tmp0 = in_ptr0[x0];
+        auto tmp1 = 1.0;
+        auto tmp2 = tmp0 + tmp1;
+        auto tmp3 = tmp2 + tmp1;
+        auto tmp4 = tmp3 + tmp1;
+        auto tmp5 = tmp4 + tmp1;
+        auto tmp6 = tmp5 + tmp1;
+        auto tmp7 = tmp6 + tmp1;
+        auto tmp8 = tmp7 + tmp1;
+        auto tmp9 = tmp8 + tmp1;
+        auto tmp10 = tmp9 + tmp1;
+        auto tmp11 = tmp10 + tmp1;
+        out_ptr0[x0] = static_cast<float>(tmp11);
+    }
+''')
+
+
+async_compile.wait(globals())
+del async_compile
+
+class Runner:
+    def __init__(self, partitions):
+        self.partitions = partitions
+
+    def recursively_apply_fns(self, fns):
+        new_callables = []
+        for fn, c in zip(fns, self.partitions):
+            new_callables.append(fn(c))
+        self.partitions = new_callables
+
+    def call(self, args):
+        arg0_1, = args
+        args.clear()
+        assert_size_stride(arg0_1, (1024, ), (1, ))
+        buf0 = empty_strided((1024, ), (1, ), device='mps', dtype=torch.float32)
+        mps_lib_0.generated_kernel(buf0, arg0_1, threads=[1024])
+        del arg0_1
+        return (buf0, )
+
+runner = Runner(partitions=[])
+call = runner.call
+recursively_apply_fns = runner.recursively_apply_fns
+
+
+def benchmark_compiled_module(times=10, repeat=10):
+    from torch._dynamo.testing import rand_strided
+    from torch._inductor.utils import print_performance
+    arg0_1 = rand_strided((1024, ), (1, ), device='mps:0', dtype=torch.float32)
+    fn = lambda: call([arg0_1])
+    return print_performance(fn, times=times, repeat=repeat)
+
+
+if __name__ == "__main__":
+    from torch._inductor.wrapper_benchmark import compiled_module_main
+    compiled_module_main('None', benchmark_compiled_module)
+
+Output code written to: <tmp>/torchinductor_<user>/la/cla26a6rbjwrjknzn7joaecnvl3zaspybmq5eqsduyu4l5fksamf.py
+Output code:
+# AOT ID: ['3_inference']
+from ctypes import c_void_p, c_long, c_int
+import torch
+import math
+import random
+import os
+import tempfile
+from math import inf, nan
+from cmath import nanj
+from torch._inductor.hooks import run_intermediate_hooks
+from torch._inductor.utils import maybe_profile
+from torch._inductor.codegen.memory_planning import _align as align
+from torch import device, empty_strided
+from torch._inductor.async_compile import AsyncCompile
+from torch._inductor.select_algorithm import extern_kernels
+
+aten = torch.ops.aten
+inductor_ops = torch.ops.inductor
+_quantized = torch.ops._quantized
+assert_size_stride = torch._C._dynamo.guards.assert_size_stride
+assert_alignment = torch._C._dynamo.guards.assert_alignment
+empty_strided_cpu = torch._C._dynamo.guards._empty_strided_cpu
+empty_strided_cpu_pinned = torch._C._dynamo.guards._empty_strided_cpu_pinned
+empty_strided_cuda = torch._C._dynamo.guards._empty_strided_cuda
+empty_strided_xpu = torch._C._dynamo.guards._empty_strided_xpu
+empty_strided_mtia = torch._C._dynamo.guards._empty_strided_mtia
+reinterpret_tensor = torch._C._dynamo.guards._reinterpret_tensor
+alloc_from_pool = torch.ops.inductor._alloc_from_pool
+async_compile = AsyncCompile()
+empty_strided_p2p = torch._C._distributed_c10d._SymmetricMemory.empty_strided_p2p
+
+# n = 1000 chain: summary
+kernel definitions in the n = 1000 output: 1
+kernel body lines: 1026
+mps_lib_0.generated_kernel(buf10, arg0_1, threads=[1024])

@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "<scratch>/attention_memory2.py", line 81, in <module>
+    torch.mps.synchronize(); t0 = time.perf_counter(); fn(q, k, v); torch.mps.synchronize()
+                                                       ~~^^^^^^^^^
+  File "<scratch>/attention_memory2.py", line 25, in sdpa
+    return F.scaled_dot_product_attention(q, k, v, is_causal=True)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: MPS backend out of memory (MPS allocated: 1024.00 MiB, other allocations: 4.13 GiB, max allowed: 6.00 GiB). Tried to allocate 1024.00 MiB on private pool. Use PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 to disable upper limit for memory allocations (may cause system failure).
+Traceback (most recent call last):
+  File "<scratch>/attention_memory2.py", line 77, in <module>
+    rec["max_abs_err_vs_fp64"] = float((out[0, :, rows].cpu().double() - oracle(q, k, v, rows)).abs().max())
+                                        ~~~^^^^^^^^^^^^
+RuntimeError: MPS backend out of memory (MPS allocated: 1024.00 MiB, other allocations: 16.50 GiB, max allowed: 6.00 GiB). Tried to allocate 256 bytes on private pool. Use PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 to disable upper limit for memory allocations (may cause system failure).

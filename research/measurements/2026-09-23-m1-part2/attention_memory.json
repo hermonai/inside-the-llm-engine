@@ -1,0 +1,41 @@
+{
+ "torch": "2.10.0",
+ "runs": [
+  {
+   "S": 1024,
+   "naive_s": 0.007339540985412896,
+   "sdpa_s": 0.007716708001680672,
+   "naive_extra_bytes": 1082130432,
+   "sdpa_extra_bytes": 0,
+   "score_matrix_bytes_fp16": 16777216,
+   "max_abs_diff": 0.001953125
+  },
+  {
+   "S": 2048,
+   "naive_s": 0.028833374963141978,
+   "sdpa_s": 0.03196837496943772,
+   "naive_extra_bytes": 1073741824,
+   "sdpa_extra_bytes": 1073741824,
+   "score_matrix_bytes_fp16": 67108864,
+   "max_abs_diff": 0.001953125
+  },
+  {
+   "S": 4096,
+   "naive_s": 0.11432295897975564,
+   "sdpa_s": 0.12516912491992116,
+   "naive_extra_bytes": 2147483648,
+   "sdpa_extra_bytes": 1073741824,
+   "score_matrix_bytes_fp16": 268435456,
+   "max_abs_diff": 0.0029296875
+  },
+  {
+   "S": 8192,
+   "naive_s": 0.5243834579596296,
+   "sdpa_s": 0.8119563750224188,
+   "naive_extra_bytes": 6442450944,
+   "sdpa_extra_bytes": 0,
+   "score_matrix_bytes_fp16": 1073741824,
+   "max_abs_diff": 0.001953125
+  }
+ ]
+}
