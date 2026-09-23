@@ -1,36 +1,30 @@
-# Research System
+# Research
 
-Research notes preserve the evidence and uncertainty behind polished chapters.
-They are not manuscript prose.
+Evidence behind the book. Nothing here is manuscript prose.
 
-Use one note per substantial chapter, normally
-`research/part-NN/chapter-NN-topic.md`. Each note contains:
+## Second edition
 
-```text
-Question
-Scope and truth categories
-Primary sources (with commit/version/date)
-Verified facts
-Open questions
-Terminology
-Code locations
-Potential diagrams
-Potential experiments
-Correctness gates
-Claims requiring verification
-```
+- [`FRONTIER.md`](FRONTIER.md) — the dated, sourced ledger of the state of the
+  art: hardware specifications, model configurations and techniques, each with
+  its primary source, the date it was checked, and its maturity. No frontier
+  claim enters a chapter without an entry here (`AUTHORING.md` §6).
+- `measurements/` — one record per measured number printed in the book:
+  date, hardware, software versions, model file and quantization, command,
+  workload, repetitions, statistic and raw output (`AUTHORING.md` §5).
 
-`hermon/` tracks the production reference; `papers/` records primary literature;
-`external/` covers other engines/specifications; `benchmarks/` stores
-methodology and small raw results; `terminology/` resolves naming conflicts.
-Follow `docs/SOURCE_POLICY.md` and never copy a research inference into the
-manuscript as CURRENT behavior without verification.
+## First edition (preserved)
 
-Active chapter research:
+The per-chapter research notes and benchmark records below were written for
+the first edition's Chapters 1–9, now Appendix A and Chapter 14. They remain
+valid evidence for those texts; their process rules were superseded by
+`AUTHORING.md` (the old rules are in `archive/docs/SOURCE_POLICY.md`).
 
-- [Part I](part-01/README.md), beginning with
+- [Part I notes](part-01/README.md), from
   [Chapter 1 — The Missing Half of AI](part-01/chapter-01-the-missing-half-of-ai.md).
-- [Part II](part-02/README.md), through
-  [Chapter 7 — Embeddings and Normalization](part-02/chapter-07-embeddings-and-normalization.md).
-- [Chapter 1–6 diagram and math retrofit](editorial/diagram-math-retrofit.md),
-  recording visual, notation, count, and verification decisions.
+- [Part II notes](part-02/README.md), through Chapter 9 (RoPE).
+- `benchmarks/` — loop order, blocked GEMM, GEMV versus GEMM, traversal order,
+  sampling cost and projection scaling, with their losses.
+- `hermon/README.md` — a dated reconnaissance of Hermon; re-check its claims
+  against source before use.
+- [Diagram and math retrofit](editorial/diagram-math-retrofit.md), `astra/`,
+  `textbook/` — records of the first edition's visual and LaTeX passes.
