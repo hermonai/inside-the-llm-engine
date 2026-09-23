@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 1 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md
 \chapter{Why Inference Is Its Own Discipline}\label{ch:why-inference}
 
 \begin{ChapterIntent}
@@ -15,28 +16,249 @@ uses to charge a technique for what it spends, and shows how a single 2026
 model configuration file already names most of the book.
 \end{ChapterIntent}
 
-\OpeningSection{Sixteen conversations for the price of two}
+\OpeningSection{Thirty-two conversations for less than the price of four}
+
+On a 2020 laptop with Apple's M1 chip, llama.cpp generates text with
+Llama~3.2~3B at about 20 tokens per second for one conversation. Ask it to
+continue thirty-two conversations at once, each with its own history, and the
+machine produces \textbf{176 tokens per second} in total --- 8.8 times as many
+--- while each step of the computation takes only 3.7 times as long (measured;
+the record is \texttt{research/measurements/2026-09-23-m1-llama32-3b.md}).
+
+Nothing about the model changed. The weights, the arithmetic per token, the
+answers --- all identical. What changed is how the engine grouped the work. At
+one conversation, every step streams all two gigabytes of weights from memory
+to produce a single token. At thirty-two, the same stream of weights produces
+thirty-two tokens, one per conversation. The cost of a token fell by almost a
+factor of nine, and the price was paid by each user in waiting time: each
+conversation now advances at 5.5 tokens per second instead of 20.
+
+That trade --- throughput for the operator against latency for the user,
+bought with memory for thirty-two histories --- has no counterpart in how a
+model is trained or in how its architecture is usually explained. It is the
+first example of the kind of decision this book is about. Chapter by chapter,
+we will find that almost every technique in a modern inference engine is a
+trade of this shape: one scarce resource spent to relieve another, for users
+who are waiting.
 
 \NapkinSection{Napkin math: training pays once, inference pays per token}
 
+Training a model with $N$ active parameters on $D$ tokens costs about $6ND$
+floating-point operations: two per parameter per token in the forward pass and
+four in the backward pass (\cite{kaplan2020scaling}, section~1.3). Processing
+one token in service --- a prompt token or a generated one --- costs about
+$2N$: the forward pass alone. So the compute a model spends in service equals
+the compute spent training it after about $3D$ processed tokens.
+
+That break-even arrives. DeepSeek-V3 activates 37~billion parameters per token
+and was trained on 14.8~trillion tokens \cite{deepseek2024v3}: about
+$3.3\times10^{24}$ FLOPs (derived), matched in service after about 44~trillion
+processed tokens. DeepSeek reported that its V3 and R1 service, in one 24-hour
+period in February 2025, took 608~billion input tokens --- 56\% of them served
+from a cache on disk rather than computed --- and generated 168~billion
+\cite{deepseek2025inference}. That is about 430~billion computed tokens a day:
+the training run's compute, spent again roughly every hundred days (derived;
+the service mixes V3 and R1, which share an architecture).
+
+The comparison of FLOPs understates the difference, because the two workloads
+spend their FLOPs differently. Training processes enormous batches of known
+tokens, runs at a large fraction of peak compute, and is scheduled once. A
+decode step processes one unknown token per conversation, runs at a few
+percent of peak compute (\Chref{roofline}), must finish within tens of
+milliseconds, and is scheduled billions of times against arrivals no one
+controls. The operation is the same; the engineering problem is not.
+
 \section{What an engine does that a model does not}
+
+A trained model is a function: weights and the arithmetic that maps a sequence
+of tokens to a distribution over the next one. Appendix~A builds that function
+from scratch. An \Term{inference engine} is everything around it that turns the
+function into a service:
+
+\begin{itemize}
+\item it accepts requests and decides which run together in each step
+(\Chref{continuous-batching}, \Chref{scheduling});
+\item it keeps each request's state --- above all its KV cache --- in memory
+it must allocate, share and reclaim (\Chref{kv-cache}, \Chref{paged-kv});
+\item it runs the arithmetic in kernels fitted to the hardware
+(Part~\ref{part:one-request});
+\item it samples tokens, turns them into bytes, streams them, and ends every
+request exactly once --- finished, cancelled or failed
+(\Chref{request-lifecycle});
+\item it does all of this without changing the answer
+(\Chref{fast-wrong-answers}).
+\end{itemize}
+
+The same weights can be served at costs that differ by an order of magnitude
+depending on how well these jobs are done. That is why inference is a
+discipline of its own.
 
 \section{Four scarce resources}
 
+Every decision in an engine spends some of four resources:
+
+\begin{center}
+\begin{tabular}{@{}p{0.27\linewidth}p{0.36\linewidth}p{0.29\linewidth}@{}}
+\toprule
+Resource & What it measures & Where it binds \\
+\midrule
+Memory bandwidth & bytes moved from memory per token & decode \\
+Memory capacity & bytes that must stay resident & batch size, context, model size \\
+Compute & floating-point operations & prefill, large batches \\
+Latency & time to first token, time per output token & the user \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The first three are properties of hardware; the fourth is a property of the
+people using it. They are not independent. The opening measurement spent
+latency and capacity to buy the use of compute that bandwidth had left idle.
+\Chref{roofline} explains why bandwidth binds decode, \Chref{prefill-decode}
+why compute binds prefill, and \Chref{kv-cache} why capacity binds everything
+once contexts grow.
+
 \section{Two outcomes: correctness and cost}
 
-\section{The constraint ledger}
+The resources are spent for two outcomes. \textbf{Correctness} comes first: a
+fast wrong answer is worthless, and many of the book's optimizations can
+change answers in ways no single test run reveals --- lower-precision numbers,
+reordered sums, results that depend on which other requests shared a batch
+(\Chref{fast-wrong-answers}). \textbf{Cost} is measured not as raw throughput
+but as \Term{goodput}: the rate of requests served within their latency
+objectives \cite{zhong2024distserve}, and, per dollar, tokens at a latency
+target. Throughput that users experience as a stall does not count.
+
+\section{Charging every technique}
+
+The book charges every technique for what it spends, in a small table called
+the \Term{constraint ledger}, placed at the end of each chapter's mechanism.
+Each row names a resource or outcome, says whether the technique \emph{buys}
+it, \emph{spends} it, \emph{moves} the bottleneck elsewhere or puts it at
+\emph{risk}, and says by how much when that is known. The ledger for this
+chapter's opening measurement closes the chapter's mechanism below.
+
+A technique whose ledger shows no cost has not been understood yet. The
+discipline of writing the ledger is what keeps a book about fast-moving
+techniques useful: next year's method will buy and spend the same four
+resources, and its ledger can be written before its benchmarks are.
 
 \section{A configuration file is a table of contents}
 
+Open the configuration file published with a 2026 flagship model and most of
+this book is already named in it. Qwen3.5-397B-A17B's \cite{qwen2026qwen35config}
+includes, among other keys:
+
+\begin{center}
+\begin{tabular}{@{}p{0.43\linewidth}p{0.49\linewidth}@{}}
+\toprule
+Key and value & What an engine must do about it \\
+\midrule
+\texttt{num\_key\_value\_heads: 2} & a small KV cache per token (\Chref{shrinking-kv}) \\
+\texttt{layer\_types}: 45 linear, 15 full attention & keep fixed recurrent state beside a KV cache (\Chref{hybrid-models}) \\
+\texttt{num\_experts: 512}, \texttt{num\_experts\_per\_tok: 10} & route tokens to experts (\Chref{mixture-of-experts}) \\
+\texttt{mtp\_num\_hidden\_layers: 1} & a built-in drafter for speculation (\Chref{modern-speculation}) \\
+\texttt{max\_position\_embeddings: 262144} & serve very long contexts (\Chref{long-context}) \\
+\texttt{vision\_config} & run an image encoder (\Chref{multimodal}) \\
+\texttt{dtype: bfloat16} & choose what precision to serve in (\Chref{weight-quantization}) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Other 2026 checkpoints add the rest. Kimi~K3 ships its weights in MXFP4, a
+four-bit floating-point format with a shared scale per block of 32 values
+\cite{moonshot2026kimik3} (\Chref{low-precision-float}); gpt-oss-120b limits
+half its layers to a 128-token attention window \cite{openai2025gptoss}
+(\Chref{long-context}); DeepSeek-V3 stores keys and values as a compressed
+latent \cite{deepseek2024v3} (\Chref{shrinking-kv}). A decade ago an engine
+could assume one architecture. Today it reads the configuration to find out
+which of a dozen mechanisms it must implement --- and each has its own entry in
+the ledger.
+
 \section{How this book is organized}
+
+Part~\ref{part:physics} is the physics: the roofline, the two phases, the KV
+cache and the napkin math that predicts a deployment's cost in five minutes.
+Part~\ref{part:one-request} makes one request fast: matrix multiplication and
+attention kernels on real hardware, and quantization in integer and
+floating-point formats. Part~\ref{part:serving} serves many requests:
+lifecycle, batching, paged memory, prefix caching, scheduling, structured
+output and many models on one server. Part~\ref{part:beyond-one-token} makes
+each step produce more than one token. Part~\ref{part:architectures} follows
+the model architectures that reshape engines. Part~\ref{part:scaling-out}
+scales across GPUs and nodes; Part~\ref{part:hardware-you-have} runs models
+larger than the hardware. Part~\ref{part:correctness} keeps answers correct
+and measurements honest, and Part~\ref{part:production} operates, compares and
+finally builds an engine.
 
 \LedgerSection
 
+Decoding thirty-two conversations together on the M1, charged:
+
+\begin{ConstraintLedger}
+Compute & buys & The idle arithmetic of batch-one decode is put to work: 5\% of peak at one conversation, about 43\% at thirty-two (measured). \\
+Latency & spends & Each conversation waits for the whole batch: 3.7$\times$ the step time (measured). \\
+Memory capacity & spends & Thirty-two KV caches instead of one. \\
+Correctness & risks & Answers must not depend on batch size (\Chref{fast-wrong-answers}). \\
+\end{ConstraintLedger}
+
 \LabSection{a fake model with real costs}
+
+\LabIntent{In \texttt{code/labs/ch01-fake-model/}, a dependency-free Rust
+program that allocates a weight matrix the size of a small model (configurable,
+default 1~GB), then runs ``decode steps'' that multiply it by $B$ random vectors
+for $B = 1, 2, 4, \dots, 64$, checking every product against a naive oracle
+before timing it. It prints tokens per second in aggregate and per sequence.
+The reader predicts the curve from their machine's memory bandwidth before
+running it, then explains the gap. No model files are needed; the costs are
+real because the bytes are.}
 
 \HappenedSection{one context, four users}
 
-\FrontierSection{}
+Hermon, the Rust inference engine whose measured results this book uses as
+evidence, recorded the payoff of the opening measurement in its own
+performance notes: on an Apple M3 Pro, serving a 3-billion-parameter Llama
+model quantized to four bits to four concurrent users from one shared
+context, it produced 41.4 tokens per second in aggregate
+against 18.5 for Ollama serving the same four requests (Hermon
+\texttt{docs/PERFORMANCE.md}, v0.4; \todo{verify the run's date and that
+continuous batching is on by default at commit \texttt{2a3fd52}}). The
+mechanism is the one measured above: one pass over the weights served four
+sequences.
+
+The same document then multiplies three separately measured speedups ---
+batching, prefix caching and speculation --- into a combined estimate of about
+five times. The book treats such a product as a hypothesis, not a
+measurement: each speedup was measured on a different workload, and their
+effects need not compose (\Chref{benchmarking}). Hermon's authors say as
+much in the next sentence; the habit of saying it is worth copying.
+
+\FrontierSection{2026-09-23}
+
+The models an engine must serve changed shape between 2024 and 2026. The
+largest open checkpoints are mixtures of experts with a small active fraction:
+Kimi~K3 has 2.8~trillion parameters and activates 104~billion
+\cite{moonshot2026kimik3}; DeepSeek-V4-Pro has 1.6~trillion and activates
+49~billion \cite{deepseek2026v4}. Their attention is increasingly hybrid or
+compressed, their weights increasingly stored in four-bit floating point, and
+their advertised contexts reach a million tokens. Smaller models follow the
+same pattern: gpt-oss-120b runs on a single 80~GB GPU because its experts are
+stored in MXFP4 \cite{openai2025gptoss}. For an engine, the frontier is no
+longer one architecture made fast but many mechanisms made to coexist.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using $6ND$ and $2N$, how many tokens must a model
+trained on 30~trillion tokens process in service before its inference compute
+exceeds its training compute? Why is the answer independent of $N$, and what
+does a prompt cache do to it?
+\item \emph{Prediction.} Before reading \Chref{roofline}, predict how the
+opening measurement would change on a machine with twice the memory bandwidth
+and the same compute. Write the prediction down; check it at the end of that
+chapter.
+\item \emph{Implementation.} Run the chapter's lab and find the batch size at
+which your machine's step time doubles.
+\item \emph{Ledger.} Write the constraint ledger for a technique you already
+know --- for example, caching a web page. Which of the four resources does it
+buy and spend, and which outcome does it put at risk?
+\end{enumerate}

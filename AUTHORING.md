@@ -35,9 +35,9 @@ Correctness      & spends & perplexity rises; measure it per model \\
 \end{ConstraintLedger}
 ```
 
-A row says *buys*, *spends* or *moves* (shifts the bottleneck elsewhere), and
-the note says by how much when that is known. A chapter whose technique
-appears to spend nothing has not found its cost yet.
+A row says *buys*, *spends*, *moves* (shifts the bottleneck elsewhere) or
+*risks* (for correctness), and the note says by how much when that is known.
+A chapter whose technique appears to spend nothing has not found its cost yet.
 
 ## 3. Chapter anatomy
 
