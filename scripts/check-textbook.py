@@ -10,8 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    chapters = sorted((ROOT/"tex/chapters").glob("ch*.tex"))
-    assert len(chapters) == 9
+    main_file = (ROOT/"tex/inside-the-llm-engine.tex").read_text()
+    chapters = [ROOT/"tex"/(name+".tex") for name in
+                re.findall(r"\\input\{((?:chapters|appendices)/[^}]+?)(?:\.tex)?\}", main_file)]
+    assert len(chapters) == 9, chapters
+    assert all(chapter.is_file() for chapter in chapters), chapters
     assert "\\documentclass[11pt,oneside,openany]{book}" in (ROOT/"tex/inside-the-llm-engine.tex").read_text()
     used = []
     for chapter in chapters:
@@ -23,7 +26,7 @@ def main():
         assert not re.search("[\u2500-\u257f]", text), chapter
         worked = ROOT/"tex/worked"/chapter.name
         assert worked.is_file() and worked.read_text().count("\\textbf{Problem.") == 3
-        assert worked.read_text().count("\\textbf{Solution") >= 2 or chapter.stem == "ch01"
+        assert worked.read_text().count("\\textbf{Solution") >= 2 or chapter.stem == "ch14-request-lifecycle"
         for figure in re.findall(r"\\EngineFigure\{([^}]+)\}", text):
             path = ROOT/"tex/figures"/(figure+".tex")
             assert path.is_file(), path
