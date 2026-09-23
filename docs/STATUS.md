@@ -6,12 +6,14 @@ edition's status ledger, with its dated milestone entries, is
 
 ## Where the book is
 
-**Pass 1 (skeleton) is complete.** Every chapter and appendix exists under the
-new numbering with its intent and section headings in the chapter anatomy.
-The first edition's Chapters 2–9 are Appendix A.1–A.8 and its Chapter 1 is the
-seed of Chapter 14, moved with `git mv`. The plan is
-[`STRUCTURE.md`](STRUCTURE.md); the policy is [`../AUTHORING.md`](../AUTHORING.md);
-superseded governance is in `archive/`.
+**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Part I.**
+Every chapter and appendix exists under the new numbering with its intent and
+section headings in the chapter anatomy. Chapters 1–6 are zero drafts built
+on measurements taken for them. The first edition's Chapters 2–9 are Appendix
+A.1–A.8 and its Chapter 1 is the seed of Chapter 14, moved with `git mv` and
+re-pointed at the new numbering. The plan is [`STRUCTURE.md`](STRUCTURE.md);
+the policy is [`../AUTHORING.md`](../AUTHORING.md); superseded governance is
+in `archive/`.
 
 "What actually happened" headings in SKELETON chapters name *planned* cases.
 Each must be verified against source or a measurement record before it is
@@ -87,27 +89,69 @@ if this table is stale. Words are approximate prose words.
 | G | `tex/appendices/g-reproducing-measurements.tex` | SKELETON | 69 |
 <!-- chapter-status:end -->
 
-## Verified baseline (2026-09-23, before restructuring)
+## Verified at the end of session 1 (2026-09-24)
 
 | Check | Result |
 | --- | --- |
-| `make textbook-check` | pass: 9 chapters, 65 native figures, 27 worked problems |
-| `make textbook` | pass: 202-page PDF, XeLaTeX (not LuaLaTeX) |
-| `cargo test --workspace` in `code/mini-engine` | 220 pass: 218 unit/integration + 2 compile-fail doctests |
-| All CI steps run locally | pass |
-| Manuscript size | 56,737 words in the nine first-edition chapters |
+| `make textbook-check` | pass: 42 chapters (36 SKELETON, 6 ZERO), 15 appendix files, 68 native figures (all used), 27 worked problems, CLI trace and worked calculations |
+| `make textbook` | pass: 307-page PDF, XeLaTeX + biber, no overfull boxes or unresolved references; pages with new figures and tables inspected |
+| `cargo test --workspace` in `code/mini-engine` | 220 pass (218 + 2 compile-fail doctests) |
+| All CI steps run locally | pass (17 steps; see `.github/workflows/ci.yml`) |
+| Secrets guard | no IP addresses, host names, credential paths, keys or tokens in tracked files |
+
+Measurement records: `research/measurements/2026-09-23-m1-llama32-3b.md`
+(decode, prefill, batched decode, GPU bandwidth on an Apple M1) and
+`2026-09-23-gguf-tensor-bytes.md` (bytes per token read from two GGUF files).
+The M1 runs were taken on a busy desktop under heavy memory pressure; the
+record says so. Re-run on a quiet machine before any chapter is FULL.
+
+## Open markers in Part I
+
+Thirteen `\todo` markers remain, all visible in the PDF. The ones that need
+hardware or a primary source:
+
+- **GPU measurements** (Chapters 3, 6): the RTX 5060 Ti re-measurement of the
+  prompt's example, and the H100 validation of Chapter 6's table. The GPU
+  development host was unreachable during this session.
+- **Hermon status** (Chapters 1, 4, 5): confirm DEFAULT/PREVIEW for continuous
+  batching, prompt-lookup speculation and the CUDA KV arena at commit
+  `2a3fd52`, and the dates of the cited runs.
+- **Sources** (Chapters 3, 4, 5): the M1's memory type; Rubin-class
+  specifications; engine adoption of chunked prefill and disaggregation; the
+  Kimi Delta Attention paper.
+- **Chapter 3** needs the same kernel selection confirmed in the measured
+  llama.cpp build, and worked solutions; **Chapter 6** needs DeepSeek's decode
+  step reconstructed with expert-parallel communication (FULL pass).
 
 ## Next
 
-1. Light edits to the moved chapters: cross-references to the new numbering.
-2. Zero-draft Part I (Chapters 1–6), beginning with Chapter 3.
-3. Zero-draft Parts II–IX in order, verifying each part's topics in
-   `research/FRONTIER.md` first; see its "Leads to verify" list.
+1. Zero-draft Part II (Chapters 7–13). First read the "Leads to verify" in
+   `research/FRONTIER.md` that Part II needs (FlashAttention-4 and FlashMLA
+   adoption, AMD MI355X compute peaks) and log them.
+2. Zero-draft Parts III–IX in order. Chapter 14's ZERO pass reworks the first
+   edition's text into the anatomy rather than rewriting it.
+3. When a GPU host is available, clear the measurement markers above.
+4. Then pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building
+   each chapter's lab in `code/labs/`.
 
 ## Decisions for the author
 
-- The first edition's nine chapters become Appendix A and Chapter 14. This is
-  the largest editorial call in the plan; see `STRUCTURE.md`.
-- Work happens on branch `second-edition`, created from `astra-visual-rewrite`
-  at `c8b8158`; neither branch has been pushed or merged.
-- The project still has no licence (unchanged from the first edition).
+- **Appendix A.** The first edition's nine chapters became Appendix A and
+  Chapter 14. This is the plan's largest editorial call; see `STRUCTURE.md`.
+- **Order of tasks 4 and 5.** The chapters were moved before the skeleton was
+  created, because the new Chapter 14 file *is* the moved Chapter 1 and history
+  should follow it. The result is the one the plan specified.
+- **The opening machine.** Part I's opening measurements use an Apple M1
+  laptop, measured in this session, instead of the RTX 5060 Ti example: the
+  GPU host was down. The laptop makes the point more relatable; the RTX figure
+  remains a marked item.
+- **Hermon's compound claim.** Chapter 1 notes that Hermon's
+  `docs/PERFORMANCE.md` multiplies three separately measured speedups into an
+  estimate; the book treats it as a hypothesis. Hermon's document may want the
+  same wording.
+- **Frozen first-edition formats.** `manuscript/`, `diagrams/`, `figures/` and
+  `publication/` are untouched and their checks still run in CI. They could be
+  archived once their Rust/oracle parity checks are folded into lab tests.
+- **Branch.** Work is on `second-edition`, created from `astra-visual-rewrite`
+  at `c8b8158`. Nothing has been pushed or merged.
+- **Licence.** Still unselected (unchanged from the first edition).
