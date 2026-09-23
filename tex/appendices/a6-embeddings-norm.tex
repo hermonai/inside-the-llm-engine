@@ -1,7 +1,7 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{Embeddings and Normalization}\label{chapter-7-embeddings-and-normalization}
-Chapter 2 ended with integers. A tokenizer transformed UTF-8 bytes into
-token identities under a model-specific vocabulary contract. Chapter 3
+\chapter{Embeddings and Normalization}\label{chapter-7-embeddings-and-normalization}\label{app:embeddings-norm}
+\Appref{tokens} ended with integers. A tokenizer transformed UTF-8 bytes into
+token identities under a model-specific vocabulary contract. \Appref{smallest-model}
 used one of those identities to select a hidden vector, but its purpose
 was to make an entire language-model forward pass small enough to
 calculate by hand. Now we can inspect that first numerical step as an
@@ -45,8 +45,8 @@ The visual edition follows one deliberately small table through the
 whole chapter. It has three vocabulary rows and four coordinates per
 row; token 1 selects the existing RMSNorm hand vector
 \texttt{{[}1,-2,3,-4{]}}. This is a new connecting fixture, not a
-replacement for Chapter 3's three-dimensional tiny model or the original
-Chapter 7 table tests. Keeping these identities explicit prevents a
+replacement for \Appref{smallest-model}'s three-dimensional tiny model or the original
+\Appref{embeddings-norm} table tests. Keeping these identities explicit prevents a
 polished diagram from silently changing the engine being explained.
 
 Read the plate as three contracts. An integer identifies a row. Lookup
@@ -96,7 +96,7 @@ the row index.
 
 The output is the first \textbf{residual activation}. In a decoder, the
 \textbf{residual stream} is the persistent model-width state carried
-from one Transformer sublayer to the next. Chapter 7 establishes its
+from one Transformer sublayer to the next. \Appref{embeddings-norm} establishes its
 width and normalization; it does not yet build any of the
 transformations that consume it.
 
@@ -151,7 +151,7 @@ b(t,j)=4(tD+j)\quad[\mathrm{bytes}].
 
 Those equations describe the canonical case. The reference operator
 accepts a general validated \texttt{TensorView}, so its actual logical
-mapping remains Chapter 5's stride equation:
+mapping remains \Appref{tensors}'s stride equation:
 
 \begin{equation}
 o(t,j)=b_0+t s_0+j s_1,
@@ -252,7 +252,7 @@ produce additions and other request-local state. If code expects to
 mutate the row as an activation, aliasing model weights would be
 catastrophic.
 
-The selected Chapter 7 policy is therefore explicit materialization:
+The selected \Appref{embeddings-norm} policy is therefore explicit materialization:
 
 For each input position $t$, gather $X_{t,:}=E_{x_t,:}$. Repeated IDs give equal row values but distinct output positions.
 
@@ -694,7 +694,7 @@ is finite. Each output still equals zero because \(x_i=0\). The
 \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/transformer/epsilon-zero-vector.txt}{epsilon
 diagram} shows the valid and rejected paths.
 
-The Chapter 7 API rejects:
+The \Appref{embeddings-norm} API rejects:
 
 \begin{itemize}
 \tightlist
@@ -776,7 +776,7 @@ RMSNorm paper reports experimental efficiency and task results for its
 studied systems; that evidence does not predict a universal
 inference-kernel speed ratio on every engine.
 
-Chapter 7 stops at this contrast. Batch normalization, group
+\Appref{embeddings-norm} stops at this contrast. Batch normalization, group
 normalization, partial RMSNorm, training gradients, and convergence
 behavior are outside its inference boundary.
 
@@ -871,7 +871,7 @@ Stable norm algorithms exist. Netlib's \texttt{SLASSQ}, for example,
 represents a sum of squares using a scale and a scaled sum so
 intermediate values can avoid many overflow and underflow cases. That is
 valuable evidence and a possible future candidate. It does not belong in
-the active Chapter 7 reference path: the more complex invariant would
+the active \Appref{embeddings-norm} reference path: the more complex invariant would
 obscure the direct equation, and there is no measured model workload
 demanding substitution yet.
 
@@ -986,7 +986,7 @@ activations span this entire range.
 
 \EngineFigure{ch07-cost}{Four F32 payload streams explain an analytical 16D-byte RMSNorm cost without asserting measured memory traffic.}{fig:ch07-cost}
 
-Embedding lookup and RMSNorm differ from Chapter 6's matrix products.
+Embedding lookup and RMSNorm differ from \Appref{matmul}'s matrix products.
 
 A single embedding lookup selects one row, checks addresses, reads \(D\)
 values, and under our policy writes \(D\) values. It performs almost no
@@ -1030,7 +1030,7 @@ payload boundary, so optimization questions will often concern data
 movement, reduction strategy, and fusion. ``Often'' is architectural
 reasoning, not a measurement of the current example.
 
-No timing benchmark is published for Chapter 7. A nanosecond result for
+No timing benchmark is published for \Appref{embeddings-norm}. A nanosecond result for
 one tiny vector would mostly expose call, allocation, compiler, and
 timer details. The scale and magnitude experiments answer actual
 correctness questions. A later optimization should first define the
@@ -1068,7 +1068,7 @@ diagram} shows where the two \texttt{{[}V,D{]}} tensors act.
 
 Some architectures tie embedding and output-projection weights, sharing
 parameter storage. That is a model architecture decision, not a
-consequence of shape. ENGINE-1 keeps distinct owners and Chapter 7 does
+consequence of shape. ENGINE-1 keeps distinct owners and \Appref{embeddings-norm} does
 not redesign it.
 
 \section{Integration without rewriting
@@ -1290,7 +1290,7 @@ named semantic path. The permanent substitution order remains:
 
 First establish scalar semantics and an independent oracle. Next check any proposed replacement against them. Measure it only after correctness passes.
 
-Chapter 7 has no candidate because correctness infrastructure should
+\Appref{embeddings-norm} has no candidate because correctness infrastructure should
 precede optimization pressure. That is not unfinished work. It is a
 deliberate engine state with an inspectable active implementation.
 
@@ -1340,7 +1340,7 @@ Several short statements conceal major errors:
 
 \section{Transformer Primitives v1}\label{transformer-primitives-v1}
 
-Chapter 7 completes a named extension of ENGINE-2 rather than inventing
+\Appref{embeddings-norm} completes a named extension of ENGINE-2 rather than inventing
 ENGINE-3. \textbf{Transformer Primitives v1} means the repository can
 now execute:
 
@@ -1407,7 +1407,7 @@ That is the level at which later kernels must be understood. The
 equation, memory, ownership, and production mapping agree. Short code is
 no excuse for a vague system contract.
 
-\section{The boundary to Chapter 8}\label{the-boundary-to-chapter-8}
+\section{The boundary to Appendix A.7}\label{the-boundary-to-chapter-8}
 
 We now have model-space vectors, normalization, and matrix
 multiplication. How does a Transformer turn one residual vector into
@@ -1415,8 +1415,8 @@ three different representations that determine what information it asks
 for, what information it offers, and what information is ultimately
 transported?
 
-That is the bounded question for \textbf{Chapter 8 --- Queries, Keys,
-and Values}. Chapter 8 may build the three linear projections and their
+That is the bounded question for \textbf{Appendix A.7 --- Queries, Keys,
+and Values}. \Appref{qkv} may build the three linear projections and their
 shape/ownership contracts. It must not smuggle in attention, position
 rotation, or KV caching: those remain separate later chapters.
 

@@ -38,7 +38,7 @@ if this table is stale. Words are approximate prose words.
 | 11 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | SKELETON | 184 | 0 |
 | 12 | Quantizing the KV Cache | SKELETON | 164 | 0 |
 | 13 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | SKELETON | 160 | 0 |
-| 14 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | SKELETON | 2,167 | 0 |
+| 14 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | SKELETON | 2,159 | 0 |
 | 15 | Continuous Batching | SKELETON | 134 | 0 |
 | 16 | Paged KV Memory | SKELETON | 147 | 0 |
 | 17 | Prefix Caching and RadixAttention | SKELETON | 141 | 0 |
@@ -71,14 +71,14 @@ if this table is stale. Words are approximate prose words.
 | Appendix | File | Status | Words |
 | --- | --- | --- | ---: |
 | A (opener) | `tex/appendices/a0-transformer-from-scratch.tex` | SKELETON | 100 |
-| A.1 | `tex/appendices/a1-text-to-tokens.tex` | FIRST EDITION | 7,508 |
-| A.2 | `tex/appendices/a2-smallest-model.tex` | FIRST EDITION | 6,394 |
-| A.3 | `tex/appendices/a3-sampling.tex` | FIRST EDITION | 6,390 |
-| A.4 | `tex/appendices/a4-tensors.tex` | FIRST EDITION | 8,074 |
-| A.5 | `tex/appendices/a5-matmul.tex` | FIRST EDITION | 10,839 |
-| A.6 | `tex/appendices/a6-embeddings-norm.tex` | FIRST EDITION | 7,407 |
+| A.1 | `tex/appendices/a1-text-to-tokens.tex` | FIRST EDITION | 7,495 |
+| A.2 | `tex/appendices/a2-smallest-model.tex` | FIRST EDITION | 6,385 |
+| A.3 | `tex/appendices/a3-sampling.tex` | FIRST EDITION | 6,387 |
+| A.4 | `tex/appendices/a4-tensors.tex` | FIRST EDITION | 8,068 |
+| A.5 | `tex/appendices/a5-matmul.tex` | FIRST EDITION | 10,829 |
+| A.6 | `tex/appendices/a6-embeddings-norm.tex` | FIRST EDITION | 7,398 |
 | A.7 | `tex/appendices/a7-qkv.tex` | FIRST EDITION | 5,819 |
-| A.8 | `tex/appendices/a8-rope.tex` | FIRST EDITION | 5,304 |
+| A.8 | `tex/appendices/a8-rope.tex` | FIRST EDITION | 5,316 |
 | B | `tex/appendices/b-gpu-architecture.tex` | SKELETON | 107 |
 | C | `tex/appendices/c-cpu-simd.tex` | SKELETON | 84 |
 | D | `tex/appendices/d-model-formats.tex` | SKELETON | 84 |

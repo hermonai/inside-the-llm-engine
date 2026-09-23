@@ -1,6 +1,6 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{Tensors Without Magic}\label{chapter-5-tensors-without-magic}
-Part I ended with a complete loop. Text became token IDs. A tiny
+\chapter{Tensors Without Magic}\label{chapter-5-tensors-without-magic}\label{app:tensors}
+\Appref{sampling} ended with a complete loop. Text became token IDs. A tiny
 language model turned the last ID into an embedding, multiplied that
 activation by an output projection, produced logits, and fed a selected
 token back into the next step. Every number was small enough to print.
@@ -16,7 +16,7 @@ could still compute the wrong answer.
 
 This chapter gives those bytes a contract. It does not build a tensor
 framework or perform matrix multiplication. It builds the smallest
-substrate on which the rest of Part II can reason honestly about memory.
+substrate on which the rest of Appendix~A can reason honestly about memory.
 
 \begin{quote}
 \textbf{FIRST PRINCIPLE} Mathematics tells us \emph{what} value we need.
@@ -28,7 +28,7 @@ values}\label{where-we-are-from-a-model-equation-to-six-stored-values}
 
 Follow the engine downward: a request invokes a model; the model asks an
 operator to read tensors; the operator must find the right bytes. This
-chapter works at that final representation boundary. Chapter 6 will put
+chapter works at that final representation boundary. \Appref{matmul} will put
 arithmetic on top of it. The current repository already contains later
 chapters, but this chapter's executable contract remains Tensor
 Substrate v1.
@@ -92,7 +92,7 @@ For every tensor in this book, ask five questions:
 \end{enumerate}
 
 Later we will add location---CPU memory, device memory, mapped file, or
-another tier. Chapter 5 stays in local CPU memory so we can settle the
+another tier. \Appref{tensors} stays in local CPU memory so we can settle the
 first five without hiding them behind a device abstraction.
 
 \section{From scalar to tensor}\label{from-scalar-to-tensor}
@@ -216,8 +216,8 @@ Other systems use \texttt{f16}, \texttt{bf16}, integers, and packed
 quantized formats. Two types can occupy the same byte width yet
 interpret bits differently. A packed quantized block may represent many
 logical weights with shared scale metadata, so ``one scalar equals one
-fixed byte range'' eventually stops being a useful model. Chapter 16
-will face that complexity. Adding a generic dtype hierarchy now would
+fixed byte range'' eventually stops being a useful model. \Chref{weight-quantization}
+faces that complexity. Adding a generic dtype hierarchy now would
 create machinery without a chapter requirement.
 
 \texttt{DType::F32} is still explicit in v1. That apparently redundant
@@ -397,7 +397,7 @@ Thus \texttt{{[}2,3{]}\ /\ {[}3,1{]}} is contiguous. Its transpose
 \texttt{{[}3,2{]}\ /\ {[}1,3{]}} is not. Shape \texttt{{[}1,3,1{]}} has
 canonical strides \texttt{{[}3,1,1{]}}; a different stride on a
 length-one axis is non-canonical even if it reaches the same values.
-This strict rule gives Chapter 6 a simple kernel precondition. We
+This strict rule gives \Appref{matmul} a simple kernel precondition. We
 describe it as \emph{v1 canonical contiguity}, not universal framework
 semantics.
 
@@ -717,7 +717,7 @@ broken file is placed in a normal test target.
 lifetime trace}.
 
 A future safe split operation could prove that two canonical ranges do
-not overlap before returning two mutable borrows. Chapter 5 does not
+not overlap before returning two mutable borrows. \Appref{tensors} does not
 need it. It also needs no unsafe code: \texttt{engine0} retains
 \texttt{\seqsplit{\#![forbid(unsafe\_code)]}}.
 
@@ -733,8 +733,8 @@ addresses.
 
 The allocation is aligned suitably for \texttt{f32}. That does not
 promise alignment for a future SIMD instruction, GPU buffer, stable C
-ABI, or direct I/O request. Part VII will make arena and native
-alignment explicit.
+ABI, or direct I/O request. \Appref{cpu} and \Chref{expert-streaming} make native
+alignment explicit where it matters.
 
 Layout also affects locality. CPU caches fetch regions larger than one
 scalar, so visiting neighboring physical elements often benefits from
@@ -823,7 +823,7 @@ matrix multiplication operator has been smuggled into \texttt{Tensor}.
 Bias, hidden activation, and \texttt{Logits} remain specialized
 one-dimensional vectors. Wrapping every vector would increase
 abstraction without eliminating an ambiguous multi-axis indexing
-assumption. Chapter 6 can revisit activation representations when
+assumption. \Appref{matmul} can revisit activation representations when
 operators need common tensor inputs.
 
 This refactor is our first internal substitution gate. The
@@ -868,7 +868,7 @@ without attempting giant allocations.
 \section{Performance lab: same sum, different
 walk}\label{performance-lab-same-sum-different-walk}
 
-The Chapter 5 harness allocates one canonical \texttt{{[}2048,2048{]}}
+The \Appref{tensors} harness allocates one canonical \texttt{{[}2048,2048{]}}
 tensor---4,194,304 \texttt{f32} values, or 16 MiB---and accumulates
 every value as \texttt{f64}. It alternates row-major and column-wise
 traversal across seven warmed release repetitions. Both orders produce
@@ -1093,7 +1093,7 @@ The substrate is also intentionally not an operator object. Adding
 methods such as \texttt{\seqsplit{tensor.matmul(other)}} would couple
 data representation to arithmetic, temporary allocation, provider
 choice, and error policy before those contracts have been derived.
-Chapter 6 will accept tensor views as inputs to separately named
+\Appref{matmul} will accept tensor views as inputs to separately named
 kernels. Later a planner may choose a scalar CPU, SIMD, Metal, or CUDA
 implementation while the input tensor remains data plus metadata.
 
@@ -1128,7 +1128,7 @@ mutated and the source is proven unchanged. Compile-time borrow failures
 belong in Lab 21 rather than normal test sources, because committed test
 targets must compile.
 
-\textbf{Regression tests} retain every Part I contract: tokenizer
+\textbf{Regression tests} retain every earlier contract (\Chref{request-lifecycle} and Appendices A.1--A.3): tokenizer
 boundaries, strict UTF-8 streaming, full numerical logits, sampling
 distributions, seeded state, token feedback, cancellation, EOS, budgets,
 failure paths, and exactly one terminal outcome. The tensor refactor is
@@ -1348,7 +1348,7 @@ alias.
 matmul''}\label{a-tensor-should-perform-its-own-matmul}
 
 Tensor is data plus metadata. A matrix multiplication kernel is an
-operation with layout, arithmetic, and execution contracts. Chapter 6
+operation with layout, arithmetic, and execution contracts. \Appref{matmul}
 keeps them separate.
 
 \section{Labs}\label{labs-1}
@@ -1475,7 +1475,7 @@ inference begins by making the data contract complete enough that wrong
 layout, wrong lifetime, or wrong size cannot masquerade as valid
 arithmetic.
 
-\section{Chapter 6 preview: matrix
+\section{Preview: matrix
 multiplication}\label{chapter-6-preview-matrix-multiplication}
 
 We can represent matrices correctly. We still need to compute
@@ -1489,7 +1489,7 @@ where \(A\), \(B\), and \(C\) live, which dimensions agree, which index
 changes fastest, how many floating-point operations occur, how many
 bytes move, or whether reuse fits a cache.
 
-Chapter 6---\emph{Matrix Multiplication: The Engine Room}---will derive
+\Appref{matmul}---\emph{Matrix Multiplication: The Engine Room}---will derive
 dot product, matrix-vector multiplication, matrix-matrix multiplication,
 loop ordering, operation count, memory traffic, arithmetic intensity,
 tiling, reference kernels, and blocked scalar kernels on top of Tensor

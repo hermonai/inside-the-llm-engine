@@ -1,5 +1,5 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{Position: RoPE From First Principles}\label{chapter-9---position-rope-from-first-principles}
+\chapter{Position: RoPE From First Principles}\label{chapter-9---position-rope-from-first-principles}\label{app:rope}
 A decoder produces sensible output for a short prompt, then becomes
 unreliable when requests are batched or a cached prefix is reused. Every
 tensor still has the expected shape. Every number is finite. What
@@ -27,7 +27,7 @@ pipeline}\label{give-position-a-precise-place-in-the-pipeline}
 
 \EngineFigure{ch09-journey}{Raw query and key owners pass through position-dependent rotations; the value owner bypasses RoPE.}{fig:ch09-journey}
 
-Chapter 8 produces raw query, key, and value activations from a
+\Appref{qkv} produces raw query, key, and value activations from a
 normalized residual. Equal residuals under equal weights produce equal
 raw projections. RoPE adds a new dependency: a logical token position.
 In the decoder convention we are building, it transforms Q and K after
@@ -212,7 +212,7 @@ Rotating the whole array with one sine/cosine pair would pass a norm
 test and still be the wrong frequency schedule.
 
 \begin{quote}
-\textbf{ENGINEERING FAILURE} Chapter 8's two-channel heads cannot test
+\textbf{ENGINEERING FAILURE} \Appref{qkv}'s two-channel heads cannot test
 base sensitivity. With \(R=2\), there is only plane zero, whose
 frequency is always one. Keep that historical fixture for composition,
 but add a four-channel fixture before claiming that changing the base
@@ -427,7 +427,7 @@ a concurrent safe-Rust borrower from observing intermediate writes. The
 operation retains the activation's payload pointer. By contrast,
 \texttt{rope\_reference} prepares from the immutable view, materializes
 a fresh contiguous owner, then commits there. It accepts padded, offset,
-or broadcast input views because Chapter 5's logical indexing resolves
+or broadcast input views because \Appref{tensors}'s logical indexing resolves
 their physical addresses.
 
 \begin{quote}
@@ -493,7 +493,7 @@ Run the trace from the mini-engine workspace:
 cargo run --quiet --example chapter09_rope_trace
 \end{verbatim}
 
-The example reuses Chapter 8's nonidentity projection fixture. It
+The example reuses \Appref{qkv}'s nonidentity projection fixture. It
 selects embedding row one, normalizes with the learned gain, computes
 three separate projections, transfers ownership of their head tensors,
 and rotates Q and K at logical position seven. There are two heads of
@@ -812,8 +812,9 @@ and ownership transition. The implementation handles one token's heads;
 it cannot silently substitute batching or cache placement for position
 because neither exists inside the operator.
 
-The next chapter consumes positioned Q and K to construct causal
-attention. It must explain score scaling, visibility, stable softmax,
+The planned Appendix A.9 consumes positioned Q and K to construct causal
+attention; \Chref{flashattention} and \Chref{decode-attention} treat attention
+as an engine problem. It must explain score scaling, visibility, stable softmax,
 and value mixing without weakening the layout or precision contracts
 established here. We have built the coordinates of comparison. We have
 not yet built the comparison engine or the service that schedules it.

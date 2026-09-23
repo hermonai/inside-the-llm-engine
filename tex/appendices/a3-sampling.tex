@@ -1,6 +1,6 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{Logits, Sampling, and the Autoregressive Loop}\label{chapter-4-logits-sampling-and-the-autoregressive-loop}
-Chapter 3 ended with a vector:
+\chapter{Logits, Sampling, and the Autoregressive Loop}\label{chapter-4-logits-sampling-and-the-autoregressive-loop}\label{app:sampling}
+\Appref{smallest-model} ended with a vector:
 
 \begin{verbatim}
 [-0.7, 0.1, 0.4, 2.2]
@@ -581,7 +581,7 @@ Tokenizer output:
 [1,2]
 \end{verbatim}
 
-The last token is \texttt{like}. Chapter 3 computed:
+The last token is \texttt{like}. \Appref{smallest-model} computed:
 
 \begin{verbatim}
 hidden = [1,-0.5,2]
@@ -673,7 +673,7 @@ five.
 
 Application stop strings are more complicated. A string can span tokens
 and UTF-8 pieces, and policy must decide whether matching bytes are
-included or removed. Chapter 4 defers that design. Its core stop set is
+included or removed. \Appref{sampling} defers that design. Its core stop set is
 EOS, output budget, cancellation, and failure.
 
 \section{Cancellation and failure without partial
@@ -718,7 +718,7 @@ disagree with model control. Stop ordering must be explicit.
 \section{Follow the token, byte, and
 owner}\label{follow-the-token-byte-and-owner-1}
 
-Part I can now complete all three recurring journeys.
+With sampling in place, all three recurring journeys can now be completed.
 
 \subsection{Follow the token}\label{follow-the-token-1}
 
@@ -783,7 +783,7 @@ ownership diagram} makes that future constraint visible.
 \section{Build it: the sampler and
 runtime}\label{build-it-the-sampler-and-runtime}
 
-The Chapter 4 implementation lives in:
+The \Appref{sampling} implementation lives in:
 
 \begin{verbatim}
 code/mini-engine/crates/engine0/src/sampling.rs
@@ -1143,8 +1143,8 @@ ENGINE-1's stream is ordered:
 Text events need not correspond one-to-one with token events because a
 token piece may end in an incomplete UTF-8 scalar. The decoder buffers
 bytes until a valid prefix exists. Sampling is token-level; user-visible
-streaming is byte/text-level. Chapter 2's boundary remains active inside
-Chapter 4's loop.
+streaming is byte/text-level. \Appref{tokens}'s boundary remains active inside
+\Appref{sampling}'s loop.
 
 \section{Selection state under future
 batching}\label{selection-state-under-future-batching}
@@ -1174,7 +1174,7 @@ Speculative decoding creates another version of the same constraint. A
 draft path may propose multiple candidates in one step, but accepted
 output still has to obey the target model and chosen sampling contract.
 Rollback must restore model/KV state and stateful processors
-consistently. Chapter 4 does not implement speculation; it supplies the
+consistently. \Appref{sampling} does not implement speculation; it supplies the
 raw-logit, sampler-state, and commit boundaries later chapters will
 need.
 
@@ -1298,7 +1298,7 @@ structured distribution after explicit filtering.
 
 \section{Labs}\label{labs}
 
-Chapter 4 completes the following progression:
+\Appref{sampling} completes the following progression:
 
 \begin{itemize}
 \tightlist
@@ -1372,16 +1372,16 @@ deliberately inject failure rather than proving only the happy path.
   sequences while their sampler states remain separate.
 \end{enumerate}
 
-\section{What Part I has built}\label{what-part-i-has-built}
+\section{What the build has produced so far}\label{what-part-i-has-built}
 
-Chapter 1 defined the machine and its request-to-terminal lifecycle.
-Chapter 2 crossed the text/token/byte boundary. Chapter 3 opened the
-numerical function and derived every score. Chapter 4 turns numerical
+\Chref{request-lifecycle} defined the machine and its request-to-terminal lifecycle.
+\Appref{tokens} crossed the text/token/byte boundary. \Appref{smallest-model} opened the
+numerical function and derived every score. \Appref{sampling} turns numerical
 prediction into generation.
 
 The loop now connects the tokenizer, numerical model, sampler, byte decoder and terminal owner.
 
-The Part I engine is now:
+The engine is now:
 
 Figure~\ref{fig:sampling-feedback} is the completed feedback path. The four-token model is fully inspectable, but its architecture is intentionally limited.
 
@@ -1439,10 +1439,11 @@ explicit state and termination ownership.
   One lifecycle owner emits exactly one completed, cancelled, or failed
   terminal outcome.
 \item
-  Part I now contains the smallest complete inference engine.
+  Appendices A.1--A.3, with \Chref{request-lifecycle}, now contain the smallest
+  complete inference engine.
 \end{itemize}
 
-\section{Part II preview: tensors without
+\section{Preview: tensors without
 magic}\label{part-ii-preview-tensors-without-magic}
 
 ENGINE-1's remaining intellectual defect is now impossible to miss. It
@@ -1451,7 +1452,7 @@ modern decoder needs internal representations spanning positions and
 hidden dimensions.
 
 Before attention, queries, keys, values, or Transformer layers, we need
-to know how those numbers occupy memory. Chapter 5 begins Part II with
+to know how those numbers occupy memory. \Appref{tensors} begins the Transformer build with
 scalars, vectors, matrices, tensors, rank, shape, dtype, row-major
 layout, stride, contiguity, offset calculation, views, copies, aliases,
 ownership, bounds, and overflow-safe element counts.

@@ -16,7 +16,7 @@ positions in F32, what payload follows from those head dimensions?
 
 \textbf{Solution.} $2LTH_{kv}d_h\cdot4=192$ bytes. The leading factor 2 counts
 K and V. It excludes allocation, page tables and any replicated storage.
-This is a capacity calculation, not evidence that Chapter 8 implements a cache.
+This is a capacity calculation, not evidence that \Appref{qkv} implements a cache.
 
 \subsection{Show the missing dependence}
 \textbf{Problem.} Two positions have the same normalized activation. Do their

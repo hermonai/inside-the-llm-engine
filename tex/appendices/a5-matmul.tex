@@ -1,6 +1,6 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{Matrix Multiplication: The Engine Room}\label{chapter-6-matrix-multiplication-the-engine-room}
-Chapter 5 gave tensor values addresses. Shape said which logical indices
+\chapter{Matrix Multiplication: The Engine Room}\label{chapter-6-matrix-multiplication-the-engine-room}\label{app:matmul}
+\Appref{tensors} gave tensor values addresses. Shape said which logical indices
 were legal, strides mapped those indices to storage, and ownership said
 how long the bytes remained alive. Yet an inference engine exists to
 \emph{compute} with those values. Its most familiar numerical operation
@@ -71,7 +71,7 @@ where \(\mathbf{W}\in\mathbb{R}^{V_{\mathrm{vocab}}\times D}\),
 \(\mathbf{z}\in\mathbb{R}^{V_{\mathrm{vocab}}}\). The old implementation
 spelled the matrix-vector product as loops inside the model. That was
 appropriate when the loop first made logits real. It is now duplication.
-Chapter 6 extracts the numerical operation into a kernel layer while
+\Appref{matmul} extracts the numerical operation into a kernel layer while
 leaving embedding lookup and bias addition as explicit model operations.
 
 \section{From multiply to
@@ -281,7 +281,7 @@ logical result.
 \section{From a weight coordinate to a loaded
 F32}\label{from-a-weight-coordinate-to-a-loaded-f32}
 
-Chapter 5's address contract remains active inside every multiply. For a
+\Appref{tensors}'s address contract remains active inside every multiply. For a
 valid rank-2 view with element strides \(s_0,s_1\) and base offset
 \(o\),
 
@@ -559,12 +559,12 @@ retain or reload partial outputs before adding. Arithmetic units are
 only one resource among caches, load/store units, memory channels,
 address-generation machinery, and front-end control.
 
-Chapter 5 measured a simpler clue on this same Apple M1. Traversing one
+\Appref{tensors} measured a simpler clue on this same Apple M1. Traversing one
 \texttt{{[}2048,2048{]}} allocation in row-major order had a 4,163,875
 ns median; visiting the same values column-wise had a 13,692,583 ns
 median. That experiment was not GEMM and cannot prove a matrix-kernel
 ratio. It established a narrower fact: access order can matter even when
-the values and arithmetic are held constant. Chapter 6 therefore
+the values and arithmetic are held constant. \Appref{matmul} therefore
 measures the matrix loops directly.
 
 \section{Follow the operand}\label{follow-the-operand}
@@ -761,7 +761,7 @@ evidence.
 \section{What the benchmark does---and does
 not---measure}\label{what-the-benchmark-doesand-does-notmeasure}
 
-The Chapter 6 harness uses \texttt{\seqsplit{std::time::Instant}} in a
+The \Appref{matmul} harness uses \texttt{\seqsplit{std::time::Instant}} in a
 Cargo release build. Inputs are deterministically generated before
 timing. Every candidate is executed once for correctness before samples
 are accepted. Timed output is consumed through a checksum and
@@ -876,7 +876,7 @@ Many activation columns can reuse a weight across multiple positions; one column
 This is explicitly a conceptual preview, not a complete workload model.
 Attention shapes, batching, KV state, quantization, providers, and
 scheduling will refine it. A production runtime may also batch decode
-work from several requests into a matrix. Chapter 6 establishes only the
+work from several requests into a matrix. \Appref{matmul} establishes only the
 numerical reason that the number of activation columns can change
 weight-reuse opportunity.
 
@@ -1338,7 +1338,7 @@ Recasting it as a one-hot GEMV would add \(VD\) mostly useless
 arithmetic and obscure the actual operation. Kernel reuse should clarify
 the model, not force every operation through one abstraction.
 
-The Chapter 3 fixture remains the numerical regression gate. Input
+The \Appref{smallest-model} fixture remains the numerical regression gate. Input
 \texttt{like} still produces logits
 
 \begin{equation}
@@ -1667,7 +1667,7 @@ only}\label{allocation-is-counted-on-one-side-only}
 
 One candidate reuses a prepared output while another allocates and
 zeros. The comparison attributes memory-management policy to loop order.
-The Chapter 6 harness includes output allocation for both direct
+The \Appref{matmul} harness includes output allocation for both direct
 variants and documents the blocked API's allocation.
 
 \subsection{Debug performance is
@@ -1746,7 +1746,7 @@ chapter}\label{common-misconceptions-checked-against-this-chapter}
   reassociation and FMA examples show why numerical equivalence needs a
   stated policy.
 \item
-  \textbf{``Transpose always copies.''} Chapter 5's metadata view
+  \textbf{``Transpose always copies.''} \Appref{tensors}'s metadata view
   remains valid for the reference; blocked layout rejection makes any
   later copy explicit.
 \item
@@ -1831,7 +1831,7 @@ Further exercises:
 \section{What we still have not
 built}\label{what-we-still-have-not-built-1}
 
-At the Chapter 6 curriculum boundary, ENGINE-2 is a linear algebra
+At the \Appref{matmul} curriculum boundary, ENGINE-2 is a linear algebra
 kernel layer, not a Transformer. This milestone adds no normalization,
 learned Transformer block, attention, Q/K/V projections, causal mask,
 RoPE, KV cache, GGUF loader, quantized storage, SIMD, BLAS integration,
@@ -1879,7 +1879,7 @@ mattered, and reuse opportunity did not automatically become throughput.
 the substitution, and only then believe the stopwatch.
 \end{quote}
 
-\section{Chapter 7 preview}\label{chapter-7-preview}
+\section{Preview of Appendix A.6}\label{chapter-7-preview}
 
 The completed boundary can be read as a compact execution map:
 
@@ -1891,7 +1891,7 @@ measurements of locality-sensitive work. It is more than four function
 names and less than a production backend.
 
 We can now store tensors honestly and apply checked linear
-transformations. The next missing primitive is normalization. Chapter 7
+transformations. The next missing primitive is normalization. \Appref{embeddings-norm}
 will build RMSNorm from first principles: squares, mean square, epsilon,
 reciprocal square root, learned scale, precision, and its place around
 model blocks.
@@ -1900,10 +1900,10 @@ That chapter will reuse ENGINE-2's discipline---reference semantics
 before optimization---but it does not begin here. Matrix multiplication
 remains the only new numerical operator family in this milestone.
 
-In the book's progression, Chapter 5 establishes where values live;
-Chapter 6 shows how computation walks them; Chapter 7 uses parameters
-and activations in embedding and normalization; Chapter 8 will give
-learned projections Q/K/V roles. The existing Chapter 7 code remains a
+In the book's progression, \Appref{tensors} establishes where values live;
+\Appref{matmul} shows how computation walks them; \Appref{embeddings-norm} uses parameters
+and activations in embedding and normalization; \Appref{qkv} will give
+learned projections Q/K/V roles. The existing \Appref{embeddings-norm} code remains a
 regression, not newly regenerated work in this edition.
 
 \section{References}\label{references-3}
@@ -1937,8 +1937,7 @@ Netlib LAPACK documentation,
   reassociation constraints.
 \item
   Project research note,
-  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-02/chapter-06-matrix-multiplication-the-engine-room.md}{Chapter
-  6 --- Matrix Multiplication: The Engine Room}, with commit-pinned
+  \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-02/chapter-06-matrix-multiplication-the-engine-room.md}{Appendix A.5 --- Matrix Multiplication: The Engine Room}, with commit-pinned
   Hermon and GGML paths.
 \item
   Project benchmark records:

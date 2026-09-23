@@ -1,5 +1,5 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{From Text to Tokens}\label{chapter-2-from-text-to-tokens}
+\chapter{From Text to Tokens}\label{chapter-2-from-text-to-tokens}\label{app:tokens}
 \section{The model does not receive your
 sentence}\label{the-model-does-not-receive-your-sentence}
 
@@ -31,7 +31,7 @@ This boundary is part of model semantics. If it is wrong, the numerical
 model can execute every matrix multiplication correctly and still
 receive the wrong sequence.
 
-Chapter 1 made request ownership real while treating the prompt as
+\Chref{request-lifecycle} made request ownership real while treating the prompt as
 opaque. This chapter opens that first black box. We will distinguish
 text, Unicode scalar values, bytes, and token IDs; derive byte-pair
 encoding (BPE) by hand; separate BPE from SentencePiece's Unigram
@@ -42,7 +42,7 @@ executable's generation command uses the four-token model vocabulary, while
 its tokenization demonstration uses a separate teaching BPE vocabulary.
 An ID from one must never be silently passed to the other.
 
-Chapter 3 will open the numerical function already observed in Chapter 1.
+\Appref{smallest-model} will open the numerical function already observed in \Chref{request-lifecycle}.
 We do not derive that function here.
 
 \section{Four sequences can describe one visible
@@ -133,7 +133,7 @@ generated token pieces may not be valid UTF-8 independently. Third, a
 low-level engine needs an explicit policy for arbitrary or malformed
 bytes rather than letting a string conversion choose silently.
 
-Our Chapter 2 tokenizer therefore accepts \texttt{\&{[}u8{]}} and
+Our \Appref{tokens} tokenizer therefore accepts \texttt{\&{[}u8{]}} and
 decodes token IDs to \texttt{\&{[}u8{]}}. A separate stream framer
 interprets accumulated output as UTF-8. This does not claim that every
 tokenizer API should expose raw bytes to every user. It keeps
@@ -285,7 +285,7 @@ This is why model loading eventually has to validate more than tensor
 shapes. The artifact's weights learned relationships among positions
 carrying these exact identities. Swapping a tokenizer changes the
 meaning of the embedding row selected for each input position. We will
-build embeddings in Chapter 3; for now, retain the contract: stable IDs
+build embeddings in \Appref{smallest-model}; for now, retain the contract: stable IDs
 must reach that future lookup.
 
 ENGINE-0 introduces a small \texttt{TokenId(u32)} newtype instead of
@@ -691,7 +691,7 @@ swapping only one semantic component is not a supported configuration.
 
 Real systems need stronger provenance. A model repository revision,
 hashes, embedded metadata, tokenizer assets, template revision, and
-runtime support matrix may all participate. Part III will inspect model
+runtime support matrix may all participate. \Appref{formats} inspects model
 containers and metadata. The invariant begins here.
 
 \section{Generated tokens become bytes before they become
@@ -756,7 +756,7 @@ Rust's UTF-8 validator for the status:
 \subsection{Token latency and text latency can
 differ}\label{token-latency-and-text-latency-can-differ}
 
-Chapter 1 defined time to first token at an observable output boundary.
+\Chref{request-lifecycle} defined time to first token at an observable output boundary.
 Now we can name two lower-level events:
 
 \begin{verbatim}
@@ -780,7 +780,7 @@ definite malformed sequence, and an incomplete terminal suffix.
 \section{Evolve ENGINE-0 without building a second
 runtime}\label{evolve-engine-0-without-building-a-second-runtime}
 
-The Chapter 1 lifecycle remains:
+The \Chref{request-lifecycle} lifecycle remains:
 
 \begin{quote}
 \begin{enumerate}
@@ -880,7 +880,7 @@ cargo run -p engine0 -- --trace 'I like'
 IDs, and piece bytes. \texttt{decode} accepts numeric ordinary IDs,
 prints each byte piece, and runs the strict UTF-8 framer. The generation
 trace adds \texttt{InputEncoded}, \texttt{TokenDecoded},
-\texttt{Utf8Buffered}, and \texttt{TextEmitted} stages to the Chapter 1
+\texttt{Utf8Buffered}, and \texttt{TextEmitted} stages to the \Chref{request-lifecycle}
 lifecycle events.
 
 The CLI is a teaching surface, not a standard tokenizer file format or
@@ -889,7 +889,7 @@ production protocol.
 \section{Prove tokenization
 independently}\label{prove-tokenization-independently}
 
-The implementation is not its own oracle. Chapter 2 has three small
+The implementation is not its own oracle. \Appref{tokens} has three small
 committed fixture groups under
 \texttt{\seqsplit{code/mini-engine/fixtures/tokenizer/}} and a prose
 oracle under \texttt{code/reference/}:
@@ -1107,7 +1107,7 @@ Token count affects:
 \item
   whether input fits the model's context limit;
 \item
-  how much prefill work Chapter 20 will analyze;
+  how much prefill work \Chref{prefill-decode} analyzes;
 \item
   how much per-position KV state later chapters allocate;
 \item
@@ -1159,8 +1159,7 @@ path}\label{inside-hermon-pinned-llama.cpp-owns-the-current-path}
 The following account is \textbf{CURRENT} for Hermon commit
 \href{https://github.com/hermonai/hermon/commit/472a44cdb511b2dae6c9569e59543db8f8350b25}{\texttt{472a44c}},
 inspected on 2026-09-02. The detailed evidence is in the
-\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-01/chapter-02-from-text-to-tokens.md}{Chapter
-2 research note}.
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-01/chapter-02-from-text-to-tokens.md}{Appendix A.1 research note}.
 
 The Hermon repository pins llama.cpp submodule commit
 \href{https://github.com/ggml-org/llama.cpp/commit/389ff61d77b5c71cec0cf92fe4e5d01ace80b797}{\texttt{389ff61}}.
@@ -1401,7 +1400,7 @@ built}\label{what-this-chapter-has-not-built}
 This chapter has not derived the numerical language model. Tokenization
 establishes categorical identities and byte semantics, not the embedding
 values or the arithmetic that produces logits. The current executable
-contains those later components, but their derivation belongs to Chapter 3.
+contains those later components, but their derivation belongs to \Appref{smallest-model}.
 
 We also have not built a production tokenizer loader, trained a
 vocabulary, implemented efficient BPE, benchmarked allocations, or
@@ -1410,7 +1409,7 @@ experiment uses external packages in a temporary environment and commits
 only small textual observations.
 
 We have not derived stochastic sampling, temperature, softmax, top-k, top-p
-or random-number state here. Chapter 4 opens those components after genuine
+or random-number state here. \Appref{sampling} opens those components after genuine
 logits are understood. Stop-string matching remains outside the implemented
 teaching runtime.
 
@@ -1461,7 +1460,7 @@ for later audit.
 \section{Next: the smallest possible language
 model}\label{next-the-smallest-possible-language-model}
 
-Chapter 3 receives stable token IDs and derives the small numerical language
+\Appref{smallest-model} receives stable token IDs and derives the small numerical language
 model already exercised by the current CLI. We will distinguish immutable
 model parameters from runtime
 activations, look up an embedding row, carry a hidden vector through an

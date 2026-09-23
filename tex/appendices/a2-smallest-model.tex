@@ -1,14 +1,14 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{The Smallest Possible Language Model}\label{chapter-3-the-smallest-possible-language-model}
+\chapter{The Smallest Possible Language Model}\label{chapter-3-the-smallest-possible-language-model}\label{app:smallest-model}
 \section{A token ID is still not an
 answer}\label{a-token-id-is-still-not-an-answer}
 
-Chapter 2 ended at a precise boundary. Human text became UTF-8 bytes. A
+\Appref{tokens} ended at a precise boundary. Human text became UTF-8 bytes. A
 model-specific tokenizer turned those bytes into token IDs. The request
 owned the resulting sequence, and generated IDs could travel back
 through token bytes and a strict UTF-8 framer to become streamed text.
 
-Chapter 1 treated the numerical function as opaque, but recorded its output
+\Chref{request-lifecycle} treated the numerical function as opaque, but recorded its output
 for the prompt \texttt{I like}. We will now derive that output from the
 actual 28-parameter fixture. Nothing in the model consults an answer table:
 the four scores follow from a row lookup, a matrix-vector product and a bias.
@@ -41,7 +41,7 @@ compare the whole result.
 The model will produce \textbf{logits}: one unnormalized score for every
 vocabulary token. It will not produce probabilities. A temporary
 deterministic argmax selector keeps the existing end-to-end lifecycle
-executable, but selection is outside the model. Chapter 4 will ask how
+executable, but selection is outside the model. \Appref{sampling} will ask how
 logits become a distribution and how an engine selects and feeds back
 the next token. We stop at correct logits.
 
@@ -261,7 +261,7 @@ diagram} connects vector notation to scalar arithmetic:
 Repeat that operation for all \(V_{\mathrm{vocab}}\) rows. Matrix
 notation compresses the idea. The following reference pseudocode exposes
 the scalar work; the current engine uses the checked GEMV layer introduced
-in Chapter 6, with shape checks and a separately applied bias:
+in \Appref{matmul}, with shape checks and a separately applied bias:
 
 \begin{verbatim}
 for output in 0..vocab_size {
@@ -336,7 +336,7 @@ asks the tokenizer for output bytes.
 separate engine policy.
 \end{quote}
 
-Chapter 4 owns softmax, numerical stability, temperature, randomness,
+\Appref{sampling} owns softmax, numerical stability, temperature, randomness,
 seeds, top-k, top-p, and the complete feedback loop. We will not smuggle
 those topics into \texttt{forward} merely to make this chapter appear
 more complete.
@@ -467,7 +467,7 @@ state at this boundary.
 \section{A tensor, before a tensor
 framework}\label{a-tensor-before-a-tensor-framework}
 
-Chapter 5 will treat tensors systematically. We need a smaller working
+\Appref{tensors} will treat tensors systematically. We need a smaller working
 definition now. A \textbf{tensor} is numerical data interpreted with
 metadata and contracts such as:
 
@@ -603,7 +603,7 @@ owner}\label{follow-the-token-byte-and-owner}
 
 The
 \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/model/token-id-to-logits.txt}{complete
-Chapter 3 path} extends our first recurring journey:
+Appendix A.2 path} extends our first recurring journey:
 
 \EngineFigure{model-path}{A token selects an embedding; the activation and independent projection parameters produce one score per vocabulary row.}{fig:model-path}
 
@@ -755,7 +755,7 @@ Inference performance depends on computation and data movement. A
 processor cannot multiply a weight it has not obtained through its
 memory hierarchy. Later chapters will ask whether a kernel is limited by
 arithmetic, weight bandwidth, cache reuse, conversion, launch cost,
-synchronization, or another resource. Chapter 3 establishes the
+synchronization, or another resource. \Appref{smallest-model} establishes the
 accounting habit without pretending that a 4-by-3 loop predicts a
 production workload.
 
@@ -819,7 +819,7 @@ independent clarity path before its timing is meaningful.
 
 ENGINE-1 evolves the existing Rust crate instead of maintaining parallel
 copies of an entire runtime. Git history preserves the exact ENGINE-0
-milestone. The current code keeps Chapter 2's tokenizer trait,
+milestone. The current code keeps \Appref{tokens}'s tokenizer trait,
 chat/template types, request, streaming events, UTF-8 framer,
 cancellation contract, timings, and terminal lifecycle. It replaces the
 historical scripted center; the current checkout integrates the later tensor
@@ -840,7 +840,7 @@ pub struct TinyLanguageModel {
 \end{verbatim}
 
 Read \texttt{OwnedTensor} here as an owned contiguous array with checked
-shape metadata; Chapter 5 derives its implementation. The historical
+shape metadata; \Appref{tensors} derives its implementation. The historical
 ENGINE-1 milestone used bare vectors, and the current checkout preserves
 its values through this explicit storage wrapper. Field names carry the
 semantic rank and role. Construction checks every length before execution.
@@ -931,8 +931,8 @@ plausible output can hide them.
 \subsection{Vocabulary coupling becomes
 numerical}\label{vocabulary-coupling-becomes-numerical}
 
-Chapter 2 established that a tokenizer revision and chat template belong
-to a model contract. Chapter 3 adds a numeric equality:
+\Appref{tokens} established that a tokenizer revision and chat template belong
+to a model contract. \Appref{smallest-model} adds a numeric equality:
 
 \begin{verbatim}
 model vocabulary size
@@ -942,7 +942,7 @@ model vocabulary size
 
 Embedding row \texttt{i}, logit position \texttt{i}, tokenizer identity
 \texttt{i}, and EOS recognition must refer to the same token. A vector
-of length four cannot safely consume Chapter 2's sparse byte-BPE IDs,
+of length four cannot safely consume \Appref{tokens}'s sparse byte-BPE IDs,
 which extend through 1007.
 
 ENGINE-1 therefore has a deliberately tiny paired tokenizer:
@@ -957,7 +957,7 @@ ENGINE-1 therefore has a deliberately tiny paired tokenizer:
 Leading spaces belong to two pieces, allowing \texttt{I\ like\ Rust} to
 round-trip. The tokenizer rejects all other text with a byte-offset
 error. That narrow domain is honest: four embeddings cannot represent a
-thousand-ID vocabulary. Chapter 2's byte tokenizer and BPE remain in the
+thousand-ID vocabulary. \Appref{tokens}'s byte tokenizer and BPE remain in the
 repository for their own labs; they are not silently remapped into
 ENGINE-1.
 
@@ -1011,7 +1011,7 @@ The lifecycle retains its earlier failure properties:
   one request cannot both complete and fail.
 \end{itemize}
 
-Chapter 4 will explain the loop as autoregressive generation. Here it
+\Appref{sampling} will explain the loop as autoregressive generation. Here it
 remains minimal infrastructure needed to prove that the new logit
 boundary integrates with established ownership.
 
@@ -1204,7 +1204,7 @@ We need a mechanism that makes the representation at the current position
 depend on context.
 \end{verbatim}
 
-Then stop. Part II will build that mechanism progressively. Jumping
+Then stop. Appendices A.4--A.8 build that mechanism progressively. Jumping
 directly to attention here would skip the tensor, multiplication,
 normalization, projection, position, and ownership foundations needed to
 implement it correctly.
@@ -1349,8 +1349,7 @@ We now have arbitrary-looking but correct scores:
 [-0.7, 0.1, 0.4, 2.2]
 \end{verbatim}
 
-How should an engine turn them into the next token? Chapter
-4---\textbf{Logits, Sampling, and the Autoregressive Loop}---will derive
+How should an engine turn them into the next token? \Appref{sampling}---\textbf{Logits, Sampling, and the Autoregressive Loop}---will derive
 numerically stable softmax, distinguish greedy and categorical
 selection, introduce temperature, seeds, top-k and top-p, append the
 selected identity to history, execute the model again, and reconcile EOS
@@ -1364,7 +1363,7 @@ The separation established here must survive:
 \end{enumerate}
 \end{quote}
 
-Chapter 4 will not have to invent logits or guess what they mean. It can
+\Appref{sampling} will not have to invent logits or guess what they mean. It can
 begin at a typed, oracle-verified full vocabulary vector.
 
 \section{References}\label{references}

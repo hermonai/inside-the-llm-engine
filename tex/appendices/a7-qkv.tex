@@ -1,5 +1,5 @@
 % Authoritative LaTeX; edit this file, not the historical Markdown.
-\chapter{Queries, Keys, and Values}\label{chapter-8-queries-keys-and-values}
+\chapter{Queries, Keys, and Values}\label{chapter-8-queries-keys-and-values}\label{app:qkv}
 You have loaded the weights, selected an embedding, and normalized a
 token's residual vector. The next function returns three arrays. They
 have plausible values, no bounds check fails, and their combined length
@@ -19,8 +19,8 @@ pretending that a shape formula is a speed measurement or that three
 projections constitute an attention engine.
 
 Our implementation is deliberately one-token, bias-free, safe Rust using
-F32 storage and ordered F32 arithmetic. It composes Chapter 6's GEMV
-with Chapter 5's tensor ownership. Chapter 7 supplies the activation
+F32 storage and ordered F32 arithmetic. It composes \Appref{matmul}'s GEMV
+with \Appref{tensors}'s tensor ownership. \Appref{embeddings-norm} supplies the activation
 that makes the component pipeline executable. Position, attention, and
 persistent KV state remain separate steps. A narrow implementation
 boundary allows a deep explanation: the reader can test every claimed
@@ -94,7 +94,7 @@ its configuration as this contract. Accepting a tensor because it has a
 familiar name is not model support.
 
 Let \(\widehat{\mathbf{x}}\in\mathbb{R}^{D}\) be one normalized
-residual, owned by the caller. Use Chapter 6's semantic weight
+residual, owned by the caller. Use \Appref{matmul}'s semantic weight
 orientation: \textbf{output rows, input columns}. The immutable model
 parameters are
 
@@ -238,7 +238,7 @@ operation copies the numerical payload. Small shape and stride metadata
 may allocate; ``no payload copy'' is more precise than claiming that the
 entire operation has zero allocation overhead.
 
-Do not generalize this to arbitrary reshapes. Chapter 5 only permits a
+Do not generalize this to arbitrary reshapes. \Appref{tensors} only permits a
 metadata-only reshape of a canonical row-major view with an unchanged
 element count. An arbitrary strided input may need materialization for a
 new layout. Here the projection's output is canonical even if the input
@@ -392,9 +392,8 @@ base offset. This order matters for a supplied index of
 validated owner proves that an accepted offset lies inside the payload.
 No unsafe pointer arithmetic is needed.
 
-The numerical error contract deserves equal precision. Chapter 7's
-RMSNorm explicitly rejects selected non-finite intermediates. Chapter
-6's generic GEMV follows IEEE propagation, so the QKV wrapper can return
+The numerical error contract deserves equal precision. \Appref{embeddings-norm}'s
+RMSNorm explicitly rejects selected non-finite intermediates. \Appref{matmul}'s generic GEMV follows IEEE propagation, so the QKV wrapper can return
 \texttt{Ok} containing infinity or NaN. For example, a finite F32
 maximum weight times input 3 overflows. A NaN input can contaminate a
 result even when the corresponding weight is zero. Shape validity is not
@@ -413,7 +412,7 @@ teaching an honest systems boundary.
 \section{Compose embedding, normalization, projection, and head
 access}\label{compose-embedding-normalization-projection-and-head-access}
 
-The executable trace uses Chapter 7's three-row embedding table. Token 1
+The executable trace uses \Appref{embeddings-norm}'s three-row embedding table. Token 1
 selects \([1,-2,3,-4]\), and the learned RMSNorm gain is
 \([1,\tfrac12,2,-1]\) with \(\epsilon=10^{-5}\). The normalization
 denominator uses mean square \(7.5\). Its output, rounded here for
@@ -810,7 +809,7 @@ They cannot influence an operation that never receives them. Each call
 still returns independent owners.
 
 That is not evidence that a full decoder is position-blind. It
-identifies the missing mechanism at this stage of the build. Chapter 9
+identifies the missing mechanism at this stage of the build. \Appref{rope}
 will introduce an explicit position-dependent rotation of Q and K, with
 a declared coordinate pairing convention. It must preserve the current
 projection contract while making the new dependency visible in
@@ -822,8 +821,7 @@ responsibilities.
 break}\label{exercises-a-projection-you-can-explain-and-break}
 
 The
-\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-39-qkv-projection-workbench.md}{Chapter
-8 lab sequence} contains Labs 39--48, with input fixtures, expected
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/labs/lab-39-qkv-projection-workbench.md}{Appendix A.7 lab sequence} contains Labs 39--48, with input fixtures, expected
 artifacts, deliberate breaks, and cleanup. Use the existing code as a
 reference, not as an answer that excuses drawing the indices yourself.
 
