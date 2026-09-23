@@ -1,55 +1,38 @@
 # Contributing
 
-Inside the LLM Engine welcomes corrections, technical reviews, plain-text
-diagrams, working implementations, portability improvements, reproducible
-benchmarks, exercises, paper summaries, hardware experiments, and—later—
-translations.
+*Inside the LLM Engine* welcomes corrections, technical reviews, measurements
+on hardware the authors do not have, labs, exercises and fixes to the
+companion code.
 
 ## Before starting
 
-Read `AGENTS.md`, `docs/STATUS.md`, `docs/ROADMAP.md`, and the relevant entry in
-`docs/OUTLINE.md`. Search existing issues and inspect the current Git state.
-For substantial work, choose one bounded chapter, experiment, or infrastructure
-task and record its status so two contributors do not rewrite the same area.
+Read [AGENTS.md](AGENTS.md), [AUTHORING.md](AUTHORING.md) and
+[docs/STATUS.md](docs/STATUS.md). The chapter plan is
+[docs/STRUCTURE.md](docs/STRUCTURE.md). For substantial work, claim one chapter
+or task in an issue so two people do not rewrite the same area.
 
-## Evidence requirements
+## Evidence
 
-- Architecture claims about a current system require source or canonical-doc
-  citations. Hermon claims must follow `docs/SOURCE_POLICY.md` and record the
-  inspected commit.
-- Performance claims must follow `docs/BENCHMARK_POLICY.md`. Include the raw
-  result or a durable pointer to it; identify the control and do not compound
-  independent ratios as though they were measured end to end.
-- Code changes require tests appropriate to their risk. Optimized numerical
-  paths require comparison with an independent oracle before benchmarking.
-- Pseudocode must be labeled. Compilable examples must not omit the hard
-  correctness path without explaining the simplification.
-
-## Chapter changes
-
-Use the lifecycle in `docs/AUTHORING_WORKFLOW.md` and the completion criteria in
-`docs/CHAPTER_CONTRACT.md`. A chapter PR should normally include its research
-note, diagrams, code/tests, references, and `docs/STATUS.md` update. Exercises
-should include CHECK, BUILD, BREAK, and EXTEND levels when the subject supports
-them.
-
-## Style and structure
-
-Follow `docs/STYLE_GUIDE.md`, `docs/MATH_STYLE.md`, and
-`docs/TERMINOLOGY.md`. Prefer ASCII diagrams for essential architecture and
-keep reusable sources in `diagrams/`. Do not conflate current, preview, and
-future behavior.
+- Every number is *measured*, *derived* or *illustrative* (`AUTHORING.md` §5).
+  A measured number comes with a record in `research/measurements/`: hardware,
+  software versions, model and quantization, command, workload, repetitions and
+  raw output.
+- Frontier claims — anything about current techniques, engines, hardware or
+  models — cite a primary source and have a dated entry in
+  `research/FRONTIER.md` (`AUTHORING.md` §6).
+- Claims about what an engine does cite its source at a pinned commit and say
+  whether the behaviour is DEFAULT, PREVIEW, LIBRARY or DESIGN (`AUTHORING.md` §7).
+- Optimized numerical code is checked against an independent oracle before it
+  is benchmarked. A benchmark of a wrong answer is void.
 
 ## Pull requests
 
-Keep changes coherent and avoid unrelated rewrites. Use conventional commit
-subjects. In the PR description, state the problem, evidence, correctness
-checks, measurements if any, limitations, and affected curriculum milestone.
-Run `git diff --check`, repository checks, and relevant language tests.
+Keep changes coherent, use conventional commit subjects, and run
+`git diff --check`, `make textbook-check` and the relevant tests. State the
+problem, the evidence, the checks you ran and any limitations. Never include
+host names, IP addresses, credentials or machine-specific paths.
 
-## License note
+## Licence
 
-The project has not selected prose or code licenses. Contributions cannot be
-accepted under an assumed license until maintainers resolve that decision. A
-future contribution agreement or explicit license choice may be required; see
-`docs/STATUS.md`.
+The project has not selected prose or code licences. Contributions cannot be
+accepted under an assumed licence until the maintainers resolve that decision.

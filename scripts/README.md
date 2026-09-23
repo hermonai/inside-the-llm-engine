@@ -1,26 +1,34 @@
-# Repository Scripts
+# Repository scripts
 
-`check-structure.sh` verifies the book skeleton, 94 chapter specifications,
-completed chapter artifact sets, and chapter word-count gates.
+## Checks for the second edition
 
-`check-links.py` validates repository-relative Markdown targets using only the
-Python standard library. `check-diagram-style.py` reconciles the canonical
-inventory and rejects legacy connectors; `check-diagram-width.py` enforces the
-100-column display bound; `check-math-style.py` checks display-math structure,
-shape declarations, and required equation IDs. Rust formatting, build, tests,
-Clippy, and all repository checks run in the lightweight CI workflow.
+- `check-structure.sh` — required files; `AUTHORING.md` under its 3,000-word
+  cap; `docs/` holding only the plan and status; the chapter plan numbered in
+  sequence, at most 45 chapters, with identical titles in `docs/STRUCTURE.md`
+  and `BOOK.md`; first-edition artifacts still present; and a guard that fails
+  on IP addresses, credential paths, private keys or tokens in tracked files.
+- `check-textbook.py` — the book source: chapter and appendix files, figures,
+  worked problems, the executable request trace used by Chapter 14, and the
+  independent worked calculations.
+- `check-links.py` — repository-relative Markdown links. `archive/` mirrors
+  original paths; links to an archived file resolve through that mirror, and an
+  archived document's links resolve from its original directory.
+- `build-textbook.py` — the PDF (XeLaTeX via latexmk); fails on overfull boxes,
+  missing glyphs and unresolved references.
+- `review-textbook-pdf.py` — renders pages for visual review.
 
-`check-linear-visual-parity.py` runs the real Chapter 6 Rust example and compares
-its full output and address metadata with an independent F32 Python oracle.
-It additionally checks contribution/tail enumeration, pinned annotation values,
-four actual Rust source excerpts and fourteen embedded canonical figures.
-`check-qkv-visual-parity.py` compares full raw/composed Rust projections with
-the independent Chapter 8 oracle, including the borrowed head, offsets,
-analytical costs, ten scene links and deliberately corrupted candidates.
-`check-rope-visual-parity.py` compares both coordinate layouts, the relative-score
-identity and complete positioned Q/K/V composition against a complex-number
-oracle; it binds ten scenes and checks analytical phase/table claims.
-`check-figure-browser.cjs` exercises all six step sequences, offline Chapters
-5/6/7/8/9 images and MathML, keyboard/reduced-motion controls, three viewport widths,
-SVG text bounds and Chapter 8/9 panel-border crossings. Publication structure and visual review helpers
-are documented in `docs/FIGURE_BUILD.md`.
+## Checks that guard first-edition material
+
+These still run in CI; the material they check is frozen, not edited.
+
+- `check-diagram-style.py`, `check-diagram-width.py` — the Unicode text
+  diagrams in `diagrams/`.
+- `check-native-figures.py`, `figures/build.py --check`,
+  `check-industrial-visuals.py`, `check-figure-browser.cjs` — the SVG atlas,
+  its TikZ conversion and the HTML exporter.
+- `check-tensor-visual-parity.py`, `check-linear-visual-parity.py`,
+  `check-normalization-visual-parity.py`, `check-qkv-visual-parity.py`,
+  `check-rope-visual-parity.py` — run the real `mini-engine` examples and
+  compare them with independent Python oracles (Appendix A's evidence).
+
+Retired scripts are in `archive/scripts/`; see `archive/README.md`.

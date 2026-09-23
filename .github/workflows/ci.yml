@@ -12,24 +12,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - name: Check repository structure
+      - name: Check structure, governance budget, preservation and secrets
         run: scripts/check-structure.sh
       - name: Check relative Markdown links
         run: python3 scripts/check-links.py
-      - name: Check authored textbook, executable request trace and worked calculations
+      - name: Check the book source, executable request trace and worked calculations
         run: python3 scripts/check-textbook.py
       - name: Check canonical diagram width
         run: python3 scripts/check-diagram-width.py
       - name: Check canonical diagram style and inventory
         run: python3 scripts/check-diagram-style.py
-      - name: Check mathematical style structure
-        run: python3 scripts/check-math-style.py
       - name: Check deterministic figures and numerical scene contracts
         run: python3 figures/build.py --check
       - name: Check native TikZ figure parity and fail-closed conversion
         run: python3 scripts/check-native-figures.py
-      - name: Check industrial curriculum coverage and dependencies
-        run: python3 scripts/build-industrial-plan.py --check
       - name: Check industrial visual fixture mutation guards
         run: python3 scripts/check-industrial-visuals.py
       - name: Check Chapter 5 Rust, oracle, and visual parity

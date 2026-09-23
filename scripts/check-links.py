@@ -10,8 +10,32 @@ from urllib.parse import unquote
 
 
 ROOT = Path(__file__).resolve().parents[1]
+ARCHIVE = ROOT / "archive"
 LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 SKIP_PREFIXES = ("#", "http://", "https://", "mailto:", "data:")
+
+
+def original_location(document: Path) -> Path:
+    """Where an archived document lived before it moved.
+
+    `archive/` mirrors original repository paths, so an archived document's
+    relative links are resolved from its original directory.
+    """
+    relative = document.relative_to(ROOT)
+    if relative.parts and relative.parts[0] == "archive":
+        return ROOT.joinpath(*relative.parts[1:])
+    return document
+
+
+def exists_or_archived(path: Path) -> bool:
+    """Accept a target that still exists, or that moved into the archive mirror."""
+    if path.exists():
+        return True
+    try:
+        relative = path.resolve().relative_to(ROOT)
+    except ValueError:
+        return False
+    return (ARCHIVE / relative).exists()
 
 
 def markdown_files() -> list[Path]:
@@ -49,8 +73,8 @@ def main() -> int:
             if in_fence:
                 continue
             for match in LINK.finditer(line):
-                resolved = target_path(document, match.group(1))
-                if resolved is not None and not resolved.exists():
+                resolved = target_path(original_location(document), match.group(1))
+                if resolved is not None and not exists_or_archived(resolved):
                     relative = document.relative_to(ROOT)
                     failures.append(
                         f"{relative}:{line_number}: missing link target {match.group(1)!r}"

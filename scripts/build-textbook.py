@@ -29,7 +29,7 @@ def main():
         raise SystemExit("\n".join(failures))
     shutil.copyfile(build/"inside-the-llm-engine.pdf", output)
     sources = sorted((ROOT/"tex").rglob("*.tex"))
-    sources += [ROOT/"Makefile", ROOT/"TEXTBOOK_STANDARD.md",
+    sources += [ROOT/"Makefile", ROOT/"AUTHORING.md",
                 ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py"]
     record = {"edition": "latex-first textbook revision; partial editorial rewrite",
               "pdf": str(output.relative_to(ROOT)),

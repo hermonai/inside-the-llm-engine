@@ -1,184 +1,91 @@
 # Inside the LLM Engine
 
-## From model weights and KV memory to industrial inference serving.
+## The Systems Engineering of Large Language Model Inference
 
-This is the reader-facing table of contents. The authoring specification for
-each chapter lives in [docs/OUTLINE.md](docs/OUTLINE.md).
+Every inference engine is a negotiation between four scarce resources — memory
+bandwidth, memory capacity, compute and latency — for two outcomes: a correct
+answer and a low cost per token. This book introduces every technique as a
+response to a measured constraint and charges it for what it spends.
 
-Read the [authored LaTeX edition](tex/README.md). Chapters 1–9 below link to
-editable textbook sources; Chapter 10 onward remains planned. The historical
-[visual atlas](figures/ATLAS.md) is a supplementary evidence artifact.
+This is the reader-facing table of contents of the second edition. Chapter
+intents are in [docs/STRUCTURE.md](docs/STRUCTURE.md); progress is in
+[docs/STATUS.md](docs/STATUS.md).
 
-### Part I — What Actually Happens When an LLM Answers?
+### Part I — The Physics of Inference
 
-1. [The Missing Half of AI](tex/chapters/ch01.tex)
-2. [From Text to Tokens](tex/chapters/ch02.tex)
-3. [The Smallest Possible Language Model](tex/chapters/ch03.tex)
-4. [Logits, Sampling, and the Autoregressive Loop](tex/chapters/ch04.tex)
+1. Why Inference Is Its Own Discipline
+2. The Forward Pass, Compressed
+3. The Roofline: Why Decode Leaves Your GPU Idle
+4. Prefill and Decode: Two Workloads, One Model
+5. The KV Cache: Inference's Central Data Structure
+6. Napkin Math: Latency, Throughput and Cost per Token
 
-Milestone: ENGINE-0 / ENGINE-1.
+### Part II — Making One Request Fast
 
-### Part II — Build a Transformer Inference Engine
+7. Matrix Multiplication on Real Hardware
+8. Attention as a Memory Problem: From Online Softmax to FlashAttention
+9. Decode Attention: FlashDecoding, Split-K and Paged Kernels
+10. Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants
+11. Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4
+12. Quantizing the KV Cache
+13. How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture
 
-5. [Tensors Without Magic](tex/chapters/ch05.tex)
-6. [Matrix Multiplication: The Engine Room](tex/chapters/ch06.tex)
-7. [Embeddings and Normalization](tex/chapters/ch07.tex)
-8. [Queries, Keys, and Values](tex/chapters/ch08.tex)
-9. [Position: RoPE From First Principles](tex/chapters/ch09.tex)
-10. Causal Self-Attention
-11. The Feed-Forward Network
-12. One Complete Transformer Layer
-13. The Decoder Stack and Next-Token Generation
+### Part III — Serving Many Requests
 
-Milestone: ENGINE-2.
+14. The Request Lifecycle: Streaming, Cancellation and Terminal Ownership
+15. Continuous Batching
+16. Paged KV Memory
+17. Prefix Caching and RadixAttention
+18. Chunked Prefill and Phase Interference
+19. Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission
+20. Structured Output at Engine Speed
+21. One Server, Many Models: LoRA, Adapters and Routing
 
-### Part III — Run a Real Model
+### Part IV — Beyond One Token per Step
 
-14. What Is Actually Inside a Model File?
-15. GGUF From the Bytes Up
-16. Quantization From F32 to Packed Weights
-17. Packed Matrix Multiplication
-18. Loading and Running a Real GGUF Model
+22. Speculative Decoding: The Draft–Verify Contract
+23. Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction
+24. When Speculation Loses
 
-Milestone: ENGINE-3.
+### Part V — Architectures That Reshape the Engine
 
-### Part IV — Why Naive Inference Is Slow
+25. Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention
+26. Mixture of Experts
+27. Hybrid Models: State Spaces and Linear Attention
+28. Long Context: Windows, Sinks and Sparse Attention
+29. Reasoning Models and Test-Time Compute
+30. Multimodal Inference
 
-19. Measure First: Profiling an Inference Engine
-20. Prefill and Decode Are Different Workloads
-21. Why the KV Cache Exists
-22. KV Cache Memory Mathematics
+### Part VI — Scaling Out
 
-Milestone: ENGINE-4.
+31. Tensor, Pipeline and Context Parallelism
+32. Expert Parallelism at Scale
+33. Disaggregated Serving
+34. The KV Cache as a Distributed Storage Tier
 
-### Part V — From Model Runner to Inference Server
+### Part VII — Inference on the Hardware You Have
 
-23. One User Is Easy
-24. The Inference Request State Machine
-25. Serving Multiple Users
-26. Continuous Batching
-27. Fairness, Backpressure, Cancellation, and Streaming
+35. Offloading Across VRAM, RAM and NVMe
+36. Streaming Experts From Disk: A Measured Case Study
+37. Unified Inference Memory
 
-Milestone: ENGINE-5 / ENGINE-6.
+### Part VIII — Correctness and Measurement
 
-### Part VI — Paged Inference Memory
+38. Fast Wrong Answers: Oracles, Differential Testing and Determinism
+39. Benchmarking Without Lying to Yourself
 
-28. Why Flat and Slot-Bound KV Caches Fail
-29. Paging Comes to AI
-30. Building a Block Pool
-31. Prefix Indexing and Radix Trees
-32. Shared Prefixes and Copy-on-Write
-33. Eviction, Pressure, and Admission
-34. Paged Attention
+### Part IX — Production and Capstone
 
-Milestone: ENGINE-7.
-
-### Part VII — Native Kernel Engineering
-
-35. Where the Native Boundary Belongs
-36. Designing a Stable Kernel ABI
-37. Arena Allocation and Hot-Path Memory Discipline
-38. Lock-Free Block Allocation and Refcounts
-39. Bulk KV Writes
-40. Online Softmax
-41. Split-K and Deterministic Attention Planning
-
-Milestone: ENGINE-8.
-
-### Part VIII — SIMD and Accelerator Providers
-
-42. SIMD From First Principles
-43. ARM NEON
-44. x86 AVX2 and ISA Dispatch
-45. Thinking Like a GPU
-46. Metal and Unified Memory
-47. CUDA and Device Mirrors
-48. Why a GPU Can Be Slower Than a CPU
-
-Milestone: ENGINE-9.
-
-### Part IX — Modern Decode Optimization
-
-49. Prefix Caching
-50. Sticky Slots as an Intermediate Design
-51. Speculative Decoding
-52. Prompt-Lookup Decoding
-53. When Speculation Loses
-
-### Part X — Mixture-of-Experts Inference
-
-54. Why MoE Changes the Inference Engine
-55. Models Larger Than Available VRAM
-56. Expert Storage and Paging
-57. Residency, Pinning, Eviction, and Queue Depth
-58. Toward Unified Inference Memory
-
-### Part XI — Correctness Engineering
-
-59. Fast Wrong Answers Are Still Wrong
-60. Scalar Oracles
-61. Differential Testing
-62. Numerical Determinism
-63. Concurrency Bugs That Still Produce Plausible Text
-64. Ownership and Lifetime Failures
-65. Sanitizers, Fuzzing, and Boundary Testing
-66. Real-Model Equivalence
-
-### Part XII — Production Inference Engineering
-
-67. Protocols and the AI Gateway
-68. Model Resolution and Routing
-69. Streaming as a Systems Contract
-70. Metrics and Observability
-71. Failure Containment
-72. Security and Untrusted Models
-73. Benchmarking Without Lying to Yourself
-
-Milestone: ENGINE-10.
-
-### Part XIII — Inside Hermon
-
-74. Hermon's System Architecture
-75. Why Hermon Did Not Rewrite Everything
-76. The Substitution Ladder
-77. Anatomy of the Hermon Source Tree
-78. Follow One Request Through Hermon
-79. Follow One Token Through Hermon
-
-### Part XIV — Beyond Today's Engine
-
-80. Hybrid Transformer Architectures
-81. Recurrent State and STATE Pages
-82. Unified Memory Economics
-83. Prefill/Decode Disaggregation
-84. Multi-GPU Execution
-85. Multi-Node Inference
-86. The Inference Engine as a Database
-87. Toward a Universal Inference Execution Protocol
-88. What Comes After Today's Transformer Runtime?
-
-### Part XV — Graduation Project
-
-89. Designing the Final Mini Engine
-90. End-to-End Implementation
-91. Correctness Gate
-92. Performance Gate
-93. Production Gate
-94. Replace One Hermon Component and Prove It
+40. Operating Inference in Production
+41. Anatomy of Real Engines: vLLM, SGLang, llama.cpp and Hermon
+42. Capstone: Build a Mini Engine End to End
 
 ### Appendices
 
-A. Mathematical Reference
-B. Tensor Shape Reference
-C. GGUF Reference
-D. Quantization Reference
-E. CPU Architecture Primer
-F. GPU Architecture Primer
-G. Rust for Inference Engineers
-H. C for Kernel Boundaries
-I. Benchmark Reproduction Guide
-J. Glossary
-K. Symbols and Notation
-L. Recommended Papers
-M. Source-Code Navigation Guide
-N. Hardware Laboratory Guide
+- A. The Transformer From Scratch
+- B. GPU Architecture for Inference Engineers
+- C. CPU and SIMD
+- D. Model File Formats: GGUF and safetensors
+- E. Numerics: Floating Point and Quantization Formats
+- F. Notation
+- G. Reproducing the Book's Measurements
