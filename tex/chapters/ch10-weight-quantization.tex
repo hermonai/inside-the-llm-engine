@@ -1,0 +1,47 @@
+% status: SKELETON
+% Chapter 10 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants}\label{ch:weight-quantization}
+
+\begin{ChapterIntent}
+Batch-one decode reads every weight once per token, so storing weights in
+four bits instead of sixteen makes decode almost four times faster and lets a
+model four times larger fit. This chapter builds weight quantization from
+scales and groups upward: round-to-nearest and its failure, GPTQ's
+error-correcting updates, AWQ's protection of salient channels,
+weight--activation schemes such as SmoothQuant, and the K-quant formats of
+llama.cpp. It then puts dequantization inside a kernel, where bandwidth savings
+can be lost to arithmetic, and shows how to measure what quantization costs in
+accuracy.
+\end{ChapterIntent}
+
+\OpeningSection{Fewer bits, more tokens}
+
+\NapkinSection{Napkin math: bits per weight to tokens per second}
+
+\section{What a quantized weight is}
+
+\section{Scales, zero points and groups}
+
+\section{Round-to-nearest and why it fails}
+
+\section{GPTQ: second-order error correction}
+
+\section{AWQ: protect the salient channels}
+
+\section{Weights and activations: SmoothQuant and W8A8}
+
+\section{K-quants and mixed-precision files}
+
+\section{Dequantization inside the kernel}
+
+\section{Measuring what you lost}
+
+\LedgerSection
+
+\LabSection{quantize a matrix three ways}
+
+\HappenedSection{a SIMD matrix--vector kernel slower than scalar}
+
+\FrontierSection{}
+
+\ExercisesSection

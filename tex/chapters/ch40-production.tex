@@ -1,0 +1,44 @@
+% status: SKELETON
+% Chapter 40 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Operating Inference in Production}\label{ch:production}
+
+\begin{ChapterIntent}
+An engine that is fast on one GPU is not yet a service. This chapter
+covers what changes for a fleet: model loading and cold starts, autoscaling
+on signals that track user-visible latency, routing that is aware of load,
+cached prefixes and adapters, isolation between tenants, observability,
+handling of timeouts and partial output, safe rollouts of new models, and the
+cost controls that decide whether a deployment makes money.
+\end{ChapterIntent}
+
+\OpeningSection{Minutes to the first token after a scale-up}
+
+\NapkinSection{Napkin math: cold-start time and headroom}
+
+\section{Loading models and cold starts}
+
+\section{Autoscaling on the right signal}
+
+\section{Routing: load, prefixes and adapters}
+
+\section{Isolation between tenants}
+
+\section{Observability}
+
+\section{Timeouts, retries and partial output}
+
+\section{Rolling out a new model}
+
+\section{Security: untrusted models and inputs}
+
+\section{Cost control}
+
+\LedgerSection
+
+\LabSection{a router that knows about prefixes}
+
+\HappenedSection{incidents and their lessons}
+
+\FrontierSection{}
+
+\ExercisesSection

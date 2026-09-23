@@ -1,0 +1,44 @@
+% status: SKELETON
+% Chapter 38 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Fast Wrong Answers: Oracles, Differential Testing and Determinism}\label{ch:fast-wrong-answers}
+
+\begin{ChapterIntent}
+Every optimization in this book is an opportunity to change the answer.
+Some changes are bugs, some are rounding that should be tolerated, and some ---
+results that depend on batch size or thread count --- are defects that no
+single run reveals. This chapter builds the discipline that keeps speed
+honest: independent oracles, differential tests across kernels, backends and
+batch shapes, tolerances derived from numerics rather than chosen to pass,
+deterministic reduction orders and batch-invariant kernels, and evaluation of
+quantized models by their distributions rather than by anecdote.
+\end{ChapterIntent}
+
+\OpeningSection{Different answers at temperature zero}
+
+\NapkinSection{Napkin math: how much rounding error to expect}
+
+\section{Kinds of wrong}
+
+\section{Oracles}
+
+\section{Differential testing}
+
+\section{Tolerances that mean something}
+
+\section{Batch invariance}
+
+\section{Determinism by construction}
+
+\section{Evaluating quantized models}
+
+\section{Testing the engine, not only the kernels}
+
+\LedgerSection
+
+\LabSection{catch a batch-dependent kernel}
+
+\HappenedSection{a result that depended on the thread count}
+
+\FrontierSection{}
+
+\ExercisesSection

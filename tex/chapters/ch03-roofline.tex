@@ -1,0 +1,44 @@
+% status: SKELETON
+% Chapter 3 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{The Roofline: Why Decode Leaves Your GPU Idle}\label{ch:roofline}
+
+\begin{ChapterIntent}
+A consumer GPU generating text with a 7-billion-parameter model moves
+nearly as many bytes per second as its memory can deliver while its
+arithmetic units sit mostly idle. This chapter explains why with the roofline
+model: arithmetic intensity, the two ceilings of memory bandwidth and peak
+compute, and the ridge point where they meet. Decode, at about one FLOP per
+byte, sits far down the bandwidth slope; prefill, at hundreds, sits under the
+compute roof. Batch size is the lever that moves decode along the slope, and
+the chapter measures it. It ends with what the roofline leaves out ---
+latency, launch overhead and occupancy --- because the best kernels in later
+chapters live in that gap.
+\end{ChapterIntent}
+
+\OpeningSection{Ninety percent of the memory bus, a few percent of the arithmetic}
+
+\NapkinSection{Napkin math: bytes per token, tokens per second}
+
+\section{Arithmetic intensity}
+
+\section{Two roofs and a ridge}
+
+\section{Decode sits on the slope}
+
+\section{Batch size moves the point}
+
+\section{Prefill sits under the flat roof}
+
+\section{Rooflines of real machines}
+
+\section{What the roofline leaves out}
+
+\LedgerSection
+
+\LabSection{draw your own roofline}
+
+\HappenedSection{a kernel below both roofs}
+
+\FrontierSection{}
+
+\ExercisesSection

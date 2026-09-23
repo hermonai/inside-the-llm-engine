@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 34 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{The KV Cache as a Distributed Storage Tier}\label{ch:kv-storage-tier}
+
+\begin{ChapterIntent}
+Once a KV cache outlives its request --- through prefix caching,
+multi-turn sessions or disaggregation --- it becomes data to store, index,
+evict and move across a hierarchy of HBM, host memory, SSD and remote storage.
+This chapter derives the central break-even, loading cached KV versus
+recomputing it, for each tier, and covers placement, indexing, cache-aware
+routing and invalidation in systems that treat the KV cache as a distributed
+storage tier.
+\end{ChapterIntent}
+
+\OpeningSection{Load or recompute}
+
+\NapkinSection{Napkin math: the break-even for each tier}
+
+\section{KV that outlives its request}
+
+\section{Tiers: HBM, host memory, SSD, remote}
+
+\section{The load-or-recompute break-even}
+
+\section{Indexing and placement}
+
+\section{Cache-aware routing}
+
+\section{Consistency and invalidation}
+
+\section{Production systems}
+
+\LedgerSection
+
+\LabSection{a tiered KV store with measured tier bandwidths}
+
+\HappenedSection{KV caches in DRAM and SSD at scale}
+
+\FrontierSection{}
+
+\ExercisesSection

@@ -1,0 +1,42 @@
+% status: SKELETON
+% Chapter 27 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Hybrid Models: State Spaces and Linear Attention}\label{ch:hybrid-models}
+
+\begin{ChapterIntent}
+Attention's state grows with every token; a recurrent layer's state does
+not. Linear attention, selective state-space models such as Mamba, and
+delta-rule variants such as Gated DeltaNet and Kimi Delta Attention replace
+the growing cache with a fixed-size state, and 2026's flagship models
+interleave them with a minority of full-attention layers. This chapter derives
+the recurrence, prices fixed state against growing cache, covers chunked-scan
+prefill kernels, and shows what hybrids break in engines built around paged
+KV: prefix caching, branching and copying state.
+\end{ChapterIntent}
+
+\OpeningSection{A fixed state per conversation, whatever its length}
+
+\NapkinSection{Napkin math: fixed state against growing cache}
+
+\section{Linear attention as a recurrence}
+
+\section{Selective state spaces}
+
+\section{Delta rules and gates}
+
+\section{Hybrid layouts}
+
+\section{Prefill with chunked scans}
+
+\section{Caching and branching recurrent state}
+
+\section{Prefix caching without a cache}
+
+\LedgerSection
+
+\LabSection{a linear-attention layer as a scan and as a recurrence}
+
+\HappenedSection{hybrids arriving in engines built for paged KV}
+
+\FrontierSection{}
+
+\ExercisesSection

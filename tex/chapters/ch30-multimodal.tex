@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 30 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Multimodal Inference}\label{ch:multimodal}
+
+\begin{ChapterIntent}
+A multimodal model reads images, audio or video through an encoder whose
+outputs enter the decoder as hundreds or thousands of tokens. The encoder is a
+separate, compute-bound stage with its own batching and caching, and the token
+flood it produces reshapes prefill and memory. This chapter counts tokens per
+image from a real configuration, prices the encoder, and covers caching
+encoder outputs, scheduling encoder work, and disaggregating it from the
+language model.
+\end{ChapterIntent}
+
+\OpeningSection{One photograph, a thousand tokens}
+
+\NapkinSection{Napkin math: tokens and FLOPs per image}
+
+\section{Encoders in front of the decoder}
+
+\section{How an image becomes tokens}
+
+\section{Encoder compute and caching}
+
+\section{Scheduling encoder work}
+
+\section{Audio and video}
+
+\section{Separating the encoder}
+
+\section{Preprocessing is part of the model}
+
+\LedgerSection
+
+\LabSection{count and cache image tokens}
+
+\HappenedSection{encoder disaggregation}
+
+\FrontierSection{}
+
+\ExercisesSection

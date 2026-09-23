@@ -1,0 +1,43 @@
+% status: SKELETON
+% Chapter 28 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Long Context: Windows, Sinks and Sparse Attention}\label{ch:long-context}
+
+\begin{ChapterIntent}
+Million-token contexts are served today, and not by a larger cache alone.
+This chapter covers the techniques that make long context affordable and what
+each risks: position scaling beyond the training length, sliding-window
+attention, attention sinks, KV eviction by importance, trained sparse
+attention that selects the relevant tokens per query, and compressed attention
+that shrinks the cache along the sequence. It ends with how to measure whether
+a long-context system still reads its context.
+\end{ChapterIntent}
+
+\OpeningSection{A million tokens}
+
+\NapkinSection{Napkin math: attention's cost at a million tokens}
+
+\section{Position beyond the training length}
+
+\section{Sliding windows}
+
+\section{Attention sinks}
+
+\section{Evicting cache entries}
+
+\section{Trained sparse attention}
+
+\section{Compressing the cache along the sequence}
+
+\section{Context parallelism for prefill}
+
+\section{Does the model still read its context?}
+
+\LedgerSection
+
+\LabSection{a sliding window, a sink and a sparse selector against full attention}
+
+\HappenedSection{compressed attention in a shipped model}
+
+\FrontierSection{}
+
+\ExercisesSection

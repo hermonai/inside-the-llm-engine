@@ -1,0 +1,42 @@
+% status: SKELETON
+% Chapter 1 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Why Inference Is Its Own Discipline}\label{ch:why-inference}
+
+\begin{ChapterIntent}
+Training produces a model once; inference runs it billions of times, one
+token after another, for people who are waiting. That changes what matters:
+the work is sequential rather than parallel, stateful rather than stateless,
+bounded by memory rather than arithmetic, and priced per token rather than per
+run. This chapter measures the difference on an ordinary machine, introduces
+the four scarce resources --- memory bandwidth, memory capacity, compute and
+latency --- and the two outcomes the book cares about, correctness and cost.
+It then introduces the constraint ledger, the accounting every later chapter
+uses to charge a technique for what it spends, and shows how a single 2026
+model configuration file already names most of the book.
+\end{ChapterIntent}
+
+\OpeningSection{Sixteen conversations for the price of two}
+
+\NapkinSection{Napkin math: training pays once, inference pays per token}
+
+\section{What an engine does that a model does not}
+
+\section{Four scarce resources}
+
+\section{Two outcomes: correctness and cost}
+
+\section{The constraint ledger}
+
+\section{A configuration file is a table of contents}
+
+\section{How this book is organized}
+
+\LedgerSection
+
+\LabSection{a fake model with real costs}
+
+\HappenedSection{one context, four users}
+
+\FrontierSection{}
+
+\ExercisesSection

@@ -1,0 +1,38 @@
+% status: SKELETON
+% Chapter 37 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Unified Inference Memory}\label{ch:unified-memory}
+
+\begin{ChapterIntent}
+When the CPU and GPU share one physical memory, the tiers of the previous
+chapters collapse into one pool with one bandwidth. This chapter examines
+unified memory on Apple silicon and on coherent CPU--GPU superchips, what it
+gives up relative to dedicated HBM, and the design of a single allocator and
+residency policy that manages weights, KV blocks and experts together rather
+than as three competing caches.
+\end{ChapterIntent}
+
+\OpeningSection{One memory, two processors}
+
+\NapkinSection{Napkin math: one bandwidth shared three ways}
+
+\section{One pool instead of tiers}
+
+\section{Apple silicon}
+
+\section{Coherent CPU--GPU superchips}
+
+\section{One allocator for weights, cache and experts}
+
+\section{A single residency policy}
+
+\section{Contention for shared bandwidth}
+
+\LedgerSection
+
+\LabSection{one allocator, three kinds of data}
+
+\HappenedSection{zero-copy on unified memory}
+
+\FrontierSection{}
+
+\ExercisesSection

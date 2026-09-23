@@ -1,0 +1,40 @@
+% status: SKELETON
+% Chapter 15 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Continuous Batching}\label{ch:continuous-batching}
+
+\begin{ChapterIntent}
+Batching is the lever that moves decode up the roofline, but batching
+whole requests makes every short request wait for the longest one. Continuous
+batching schedules at the granularity of a single model step: finished
+sequences leave and new ones join between iterations. This chapter derives
+iteration-level scheduling, explains which operations can share a batch and
+which cannot, measures the throughput--latency curve it produces, and looks at
+how production schedulers overlap CPU scheduling work with GPU
+execution.
+\end{ChapterIntent}
+
+\OpeningSection{The request that waited for a stranger's essay}
+
+\NapkinSection{Napkin math: occupancy of a static batch}
+
+\section{Static batching and its waste}
+
+\section{Iteration-level scheduling}
+
+\section{What can share a batch}
+
+\section{The batch as a moving set}
+
+\section{Throughput--latency curves}
+
+\section{Overlapping scheduling with execution}
+
+\LedgerSection
+
+\LabSection{a continuous-batching simulator driven by measured step times}
+
+\HappenedSection{one context, many sequences}
+
+\FrontierSection{}
+
+\ExercisesSection

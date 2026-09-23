@@ -1,0 +1,43 @@
+% status: SKELETON
+% Chapter 9 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Decode Attention: FlashDecoding, Split-K and Paged Kernels}\label{ch:decode-attention}
+
+\begin{ChapterIntent}
+At decode each sequence contributes a single query, so a prefill-style
+attention kernel leaves most of the GPU idle while one block walks a long
+cache. This chapter shows how decode attention restores parallelism by
+splitting the key/value sequence and merging partial softmaxes through their
+log-sum-exp, how grouped-query attention changes what can be shared, and what
+a paged cache costs the kernel. Its central lesson is measured: decode
+attention is often limited by occupancy rather than bandwidth, so an
+optimization that saves bytes by sacrificing parallelism can make it
+slower.
+\end{ChapterIntent}
+
+\OpeningSection{A kernel that read four times less data and ran five times slower}
+
+\NapkinSection{Napkin math: parallelism in one query}
+
+\section{The shape of decode attention}
+
+\section{Splitting the sequence}
+
+\section{Merging partial softmaxes}
+
+\section{Grouped-query attention: what the heads share}
+
+\section{Reading through a block table}
+
+\section{Occupancy, not bandwidth}
+
+\section{Fixed split count or fixed split size}
+
+\LedgerSection
+
+\LabSection{split-K decode attention with a log-sum-exp merge}
+
+\HappenedSection{the GQA fusion that lost in every shape}
+
+\FrontierSection{}
+
+\ExercisesSection

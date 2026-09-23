@@ -1,0 +1,45 @@
+% status: SKELETON
+% Chapter 11 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4}\label{ch:low-precision-float}
+
+\begin{ChapterIntent}
+Blackwell-class tensor cores multiply four-bit floating-point numbers
+directly, provided each small block of values carries a scale. This chapter
+explains the formats that make this work --- FP8's E4M3 and E5M2, the OCP
+microscaling family with a shared power-of-two exponent per 32 values, and
+NVFP4 with an FP8 scale per 16 values and a per-tensor scale --- and what each
+trades between range, precision and overhead. It separates the tolerances of
+weights, activations and the KV cache, and follows the shift from quantizing
+trained models to training them in low precision, as in DeepSeek-V3's FP8
+blocks and the MXFP4 checkpoints of gpt-oss and Kimi~K3.
+\end{ChapterIntent}
+
+\OpeningSection{117 billion parameters on one 80 GB GPU}
+
+\NapkinSection{Napkin math: bits per value, including the scales}
+
+\section{Floating point with fewer bits}
+
+\section{FP8: E4M3 and E5M2}
+
+\section{Scaling granularity: tensor, channel, block}
+
+\section{Microscaling: shared exponents}
+
+\section{NVFP4: two-level scaling}
+
+\section{Tensor cores that consume scales}
+
+\section{Weights, activations and the cache}
+
+\section{Training in low precision changes inference}
+
+\LedgerSection
+
+\LabSection{round-trip three formats and compare their errors}
+
+\HappenedSection{FP8 blocks and MXFP4 checkpoints in shipped models}
+
+\FrontierSection{}
+
+\ExercisesSection

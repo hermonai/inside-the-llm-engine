@@ -1,0 +1,45 @@
+% status: SKELETON
+% Chapter 6 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Napkin Math: Latency, Throughput and Cost per Token}\label{ch:napkin-math}
+
+\begin{ChapterIntent}
+The previous chapters give three numbers for any model on any machine:
+bytes per token, FLOPs per token and cache bytes per token. This chapter turns
+them into a five-minute model of an inference deployment --- step time, the
+batch size at which decode stops being bandwidth-bound, tokens per second per
+user and in aggregate, time to first token, memory headroom and dollars per
+million tokens at a latency target. Each prediction is checked against a
+measurement, and the chapter catalogues where napkin math goes wrong: kernel
+efficiency, launch and scheduling overhead, communication, and real workload
+mixes.
+\end{ChapterIntent}
+
+\OpeningSection{Predicting a benchmark before running it}
+
+\NapkinSection{Napkin math: the step-time model}
+
+\section{Batch size: the throughput--latency curve}
+
+\section{The knee: where decode turns compute-bound}
+
+\section{Adding the KV cache}
+
+\section{Prefill in the same model}
+
+\section{From tokens per second to dollars per million tokens}
+
+\section{Goodput: throughput that meets its objective}
+
+\section{Worked examples on real hardware}
+
+\section{Where napkin math breaks}
+
+\LedgerSection
+
+\LabSection{a cost calculator you can trust}
+
+\HappenedSection{predictions against a published system}
+
+\FrontierSection{}
+
+\ExercisesSection

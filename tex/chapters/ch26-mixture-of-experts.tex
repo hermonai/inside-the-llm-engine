@@ -1,0 +1,42 @@
+% status: SKELETON
+% Chapter 26 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Mixture of Experts}\label{ch:mixture-of-experts}
+
+\begin{ChapterIntent}
+A mixture-of-experts layer routes each token to a few of many feed-forward
+experts, so a model can hold hundreds of billions of parameters while each
+token touches only a few billion. That decouples memory capacity from
+per-token bandwidth and compute --- until batching, because a batch of tokens
+activates the union of their experts. This chapter derives routing, the
+active-versus-total parameter split, the expert union as a function of batch
+size, load balance and capacity, and the grouped GEMMs that execute experts
+efficiently.
+\end{ChapterIntent}
+
+\OpeningSection{Thirty billion parameters, three billion per token}
+
+\NapkinSection{Napkin math: the expert union as batch grows}
+
+\section{Routing and the sparse FFN}
+
+\section{Active and total parameters}
+
+\section{Batching activates the union}
+
+\section{Load balance and capacity}
+
+\section{Grouped GEMM}
+
+\section{Shared and fine-grained experts}
+
+\section{All experts resident}
+
+\LedgerSection
+
+\LabSection{simulate the expert union with skewed routing}
+
+\HappenedSection{routing skew decides the hit rate}
+
+\FrontierSection{}
+
+\ExercisesSection

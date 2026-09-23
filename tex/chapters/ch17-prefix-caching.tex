@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 17 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Prefix Caching and RadixAttention}\label{ch:prefix-caching}
+
+\begin{ChapterIntent}
+System prompts, retrieved documents, conversation history and agent loops
+mean that many requests begin with tokens the engine has already processed.
+Prefix caching keeps their KV blocks and reuses them, skipping prefill compute
+and cutting time to first token. This chapter builds hash-chained block reuse
+and a radix tree over token sequences, prices retained memory against saved
+compute, covers eviction and cache-aware routing, and lists the subtle ways
+two prefixes that look identical are not.
+\end{ChapterIntent}
+
+\OpeningSection{The system prompt you paid for a million times}
+
+\NapkinSection{Napkin math: memory kept against compute saved}
+
+\section{What can be reused}
+
+\section{Hash-chained blocks}
+
+\section{A radix tree over tokens}
+
+\section{Eviction over a tree}
+
+\section{Cache-aware scheduling and routing}
+
+\section{When the same prefix is not the same prefix}
+
+\section{Agents and multi-turn sessions}
+
+\LedgerSection
+
+\LabSection{a radix cache with an exactness test}
+
+\HappenedSection{warm against cold}
+
+\FrontierSection{}
+
+\ExercisesSection

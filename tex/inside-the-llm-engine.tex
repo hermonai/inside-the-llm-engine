@@ -7,62 +7,73 @@
 \vspace*{24mm}
 {\fontsize{38}{44}\selectfont\bfseries Inside the\\LLM Engine\par}
 \vspace{12mm}
-{\Large From model weights and KV memory\\to industrial inference serving.\par}
+{\Large The Systems Engineering of\\Large Language Model Inference\par}
 \vspace{14mm}\rule{\linewidth}{.8pt}\par
-\vspace{7mm}{\large Build the computation. Trace the memory. Prove the behavior.\par}
+\vspace{7mm}{\large Four scarce resources, two outcomes,\\and every technique charged for what it spends.\par}
 \vfill
-{\large LaTeX-first textbook revision\par}
-\vspace{5mm}Chapters 1--9 / September 2026\par
-Working manuscript, not a complete industrial engine.
+{\large Second edition --- working draft\par}
+\vspace{5mm}September 2026\par
+Chapters are written breadth first; each chapter's status is recorded in\\
+\texttt{docs/STATUS.md} in the book's repository.
 \end{titlepage}
-\chapter*{How to use this book}
-\addcontentsline{toc}{chapter}{How to use this book}
-An inference engine turns numerical predictions into an ordered, cancellable,
-resource-bounded computation. We will construct one in Rust. Each new abstraction
-must answer a question the previous program cannot answer; each optimization
-must preserve a result we can already compute independently.
-
-The sequence begins with a request and ends, in the chapters currently written,
-with positioned queries and keys. The miniature language model has four tokens
-and is deliberately not a Transformer. Tensor storage, matrix kernels,
-normalization, projection and rotation are subsequently built and tested as
-components. A complete decoder, persistent KV cache, batching and an operated
-service belong to later chapters. Their presence in the outline is not evidence
-of an implementation.
-
-Read with a terminal, paper and pencil. Predict each small example before
-running it. Change one input and explain the difference. Then read the failure
-case: a boundary check, counterexample or failed measurement often reveals the
-abstraction more clearly than a successful demonstration. Worked extensions
-at the end of each chapter give concrete answers or explicit evaluation rubrics;
-the longer project labs remain in the companion repository.
-
-\section*{What this revision changes}
-These chapter files are the editable manuscript, not a build product exported
-from Markdown. Equations, chapter sections and illustrations are numbered.
-Mechanism illustrations are editable TikZ, with captions outside the graphic
-and color reinforced by labels and line styles. The earlier Markdown edition
-and its evidence records are preserved as historical material.
-
-Chapter 1 is a new executable-led exposition. Chapters 2--9 retain substantial
-reviewed prose while receiving LaTeX authoring, replacement mechanism figures
-or the existing checked geometric plates, and new worked synthesis problems.
-This is a first editorial revision, not a claim that every paragraph has been
-rewritten or independently peer reviewed. Source-pinned production tours retain
-their inspection dates; they are evidence about those revisions, not guarantees
-about a moving repository.
-
-\section*{Prerequisites and notation}
-You need ordinary programming, arrays, loops and basic algebra. We derive the
-matrix operations used by the reference engine. Rust ownership vocabulary is
-introduced where memory lifetimes matter. Vectors are column vectors unless an
-explicit row-batched layout is stated. A shape is a count of elements, not
-bytes. FLOP counts and ideal traffic models are analytical estimates; timings
-are measurements only when their workload and environment are recorded.
-
+\input{frontmatter/preface.tex}
 \tableofcontents
 \mainmatter
+\part{The Physics of Inference}\label{part:physics}
+\input{chapters/ch01-why-inference.tex}
+\input{chapters/ch02-forward-pass.tex}
+\input{chapters/ch03-roofline.tex}
+\input{chapters/ch04-prefill-decode.tex}
+\input{chapters/ch05-kv-cache.tex}
+\input{chapters/ch06-napkin-math.tex}
+\part{Making One Request Fast}\label{part:one-request}
+\input{chapters/ch07-matmul-hardware.tex}
+\input{chapters/ch08-flashattention.tex}
+\input{chapters/ch09-decode-attention.tex}
+\input{chapters/ch10-weight-quantization.tex}
+\input{chapters/ch11-low-precision-float.tex}
+\input{chapters/ch12-kv-quantization.tex}
+\input{chapters/ch13-kernel-languages.tex}
+\part{Serving Many Requests}\label{part:serving}
 \input{chapters/ch14-request-lifecycle.tex}
+\input{chapters/ch15-continuous-batching.tex}
+\input{chapters/ch16-paged-kv.tex}
+\input{chapters/ch17-prefix-caching.tex}
+\input{chapters/ch18-chunked-prefill.tex}
+\input{chapters/ch19-scheduling.tex}
+\input{chapters/ch20-structured-output.tex}
+\input{chapters/ch21-multi-model-serving.tex}
+\part{Beyond One Token per Step}\label{part:beyond-one-token}
+\input{chapters/ch22-speculative-decoding.tex}
+\input{chapters/ch23-modern-speculation.tex}
+\input{chapters/ch24-when-speculation-loses.tex}
+\part{Architectures That Reshape the Engine}\label{part:architectures}
+\input{chapters/ch25-shrinking-kv.tex}
+\input{chapters/ch26-mixture-of-experts.tex}
+\input{chapters/ch27-hybrid-models.tex}
+\input{chapters/ch28-long-context.tex}
+\input{chapters/ch29-reasoning-workloads.tex}
+\input{chapters/ch30-multimodal.tex}
+\part{Scaling Out}\label{part:scaling-out}
+\input{chapters/ch31-model-parallelism.tex}
+\input{chapters/ch32-expert-parallelism.tex}
+\input{chapters/ch33-disaggregated-serving.tex}
+\input{chapters/ch34-kv-storage-tier.tex}
+\part{Inference on the Hardware You Have}\label{part:hardware-you-have}
+\input{chapters/ch35-offloading.tex}
+\input{chapters/ch36-expert-streaming.tex}
+\input{chapters/ch37-unified-memory.tex}
+\part{Correctness and Measurement}\label{part:correctness}
+\input{chapters/ch38-fast-wrong-answers.tex}
+\input{chapters/ch39-benchmarking.tex}
+\part{Production and Capstone}\label{part:production}
+\input{chapters/ch40-production.tex}
+\input{chapters/ch41-real-engines.tex}
+\input{chapters/ch42-capstone.tex}
+\appendix
+\AppendixGroup{A}{The Transformer From Scratch}\label{app:transformer}
+\input{appendices/a0-transformer-from-scratch.tex}
+\BeginAppendixGroup{A}
 \input{appendices/a1-text-to-tokens.tex}
 \input{appendices/a2-smallest-model.tex}
 \input{appendices/a3-sampling.tex}
@@ -71,7 +82,15 @@ are measurements only when their workload and environment are recorded.
 \input{appendices/a6-embeddings-norm.tex}
 \input{appendices/a7-qkv.tex}
 \input{appendices/a8-rope.tex}
+\EndAppendixGroup{1}
+\input{appendices/b-gpu-architecture.tex}
+\input{appendices/c-cpu-simd.tex}
+\input{appendices/d-model-formats.tex}
+\input{appendices/e-numerics.tex}
+\input{appendices/f-notation.tex}
+\input{appendices/g-reproducing-measurements.tex}
 \backmatter
 \input{backmatter/glossary.tex}
+\printbibliography[heading=bibintoc,title={References}]
 \printindex
 \end{document}

@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 29 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Reasoning Models and Test-Time Compute}\label{ch:reasoning-workloads}
+
+\begin{ChapterIntent}
+Reasoning models generate thousands of tokens the user never sees before
+answering, and test-time compute methods sample many candidates and search
+among them. The workload becomes dominated by decode, the cache grows with the
+output rather than the prompt, and the useful unit of cost is the answer, not
+the token. This chapter measures a reasoning trace, shows how parallel
+sampling shares prefixes, and follows the consequences for batching,
+speculation, caching, scheduling and pricing.
+\end{ChapterIntent}
+
+\OpeningSection{Thousands of tokens before the first word}
+
+\NapkinSection{Napkin math: cost per answer}
+
+\section{Hidden tokens are real tokens}
+
+\section{Decode-dominated workloads}
+
+\section{Outputs that grow the cache}
+
+\section{Parallel sampling and shared prefixes}
+
+\section{Search and verification loops}
+
+\section{Budgets and early stopping}
+
+\section{Speculation for reasoning}
+
+\LedgerSection
+
+\LabSection{measure a reasoning trace}
+
+\HappenedSection{serving reasoning models}
+
+\FrontierSection{}
+
+\ExercisesSection

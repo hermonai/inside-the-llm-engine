@@ -1,0 +1,44 @@
+% status: SKELETON
+% Chapter 13 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture}\label{ch:kernel-languages}
+
+\begin{ChapterIntent}
+A decode step launches hundreds of small kernels, and at small batch the
+time spent launching them can rival the time spent running them. This chapter
+surveys how production kernels are written now --- CUDA C++ with CUTLASS and
+CuTe, Triton, Python DSLs such as CuTe DSL and TileLang, and NVIDIA's
+tile-level CUDA --- and what each abstraction hides and exposes. It then
+measures launch overhead and shows how CUDA graphs, fusion and compilers such
+as \texttt{torch.compile} recover it, and why engines capture graphs per batch
+shape.
+\end{ChapterIntent}
+
+\OpeningSection{Hundreds of launches per token}
+
+\NapkinSection{Napkin math: launch overhead against step time}
+
+\section{The kernel author's choices}
+
+\section{CUDA C++, CUTLASS and CuTe}
+
+\section{Triton: tiles in Python}
+
+\section{CuTe DSL, TileLang and ThunderKittens}
+
+\section{CUDA Tile and cuTile}
+
+\section{Beyond NVIDIA}
+
+\section{Launch overhead and CUDA graphs}
+
+\section{Fusion and compilers}
+
+\LedgerSection
+
+\LabSection{measure what a launch costs}
+
+\HappenedSection{measuring the Metal round trip instead of guessing it}
+
+\FrontierSection{}
+
+\ExercisesSection

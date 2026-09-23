@@ -1,0 +1,44 @@
+% status: SKELETON
+% Chapter 36 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Streaming Experts From Disk: A Measured Case Study}\label{ch:expert-streaming}
+
+\begin{ChapterIntent}
+Hermon's expert pager streams the experts of a 30-billion-parameter
+mixture-of-experts model from an NVMe drive into a fixed cache. This chapter
+follows its measured development: hit rate turned out to be the whole lever, an
+attractive queue-depth optimization delivered nothing, the bottleneck moved
+from I/O to compute and back as SIMD and threads landed, and parallelizing
+experts exposed a result that depended on the thread count. It is a case study
+in predicting, measuring and being wrong --- and in saying exactly what is
+integrated and what is not.
+\end{ChapterIntent}
+
+\OpeningSection{Tokens per second from an SSD}
+
+\NapkinSection{Napkin math: hit rate, bytes per miss, tokens per second}
+
+\section{The problem: more experts than memory}
+
+\section{An expert store}
+
+\section{Hit rate is the lever}
+
+\section{Queue depth: a falsified hypothesis}
+
+\section{Computing on streamed experts}
+
+\section{The bottleneck moves}
+
+\section{Parallel experts and a determinism bug}
+
+\section{What is and is not integrated}
+
+\LedgerSection
+
+\LabSection{replay a routing trace against an expert cache}
+
+\HappenedSection{the whole chapter}
+
+\FrontierSection{}
+
+\ExercisesSection

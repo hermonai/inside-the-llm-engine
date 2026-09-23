@@ -21,6 +21,14 @@
 \xeCJKDeclareCharClass{CJK}{"1F300 -> "1FAFF, "200D}
 \xeCJKDeclareCharClass{Default}{"2018, "2019, "201C, "201D}
 \usepackage{twemojis}
+\usepackage{etoolbox}
+\usepackage[backend=biber,style=numeric-comp,sorting=none,maxbibnames=4,minbibnames=3,giveninits=true,doi=true,url=true,eprint=true]{biblatex}
+\addbibresource{references.bib}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{tocloft}
+\setlength{\cftchapnumwidth}{2.8em}
+\setlength{\cftpartnumwidth}{2.8em}
 \usepackage{xurl,hyperref,bookmark}
 \definecolor{BookBlue}{HTML}{173A55}
 \definecolor{BookPale}{HTML}{EDF5FA}
@@ -30,7 +38,7 @@
 \urlstyle{same}
 \pagestyle{fancy}\fancyhf{}
 \fancyhead[L]{\small\sffamily Inside the LLM Engine}
-\fancyhead[R]{\small\sffamily Textbook revision}
+\fancyhead[R]{\small\sffamily Second edition, working draft}
 \fancyfoot[C]{\thepage}
 \setlength{\headheight}{15pt}
 \setlength{\parindent}{0pt}
@@ -40,8 +48,9 @@
 \raggedbottom
 \clubpenalty=10000 \widowpenalty=10000
 \setcounter{secnumdepth}{2}
-\setcounter{tocdepth}{1}
-\titleformat{\chapter}[display]{\raggedright\color{BookBlue}\sffamily\bfseries}{\large CHAPTER \thechapter}{8pt}{\huge}
+\setcounter{tocdepth}{0}
+\titleformat{\part}[display]{\centering\color{BookBlue}\sffamily\bfseries}{\Large PART \thepart}{14pt}{\Huge}
+\titleformat{\chapter}[display]{\raggedright\color{BookBlue}\sffamily\bfseries}{\large\MakeUppercase{\chaptertitlename}~\thechapter}{8pt}{\huge}
 \titlespacing*{\chapter}{0pt}{0pt}{18pt}
 \titleformat{\section}{\Large\sffamily\bfseries\color{BookBlue}}{\thesection}{.7em}{}
 \titleformat{\subsection}{\large\sffamily\bfseries\color{BookBlue}}{\thesubsection}{.7em}{}
@@ -57,3 +66,38 @@
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \newcounter{none}
 \tikzset{flow/.style={-{Stealth[length=2mm]},thick,BookBlue},control/.style={flow,dashed},cell/.style={draw=BookBlue,minimum width=10mm,minimum height=8mm,inner sep=2pt},block/.style={draw=BookBlue,fill=BookPale,rounded corners=2pt,align=center,minimum height=10mm,inner sep=5pt},note/.style={font=\small\sffamily,align=left,text=BookBlue}}
+
+% --- Second edition: cross-references ----------------------------------------
+\newcommand{\Chref}[1]{Chapter~\ref{ch:#1}}
+\newcommand{\Appref}[1]{Appendix~\ref{app:#1}}
+
+% --- Second edition: chapter anatomy (AUTHORING.md section 3) ------------------
+% scripts/check-textbook.py checks that each chapter uses every anatomy macro
+% exactly once and in this order, with mechanism sections between the napkin
+% math and the ledger.
+\newenvironment{ChapterIntent}{\par\begingroup\itshape\color{BookBlue!85!black}\noindent\ignorespaces}{\par\endgroup\bigskip}
+\newcommand{\OpeningSection}[1]{\section{#1}}
+\newcommand{\NapkinSection}[1]{\section{#1}}
+\newcommand{\LedgerSection}{\section{The constraint ledger}}
+\newcommand{\LabSection}[1]{\section{Build it small: #1}}
+\newcommand{\HappenedSection}[1]{\section{What actually happened: #1}}
+\newcommand{\FrontierSection}[1]{\section{Frontier watch}\ifblank{#1}{}{\noindent\textit{Checked #1 against the sources logged in \texttt{research/FRONTIER.md}.}\par}}
+\newcommand{\ExercisesSection}{\section{Exercises}}
+\newenvironment{ConstraintLedger}
+  {\par\medskip\noindent\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.10\linewidth}>{\raggedright\arraybackslash}p{0.58\linewidth}@{}}\toprule
+   \textbf{Resource} & \textbf{Effect} & \textbf{How much, and why}\\\midrule}
+  {\bottomrule\end{tabular}\par\medskip}
+
+% --- Second edition: draft markers (removed before a chapter is FULL) ----------
+\newcommand{\todo}[1]{{\color{red!65!black}\sffamily\bfseries[TODO: #1]}}
+\newcommand{\FigureIntent}[1]{\Callout{Figure to draw}{#1}}
+\newcommand{\LabIntent}[1]{\Callout{Lab to build}{#1}}
+
+% --- Second edition: appendix groups (Appendix A holds A.1, A.2, ...) ----------
+\makeatletter
+\newcommand{\AppendixGroup}[2]{\clearpage\phantomsection\def\@currentlabel{#1}%
+  \addcontentsline{toc}{chapter}{\protect\numberline{#1}#2}%
+  {\raggedright\color{BookBlue}\sffamily\bfseries{\large APPENDIX~#1}\par\vspace{8pt}{\huge #2}\par}\vspace{18pt}}
+\newcommand{\BeginAppendixGroup}[1]{\setcounter{chapter}{0}\renewcommand{\thechapter}{#1.\arabic{chapter}}}
+\newcommand{\EndAppendixGroup}[1]{\setcounter{chapter}{#1}\renewcommand{\thechapter}{\Alph{chapter}}}
+\makeatother

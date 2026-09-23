@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 5 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{The KV Cache: Inference's Central Data Structure}\label{ch:kv-cache}
+
+\begin{ChapterIntent}
+Every token a model generates attends to every token before it.
+Recomputing their keys and values at each step would make generation
+quadratic; caching them makes it linear, and turns the engine into a memory
+manager. This chapter derives what is cached and when, computes its size for
+real models --- from half a megabyte to a few tens of kilobytes per token,
+depending on the architecture --- and shows how the cache, not the weights,
+comes to dominate memory capacity at long context and large batch, and the
+bytes read per step at long context. Nearly every chapter in
+Part~\ref{part:serving} manages this one data structure.
+\end{ChapterIntent}
+
+\OpeningSection{At 32K tokens the cache outweighs the model}
+
+\NapkinSection{Napkin math: bytes per token, sequences per GPU}
+
+\section{Why recomputation is quadratic}
+
+\section{What is cached, and when}
+
+\section{State that grows, per request}
+
+\section{Reading the whole cache every step}
+
+\section{Layout: layers, heads and tokens}
+
+\section{Where the bytes go on a real accelerator}
+
+\LedgerSection
+
+\LabSection{a cache you can prove correct}
+
+\HappenedSection{537 megabytes per decode step}
+
+\FrontierSection{}
+
+\ExercisesSection

@@ -1,0 +1,44 @@
+% status: SKELETON
+% Chapter 20 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Structured Output at Engine Speed}\label{ch:structured-output}
+
+\begin{ChapterIntent}
+Applications increasingly need output that parses: JSON that matches a
+schema, function calls, code in a grammar. Constrained decoding enforces this
+by masking tokens that would violate the grammar at every step, and the
+engineering problem is doing so over a vocabulary of hundreds of thousands of
+tokens faster than the step it gates. This chapter compiles grammars into
+token-level automata, precomputes masks for context-independent tokens,
+overlaps mask computation with the GPU, and covers jump-forward decoding and
+the ways masking can distort a model's distribution.
+\end{ChapterIntent}
+
+\OpeningSection{A schema check slower than the model}
+
+\NapkinSection{Napkin math: a vocabulary per step}
+
+\section{Constrained decoding as masking}
+
+\section{From grammar to automaton}
+
+\section{Tokens are not characters}
+
+\section{Precomputing masks}
+
+\section{The persistent stack}
+
+\section{Overlapping masks with the GPU}
+
+\section{Jump-forward decoding}
+
+\section{Correctness: when masking distorts the distribution}
+
+\LedgerSection
+
+\LabSection{a JSON mask over a real vocabulary}
+
+\HappenedSection{structured output in production engines}
+
+\FrontierSection{}
+
+\ExercisesSection

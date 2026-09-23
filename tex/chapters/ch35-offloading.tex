@@ -1,0 +1,38 @@
+% status: SKELETON
+% Chapter 35 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Offloading Across VRAM, RAM and NVMe}\label{ch:offloading}
+
+\begin{ChapterIntent}
+Most people run models on hardware that is too small for them. Offloading
+places some layers, experts or cache blocks in host memory or on NVMe and
+streams them in when needed, and then the slowest link --- PCIe or the SSD ---
+sets the token rate. This chapter prices each tier by bandwidth, covers layer
+offloading, CPU--GPU splits, cache and expert offloading and prefetching, and
+shows how to predict the result before trying it.
+\end{ChapterIntent}
+
+\OpeningSection{From 448 gigabytes per second to 18}
+
+\NapkinSection{Napkin math: the slowest link sets the rate}
+
+\section{When the model does not fit}
+
+\section{Layer offloading}
+
+\section{Splitting work between CPU and GPU}
+
+\section{Offloading the cache}
+
+\section{Offloading experts}
+
+\section{Prefetch and overlap}
+
+\LedgerSection
+
+\LabSection{predict and measure an offloaded decode}
+
+\HappenedSection{where the KV arena had to live}
+
+\FrontierSection{}
+
+\ExercisesSection

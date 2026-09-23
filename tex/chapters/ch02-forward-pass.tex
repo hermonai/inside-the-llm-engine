@@ -1,0 +1,46 @@
+% status: SKELETON
+% Chapter 2 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{The Forward Pass, Compressed}\label{ch:forward-pass}
+
+\begin{ChapterIntent}
+Before we can price a technique we need to know what one decode step
+computes, in the terms an engine sees: operators, shapes, bytes and state.
+This chapter walks a token through a modern decoder --- embedding,
+normalization, attention over the cache, the feed-forward network or its
+mixture of experts, the output projection and sampling --- and counts, for
+each operator, the parameters it reads, the FLOPs it performs and the state it
+touches. The result is the two rules the rest of the book leans on: a forward
+pass costs about two FLOPs per active parameter per token, and batch-one decode
+reads about every weight once per token. Appendix~A builds the same
+computation from scratch.
+\end{ChapterIntent}
+
+\OpeningSection{The bytes a token actually touches}
+
+\NapkinSection{Napkin math: parameters, FLOPs and bytes per layer}
+
+\section{Tokens in, logits out}
+
+\section{One decoder layer}
+
+\section{Attention during decode: one query, many keys}
+
+\section{The feed-forward network and its gate}
+
+\section{Mixture of experts: a router in front of the FFN}
+
+\section{Normalization, residuals and position}
+
+\section{Logits, sampling and the loop}
+
+\section{A shape-annotated map of one step}
+
+\LedgerSection
+
+\LabSection{count a real model from its file}
+
+\HappenedSection{the embedding table that is read one row at a time}
+
+\FrontierSection{}
+
+\ExercisesSection

@@ -1,0 +1,39 @@
+% status: SKELETON
+% Chapter 24 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{When Speculation Loses}\label{ch:when-speculation-loses}
+
+\begin{ChapterIntent}
+Speculation spends idle compute to buy latency. When there is no idle
+compute --- at large batch, on compute-bound hardware, or when acceptance is
+low because of temperature or domain --- the same technique makes a system
+slower. This chapter builds a break-even model from the roofline and the
+acceptance rate, measures cases on both sides of it, and covers the
+interactions with chunked prefill, structured output and sampling settings that
+production engines must handle.
+\end{ChapterIntent}
+
+\OpeningSection{Slower with speculation}
+
+\NapkinSection{Napkin math: the break-even batch size}
+
+\section{The break-even model}
+
+\section{Large batches: no idle compute}
+
+\section{Low acceptance: temperature and domain}
+
+\section{Draft cost and memory}
+
+\section{Interactions with the rest of the engine}
+
+\section{Measuring speculation honestly}
+
+\LedgerSection
+
+\LabSection{find your break-even point}
+
+\HappenedSection{a speedup that vanished outside its workload}
+
+\FrontierSection{}
+
+\ExercisesSection

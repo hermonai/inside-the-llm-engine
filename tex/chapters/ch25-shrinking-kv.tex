@@ -1,0 +1,44 @@
+% status: SKELETON
+% Chapter 25 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention}\label{ch:shrinking-kv}
+
+\begin{ChapterIntent}
+The KV cache's size is an architectural choice. Sharing keys and values
+across query heads (multi-query and grouped-query attention) cuts it by the
+sharing factor; compressing them into a low-rank latent (multi-head latent
+attention) cuts it further, at the price of extra computation that careful
+kernels absorb into the projections. This chapter derives each design,
+computes per-token cache sizes for real models, explains MLA's absorbed
+projections and decoupled rotary dimensions, and shows what each choice asks
+of the attention kernel.
+\end{ChapterIntent}
+
+\OpeningSection{Five megabytes or seventy kilobytes per token}
+
+\NapkinSection{Napkin math: cache bytes per token, design by design}
+
+\section{Multi-query attention}
+
+\section{Grouped-query attention}
+
+\section{Multi-head latent attention}
+
+\section{Absorbing the projections}
+
+\section{Decoupled rotary dimensions}
+
+\section{Kernels for latent attention}
+
+\section{Gates and other recent variants}
+
+\section{What the shrink costs}
+
+\LedgerSection
+
+\LabSection{MHA, GQA and MLA side by side}
+
+\HappenedSection{MLA in a shipped model}
+
+\FrontierSection{}
+
+\ExercisesSection

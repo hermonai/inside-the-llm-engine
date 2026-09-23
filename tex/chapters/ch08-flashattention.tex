@@ -1,0 +1,43 @@
+% status: SKELETON
+% Chapter 8 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Attention as a Memory Problem: From Online Softmax to FlashAttention}\label{ch:flashattention}
+
+\begin{ChapterIntent}
+Standard attention materializes a score matrix that grows with the square
+of the sequence length and moves it through slow memory several times.
+FlashAttention's insight is that attention's cost is memory traffic: with an
+online softmax, attention can be computed tile by tile in on-chip memory
+without ever writing the score matrix. This chapter derives the online
+softmax, builds a tiled attention and checks it against a naive oracle, then
+follows FlashAttention's four generations as each adapted to a new GPU ---
+better parallelism, asynchrony and FP8 on Hopper, and on Blackwell a software
+exponential because the tensor cores outran everything else.
+\end{ChapterIntent}
+
+\OpeningSection{Attention that runs out of memory before it runs out of time}
+
+\NapkinSection{Napkin math: counting attention's bytes}
+
+\section{Softmax needs the whole row --- or does it?}
+
+\section{The online softmax}
+
+\section{Tiling attention}
+
+\section{FlashAttention-2: parallelism and work partitioning}
+
+\section{FlashAttention-3: asynchrony and FP8 on Hopper}
+
+\section{FlashAttention-4: when the exponential becomes the bottleneck}
+
+\section{Masks, variable lengths and packed batches}
+
+\LedgerSection
+
+\LabSection{a tiled attention checked against a naive oracle}
+
+\HappenedSection{deterministic split attention by construction}
+
+\FrontierSection{}
+
+\ExercisesSection

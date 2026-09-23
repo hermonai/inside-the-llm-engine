@@ -1,5 +1,26 @@
-% Authoritative, original LaTeX exposition. Commands are regression checked.
-\chapter{The Missing Half of AI}\label{chapter-1-the-missing-half-of-ai}
+% status: SKELETON
+% Chapter 14 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% The sections from "One prediction is not yet a service" to "What we have
+% established" are the first edition's Chapter 1, moved here with git mv on
+% 2026-09-23. They are the mechanism of this chapter; the ZERO pass reworks
+% them around the anatomy. Commands are regression checked by
+% scripts/check-textbook.py.
+\chapter{The Request Lifecycle: Streaming, Cancellation and Terminal Ownership}\label{ch:request-lifecycle}\label{chapter-1-the-missing-half-of-ai}
+
+\begin{ChapterIntent}
+A request is not a function call. It is a state machine that receives tokens
+from a model, turns them into bytes a client can read, honours cancellation
+and budgets, survives failures part-way through a stream, and ends with
+exactly one terminal outcome. This chapter makes that contract explicit,
+proves the single-owner property that keeps it true, and defines the
+timestamps --- arrival, first token, first text, completion --- from which
+time to first token and inter-token latency are measured. It builds on the
+first edition's executable request trace.
+\end{ChapterIntent}
+
+\OpeningSection{Time to first token, measured}
+
+\NapkinSection{Napkin math: what a stream costs the engine}
 
 \section{One prediction is not yet a service}
 Suppose a model has just produced four numbers. One number is larger than the
@@ -287,5 +308,13 @@ The next question is smaller and more physical: how does text become an ID,
 and how can an ID fail to become readable text immediately? Chapter 2 opens
 the tokenizer and the UTF-8 buffer without changing the request's terminal
 contract.
+
+\LedgerSection
+
+\LabSection{the request trace}
+
+\HappenedSection{cancellation that did not reach the model}
+
+\FrontierSection{}
 
 \input{worked/ch14-request-lifecycle.tex}

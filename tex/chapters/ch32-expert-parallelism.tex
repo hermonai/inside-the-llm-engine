@@ -1,0 +1,39 @@
+% status: SKELETON
+% Chapter 32 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Expert Parallelism at Scale}\label{ch:expert-parallelism}
+
+\begin{ChapterIntent}
+Placing experts on different GPUs turns every mixture-of-experts layer
+into an all-to-all exchange: tokens are dispatched to their experts' devices
+and the results are combined back. This chapter prices that exchange, covers
+the dispatch and combine kernels built for it, load imbalance and redundant
+expert replicas, and overlapping communication with computation, and explains
+when wide expert parallelism across many GPUs beats keeping experts
+local.
+\end{ChapterIntent}
+
+\OpeningSection{An all-to-all in every layer}
+
+\NapkinSection{Napkin math: dispatch bytes per token}
+
+\section{Placing experts}
+
+\section{Dispatch and combine}
+
+\section{Imbalance and redundant experts}
+
+\section{Overlapping communication with compute}
+
+\section{Wide expert parallelism across nodes}
+
+\section{Low-latency kernels for decode}
+
+\LedgerSection
+
+\LabSection{an all-to-all simulator with routing skew}
+
+\HappenedSection{an open-source dispatch library}
+
+\FrontierSection{}
+
+\ExercisesSection

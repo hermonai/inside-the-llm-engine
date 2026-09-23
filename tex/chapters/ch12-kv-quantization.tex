@@ -1,0 +1,45 @@
+% status: SKELETON
+% Chapter 12 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Quantizing the KV Cache}\label{ch:kv-quantization}
+
+\begin{ChapterIntent}
+At long context and large batch the KV cache, rather than the weights,
+dominates both memory and the bytes read per step, and quantizing it is the
+most direct relief. Its errors behave differently from weight errors: they
+enter every attention score of every later token, and keys carry outlier
+channels that per-token scaling handles badly. This chapter derives
+per-channel key and per-token value quantization, FP8 caches with calibrated
+scales, four-bit and lower schemes, and pre-RoPE and rotated variants, and it
+shows how to measure long-context damage rather than trusting short-context
+perplexity.
+\end{ChapterIntent}
+
+\OpeningSection{Twice the context in the same memory}
+
+\NapkinSection{Napkin math: when the cache is most of the bytes}
+
+\section{Why cache errors are different}
+
+\section{Keys have outlier channels}
+
+\section{Per-channel keys, per-token values}
+
+\section{FP8 caches and their scales}
+
+\section{Four bits and below}
+
+\section{Before or after RoPE; rotations}
+
+\section{Kernels that read a quantized cache}
+
+\section{Measuring long-context damage}
+
+\LedgerSection
+
+\LabSection{quantize a cache and watch attention drift}
+
+\HappenedSection{default scales of one}
+
+\FrontierSection{}
+
+\ExercisesSection

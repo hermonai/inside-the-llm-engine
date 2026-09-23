@@ -1,0 +1,42 @@
+% status: SKELETON
+% Chapter 4 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Prefill and Decode: Two Workloads, One Model}\label{ch:prefill-decode}
+
+\begin{ChapterIntent}
+Processing a prompt and generating a reply use the same weights and
+almost nothing else in common. Prefill multiplies the weights by a matrix of
+prompt tokens and is limited by compute; decode multiplies them by one vector
+per sequence and is limited by memory bandwidth. This chapter measures both
+phases on one machine, derives time to first token and time per output token
+from the roofline, and shows why each phase wants a different batch size, a
+different kernel, a different scheduler and --- at scale --- different
+hardware. The tension between them drives chunked prefill
+(\Chref{chunked-prefill}) and disaggregated serving
+(\Chref{disaggregated-serving}).
+\end{ChapterIntent}
+
+\OpeningSection{The same model reads thirty times faster than it writes}
+
+\NapkinSection{Napkin math: time to first token and time per output token}
+
+\section{Prefill: a matrix of tokens}
+
+\section{Decode: one token at a time}
+
+\section{Attention's share grows with context}
+
+\section{Latency, defined: TTFT, TPOT, ITL and end to end}
+
+\section{Where the phases collide}
+
+\section{Two phases, two ideal machines}
+
+\LedgerSection
+
+\LabSection{time the two phases}
+
+\HappenedSection{interference in a shared batch}
+
+\FrontierSection{}
+
+\ExercisesSection

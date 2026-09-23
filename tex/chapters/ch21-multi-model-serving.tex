@@ -1,0 +1,39 @@
+% status: SKELETON
+% Chapter 21 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{One Server, Many Models: LoRA, Adapters and Routing}\label{ch:multi-model-serving}
+
+\begin{ChapterIntent}
+Fine-tuning produces thousands of model variants that differ from a base
+model by small low-rank adapters. Serving each on its own GPU wastes almost all
+of it. This chapter shows how one server batches requests that use different
+adapters --- gathering the right adapter weights per request inside the kernel
+--- how adapters are paged in and out of accelerator memory, and how routing
+and model multiplexing let a fleet serve many models with little duplicated
+capacity.
+\end{ChapterIntent}
+
+\OpeningSection{A thousand fine-tunes, one GPU}
+
+\NapkinSection{Napkin math: an adapter's bytes and FLOPs}
+
+\section{Low-rank adapters}
+
+\section{Batching requests with different adapters}
+
+\section{Gather-and-multiply kernels}
+
+\section{Adapter paging and caching}
+
+\section{Routing between models}
+
+\section{Multiplexing models and cold starts}
+
+\LedgerSection
+
+\LabSection{a batched multi-adapter GEMM}
+
+\HappenedSection{multi-adapter serving in production}
+
+\FrontierSection{}
+
+\ExercisesSection

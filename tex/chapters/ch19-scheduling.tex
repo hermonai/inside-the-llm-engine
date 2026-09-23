@@ -1,0 +1,42 @@
+% status: SKELETON
+% Chapter 19 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission}\label{ch:scheduling}
+
+\begin{ChapterIntent}
+Demand eventually exceeds memory. Then the scheduler must decide which
+requests run, which wait and which are evicted, and whether an evicted request
+is recomputed or swapped out. This chapter covers admission control,
+preemption by recomputation and by swapping, fairness between tenants,
+priorities and deadlines, and admission that is aware of service-level
+objectives, using a little queueing theory to explain why a system near
+saturation behaves so badly. Its target metric is goodput --- throughput that
+meets its latency objectives.
+\end{ChapterIntent}
+
+\OpeningSection{Out of memory at the peak}
+
+\NapkinSection{Napkin math: utilization, queues and Little's law}
+
+\section{Admission: will this request fit?}
+
+\section{Preemption by recomputation}
+
+\section{Preemption by swapping}
+
+\section{Fairness between tenants}
+
+\section{Priorities and deadlines}
+
+\section{Admission that knows the objective}
+
+\section{Overload: shedding and backpressure}
+
+\LedgerSection
+
+\LabSection{a scheduler under a bursty load}
+
+\HappenedSection{early rejection in a production system}
+
+\FrontierSection{}
+
+\ExercisesSection

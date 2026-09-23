@@ -1,60 +1,59 @@
-# Authored textbook
+# The book source
 
-This directory is the active manuscript, not a generated export. Edit
-`chapters/chNN.tex`, `figures/*.tex`, and `worked/chNN.tex` directly.
-`inside-the-llm-engine.tex` assembles nine written chapters, a preface,
-glossary, evidence notes and selective index.
+This directory is the manuscript, authored directly in LaTeX. Nothing here is
+generated. The rules are in [`../AUTHORING.md`](../AUTHORING.md); the chapter
+plan is [`../docs/STRUCTURE.md`](../docs/STRUCTURE.md).
+
+| Path | Contents |
+| --- | --- |
+| `inside-the-llm-engine.tex` | Main file: title page, nine parts, appendices, back matter |
+| `preamble.tex` | Fonts, colours, anatomy macros, ledger table, draft markers |
+| `frontmatter/preface.tex` | How to read this book |
+| `chapters/chNN-<slug>.tex` | The 42 chapters; first line `% status: …` |
+| `appendices/` | `a0` Appendix A opener; `a1`–`a8` the first edition's Chapters 2–9 (Appendix A.1–A.8); `b`–`g` the reference appendices |
+| `figures/<name>.tex` | Native TikZ (and pgfplots) figures, placed with `\EngineFigure` |
+| `worked/<stem>.tex` | Worked problems for the chapter or appendix of the same stem |
+| `references.bib` | Primary sources; every entry has a row in `research/FRONTIER.md` |
+| `backmatter/glossary.tex` | Working vocabulary and evidence notes |
+
+## Chapter anatomy macros
+
+Each chapter uses these once, in order (`AUTHORING.md` §3); plain `\section`s
+between the napkin math and the ledger are the mechanism.
+
+```latex
+\begin{ChapterIntent} … \end{ChapterIntent}
+\OpeningSection{…}   \NapkinSection{…}   \section{…} …
+\LedgerSection       \begin{ConstraintLedger} … \end{ConstraintLedger}
+\LabSection{…}       \HappenedSection{…}   \FrontierSection{YYYY-MM-DD}
+\ExercisesSection    % or \input{worked/<stem>.tex}
+```
+
+Draft markers — `\todo{…}`, `\FigureIntent{…}`, `\LabIntent{…}` — are allowed
+in SKELETON and ZERO chapters and rejected in FULL ones. Cross-reference with
+`\Chref{<slug>}`, `\Appref{<name>}` and `Part~\ref{part:<name>}`; never type a
+chapter number.
 
 ## Build
 
-From the repository root:
-
 ```sh
-make textbook-check
-make textbook
+make textbook-check   # structure, anatomy, status table, figures, CLI trace
+make status           # regenerate the chapter table in docs/STATUS.md
+make textbook         # PDF in output/pdf/ (XeLaTeX, latexmk, biber)
 python3 scripts/review-textbook-pdf.py output/pdf/inside-the-llm-engine-textbook.pdf build/textbook/review
 ```
 
-The build uses XeLaTeX/latexmk, TeX Live 2025, TeX Gyre Pagella/Heros and
-Pagella Math, DejaVu Sans Mono, TikZ, fvextra, xeCJK/Fandol and twemojis.
-The source/CLI checker uses Python 3.9+ and Rust/Cargo. Page review additionally
-uses Poppler and Pillow. Use a fresh review directory when pagination changes.
-No Pandoc or Markdown input is needed to build this edition.
+The build uses TeX Live 2025: XeLaTeX via latexmk, biber for the
+bibliography, TeX Gyre Pagella/Heros with Pagella Math, DejaVu Sans Mono,
+TikZ and pgfplots, fvextra, xeCJK/Fandol and twemojis. It fails on overfull
+boxes, missing glyphs and unresolved references. A clean log does not prove a
+good layout: look at the pages. Generated PDFs and logs stay in the ignored
+`output/pdf/` and `build/`.
 
-Generated PDFs and logs remain ignored under `output/pdf/` and `build/`.
-The builder rejects overfull boxes, missing glyphs and unresolved references.
-The checker binds the early request trace to the actual CLI, checks independent
-worked calculations and counts the expected chapter/figure/problem inventory.
-Visual review is still required; a clean log does not prove good layout.
+## Appendix A and Chapter 14
 
-## Editorial boundary
-
-Chapter 1 is a new explanation built around a reproducible request. Chapters
-2–9 retain substantial reviewed material imported once from the historical
-edition, then revised in LaTeX. The opening chapters correct obsolete
-fake-model examples, tokenizer/model vocabulary assumptions and API snippets.
-Each chapter adds three original worked synthesis problems. This is a partial
-editorial rewrite, not a claim that all old prose has been re-authored.
-
-Fifty-two reviewed semantic plates were imported as editable TikZ and cropped
-to their mechanism content. Thirteen new figures teach request events,
-ownership, token boundaries, BPE, UTF-8, model arithmetic, categorical sampling
-and temperature. The active manuscript does not include the 28 mechanically
-rendered legacy text diagrams. Historical figure IDs and Rust/Python parity
-fixtures remain available outside this directory.
-
-`scripts/migrate-textbook-once.py` and `scripts/finish-textbook-import.py`
-document the one-time migration; they are not build dependencies and must not
-be used to regenerate authored chapters. Future web publication should derive
-from the LaTeX source or an explicitly maintained semantic representation.
-
-Code listings distinguish literal APIs and reference algorithms. Always run
-the linked full implementation and tests: a short explanatory loop is not a
-substitute for its shape checks, errors and ownership contracts.
-
-## Next chapter
-
-Chapter 10 derives causal self-attention from the checked positioned Q/K and
-unchanged V. Its dense reference, independent oracle, failure tests and
-native illustrations must advance together. Persistent KV caching, a complete
-decoder and industrial serving remain later milestones.
+Appendix A.1–A.8 and Chapter 14 carry the first edition's reviewed text,
+moved with `git mv` so their history follows them. Their commands are checked
+against the real `mini-engine` executable by `scripts/check-textbook.py`.
+Edit them lightly; the first edition's per-chapter research notes are in
+`research/part-01/` and `research/part-02/`.

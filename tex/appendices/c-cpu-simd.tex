@@ -1,0 +1,21 @@
+% status: SKELETON
+% Appendix of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{CPU and SIMD}\label{app:cpu}
+
+\begin{ChapterIntent}
+CPUs run a large share of the world's local inference and every
+engine's scheduler. This appendix covers what matters for inference: cores and
+caches, memory bandwidth per socket, SIMD from NEON and AVX2 to AVX-512, AMX
+and SME, threading and NUMA, and why a well-vectorized CPU matrix--vector
+product still stops at the memory bus.
+\end{ChapterIntent}
+
+\section{Cores, caches and bandwidth}
+
+\section{SIMD: NEON, AVX2 and AVX-512}
+
+\section{Matrix extensions: AMX and SME}
+
+\section{Threads and NUMA}
+
+\section{The CPU as an inference target}

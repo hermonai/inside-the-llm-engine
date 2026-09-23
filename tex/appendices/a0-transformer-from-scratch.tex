@@ -1,0 +1,15 @@
+% status: SKELETON
+% Appendix A opener. The eight sections that follow are the first edition's
+% Chapters 2-9, moved with git mv on 2026-09-23 (docs/STRUCTURE.md).
+\begin{ChapterIntent}
+This appendix is the build-it-yourself path. Its sections, written for the
+book's first edition, construct a language model's inference computation from
+text and tokens through tensors, matrix multiplication, embeddings,
+normalization, projections and rotary position, each with a checked Rust
+implementation in \texttt{code/mini-engine} and an independent Python oracle.
+Read it before Part~\ref{part:physics} if you want to build the computation
+first, or alongside \Chref{forward-pass} when a compressed description is not
+enough. Sections A.9 to A.11 --- causal self-attention, the feed-forward
+network and the decoder stack --- are planned; they complete a runnable
+decoder for the later labs.
+\end{ChapterIntent}

@@ -1,0 +1,40 @@
+% status: SKELETON
+% Chapter 33 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Disaggregated Serving}\label{ch:disaggregated-serving}
+
+\begin{ChapterIntent}
+Prefill and decode interfere when they share a GPU, and want different
+batch sizes and parallelism when they do not. Disaggregated serving runs them
+on separate pools and moves each request's KV cache from one to the other.
+This chapter measures the interference, prices the KV transfer against the
+network, derives when disaggregation raises goodput and when it does not, and
+surveys the scheduling and transfer machinery production systems use.
+\end{ChapterIntent}
+
+\OpeningSection{More requests within the objective}
+
+\NapkinSection{Napkin math: KV transfer time against prefill time}
+
+\section{Interference, revisited}
+
+\section{Separate pools}
+
+\section{Moving the KV cache}
+
+\section{When disaggregation pays}
+
+\section{Scheduling across pools}
+
+\section{Production architectures}
+
+\section{Failure and rebalancing}
+
+\LedgerSection
+
+\LabSection{a two-pool simulator}
+
+\HappenedSection{a KV-centric serving platform}
+
+\FrontierSection{}
+
+\ExercisesSection

@@ -1,0 +1,45 @@
+% status: SKELETON
+% Chapter 7 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Matrix Multiplication on Real Hardware}\label{ch:matmul-hardware}
+
+\begin{ChapterIntent}
+The same number of multiply--adds can run a hundred times faster or
+slower depending on how they are ordered. This chapter follows matrix
+multiplication from the scalar loops of Appendix~A onto real hardware: tiles
+that live in registers and shared memory, tensor cores that multiply small
+matrices per instruction, Hopper's asynchronous warpgroup MMA and Blackwell's
+tensor memory. It shows why the shape of a product --- especially the skinny
+products of decode --- decides which roof binds and how much of the machine a
+kernel can use, and when split-K or a specialized matrix--vector kernel beats a
+general GEMM.
+\end{ChapterIntent}
+
+\OpeningSection{Same FLOPs, a hundred times apart}
+
+\NapkinSection{Napkin math: the work and the bytes of a GEMM}
+
+\section{From loops to tiles}
+
+\section{The memory hierarchy a tile lives in}
+
+\section{Tensor cores: matrix units}
+
+\section{Hopper: asynchronous warpgroup MMA and TMA}
+
+\section{Blackwell: tensor memory and two-SM MMA}
+
+\section{Occupancy, waves and tails}
+
+\section{Skinny GEMMs at decode}
+
+\section{Split-K and stream-K}
+
+\LedgerSection
+
+\LabSection{tile a GEMM and watch it climb}
+
+\HappenedSection{the first edition's loop-order and tiling measurements}
+
+\FrontierSection{}
+
+\ExercisesSection

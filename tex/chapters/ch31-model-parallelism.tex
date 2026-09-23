@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 31 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Tensor, Pipeline and Context Parallelism}\label{ch:model-parallelism}
+
+\begin{ChapterIntent}
+When a model does not fit on one device, or one device is too slow, the
+model must be split. Tensor parallelism splits each matrix and pays collective
+communication in every layer; pipeline parallelism splits the layers and pays
+in bubbles; context parallelism splits the sequence for long prefill. This
+chapter derives each, prices its communication in bytes against the
+interconnect's bandwidth, and shows how to choose a layout for a given model,
+context and latency target.
+\end{ChapterIntent}
+
+\OpeningSection{Two all-reduces per layer}
+
+\NapkinSection{Napkin math: collective bytes against interconnect bandwidth}
+
+\section{Why split a model}
+
+\section{Tensor parallelism}
+
+\section{The collectives each layer pays}
+
+\section{Pipeline parallelism and its bubbles}
+
+\section{Context parallelism and ring attention}
+
+\section{Choosing a layout}
+
+\section{Interconnects}
+
+\LedgerSection
+
+\LabSection{simulate tensor parallelism with threads}
+
+\HappenedSection{partitioning PaLM for inference}
+
+\FrontierSection{}
+
+\ExercisesSection

@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 16 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Paged KV Memory}\label{ch:paged-kv}
+
+\begin{ChapterIntent}
+When every request reserves contiguous KV memory for its maximum length,
+most of the reservation is never used and capacity --- and with it batch size
+and throughput --- collapses. Paged KV memory borrows virtual memory's answer:
+fixed-size blocks, a per-request block table and a pool that allocates on
+demand. This chapter builds a block pool with reference counts and
+copy-on-write, rewrites attention to read through a block table, prices the
+indirection, and discusses block size, fragmentation and eviction.
+\end{ChapterIntent}
+
+\OpeningSection{Most of the reservation, never used}
+
+\NapkinSection{Napkin math: fragmentation under real length distributions}
+
+\section{Reservation and fragmentation}
+
+\section{Blocks and block tables}
+
+\section{The block pool and its allocator}
+
+\section{Sharing: reference counts and copy-on-write}
+
+\section{Attention through a block table}
+
+\section{Choosing the block size}
+
+\section{Eviction and swapping at block granularity}
+
+\LedgerSection
+
+\LabSection{a block pool with copy-on-write, checked against a flat cache}
+
+\HappenedSection{the paged path and its release gate}
+
+\FrontierSection{}
+
+\ExercisesSection

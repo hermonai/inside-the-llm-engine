@@ -1,0 +1,41 @@
+% status: SKELETON
+% Chapter 18 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Chunked Prefill and Phase Interference}\label{ch:chunked-prefill}
+
+\begin{ChapterIntent}
+When a long prompt joins a running batch, its prefill occupies the GPU for
+a whole step and every decoding request waits --- visible to users as a stall
+in the middle of a stream. Chunked prefill splits the prompt into
+token-budgeted pieces that share each step with the decodes. This chapter
+measures the interference, derives the token budget, shows how chunk size
+trades time to first token against inter-token latency, and marks where
+separating the phases entirely becomes the better answer.
+\end{ChapterIntent}
+
+\OpeningSection{A stall in the middle of a stream}
+
+\NapkinSection{Napkin math: a step's token budget}
+
+\section{How prefill stalls decode}
+
+\section{Token budgets}
+
+\section{Chunking a prompt}
+
+\section{Stall-free batch composition}
+
+\section{Choosing the chunk size}
+
+\section{Chunks and attention kernels}
+
+\section{When to separate the phases instead}
+
+\LedgerSection
+
+\LabSection{chunking in the batching simulator}
+
+\HappenedSection{chunked prefill in production schedulers}
+
+\FrontierSection{}
+
+\ExercisesSection

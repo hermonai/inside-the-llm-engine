@@ -1,0 +1,42 @@
+% status: SKELETON
+% Chapter 22 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+\chapter{Speculative Decoding: The Draft--Verify Contract}\label{ch:speculative-decoding}
+
+\begin{ChapterIntent}
+Decode leaves compute idle, so verifying several guessed tokens in one
+forward pass costs about as much as generating one. Speculative decoding
+exploits this: a cheap drafter proposes tokens, the target model checks them in
+parallel, and a modified rejection rule accepts them so that the output
+distribution is exactly the target's. This chapter proves that exactness,
+derives the expected speedup from the acceptance rate and the draft cost, and
+builds drafting from n-grams, the prompt and a smaller model, including rolling
+back the KV cache after a rejection.
+\end{ChapterIntent}
+
+\OpeningSection{Several tokens for the price of one step}
+
+\NapkinSection{Napkin math: acceptance rate and expected speedup}
+
+\section{Verification is cheap at decode}
+
+\section{Draft, verify, accept}
+
+\section{The acceptance rule that preserves the distribution}
+
+\section{Expected speedup}
+
+\section{Drafts from n-grams and the prompt}
+
+\section{Drafts from a smaller model}
+
+\section{Rolling back the cache}
+
+\LedgerSection
+
+\LabSection{speculative sampling with an exactness test}
+
+\HappenedSection{prompt lookup on retrieval workloads}
+
+\FrontierSection{}
+
+\ExercisesSection
