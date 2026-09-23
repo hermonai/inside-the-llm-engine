@@ -6,14 +6,14 @@ edition's status ledger, with its dated milestone entries, is
 
 ## Where the book is
 
-**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Part I.**
-Every chapter and appendix exists under the new numbering with its intent and
-section headings in the chapter anatomy. Chapters 1–6 are zero drafts built
-on measurements taken for them. The first edition's Chapters 2–9 are Appendix
-A.1–A.8 and its Chapter 1 is the seed of Chapter 14, moved with `git mv` and
-re-pointed at the new numbering. The plan is [`STRUCTURE.md`](STRUCTURE.md);
-the policy is [`../AUTHORING.md`](../AUTHORING.md); superseded governance is
-in `archive/`.
+**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I and
+II.** Every chapter and appendix exists under the new numbering with its intent
+and section headings in the chapter anatomy. Chapters 1–13 are zero drafts
+built on measurements taken for them. The first edition's Chapters 2–9 are
+Appendix A.1–A.8 and its Chapter 1 is the seed of Chapter 14, moved with
+`git mv` and re-pointed at the new numbering. The plan is
+[`STRUCTURE.md`](STRUCTURE.md); the policy is [`../AUTHORING.md`](../AUTHORING.md);
+superseded governance is in `archive/`.
 
 "What actually happened" headings in SKELETON chapters name *planned* cases.
 Each must be verified against source or a measurement record before it is
@@ -33,13 +33,13 @@ if this table is stale. Words are approximate prose words.
 | 4 | Prefill and Decode: Two Workloads, One Model | ZERO | 2,025 | 2 |
 | 5 | The KV Cache: Inference's Central Data Structure | ZERO | 2,092 | 2 |
 | 6 | Napkin Math: Latency, Throughput and Cost per Token | ZERO | 1,951 | 2 |
-| 7 | Matrix Multiplication on Real Hardware | SKELETON | 175 | 0 |
-| 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | SKELETON | 182 | 0 |
-| 9 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | SKELETON | 168 | 0 |
-| 10 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | SKELETON | 169 | 0 |
-| 11 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | SKELETON | 184 | 0 |
-| 12 | Quantizing the KV Cache | SKELETON | 164 | 0 |
-| 13 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | SKELETON | 160 | 0 |
+| 7 | Matrix Multiplication on Real Hardware | ZERO | 2,086 | 2 |
+| 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | ZERO | 2,083 | 0 |
+| 9 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | ZERO | 1,924 | 0 |
+| 10 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | ZERO | 2,139 | 0 |
+| 11 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | ZERO | 2,127 | 1 |
+| 12 | Quantizing the KV Cache | ZERO | 1,895 | 1 |
+| 13 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | ZERO | 1,996 | 0 |
 | 14 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | SKELETON | 2,159 | 0 |
 | 15 | Continuous Batching | SKELETON | 134 | 0 |
 | 16 | Paged KV Memory | SKELETON | 147 | 0 |
@@ -89,30 +89,36 @@ if this table is stale. Words are approximate prose words.
 | G | `tex/appendices/g-reproducing-measurements.tex` | SKELETON | 69 |
 <!-- chapter-status:end -->
 
-## Verified at the end of session 1 (2026-09-24)
+## Verified at the end of session 2 (2026-09-24)
 
 | Check | Result |
 | --- | --- |
-| `make textbook-check` | pass: 42 chapters (36 SKELETON, 6 ZERO), 15 appendix files, 68 native figures (all used), 27 worked problems, CLI trace and worked calculations |
-| `make textbook` | pass: 307-page PDF, XeLaTeX + biber, no overfull boxes or unresolved references; pages with new figures and tables inspected |
-| `cargo test --workspace` in `code/mini-engine` | 220 pass (218 + 2 compile-fail doctests) |
+| `make textbook-check` | pass: 42 chapters (29 SKELETON, 13 ZERO), 15 appendix files, 70 native figures (all used), 27 worked problems, CLI trace and worked calculations |
+| `make textbook` | pass: 332-page PDF, XeLaTeX + biber, no overfull boxes or unresolved references; the pages with Chapter 8's table and Figures 10.1 and 11.1 inspected as images |
+| `cargo test --workspace` in `code/mini-engine` | 220 pass; `cargo fmt --check`, `cargo check` and `clippy -D warnings` clean |
 | All CI steps run locally | pass (17 steps; see `.github/workflows/ci.yml`) |
-| Secrets guard | no IP addresses, host names, credential paths, keys or tokens in tracked files |
+| Secrets guard | `scripts/check-structure.sh` passes; raw measurement outputs redacted of local paths and scanned for host names and addresses |
 
 Measurement records: `research/measurements/2026-09-23-m1-llama32-3b.md`
-(decode, prefill, batched decode, GPU bandwidth on an Apple M1) and
-`2026-09-23-gguf-tensor-bytes.md` (bytes per token read from two GGUF files).
-The M1 runs were taken on a busy desktop under heavy memory pressure; the
-record says so. Re-run on a quiet machine before any chapter is FULL.
+(decode, prefill, batched decode, GPU bandwidth), `2026-09-23-gguf-tensor-bytes.md`
+(bytes per token from two GGUF files) and `2026-09-23-m1-part2.md` (weight and
+cache formats, matrix shapes, attention under a memory cap, dispatch cost, for
+Chapters 7–13). All were taken on the Apple M1 during an ordinary desktop
+session. **Load moved the Part II numbers by 8–43%**: the first pass ran at a
+load average of 12–27 and is kept in the record; every chapter quotes the
+confirmation pass. One conclusion changed between the passes (Chapter 9's
+long-context slowdown was load, not the kernel). Re-measure on a quiet machine
+before any chapter is FULL.
 
-## Open markers in Part I
+## Open markers
 
-Thirteen `\todo` markers remain, all visible in the PDF. The ones that need
-hardware or a primary source:
+Seventeen `\todo` markers remain, all visible in the PDF.
+
+**Part I (13).**
 
 - **GPU measurements** (Chapters 3, 6): the RTX 5060 Ti re-measurement of the
   prompt's example, and the H100 validation of Chapter 6's table. The GPU
-  development host was unreachable during this session.
+  development host was unreachable in sessions 1 and 2.
 - **Hermon status** (Chapters 1, 4, 5): confirm DEFAULT/PREVIEW for continuous
   batching, prompt-lookup speculation and the CUDA KV arena at commit
   `2a3fd52`, and the dates of the cited runs.
@@ -123,14 +129,30 @@ hardware or a primary source:
   llama.cpp build, and worked solutions; **Chapter 6** needs DeepSeek's decode
   step reconstructed with expert-parallel communication (FULL pass).
 
+**Part II (4).**
+
+- **Chapter 7:** name the kernels behind the M1's step between 8 and 16
+  columns (a Metal GPU trace); which split-K or stream-K schedules CUTLASS and
+  cuBLAS choose by default for decode-shaped products.
+- **Chapter 11:** Rubin-class FP4 specifications from NVIDIA.
+- **Chapter 12:** NVFP4 KV-cache support in NVIDIA's serving stack from a
+  primary source.
+
+Resolved in session 2 from primary sources: AMD MI355X peaks (datasheet),
+ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
+`389ff61d`), and the Hermon claims in Chapters 8, 10 and 13 (source at
+`2a3fd52`).
+
 ## Next
 
-1. Zero-draft Part II (Chapters 7–13). First read the "Leads to verify" in
-   `research/FRONTIER.md` that Part II needs (FlashAttention-4 and FlashMLA
-   adoption, AMD MI355X compute peaks) and log them.
-2. Zero-draft Parts III–IX in order. Chapter 14's ZERO pass reworks the first
-   edition's text into the anatomy rather than rewriting it.
-3. When a GPU host is available, clear the measurement markers above.
+1. Zero-draft Parts III–IX in order, starting with Part III (Chapters 14–21).
+   Chapter 14's ZERO pass reworks the first edition's text into the anatomy
+   rather than rewriting it. Read the "Leads to verify" in
+   `research/FRONTIER.md` that Part III needs first.
+2. Clear the Part II source markers above; they need documentation, not
+   hardware.
+3. When a GPU host is available, clear the measurement markers, and repeat the
+   Part II probes on it (the M1 results are single-machine and Metal-specific).
 4. Then pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building
    each chapter's lab in `code/labs/`.
 
@@ -145,6 +167,21 @@ hardware or a primary source:
   laptop, measured in this session, instead of the RTX 5060 Ti example: the
   GPU host was down. The laptop makes the point more relatable; the RTX figure
   remains a marked item.
+- **Part II openings that contradict expectations.** Three openings report
+  results a reader may not expect, all from the confirmation pass: on the M1,
+  llama.cpp's 8- and 4-bit KV caches were *slower* than 16-bit at every depth
+  up to 16,384 tokens (Chapter 12 frames the gain as capacity); PyTorch 2.10's
+  fused attention on MPS materialized its scores (4.1 GiB at 8,192 tokens) and
+  a two-dozen-line blockwise version ran where it could not (Chapter 8); and
+  llama.cpp's decode attention read the cache at the same 48–52 GB/s as the
+  weights (Chapter 9, whose planned occupancy story now rests on Hermon's
+  measured kernel instead). Each is labelled as this engine on this machine.
+- **The attention probe's memory cap.** Chapter 8 caps PyTorch's allocator at
+  6 GiB as a stand-in for a smaller GPU, so failures are clean rather than a
+  swapping laptop. The chapter says so; a CUDA re-run without a cap would be a
+  stronger opening.
+- **Record dates are UTC.** The Part II record is `2026-09-23-m1-part2` because
+  the runs were 18:32–19:22 UTC on 2026-09-23 (2026-09-24 local time).
 - **Hermon's compound claim.** Chapter 1 notes that Hermon's
   `docs/PERFORMANCE.md` multiplies three separately measured speedups into an
   estimate; the book treats it as a hypothesis. Hermon's document may want the
