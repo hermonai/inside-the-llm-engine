@@ -197,7 +197,7 @@ How are you?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 '
 srv          init: init: chat template, thinking = 0
 main: model loaded
-main: server is listening on http://127.0.0.1:18187
+main: server is listening on http://<loopback>:18187
 main: starting the main loop...
 srv  update_slots: all slots are idle
 srv  params_from_: Chat format: peg-native
@@ -218,7 +218,7 @@ prompt eval time =     339.69 ms /    83 tokens (    4.09 ms per token,   244.34
       total time =    2214.51 ms /   131 tokens
 slot      release: id  0 | task 0 | stop processing: n_tokens = 130, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.638
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -235,7 +235,7 @@ prompt eval time =      40.35 ms /     1 tokens (   40.35 ms per token,    24.78
       total time =    1725.32 ms /    44 tokens
 slot      release: id  0 | task 49 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -252,7 +252,7 @@ prompt eval time =      39.84 ms /     1 tokens (   39.84 ms per token,    25.10
       total time =    1703.59 ms /    43 tokens
 slot      release: id  0 | task 93 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -269,7 +269,7 @@ prompt eval time =      38.92 ms /     1 tokens (   38.92 ms per token,    25.69
       total time =    1672.42 ms /    43 tokens
 slot      release: id  0 | task 136 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -286,7 +286,7 @@ prompt eval time =      40.29 ms /     1 tokens (   40.29 ms per token,    24.82
       total time =    1764.80 ms /    44 tokens
 slot      release: id  0 | task 179 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -303,7 +303,7 @@ prompt eval time =      50.35 ms /     1 tokens (   50.35 ms per token,    19.86
       total time =    1843.14 ms /    42 tokens
 slot      release: id  0 | task 223 | stop processing: n_tokens = 123, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.675
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -320,7 +320,7 @@ prompt eval time =      43.37 ms /     1 tokens (   43.37 ms per token,    23.06
       total time =    1740.94 ms /    41 tokens
 slot      release: id  0 | task 265 | stop processing: n_tokens = 122, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.680
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -337,7 +337,7 @@ prompt eval time =      39.87 ms /     1 tokens (   39.87 ms per token,    25.08
       total time =    1575.18 ms /    40 tokens
 slot      release: id  0 | task 306 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -354,7 +354,7 @@ prompt eval time =      39.30 ms /     1 tokens (   39.30 ms per token,    25.45
       total time =    1629.73 ms /    41 tokens
 slot      release: id  0 | task 346 | stop processing: n_tokens = 122, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.680
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -371,7 +371,7 @@ prompt eval time =      39.80 ms /     1 tokens (   39.80 ms per token,    25.12
       total time =    1541.33 ms /    40 tokens
 slot      release: id  0 | task 387 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -388,7 +388,7 @@ prompt eval time =      39.30 ms /     1 tokens (   39.30 ms per token,    25.45
       total time =    1874.51 ms /    45 tokens
 slot      release: id  0 | task 427 | stop processing: n_tokens = 126, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.659
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -405,7 +405,7 @@ prompt eval time =      49.37 ms /     1 tokens (   49.37 ms per token,    20.26
       total time =    1724.72 ms /    40 tokens
 slot      release: id  0 | task 472 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -422,7 +422,7 @@ prompt eval time =      42.98 ms /     1 tokens (   42.98 ms per token,    23.26
       total time =    1800.00 ms /    46 tokens
 slot      release: id  0 | task 512 | stop processing: n_tokens = 127, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.654
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -439,7 +439,7 @@ prompt eval time =      38.95 ms /     1 tokens (   38.95 ms per token,    25.67
       total time =    1801.67 ms /    43 tokens
 slot      release: id  0 | task 558 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -456,7 +456,7 @@ prompt eval time =      42.98 ms /     1 tokens (   42.98 ms per token,    23.27
       total time =    1639.31 ms /    40 tokens
 slot      release: id  0 | task 601 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -473,7 +473,7 @@ prompt eval time =      41.95 ms /     1 tokens (   41.95 ms per token,    23.84
       total time =    1694.18 ms /    43 tokens
 slot      release: id  0 | task 641 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -490,7 +490,7 @@ prompt eval time =      39.04 ms /     1 tokens (   39.04 ms per token,    25.61
       total time =    1771.63 ms /    44 tokens
 slot      release: id  0 | task 684 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -507,7 +507,7 @@ prompt eval time =      39.00 ms /     1 tokens (   39.00 ms per token,    25.64
       total time =    1559.01 ms /    40 tokens
 slot      release: id  0 | task 728 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -524,7 +524,7 @@ prompt eval time =      38.69 ms /     1 tokens (   38.69 ms per token,    25.85
       total time =    1792.64 ms /    46 tokens
 slot      release: id  0 | task 768 | stop processing: n_tokens = 127, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.654
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -541,7 +541,7 @@ prompt eval time =      39.85 ms /     1 tokens (   39.85 ms per token,    25.09
       total time =    1736.01 ms /    44 tokens
 slot      release: id  0 | task 814 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -558,7 +558,7 @@ prompt eval time =      41.58 ms /     1 tokens (   41.58 ms per token,    24.05
       total time =    2501.60 ms /    60 tokens
 slot      release: id  0 | task 858 | stop processing: n_tokens = 141, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.589
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -575,7 +575,7 @@ prompt eval time =      40.05 ms /     1 tokens (   40.05 ms per token,    24.97
       total time =    1737.13 ms /    44 tokens
 slot      release: id  0 | task 918 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -592,7 +592,7 @@ prompt eval time =      39.38 ms /     1 tokens (   39.38 ms per token,    25.39
       total time =    1852.50 ms /    43 tokens
 slot      release: id  0 | task 962 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -609,7 +609,7 @@ prompt eval time =      42.30 ms /     1 tokens (   42.30 ms per token,    23.64
       total time =    1794.92 ms /    43 tokens
 slot      release: id  0 | task 1005 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -626,7 +626,7 @@ prompt eval time =      47.27 ms /     1 tokens (   47.27 ms per token,    21.15
       total time =    1748.58 ms /    44 tokens
 slot      release: id  0 | task 1048 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -643,7 +643,7 @@ prompt eval time =      51.33 ms /     1 tokens (   51.33 ms per token,    19.48
       total time =    1699.54 ms /    42 tokens
 slot      release: id  0 | task 1092 | stop processing: n_tokens = 123, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.675
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -660,7 +660,7 @@ prompt eval time =      40.32 ms /     1 tokens (   40.32 ms per token,    24.80
       total time =    1666.21 ms /    41 tokens
 slot      release: id  0 | task 1134 | stop processing: n_tokens = 122, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.680
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -677,7 +677,7 @@ prompt eval time =      48.14 ms /     1 tokens (   48.14 ms per token,    20.77
       total time =    1852.17 ms /    40 tokens
 slot      release: id  0 | task 1175 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -694,7 +694,7 @@ prompt eval time =      40.25 ms /     1 tokens (   40.25 ms per token,    24.84
       total time =    1708.54 ms /    41 tokens
 slot      release: id  0 | task 1215 | stop processing: n_tokens = 122, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.680
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -711,7 +711,7 @@ prompt eval time =      40.17 ms /     1 tokens (   40.17 ms per token,    24.90
       total time =    1568.86 ms /    40 tokens
 slot      release: id  0 | task 1256 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -728,7 +728,7 @@ prompt eval time =      40.02 ms /     1 tokens (   40.02 ms per token,    24.99
       total time =    1830.08 ms /    45 tokens
 slot      release: id  0 | task 1296 | stop processing: n_tokens = 126, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.659
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -745,7 +745,7 @@ prompt eval time =      39.51 ms /     1 tokens (   39.51 ms per token,    25.31
       total time =    1598.06 ms /    40 tokens
 slot      release: id  0 | task 1341 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -762,7 +762,7 @@ prompt eval time =      38.51 ms /     1 tokens (   38.51 ms per token,    25.97
       total time =    1808.56 ms /    46 tokens
 slot      release: id  0 | task 1381 | stop processing: n_tokens = 127, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.654
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -779,7 +779,7 @@ prompt eval time =      40.08 ms /     1 tokens (   40.08 ms per token,    24.95
       total time =    1696.52 ms /    43 tokens
 slot      release: id  0 | task 1427 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -796,7 +796,7 @@ prompt eval time =      38.42 ms /     1 tokens (   38.42 ms per token,    26.03
       total time =    1572.59 ms /    40 tokens
 slot      release: id  0 | task 1470 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -813,7 +813,7 @@ prompt eval time =      41.09 ms /     1 tokens (   41.09 ms per token,    24.34
       total time =    1672.66 ms /    43 tokens
 slot      release: id  0 | task 1510 | stop processing: n_tokens = 124, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.669
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -830,7 +830,7 @@ prompt eval time =      39.85 ms /     1 tokens (   39.85 ms per token,    25.10
       total time =    1704.79 ms /    44 tokens
 slot      release: id  0 | task 1553 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -847,7 +847,7 @@ prompt eval time =      39.18 ms /     1 tokens (   39.18 ms per token,    25.52
       total time =    1551.95 ms /    40 tokens
 slot      release: id  0 | task 1597 | stop processing: n_tokens = 121, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.686
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -864,7 +864,7 @@ prompt eval time =      41.20 ms /     1 tokens (   41.20 ms per token,    24.27
       total time =    1906.66 ms /    46 tokens
 slot      release: id  0 | task 1637 | stop processing: n_tokens = 127, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.654
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -881,7 +881,7 @@ prompt eval time =      48.76 ms /     1 tokens (   48.76 ms per token,    20.51
       total time =    1893.67 ms /    44 tokens
 slot      release: id  0 | task 1683 | stop processing: n_tokens = 125, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.664
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -898,7 +898,7 @@ prompt eval time =      40.89 ms /     1 tokens (   40.89 ms per token,    24.45
       total time =    7767.14 ms /    65 tokens
 slot      release: id  0 | task 1727 | stop processing: n_tokens = 146, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.568
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -915,7 +915,7 @@ prompt eval time =      39.42 ms /     1 tokens (   39.42 ms per token,    25.37
       total time =    8261.21 ms /    47 tokens
 slot      release: id  0 | task 1792 | stop processing: n_tokens = 128, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.648
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -932,7 +932,7 @@ prompt eval time =      51.34 ms /     1 tokens (   51.34 ms per token,    19.48
       total time =    5681.98 ms /    48 tokens
 slot      release: id  0 | task 1839 | stop processing: n_tokens = 129, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.643
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -949,7 +949,7 @@ prompt eval time =      39.13 ms /     1 tokens (   39.13 ms per token,    25.55
       total time =    6752.56 ms /    46 tokens
 slot      release: id  0 | task 1887 | stop processing: n_tokens = 127, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.654
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -966,7 +966,7 @@ prompt eval time =      40.42 ms /     1 tokens (   40.42 ms per token,    24.74
       total time =    7108.89 ms /    47 tokens
 slot      release: id  0 | task 1933 | stop processing: n_tokens = 128, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.648
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -983,7 +983,7 @@ prompt eval time =      38.65 ms /     1 tokens (   38.65 ms per token,    25.87
       total time =    6653.72 ms /    53 tokens
 slot      release: id  0 | task 1980 | stop processing: n_tokens = 134, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.619
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1000,7 +1000,7 @@ prompt eval time =      38.60 ms /     1 tokens (   38.60 ms per token,    25.91
       total time =    8134.39 ms /    52 tokens
 slot      release: id  0 | task 2033 | stop processing: n_tokens = 133, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.624
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1017,7 +1017,7 @@ prompt eval time =      39.90 ms /     1 tokens (   39.90 ms per token,    25.06
       total time =    5492.20 ms /    45 tokens
 slot      release: id  0 | task 2085 | stop processing: n_tokens = 126, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.659
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1034,7 +1034,7 @@ prompt eval time =      38.68 ms /     1 tokens (   38.68 ms per token,    25.85
       total time =    7074.99 ms /    47 tokens
 slot      release: id  0 | task 2130 | stop processing: n_tokens = 128, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.648
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1051,7 +1051,7 @@ prompt eval time =      38.44 ms /     1 tokens (   38.44 ms per token,    26.02
       total time =    5971.16 ms /    53 tokens
 slot      release: id  0 | task 2177 | stop processing: n_tokens = 134, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.619
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1068,7 +1068,7 @@ prompt eval time =      46.01 ms /     1 tokens (   46.01 ms per token,    21.74
       total time =    9722.40 ms /    52 tokens
 slot      release: id  0 | task 2230 | stop processing: n_tokens = 133, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.624
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1085,7 +1085,7 @@ prompt eval time =      40.79 ms /     1 tokens (   40.79 ms per token,    24.52
       total time =    7432.82 ms /    51 tokens
 slot      release: id  0 | task 2282 | stop processing: n_tokens = 132, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.629
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1102,7 +1102,7 @@ prompt eval time =      40.58 ms /     1 tokens (   40.58 ms per token,    24.64
       total time =    6361.97 ms /    56 tokens
 slot      release: id  0 | task 2333 | stop processing: n_tokens = 137, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.606
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1119,7 +1119,7 @@ prompt eval time =      49.90 ms /     1 tokens (   49.90 ms per token,    20.04
       total time =    6731.94 ms /    56 tokens
 slot      release: id  0 | task 2389 | stop processing: n_tokens = 137, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.606
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1136,7 +1136,7 @@ prompt eval time =      48.08 ms /     1 tokens (   48.08 ms per token,    20.80
       total time =    7609.82 ms /    51 tokens
 slot      release: id  0 | task 2445 | stop processing: n_tokens = 132, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.629
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1153,7 +1153,7 @@ prompt eval time =      44.13 ms /     1 tokens (   44.13 ms per token,    22.66
       total time =    5577.97 ms /    48 tokens
 slot      release: id  0 | task 2496 | stop processing: n_tokens = 129, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.643
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1170,7 +1170,7 @@ prompt eval time =      39.38 ms /     1 tokens (   39.38 ms per token,    25.39
       total time =    9220.10 ms /    56 tokens
 slot      release: id  0 | task 2544 | stop processing: n_tokens = 137, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.606
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1187,7 +1187,7 @@ prompt eval time =      41.67 ms /     1 tokens (   41.67 ms per token,    24.00
       total time =    7103.96 ms /    53 tokens
 slot      release: id  0 | task 2600 | stop processing: n_tokens = 134, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.619
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1204,7 +1204,7 @@ prompt eval time =      38.87 ms /     1 tokens (   38.87 ms per token,    25.73
       total time =    8062.38 ms /    53 tokens
 slot      release: id  0 | task 2653 | stop processing: n_tokens = 134, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv  params_from_: Chat format: peg-native
 slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.619
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
@@ -1221,7 +1221,7 @@ prompt eval time =      44.12 ms /     1 tokens (   44.12 ms per token,    22.67
       total time =    8142.45 ms /    53 tokens
 slot      release: id  0 | task 2706 | stop processing: n_tokens = 134, truncated = 0
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /v1/chat/completions 127.0.0.1 200
+srv  log_server_r: done request: POST /v1/chat/completions <loopback> 200
 srv    operator(): operator(): cleaning up before exit...
 llama_memory_breakdown_print: | memory breakdown [MiB] | total   free    self   model   context   compute    unaccounted |
 llama_memory_breakdown_print: |   - MTL0 (Apple M1)    | 12124 = 9500 + (2622 =  1918 +     448 +     256) +           0 |

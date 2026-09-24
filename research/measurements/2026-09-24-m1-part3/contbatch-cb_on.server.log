@@ -206,11 +206,11 @@ How are you?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 '
 srv          init: init: chat template, thinking = 0
 main: model loaded
-main: server is listening on http://127.0.0.1:18187
+main: server is listening on http://<loopback>:18187
 main: starting the main loop...
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /tokenize 127.0.0.1 200
-srv  log_server_r: done request: POST /tokenize 127.0.0.1 200
+srv  log_server_r: done request: POST /tokenize <loopback> 200
+srv  log_server_r: done request: POST /tokenize <loopback> 200
 slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
 srv  get_availabl: updating prompt cache
 srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
@@ -222,7 +222,7 @@ slot update_slots: id  3 | task 0 | new prompt, n_ctx_slot = 4096, n_keep = 0, t
 slot update_slots: id  3 | task 0 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  3 | task 0 | init sampler, took 0.01 ms, tokens: text = 101, total = 101
 slot update_slots: id  3 | task 0 | prompt processing done, n_tokens = 101, batch.n_tokens = 101
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot get_availabl: id  2 | task -1 | selected slot by LRU, t_last = -1
 srv  get_availabl: updating prompt cache
 srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
@@ -234,7 +234,7 @@ slot update_slots: id  2 | task 41 | new prompt, n_ctx_slot = 4096, n_keep = 0, 
 slot update_slots: id  2 | task 41 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  2 | task 41 | init sampler, took 0.09 ms, tokens: text = 101, total = 101
 slot update_slots: id  2 | task 41 | prompt processing done, n_tokens = 101, batch.n_tokens = 102
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  2 | task 41 |
 prompt eval time =     459.37 ms /   101 tokens (    4.55 ms per token,   219.87 tokens per second)
        eval time =    2457.05 ms /    32 tokens (   76.78 ms per token,    13.02 tokens per second)
@@ -259,7 +259,7 @@ slot update_slots: id  3 | task 514 | new prompt, n_ctx_slot = 4096, n_keep = 0,
 slot update_slots: id  3 | task 514 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  3 | task 514 | init sampler, took 0.01 ms, tokens: text = 101, total = 101
 slot update_slots: id  3 | task 514 | prompt processing done, n_tokens = 101, batch.n_tokens = 101
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot get_availabl: id  2 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.765
 slot launch_slot_: id  2 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
 slot launch_slot_: id  2 | task 554 | processing task, is_child = 0
@@ -267,7 +267,7 @@ slot update_slots: id  2 | task 554 | new prompt, n_ctx_slot = 4096, n_keep = 0,
 slot update_slots: id  2 | task 554 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  2 | task 554 | init sampler, took 0.02 ms, tokens: text = 101, total = 101
 slot update_slots: id  2 | task 554 | prompt processing done, n_tokens = 101, batch.n_tokens = 102
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  2 | task 554 |
 prompt eval time =     464.16 ms /   101 tokens (    4.60 ms per token,   217.60 tokens per second)
        eval time =    2463.30 ms /    32 tokens (   76.98 ms per token,    12.99 tokens per second)
@@ -293,7 +293,7 @@ slot update_slots: id  3 | task 1028 | new prompt, n_ctx_slot = 4096, n_keep = 0
 slot update_slots: id  3 | task 1028 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  3 | task 1028 | init sampler, took 0.01 ms, tokens: text = 101, total = 101
 slot update_slots: id  3 | task 1028 | prompt processing done, n_tokens = 101, batch.n_tokens = 101
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot get_availabl: id  2 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.765
 slot launch_slot_: id  2 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
 slot launch_slot_: id  2 | task 1066 | processing task, is_child = 0
@@ -301,7 +301,7 @@ slot update_slots: id  2 | task 1066 | new prompt, n_ctx_slot = 4096, n_keep = 0
 slot update_slots: id  2 | task 1066 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  2 | task 1066 | init sampler, took 0.02 ms, tokens: text = 101, total = 101
 slot update_slots: id  2 | task 1066 | prompt processing done, n_tokens = 101, batch.n_tokens = 102
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  2 | task 1066 |
 prompt eval time =     468.82 ms /   101 tokens (    4.64 ms per token,   215.43 tokens per second)
        eval time =    2363.88 ms /    32 tokens (   73.87 ms per token,    13.54 tokens per second)

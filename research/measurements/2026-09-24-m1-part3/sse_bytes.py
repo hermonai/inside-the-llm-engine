@@ -10,7 +10,7 @@ try:
     for path, body in (("/completion", {"prompt": p, "n_predict": 64, "temperature": 0, "ignore_eos": True, "stream": True}),
                        ("/v1/chat/completions", {"messages": [{"role": "user", "content": "Write two sentences about rivers."}],
                                                  "max_tokens": 64, "temperature": 0, "stream": True})):
-        c = http.client.HTTPConnection("127.0.0.1", sp.PORT, timeout=600)
+        c = http.client.HTTPConnection("localhost", sp.PORT, timeout=600)
         c.request("POST", path, body=json.dumps(body), headers={"Content-Type": "application/json"})
         r = c.getresponse()
         sizes, last = [], None

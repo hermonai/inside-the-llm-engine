@@ -206,12 +206,12 @@ How are you?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 '
 srv          init: init: chat template, thinking = 0
 main: model loaded
-main: server is listening on http://127.0.0.1:18187
+main: server is listening on http://<loopback>:18187
 main: starting the main loop...
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /tokenize 127.0.0.1 200
+srv  log_server_r: done request: POST /tokenize <loopback> 200
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
+srv  log_server_r: done request: GET /slots <loopback> 200
 slot get_availabl: id  3 | task -1 | selected slot by LRU, t_last = -1
 srv  get_availabl: updating prompt cache
 srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
@@ -226,7 +226,7 @@ srv  update_slots: no tokens to decode
 srv  update_slots: all slots are idle
 srv          stop: cancel task, id_task = 1
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /completion 127.0.0.1 400
+srv  log_server_r: done request: POST /completion <loopback> 400
 srv    operator(): operator(): cleaning up before exit...
 llama_memory_breakdown_print: | memory breakdown [MiB] | total   free    self   model   context   compute    unaccounted |
 llama_memory_breakdown_print: |   - MTL0 (Apple M1)    | 12124 = 9046 + (3076 =  1918 +     896 +     262) +           0 |

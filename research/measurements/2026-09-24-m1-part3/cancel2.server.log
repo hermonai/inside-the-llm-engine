@@ -200,73 +200,73 @@ How are you?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 '
 srv          init: init: chat template, thinking = 0
 main: model loaded
-main: server is listening on http://127.0.0.1:18187
+main: server is listening on http://<loopback>:18187
 main: starting the main loop...
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /tokenize 127.0.0.1 200
-srv  log_server_r: done request: POST /tokenize 127.0.0.1 200
+srv  log_server_r: done request: POST /tokenize <loopback> 200
+srv  log_server_r: done request: POST /tokenize <loopback> 200
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
 slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
 slot update_slots: id  0 | task 0 | new prompt, n_ctx_slot = 4096, n_keep = 0, task.n_tokens = 201
 slot update_slots: id  0 | task 0 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  0 | task 0 | init sampler, took 0.03 ms, tokens: text = 201, total = 201
 slot update_slots: id  0 | task 0 | prompt processing done, n_tokens = 201, batch.n_tokens = 201
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
+srv  log_server_r: done request: GET /slots <loopback> 200
 srv          stop: cancel task, id_task = 0
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot      release: id  0 | task 0 | stop processing: n_tokens = 282, truncated = 0
 srv  update_slots: all slots are idle
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
+srv  log_server_r: done request: GET /slots <loopback> 200
 slot launch_slot_: id  1 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
 slot launch_slot_: id  1 | task 86 | processing task, is_child = 0
 slot update_slots: id  1 | task 86 | new prompt, n_ctx_slot = 4096, n_keep = 0, task.n_tokens = 201
 slot update_slots: id  1 | task 86 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  1 | task 86 | init sampler, took 0.04 ms, tokens: text = 201, total = 201
 slot update_slots: id  1 | task 86 | prompt processing done, n_tokens = 201, batch.n_tokens = 201
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> dist
 slot launch_slot_: id  0 | task 94 | processing task, is_child = 0
 slot update_slots: id  0 | task 94 | new prompt, n_ctx_slot = 4096, n_keep = 0, task.n_tokens = 201
 slot update_slots: id  0 | task 94 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  0 | task 94 | init sampler, took 0.05 ms, tokens: text = 201, total = 201
 slot update_slots: id  0 | task 94 | prompt processing done, n_tokens = 201, batch.n_tokens = 202
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
+srv  log_server_r: done request: GET /slots <loopback> 200
 slot print_timing: id  1 | task 86 |
 prompt eval time =     798.23 ms /   201 tokens (    3.97 ms per token,   251.81 tokens per second)
        eval time =   40201.10 ms /   500 tokens (   80.40 ms per token,    12.44 tokens per second)
       total time =   40999.33 ms /   701 tokens
 slot      release: id  1 | task 86 | stop processing: n_tokens = 700, truncated = 0
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
+srv  log_server_r: done request: GET /slots <loopback> 200
 srv          stop: cancel task, id_task = 94
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot      release: id  0 | task 94 | stop processing: n_tokens = 723, truncated = 0
 srv  update_slots: all slots are idle
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: GET /slots 127.0.0.1 200
+srv  log_server_r: done request: GET /slots <loopback> 200
 srv    operator(): operator(): cleaning up before exit...
 llama_memory_breakdown_print: | memory breakdown [MiB] | total   free    self   model   context   compute    unaccounted |
 llama_memory_breakdown_print: |   - MTL0 (Apple M1)    | 12124 = 9052 + (3070 =  1918 +     896 +     256) +           0 |

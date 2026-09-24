@@ -224,10 +224,10 @@ How are you?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 '
 srv          init: init: chat template, thinking = 0
 main: model loaded
-main: server is listening on http://127.0.0.1:18187
+main: server is listening on http://<loopback>:18187
 main: starting the main loop...
 srv  update_slots: all slots are idle
-srv  log_server_r: done request: POST /tokenize 127.0.0.1 200
+srv  log_server_r: done request: POST /tokenize <loopback> 200
 slot get_availabl: id  1 | task -1 | selected slot by LRU, t_last = -1
 srv  get_availabl: updating prompt cache
 srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
@@ -240,7 +240,7 @@ slot update_slots: id  1 | task 0 | new prompt, n_ctx_slot = 4096, n_keep = 0, t
 slot update_slots: id  1 | task 0 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  1 | task 0 | init sampler, took 0.02 ms, tokens: text = 101, total = 101
 slot update_slots: id  1 | task 0 | prompt processing done, n_tokens = 101, batch.n_tokens = 101
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 0 |
 prompt eval time =     443.37 ms /   101 tokens (    4.39 ms per token,   227.80 tokens per second)
        eval time =    5829.15 ms /   128 tokens (   45.54 ms per token,    21.96 tokens per second)
@@ -260,7 +260,7 @@ slot update_slots: id  1 | task 129 | new prompt, n_ctx_slot = 4096, n_keep = 0,
 slot update_slots: id  1 | task 129 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  1 | task 129 | init sampler, took 0.03 ms, tokens: text = 101, total = 101
 slot update_slots: id  1 | task 129 | prompt processing done, n_tokens = 101, batch.n_tokens = 101
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 129 |
 prompt eval time =     440.44 ms /   101 tokens (    4.36 ms per token,   229.32 tokens per second)
        eval time =    5424.60 ms /   128 tokens (   42.38 ms per token,    23.60 tokens per second)
@@ -288,7 +288,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 99.59 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 258 |
 prompt eval time =     648.18 ms /   101 tokens (    6.42 ms per token,   155.82 tokens per second)
        eval time =    5737.53 ms /   128 tokens (   44.82 ms per token,    22.31 tokens per second)
@@ -316,7 +316,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 118.06 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 387 |
 prompt eval time =     595.79 ms /   101 tokens (    5.90 ms per token,   169.52 tokens per second)
        eval time =    6314.71 ms /   128 tokens (   49.33 ms per token,    20.27 tokens per second)
@@ -344,7 +344,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 931
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 57.02 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 516 |
 prompt eval time =     490.76 ms /   101 tokens (    4.86 ms per token,   205.80 tokens per second)
        eval time =    5277.57 ms /   128 tokens (   41.23 ms per token,    24.25 tokens per second)
@@ -372,7 +372,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 63.76 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 645 |
 prompt eval time =     612.10 ms /   101 tokens (    6.06 ms per token,   165.01 tokens per second)
        eval time =    6507.12 ms /   128 tokens (   50.84 ms per token,    19.67 tokens per second)
@@ -400,7 +400,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 67.78 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 774 |
 prompt eval time =     538.11 ms /   101 tokens (    5.33 ms per token,   187.69 tokens per second)
        eval time =    6552.76 ms /   128 tokens (   51.19 ms per token,    19.53 tokens per second)
@@ -432,7 +432,7 @@ slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
 srv  get_availabl: updating prompt cache
 srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
 srv          load:  - found better prompt with f_keep = 0.443, sim = 1.000
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 8192 tokens, 8589934592 est)
 srv  get_availabl: prompt cache update took 24.29 ms
 slot launch_slot_: id  0 | task -1 | clearing cache for lora change. 0 loras -> 3 loras
@@ -442,7 +442,7 @@ slot update_slots: id  0 | task 905 | new prompt, n_ctx_slot = 4096, n_keep = 0,
 slot update_slots: id  0 | task 905 | n_tokens = 0, memory_seq_rm [0, end)
 slot init_sampler: id  0 | task 905 | init sampler, took 0.01 ms, tokens: text = 101, total = 101
 slot update_slots: id  0 | task 905 | prompt processing done, n_tokens = 101, batch.n_tokens = 102
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 903 |
 prompt eval time =     681.62 ms /   101 tokens (    6.75 ms per token,   148.18 tokens per second)
        eval time =   11078.91 ms /   128 tokens (   86.55 ms per token,    11.55 tokens per second)
@@ -484,7 +484,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 91.49 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  0 | task 1035 |
 prompt eval time =     636.32 ms /   101 tokens (    6.30 ms per token,   158.73 tokens per second)
        eval time =    6143.19 ms /   128 tokens (   47.99 ms per token,    20.84 tokens per second)
@@ -500,7 +500,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 89.83 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 1034 |
 prompt eval time =     634.35 ms /   101 tokens (    6.28 ms per token,   159.22 tokens per second)
        eval time =    5697.44 ms /   128 tokens (   44.51 ms per token,    22.47 tokens per second)
@@ -543,8 +543,8 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 931
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 60.68 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  0 | task 1292 |
 prompt eval time =     834.39 ms /   101 tokens (    8.26 ms per token,   121.05 tokens per second)
        eval time =   10008.17 ms /   128 tokens (   78.19 ms per token,    12.79 tokens per second)
@@ -592,8 +592,8 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 88.95 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  0 | task 1422 |
 prompt eval time =    1083.20 ms /   101 tokens (   10.72 ms per token,    93.24 tokens per second)
        eval time =   10714.53 ms /   128 tokens (   83.71 ms per token,    11.95 tokens per second)
@@ -636,7 +636,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 119.73 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  0 | task 1552 |
 prompt eval time =     672.96 ms /   101 tokens (    6.66 ms per token,   150.08 tokens per second)
        eval time =    5901.43 ms /   128 tokens (   46.10 ms per token,    21.69 tokens per second)
@@ -652,7 +652,7 @@ sched_reserve:        CPU compute buffer size =    20.01 MiB
 sched_reserve: graph nodes  = 1715
 sched_reserve: graph splits = 2
 sched_reserve: reserve took 87.52 ms, sched copies = 1
-srv  log_server_r: done request: POST /completion 127.0.0.1 200
+srv  log_server_r: done request: POST /completion <loopback> 200
 slot print_timing: id  1 | task 1553 |
 prompt eval time =     641.39 ms /   101 tokens (    6.35 ms per token,   157.47 tokens per second)
        eval time =    5957.31 ms /   128 tokens (   46.54 ms per token,    21.49 tokens per second)

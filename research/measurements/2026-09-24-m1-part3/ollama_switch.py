@@ -4,7 +4,7 @@ for it must load it again. Durations are Ollama's own (nanoseconds in its API).
 Leaves no model loaded when it finishes."""
 import http.client, json, sys, time
 def gen(model, keep_alive):
-    c = http.client.HTTPConnection("127.0.0.1", 11434, timeout=600)
+    c = http.client.HTTPConnection("localhost", 11434, timeout=600)
     body = {"model": model, "prompt": "Say hello in five words.", "stream": False,
             "keep_alive": keep_alive, "options": {"temperature": 0, "num_predict": 8}}
     t0 = time.perf_counter()
@@ -16,7 +16,7 @@ def gen(model, keep_alive):
             "eval_s": d.get("eval_duration", 0) / 1e9, "eval_count": d.get("eval_count"),
             "total_s": d.get("total_duration", 0) / 1e9, "response": d.get("response")}
 def ps():
-    c = http.client.HTTPConnection("127.0.0.1", 11434, timeout=30); c.request("GET", "/api/ps")
+    c = http.client.HTTPConnection("localhost", 11434, timeout=30); c.request("GET", "/api/ps")
     d = json.loads(c.getresponse().read()); c.close(); return [m["name"] for m in d.get("models", [])]
 res = {"loaded_before": ps(), "runs": []}
 A, B = "llama3.2:3b", "qwen2.5-coder:3b"

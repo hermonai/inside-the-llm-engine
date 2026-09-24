@@ -57,7 +57,7 @@ class Server:
 
 
 def get(path, timeout=30):
-    c = http.client.HTTPConnection("127.0.0.1", PORT, timeout=timeout)
+    c = http.client.HTTPConnection("localhost", PORT, timeout=timeout)
     c.request("GET", path)
     r = c.getresponse()
     body = r.read()
@@ -66,7 +66,7 @@ def get(path, timeout=30):
 
 
 def post(path, body, timeout=1800):
-    c = http.client.HTTPConnection("127.0.0.1", PORT, timeout=timeout)
+    c = http.client.HTTPConnection("localhost", PORT, timeout=timeout)
     t0 = time.perf_counter()
     c.request("POST", path, body=json.dumps(body), headers={"Content-Type": "application/json"})
     r = c.getresponse()
@@ -83,7 +83,7 @@ def post(path, body, timeout=1800):
 def stream(path, body, close_after=None, t_ref=None):
     """POST with stream=true. Returns (t_send, events, how). Each event is
     (seconds since t_ref or t_send, parsed JSON). how is 'done', 'closed' or 'error'."""
-    c = http.client.HTTPConnection("127.0.0.1", PORT, timeout=1800)
+    c = http.client.HTTPConnection("localhost", PORT, timeout=1800)
     t_send = time.perf_counter()
     base = t_ref if t_ref is not None else t_send
     c.request("POST", path, body=json.dumps({**body, "stream": True}),
@@ -199,8 +199,8 @@ def exp_lifecycle(out):
         # cancellation of a non-streamed request: close the socket after 3 s
         body = json.dumps({"prompt": prompt, "n_predict": 2000, "temperature": 0,
                            "ignore_eos": True, "cache_prompt": False}).encode()
-        s = socket.create_connection(("127.0.0.1", PORT))
-        s.sendall(b"POST /completion HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n"
+        s = socket.create_connection(("localhost", PORT))
+        s.sendall(b"POST /completion HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
                   + f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
         time.sleep(3.0)
         st, slots = get("/slots")
@@ -485,8 +485,8 @@ def raw_post_then_close(body, close_after_s):
     """Send a non-streamed POST /completion on a raw socket and close it after
     close_after_s seconds without reading the response."""
     data = json.dumps(body).encode()
-    s = socket.create_connection(("127.0.0.1", PORT))
-    s.sendall(b"POST /completion HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n"
+    s = socket.create_connection(("localhost", PORT))
+    s.sendall(b"POST /completion HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
               + f"Content-Length: {len(data)}\r\n\r\n".encode() + data)
     time.sleep(close_after_s)
     s.close()
