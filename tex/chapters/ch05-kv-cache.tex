@@ -222,8 +222,10 @@ The 2026 flagships go further by making most layers keep no growing cache at
 all: Qwen3.5-397B-A17B has 15 full-attention layers among 60, each with two
 key/value heads, for 30~KiB per token plus a fixed recurrent state
 \cite{qwen2026qwen35config}; Kimi~K3 pairs 69 Kimi Delta Attention layers
-with 24 gated latent-attention layers \cite{moonshot2026kimik3}
-\todo{verify: read the Kimi Delta Attention paper before describing its state}. DeepSeek-V4 compresses the
+with 24 gated latent-attention layers \cite{moonshot2026kimik3}; Kimi Delta
+Attention keeps a fixed-size recurrent state updated by a gated delta rule, a
+finer-grained form of Gated DeltaNet \cite{kimi2025linear} (\Chref{hybrid-models}).
+DeepSeek-V4 compresses the
 cache along the sequence and reports 10\% of DeepSeek-V3.2's cache at a
 million tokens \cite{deepseek2026v4}. Meanwhile the cache is increasingly
 stored in eight bits or fewer (\Chref{kv-quantization}) and in tiers beyond the
