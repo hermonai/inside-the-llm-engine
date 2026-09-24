@@ -6,14 +6,14 @@ edition's status ledger, with its dated milestone entries, is
 
 ## Where the book is
 
-**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I, II
-and III.** Every chapter and appendix exists under the new numbering with its
-intent and section headings in the chapter anatomy. Chapters 1–21 are zero
-drafts built on measurements taken for them. The first edition's Chapters 2–9
-are Appendix A.1–A.8, and its Chapter 1 is now the mechanism of Chapter 14,
-which gained a measured opening, napkin math, ledger, case study and frontier
-note around it. The plan is [`STRUCTURE.md`](STRUCTURE.md); the policy is
-[`../AUTHORING.md`](../AUTHORING.md); superseded governance is in `archive/`.
+**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I–IV.**
+Every chapter and appendix exists under the new numbering with its intent and
+section headings in the chapter anatomy. Chapters 1–24 are zero drafts built
+on measurements taken for them. The first edition's Chapters 2–9 are Appendix
+A.1–A.8, and its Chapter 1 is now the mechanism of Chapter 14, with the
+anatomy built around it. The plan is [`STRUCTURE.md`](STRUCTURE.md); the
+policy is [`../AUTHORING.md`](../AUTHORING.md); superseded governance is in
+`archive/`.
 
 "What actually happened" headings in SKELETON chapters name *planned* cases.
 Each must be verified against source or a measurement record before it is
@@ -48,9 +48,9 @@ if this table is stale. Words are approximate prose words.
 | 19 | Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission | ZERO | 1,843 | 0 |
 | 20 | Structured Output at Engine Speed | ZERO | 1,720 | 0 |
 | 21 | One Server, Many Models: LoRA, Adapters and Routing | ZERO | 1,774 | 0 |
-| 22 | Speculative Decoding: The Draft–Verify Contract | SKELETON | 156 | 0 |
-| 23 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | SKELETON | 150 | 0 |
-| 24 | When Speculation Loses | SKELETON | 127 | 0 |
+| 22 | Speculative Decoding: The Draft–Verify Contract | ZERO | 2,226 | 0 |
+| 23 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ZERO | 1,958 | 0 |
+| 24 | When Speculation Loses | ZERO | 1,769 | 0 |
 | 25 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | SKELETON | 148 | 0 |
 | 26 | Mixture of Experts | SKELETON | 143 | 0 |
 | 27 | Hybrid Models: State Spaces and Linear Attention | SKELETON | 155 | 0 |
@@ -89,26 +89,30 @@ if this table is stale. Words are approximate prose words.
 | G | `tex/appendices/g-reproducing-measurements.tex` | SKELETON | 69 |
 <!-- chapter-status:end -->
 
-## Verified at the end of session 3 (2026-09-24)
+## Verified at the end of session 4 (2026-09-24)
 
 | Check | Result |
 | --- | --- |
-| `make textbook-check` | pass: 42 chapters (21 SKELETON, 21 ZERO), 15 appendix files, 71 native figures (all used), 27 worked problems, CLI trace and worked calculations |
-| `make textbook` | pass: 361-page PDF, XeLaTeX + biber, no overfull boxes or unresolved references; Figure 18.1's page inspected as an image and its labels moved off the data |
-| `cargo test --workspace` in `code/mini-engine` | 220 pass; `cargo fmt --check`, `cargo check` and `clippy -D warnings` clean |
-| All CI steps run locally | pass (17 steps; see `.github/workflows/ci.yml`) |
-| Secrets guard | `scripts/check-structure.sh` passes; raw measurement outputs redacted of local paths and scanned for host names and addresses |
+| `make textbook-check` | pass: 42 chapters (18 SKELETON, 24 ZERO), 15 appendix files, 72 native figures (all used), 27 worked problems, CLI trace and worked calculations |
+| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; Figure 22.1's page and Chapter 23's comparison table inspected as images |
+| `cargo test --workspace` in `code/mini-engine` | 220 pass; `cargo fmt --check` and `clippy -D warnings` clean |
+| All CI steps run locally | pass (17 steps), run on the committed tree this time — see the correction below |
+| Secrets guard | `scripts/check-structure.sh` passes after redacting loopback addresses from the Part III and IV raw outputs |
 
-Measurement records: `research/measurements/2026-09-23-m1-llama32-3b.md`
-(decode, prefill, batched decode, GPU bandwidth), `2026-09-23-gguf-tensor-bytes.md`
-(bytes per token from two GGUF files), `2026-09-23-m1-part2.md` (Chapters
-7–13) and `2026-09-24-m1-part3.md` (Chapters 14–21: streaming and
-cancellation, continuous batching, KV layout, prefix caching, chunked prefill,
-KV exhaustion, structured output, LoRA adapters and model switching, all
-against llama.cpp's server with its source read at commit `d006858`). All were
-taken on the Apple M1 during an ordinary desktop session. Load moved the Part
-II numbers by 8–43%, so Part III's runs each waited for a load average below
-5. Re-measure on a quiet machine before any chapter is FULL.
+**Correction to session 3.** Session 3 ran the CI steps before committing its
+raw measurement outputs, so the secrets guard never saw them; once committed,
+the guard failed on the IPv4 loopback address in server logs and probe
+scripts. Session 4 redacted them (`<loopback>` in logs, `localhost` in
+scripts) and now runs the guard after staging.
+
+Measurement records: `research/measurements/2026-09-23-m1-llama32-3b.md`,
+`2026-09-23-gguf-tensor-bytes.md`, `2026-09-23-m1-part2.md` (Chapters 7–13),
+`2026-09-24-m1-part3.md` (Chapters 14–21) and `2026-09-24-m1-part4.md`
+(Chapters 22–24: verification cost, prompt-lookup and draft-model speculation,
+greedy exactness, concurrency). All were taken on the Apple M1 during an
+ordinary desktop session; Part IV's under heavier load from other work, so
+every Part IV comparison is paired. Re-measure on a quiet machine before any
+chapter is FULL.
 
 ## Open markers
 
@@ -139,6 +143,10 @@ Resolved in session 3: the Hermon status markers of Chapters 1, 4 and 5
 (continuous batching DEFAULT, prompt-lookup speculation and the CUDA cache
 arena PREVIEW, at `2a3fd52`), and chunked-prefill adoption in Chapter 4.
 
+**Part IV (0).** Every Part IV claim is measured, derived, or read from a
+primary source or pinned source (llama.cpp `d006858`, Hermon `2a3fd52`); the
+sources are in `research/FRONTIER.md`, "Part IV additions".
+
 **Part III (0).** Every Part III claim is measured, derived, or read from a
 primary source or pinned source code (llama.cpp `d006858`, vLLM `bcdacfc`,
 Hermon `2a3fd52`); the new sources are in `research/FRONTIER.md`,
@@ -151,15 +159,16 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
 
 ## Next
 
-1. Zero-draft Part IV (Chapters 22–24, speculative decoding), then Parts V–IX
-   in order. Part IV is frontier-heavy: first read the leads in
-   `research/FRONTIER.md` (Medusa, lookahead decoding, *Speculative
-   Speculative Decoding*) and re-check EAGLE-3 and P-EAGLE adoption.
+1. Zero-draft Part V (Chapters 25–30: shrinking the KV cache, mixture of
+   experts, hybrid models, long context, reasoning, multimodal). Part V is
+   frontier-heavy: first read the leads in `research/FRONTIER.md` (Kimi
+   Linear, Mamba-2, Qwen3.5's linear layers, StreamingLLM, H2O, SnapKV, YaRN,
+   DeepSeek-V4's attention) and re-check the model configurations it cites.
 2. Clear the Part II source markers; they need documentation, not hardware.
 3. When a GPU host is available, clear the measurement markers, and repeat the
-   Part II and III probes on it (the M1 results are single-machine and
-   Metal-specific; `research/measurements/2026-09-24-m1-part3/serve_probe.py`
-   runs against any llama.cpp server).
+   Part II–IV probes on it (the M1 results are single-machine and
+   Metal-specific; the probes in the Part III and IV records run against any
+   llama.cpp server).
 4. Then pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building
    each chapter's lab in `code/labs/`.
 
@@ -195,6 +204,17 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
   exhausted, every in-flight request fails, which the source's own TODO
   already notes (Chapter 19). Nothing has been reported; that is an
   outward-facing step for the author to decide.
+- **A matched draft model for Part IV.** Chapters 23–24 measure a draft model
+  that is a poor match for its target (Qwen2.5-Coder-3B for
+  DeepSeek-R1-0528-Qwen3-8B, vocabularies translated): it halved decoding
+  speed. That is a true and useful result, but a same-family drafter (Llama
+  3.2 1B for the 3B, about 1.3 GB through Ollama) would show the winning case
+  too. It was not downloaded, because downloads need your permission.
+- **A third llama.cpp accounting quirk.** At `d006858` the server counts a
+  speculative pass's accepted tokens before emitting them, so identical texts
+  report 2–4% more tokens under speculation and a request can stop short of its
+  length limit (Chapter 22's record). Like the two Part III behaviours, it is
+  unreported upstream.
 - **Part III's evidence engine.** Most Part III openings measure llama.cpp's
   server on the M1, because it is the engine this machine runs and its source
   can be read at the exact commit measured. The chapters compare it with vLLM
