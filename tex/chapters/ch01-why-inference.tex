@@ -220,8 +220,9 @@ performance notes: on an Apple M3 Pro, serving a 3-billion-parameter Llama
 model quantized to four bits to four concurrent users from one shared
 context, it produced 41.4 tokens per second in aggregate
 against 18.5 for Ollama serving the same four requests (Hermon
-\texttt{docs/PERFORMANCE.md}, v0.4; \todo{verify the run's date and that
-continuous batching is on by default at commit \texttt{2a3fd52}}). The
+\texttt{docs/PERFORMANCE.md}, measured 2026-05-11; the one-context batched
+runtime is the default at commit \texttt{2a3fd52},
+\texttt{crates/hermon-runtime/src/dispatch.rs}, so DEFAULT). The
 mechanism is the one measured above: one pass over the weights served four
 sequences.
 

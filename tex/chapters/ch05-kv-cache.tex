@@ -207,10 +207,10 @@ video memory and about 30~ms across PCIe: a ceiling of 33 tokens per second
 from the interconnect alone. The design followed from the arithmetic: the
 cache arena lives on the device, and each new token's entry is written through
 to it --- cheap, because decode writes one token and reads the whole context
-(Hermon \texttt{docs/KERNEL\_DESIGN.md}, section K5; the native kernel path is
-selected with \texttt{HERMON\_PAGED\_KERNELS}, so PREVIEW
-\todo{verify the section's measurements and status against source at
-\texttt{2a3fd52}}). \Chref{offloading} returns to what happens when the cache
+(Hermon \texttt{docs/KERNEL\_DESIGN.md}, section K5, the developers'
+measurements on an RTX 5060 Ti; the native kernel path is off unless
+\texttt{HERMON\_PAGED\_KERNELS=1}, \texttt{crates/hermon-runtime/src/paged.rs}
+at commit \texttt{2a3fd52}, so PREVIEW). \Chref{offloading} returns to what happens when the cache
 does not fit on the device at all.
 
 \FrontierSection{2026-09-23}

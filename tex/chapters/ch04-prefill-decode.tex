@@ -225,8 +225,10 @@ drafted tokens accepted. The wall-clock time improved by only
 predicted, because the model stopped after about eleven tokens per request:
 the long passages' prefill dominated each request, and speculation does
 nothing for prefill (Hermon \texttt{docs/PERFORMANCE.md}, measured 2026-05-12;
-the feature is enabled by environment variable, so PREVIEW
-\todo{verify status against Hermon source at \texttt{2a3fd52}}).
+the feature is off unless \texttt{HERMON\_SPEC\_NGRAM} and
+\texttt{HERMON\_SPEC\_LOOKAHEAD} are set, both defaulting to zero in
+\texttt{crates/hermon-runtime/src/batched.rs} at commit \texttt{2a3fd52}, so
+PREVIEW).
 
 The same optimization had measured 1.33$\times$ on a workload with longer
 replies. An optimization's benefit is bounded by the share of time spent in
@@ -240,8 +242,11 @@ serving more decode-bound (\Chref{reasoning-workloads}); agents resend long,
 growing contexts on every turn, making it more prefill-bound, unless prefixes
 are cached (\Chref{prefix-caching}). Separating the phases has moved from a
 research result \cite{zhong2024distserve} to production architectures
-\cite{qin2024mooncake} \todo{verify current adoption of disaggregation and
-chunked prefill in vLLM, SGLang and NVIDIA Dynamo at pinned versions}.
+\cite{qin2024mooncake}, and mixing them carefully has become the default:
+vLLM's V1 engine enables chunked prefill by default and schedules decodes first
+\cite{vllm2026optimization} (\Chref{chunked-prefill}). \todo{verify current
+adoption of disaggregation in vLLM, SGLang and NVIDIA Dynamo at pinned
+versions}.
 
 \ExercisesSection
 
