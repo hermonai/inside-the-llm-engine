@@ -1,0 +1,112 @@
+{
+ "loaded_before": [],
+ "runs": [
+  {
+   "image": "none",
+   "prompt_eval_count": 23,
+   "prompt_eval_s": 0.312504,
+   "eval_count": 32,
+   "eval_s": 1.835768,
+   "load_s": 0.006209792,
+   "wall_s": 2.17,
+   "decode_tok_s": 17.43139655991389,
+   "prefill_tok_s": 73.59905793205847,
+   "response_head": ""
+  },
+  {
+   "image": "256px",
+   "bytes": 19402,
+   "rep": 0,
+   "prompt_eval_count": 105,
+   "prompt_eval_s": 1.316109,
+   "eval_count": 32,
+   "eval_s": 1.98435,
+   "load_s": 0.00847575,
+   "wall_s": 3.33,
+   "decode_tok_s": 16.126187416534382,
+   "prefill_tok_s": 79.78062607276449,
+   "response_head": ""
+  },
+  {
+   "image": "256px",
+   "bytes": 19402,
+   "rep": 1,
+   "prompt_eval_count": 105,
+   "prompt_eval_s": 0.158227,
+   "eval_count": 32,
+   "eval_s": 1.790155,
+   "load_s": 0.003525,
+   "wall_s": 1.97,
+   "decode_tok_s": 17.875547089497836,
+   "prefill_tok_s": 663.603556915065,
+   "response_head": ""
+  },
+  {
+   "image": "768px",
+   "bytes": 91946,
+   "rep": 0,
+   "prompt_eval_count": 201,
+   "prompt_eval_s": 1.892327,
+   "eval_count": 32,
+   "eval_s": 1.814679,
+   "load_s": 0.005062583,
+   "wall_s": 3.75,
+   "decode_tok_s": 17.633972730163297,
+   "prefill_tok_s": 106.21842842172626,
+   "response_head": ""
+  },
+  {
+   "image": "768px",
+   "bytes": 91946,
+   "rep": 1,
+   "prompt_eval_count": 201,
+   "prompt_eval_s": 0.158905,
+   "eval_count": 32,
+   "eval_s": 1.758586,
+   "load_s": 0.006050875,
+   "wall_s": 1.96,
+   "decode_tok_s": 18.196437365019396,
+   "prefill_tok_s": 1264.9067052641517,
+   "response_head": ""
+  },
+  {
+   "image": "1536px",
+   "bytes": 248947,
+   "rep": 0,
+   "prompt_eval_count": 761,
+   "prompt_eval_s": 7.890716,
+   "eval_count": 32,
+   "eval_s": 2.112178,
+   "load_s": 0.008585083,
+   "wall_s": 10.09,
+   "decode_tok_s": 15.150238284841523,
+   "prefill_tok_s": 96.44245211714627,
+   "response_head": ""
+  },
+  {
+   "image": "1536px",
+   "bytes": 248947,
+   "rep": 1,
+   "prompt_eval_count": 761,
+   "prompt_eval_s": 0.063386,
+   "eval_count": 32,
+   "eval_s": 1.821781,
+   "load_s": 0.010874667,
+   "wall_s": 1.97,
+   "decode_tok_s": 17.565228751425117,
+   "prefill_tok_s": 12005.80569841921,
+   "response_head": ""
+  }
+ ],
+ "loaded_after": [],
+ "_meta": {
+  "experiment": "vision",
+  "started_utc": "2026-09-24T10:35:48Z",
+  "seconds": 32.5,
+  "loadavg_end": [
+   2.9638671875,
+   4.79736328125,
+   5.26513671875
+  ]
+ }
+}

@@ -1,0 +1,64 @@
+2026-09-24T09:19:39Z waiting: load1=8.07 before kvsizes
+2026-09-24T09:20:09Z waiting: load1=6.76 before kvsizes
+2026-09-24T09:20:39Z waiting: load1=8.94 before kvsizes
+2026-09-24T09:21:10Z waiting: load1=8.01 before kvsizes
+2026-09-24T09:21:40Z waiting: load1=6.78 before kvsizes
+2026-09-24T09:22:10Z waiting: load1=9.46 before kvsizes
+2026-09-24T09:22:40Z waiting: load1=8.56 before kvsizes
+2026-09-24T09:23:10Z waiting: load1=7.17 before kvsizes
+2026-09-24T09:23:40Z waiting: load1=8.35 before kvsizes
+2026-09-24T09:24:10Z waiting: load1=6.88 before kvsizes
+2026-09-24T09:25:09Z kvsizes exit=0
+2026-09-24T09:25:09Z waiting: load1=7.48 before depth-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
+2026-09-24T09:25:39Z waiting: load1=6.06 before depth-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
+2026-09-24T09:28:40Z depth dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff exit=0
+2026-09-24T09:28:48Z pp dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff exit=0
+2026-09-24T09:28:48Z waiting: load1=6.33 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:29:18Z waiting: load1=6.77 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:29:48Z waiting: load1=6.94 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:30:18Z waiting: load1=7.57 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:30:48Z waiting: load1=6.46 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:31:18Z waiting: load1=14.30 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:31:48Z waiting: load1=10.13 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:32:18Z waiting: load1=8.98 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:32:48Z waiting: load1=10.88 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:33:18Z waiting: load1=9.74 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:33:48Z waiting: load1=7.29 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:34:18Z waiting: load1=7.12 before depth-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+2026-09-24T09:36:56Z depth 4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba exit=0
+2026-09-24T09:37:03Z pp 4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba exit=0
+2026-09-24T09:43:14Z depth e6a7edc1a4d7d9b2de136a221a57336b76316cfe53a252aeba814496c5ae439d exit=0
+2026-09-24T09:43:34Z pp e6a7edc1a4d7d9b2de136a221a57336b76316cfe53a252aeba814496c5ae439d exit=0
+2026-09-24T09:43:34Z waiting: load1=7.46 before depth-2bfb097d01f8633cd5fcf6cc3aeeeded7c7211b41e9d241e871d7d595a42fc49
+2026-09-24T09:48:51Z depth 2bfb097d01f8633cd5fcf6cc3aeeeded7c7211b41e9d241e871d7d595a42fc49 exit=0
+2026-09-24T09:49:13Z pp 2bfb097d01f8633cd5fcf6cc3aeeeded7c7211b41e9d241e871d7d595a42fc49 exit=0
+2026-09-24T09:49:13Z waiting: load1=6.67 before reasoning
+2026-09-24T10:32:00Z reasoning exit=0
+2026-09-24T10:32:00Z waiting: load1=10.20 before ollama_ctx
+2026-09-24T10:32:30Z waiting: load1=7.94 before ollama_ctx
+2026-09-24T10:33:00Z waiting: load1=7.49 before ollama_ctx
+2026-09-24T10:33:30Z waiting: load1=6.63 before ollama_ctx
+2026-09-24T10:35:48Z ollama_ctx exit=0
+2026-09-24T10:36:21Z vision exit=0
+2026-09-24T10:36:21Z done
+2026-09-24T10:42:35Z hybrid_prefix exit=0
+2026-09-24T10:42:35Z building test-backend-ops
+2026-09-24T10:43:37Z build exit=0
+2026-09-24T10:44:29Z moe q4_K run 1 exit=0
+2026-09-24T10:44:43Z moe f16 run 1 exit=0
+2026-09-24T10:45:24Z moe q4_K run 2 exit=0
+2026-09-24T10:45:39Z moe f16 run 2 exit=0
+2026-09-24T10:46:20Z moe q4_K run 3 exit=0
+2026-09-24T10:46:35Z moe f16 run 3 exit=0
+2026-09-24T10:46:35Z done5b
+2026-09-24T10:52:36Z ollama_ctx2 exit=0
+2026-09-24T10:52:36Z done5c
+2026-09-24T10:55:04Z hybrid_prefix_b512 exit=0
+2026-09-24T10:55:04Z done5d
+2026-09-24T10:55:54Z moesql q4_K run 1 exit=0
+2026-09-24T10:56:08Z moesql f16 run 1 exit=0
+2026-09-24T10:56:46Z moesql q4_K run 2 exit=0
+2026-09-24T10:56:59Z moesql f16 run 2 exit=0
+2026-09-24T10:57:37Z moesql q4_K run 3 exit=0
+2026-09-24T10:57:51Z moesql f16 run 3 exit=0
+2026-09-24T10:57:51Z done5e

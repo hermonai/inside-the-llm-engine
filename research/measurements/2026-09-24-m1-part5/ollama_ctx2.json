@@ -1,0 +1,277 @@
+{
+ "runs": [
+  {
+   "model": "gemma4",
+   "warmup": {
+    "status": 200,
+    "error": null,
+    "prompt_eval_count": 11,
+    "prompt_eval_s": 0.312,
+    "eval_count": 4,
+    "eval_s": 0.195,
+    "prefill_tok_s": 35.24,
+    "decode_tok_s": 20.52,
+    "wall_s": 8.26,
+    "done_reason": "length",
+    "response_head": "Hi there! How"
+   },
+   "ps_after_load": [
+    {
+     "name": "gemma4:latest",
+     "size": 3343783034,
+     "size_vram": 3343783034,
+     "context_length": 16384
+    }
+   ]
+  },
+  {
+   "model": "gemma4",
+   "prompt": "short",
+   "rep": 0,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 23,
+   "prompt_eval_s": 0.308,
+   "eval_count": 8,
+   "eval_s": 0.428,
+   "prefill_tok_s": 74.66,
+   "decode_tok_s": 18.68,
+   "wall_s": 0.75,
+   "done_reason": "stop",
+   "response_head": "Hello there, how are you?"
+  },
+  {
+   "model": "gemma4",
+   "prompt": "short",
+   "rep": 1,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 23,
+   "prompt_eval_s": 0.311,
+   "eval_count": 8,
+   "eval_s": 0.46,
+   "prefill_tok_s": 73.85,
+   "decode_tok_s": 17.39,
+   "wall_s": 0.78,
+   "done_reason": "stop",
+   "response_head": "Hello there, how are you?"
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~3k",
+   "rep": 0,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 3129,
+   "prompt_eval_s": 18.363,
+   "eval_count": 60,
+   "eval_s": 3.924,
+   "prefill_tok_s": 170.4,
+   "decode_tok_s": 15.29,
+   "wall_s": 22.43,
+   "done_reason": "stop",
+   "response_head": "This chapter details matrix multiplication, the core operation in AI inference, by moving from the abstract mathematical"
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~3k",
+   "rep": 1,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 3129,
+   "prompt_eval_s": 18.474,
+   "eval_count": 59,
+   "eval_s": 4.002,
+   "prefill_tok_s": 169.38,
+   "decode_tok_s": 14.74,
+   "wall_s": 22.6,
+   "done_reason": "stop",
+   "response_head": "This chapter details matrix multiplication, the core operation in AI inference, by moving from the abstract mathematical"
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~12k",
+   "rep": 0,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 11927,
+   "prompt_eval_s": 74.128,
+   "eval_count": 64,
+   "eval_s": 4.666,
+   "prefill_tok_s": 160.9,
+   "decode_tok_s": 13.72,
+   "wall_s": 79.13,
+   "done_reason": "length",
+   "response_head": "This chapter details the mechanics of matrix multiplication, moving from the abstract mathematical definition ($C=AB$) t"
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~12k",
+   "rep": 1,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 11927,
+   "prompt_eval_s": 74.459,
+   "eval_count": 64,
+   "eval_s": 4.534,
+   "prefill_tok_s": 160.18,
+   "decode_tok_s": 14.12,
+   "wall_s": 79.45,
+   "done_reason": "length",
+   "response_head": "This chapter details the mechanics of matrix multiplication, moving from the abstract mathematical definition ($C=AB$) t"
+  },
+  {
+   "model": "gemma4",
+   "ps_before_unload": [
+    {
+     "name": "gemma4:latest",
+     "size": 3343783034,
+     "size_vram": 3343783034,
+     "context_length": 16384
+    }
+   ]
+  },
+  {
+   "model": "llama3.2:3b",
+   "warmup": {
+    "status": 200,
+    "error": null,
+    "prompt_eval_count": 27,
+    "prompt_eval_s": 0.133,
+    "eval_count": 4,
+    "eval_s": 0.12,
+    "prefill_tok_s": 202.66,
+    "decode_tok_s": 33.46,
+    "wall_s": 2.98,
+    "done_reason": "length",
+    "response_head": "How can I assist"
+   },
+   "ps_after_load": [
+    {
+     "name": "llama3.2:3b",
+     "size": 4008328560,
+     "size_vram": 4008328560,
+     "context_length": 16384
+    }
+   ]
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "short",
+   "rep": 0,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 38,
+   "prompt_eval_s": 0.143,
+   "eval_count": 8,
+   "eval_s": 0.285,
+   "prefill_tok_s": 265.21,
+   "decode_tok_s": 28.11,
+   "wall_s": 0.44,
+   "done_reason": "stop",
+   "response_head": "Hello, how are you today?"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "short",
+   "rep": 1,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 38,
+   "prompt_eval_s": 0.137,
+   "eval_count": 8,
+   "eval_s": 0.276,
+   "prefill_tok_s": 276.53,
+   "decode_tok_s": 29.02,
+   "wall_s": 0.42,
+   "done_reason": "stop",
+   "response_head": "Hello, how are you today?"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~3k",
+   "rep": 0,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 3123,
+   "prompt_eval_s": 11.849,
+   "eval_count": 53,
+   "eval_s": 2.606,
+   "prefill_tok_s": 263.57,
+   "decode_tok_s": 20.34,
+   "wall_s": 14.52,
+   "done_reason": "stop",
+   "response_head": "This chapter of the book focuses on matrix multiplication, a fundamental numerical operation in AI, and explores its imp"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~3k",
+   "rep": 1,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 3123,
+   "prompt_eval_s": 12.54,
+   "eval_count": 53,
+   "eval_s": 2.627,
+   "prefill_tok_s": 249.05,
+   "decode_tok_s": 20.18,
+   "wall_s": 15.37,
+   "done_reason": "stop",
+   "response_head": "This chapter of the book focuses on matrix multiplication, a fundamental numerical operation in AI, and explores its imp"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~12k",
+   "rep": 0,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 11735,
+   "prompt_eval_s": 48.514,
+   "eval_count": 47,
+   "eval_s": 2.862,
+   "prefill_tok_s": 241.89,
+   "decode_tok_s": 16.42,
+   "wall_s": 51.72,
+   "done_reason": "stop",
+   "response_head": "The text is a LaTeX document that explains the basics of matrix multiplication and its optimization, including the use o"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~12k",
+   "rep": 1,
+   "status": 200,
+   "error": null,
+   "prompt_eval_count": 11735,
+   "prompt_eval_s": 47.469,
+   "eval_count": 47,
+   "eval_s": 2.827,
+   "prefill_tok_s": 247.22,
+   "decode_tok_s": 16.63,
+   "wall_s": 51.07,
+   "done_reason": "stop",
+   "response_head": "The text describes the optimization of matrix multiplication in the context of a deep learning model, covering topics su"
+  },
+  {
+   "model": "llama3.2:3b",
+   "ps_before_unload": [
+    {
+     "name": "llama3.2:3b",
+     "size": 4008328560,
+     "size_vram": 4008328560,
+     "context_length": 16384
+    }
+   ]
+  }
+ ],
+ "loaded_after": [],
+ "_meta": {
+  "experiment": "ollama_ctx2",
+  "started_utc": "2026-09-24T10:46:46Z",
+  "seconds": 350.2,
+  "loadavg_end": [
+   4.19482421875,
+   5.1455078125,
+   5.5771484375
+  ]
+ }
+}

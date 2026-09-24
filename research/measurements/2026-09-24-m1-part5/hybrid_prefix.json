@@ -1,0 +1,230 @@
+{
+ "llama3.2-3b": {
+  "rows": [
+   {
+    "prompt": "P1 doc+q1 (cold)",
+    "prompt_tokens": 5309,
+    "processed": 5309,
+    "cached": 5316,
+    "prompt_ms": 21485.88,
+    "elapsed_s": 21.87,
+    "content": " Matrix. Explanation: The text is about"
+   },
+   {
+    "prompt": "P2 doc+q2 (new question)",
+    "prompt_tokens": 5309,
+    "processed": 15,
+    "cached": 5316,
+    "prompt_ms": 214.391,
+    "elapsed_s": 0.58,
+    "content": " FLOP. Explanation: FLO"
+   },
+   {
+    "prompt": "P3 doc+q1 (earlier prompt again)",
+    "prompt_tokens": 5309,
+    "processed": 15,
+    "cached": 5316,
+    "prompt_ms": 215.077,
+    "elapsed_s": 0.57,
+    "content": " Matrix. Explanation: The text is about"
+   },
+   {
+    "prompt": "P4 edited doc+q1 (change at one third)",
+    "prompt_tokens": 5316,
+    "processed": 3750,
+    "cached": 5323,
+    "prompt_ms": 16141.206,
+    "elapsed_s": 16.8,
+    "content": " Matrix. Explanation: The text is about"
+   },
+   {
+    "prompt": "P5 doc+q1 (after the edit)",
+    "prompt_tokens": 5309,
+    "processed": 1,
+    "cached": 5316,
+    "prompt_ms": 55.006,
+    "elapsed_s": 0.84,
+    "content": " Matrix. Explanation: The text is about"
+   }
+  ],
+  "log_events": [
+   "llama_kv_cache:       MTL0 KV buffer size =  1792.00 MiB",
+   "srv        update:    - prompt 0x742ed0590:    5316 tokens, checkpoints:  0,   581.499 MiB",
+   "srv        update:    - prompt 0x742ed0610:    5323 tokens, checkpoints:  0,   582.265 MiB"
+  ]
+ },
+ "hybrid default": {
+  "rows": [
+   {
+    "prompt": "P1 doc+q1 (cold)",
+    "prompt_tokens": 5343,
+    "processed": 5343,
+    "cached": 5350,
+    "prompt_ms": 52738.761,
+    "elapsed_s": 53.66,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P2 doc+q2 (new question)",
+    "prompt_tokens": 5343,
+    "processed": 516,
+    "cached": 5350,
+    "prompt_ms": 5405.06,
+    "elapsed_s": 6.31,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P3 doc+q1 (earlier prompt again)",
+    "prompt_tokens": 5343,
+    "processed": 516,
+    "cached": 5350,
+    "prompt_ms": 5432.58,
+    "elapsed_s": 6.27,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P4 edited doc+q1 (change at one third)",
+    "prompt_tokens": 5350,
+    "processed": 5350,
+    "cached": 5357,
+    "prompt_ms": 54515.867,
+    "elapsed_s": 55.55,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P5 doc+q1 (after the edit)",
+    "prompt_tokens": 5343,
+    "processed": 4,
+    "cached": 5350,
+    "prompt_ms": 345.138,
+    "elapsed_s": 2.43,
+    "content": "\n\n<think>\nLet me analyze the text"
+   }
+  ],
+  "log_events": [
+   "llama_kv_cache:       MTL0 KV buffer size =   512.00 MiB",
+   "llama_memory_recurrent:       MTL0 RS buffer size =    50.25 MiB",
+   "slot update_slots: id  0 | task 0 | created context checkpoint 1 of 32 (pos_min = 4826, pos_max = 4826, n_tokens = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 0 | created context checkpoint 2 of 32 (pos_min = 5338, pos_max = 5338, n_tokens = 5339, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 13 | Checking checkpoint with [5338, 5338] against 5328...",
+   "slot update_slots: id  0 | task 13 | Checking checkpoint with [4826, 4826] against 5328...",
+   "slot update_slots: id  0 | task 13 | restored context checkpoint (pos_min = 4826, pos_max = 4826, n_tokens = 4827, n_past = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 13 | erased invalidated context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_swa = 0, pos_next = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 13 | created context checkpoint 2 of 32 (pos_min = 5338, pos_max = 5338, n_tokens = 5339, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 23 | Checking checkpoint with [5338, 5338] against 5328...",
+   "slot update_slots: id  0 | task 23 | Checking checkpoint with [4826, 4826] against 5328...",
+   "slot update_slots: id  0 | task 23 | restored context checkpoint (pos_min = 4826, pos_max = 4826, n_tokens = 4827, n_past = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 23 | erased invalidated context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_swa = 0, pos_next = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 23 | created context checkpoint 2 of 32 (pos_min = 5338, pos_max = 5338, n_tokens = 5339, size = 50.251 MiB)",
+   "srv        update:    - prompt 0x738ea8110:    5350 tokens, checkpoints:  2,   318.041 MiB",
+   "slot update_slots: id  0 | task 33 | Checking checkpoint with [5338, 5338] against 1573...",
+   "slot update_slots: id  0 | task 33 | Checking checkpoint with [4826, 4826] against 1573...",
+   "slot update_slots: id  0 | task 33 | forcing full prompt re-processing due to lack of cache data (likely due to SWA or hybrid/recurrent memory, see https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)",
+   "slot update_slots: id  0 | task 33 | erased invalidated context checkpoint (pos_min = 4826, pos_max = 4826, n_tokens = 4827, n_swa = 0, pos_next = 0, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | erased invalidated context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_swa = 0, pos_next = 0, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | created context checkpoint 1 of 32 (pos_min = 4833, pos_max = 4833, n_tokens = 4834, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | created context checkpoint 2 of 32 (pos_min = 5345, pos_max = 5345, n_tokens = 5346, size = 50.251 MiB)",
+   "srv        update:    - prompt 0x738ea8190:    5357 tokens, checkpoints:  2,   318.260 MiB",
+   "slot update_slots: id  0 | task 46 | Checking checkpoint with [5338, 5338] against 5343...",
+   "slot update_slots: id  0 | task 46 | restored context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_past = 5339, size = 50.251 MiB)"
+  ]
+ },
+ "hybrid every 512": {
+  "rows": [
+   {
+    "prompt": "P1 doc+q1 (cold)",
+    "prompt_tokens": 5343,
+    "processed": 5343,
+    "cached": 5350,
+    "prompt_ms": 59324.383,
+    "elapsed_s": 60.18,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P2 doc+q2 (new question)",
+    "prompt_tokens": 5343,
+    "processed": 516,
+    "cached": 5350,
+    "prompt_ms": 5528.101,
+    "elapsed_s": 6.38,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P3 doc+q1 (earlier prompt again)",
+    "prompt_tokens": 5343,
+    "processed": 516,
+    "cached": 5350,
+    "prompt_ms": 6036.497,
+    "elapsed_s": 6.9,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P4 edited doc+q1 (change at one third)",
+    "prompt_tokens": 5350,
+    "processed": 5350,
+    "cached": 5357,
+    "prompt_ms": 60364.699,
+    "elapsed_s": 61.84,
+    "content": "\n\n<think>\nLet me analyze the text"
+   },
+   {
+    "prompt": "P5 doc+q1 (after the edit)",
+    "prompt_tokens": 5343,
+    "processed": 4,
+    "cached": 5350,
+    "prompt_ms": 324.933,
+    "elapsed_s": 2.61,
+    "content": "\n\n<think>\nLet me analyze the text"
+   }
+  ],
+  "log_events": [
+   "llama_kv_cache:       MTL0 KV buffer size =   512.00 MiB",
+   "llama_memory_recurrent:       MTL0 RS buffer size =    50.25 MiB",
+   "slot update_slots: id  0 | task 0 | 512 tokens since last checkpoint at 0, creating new checkpoint during processing at position 4096",
+   "slot update_slots: id  0 | task 0 | created context checkpoint 1 of 32 (pos_min = 2047, pos_max = 2047, n_tokens = 2048, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 0 | 512 tokens since last checkpoint at 2048, creating new checkpoint during processing at position 4827",
+   "slot update_slots: id  0 | task 0 | created context checkpoint 2 of 32 (pos_min = 4095, pos_max = 4095, n_tokens = 4096, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 0 | created context checkpoint 3 of 32 (pos_min = 4826, pos_max = 4826, n_tokens = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 0 | created context checkpoint 4 of 32 (pos_min = 5338, pos_max = 5338, n_tokens = 5339, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 13 | Checking checkpoint with [5338, 5338] against 5328...",
+   "slot update_slots: id  0 | task 13 | Checking checkpoint with [4826, 4826] against 5328...",
+   "slot update_slots: id  0 | task 13 | restored context checkpoint (pos_min = 4826, pos_max = 4826, n_tokens = 4827, n_past = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 13 | erased invalidated context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_swa = 0, pos_next = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 13 | created context checkpoint 4 of 32 (pos_min = 5338, pos_max = 5338, n_tokens = 5339, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 23 | Checking checkpoint with [5338, 5338] against 5328...",
+   "slot update_slots: id  0 | task 23 | Checking checkpoint with [4826, 4826] against 5328...",
+   "slot update_slots: id  0 | task 23 | restored context checkpoint (pos_min = 4826, pos_max = 4826, n_tokens = 4827, n_past = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 23 | erased invalidated context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_swa = 0, pos_next = 4827, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 23 | created context checkpoint 4 of 32 (pos_min = 5338, pos_max = 5338, n_tokens = 5339, size = 50.251 MiB)",
+   "srv        update:    - prompt 0xa00c77b10:    5350 tokens, checkpoints:  4,   418.543 MiB",
+   "slot update_slots: id  0 | task 33 | Checking checkpoint with [5338, 5338] against 1573...",
+   "slot update_slots: id  0 | task 33 | Checking checkpoint with [4826, 4826] against 1573...",
+   "slot update_slots: id  0 | task 33 | Checking checkpoint with [4095, 4095] against 1573...",
+   "slot update_slots: id  0 | task 33 | Checking checkpoint with [2047, 2047] against 1573...",
+   "slot update_slots: id  0 | task 33 | forcing full prompt re-processing due to lack of cache data (likely due to SWA or hybrid/recurrent memory, see https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)",
+   "slot update_slots: id  0 | task 33 | erased invalidated context checkpoint (pos_min = 2047, pos_max = 2047, n_tokens = 2048, n_swa = 0, pos_next = 0, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | erased invalidated context checkpoint (pos_min = 4095, pos_max = 4095, n_tokens = 4096, n_swa = 0, pos_next = 0, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | erased invalidated context checkpoint (pos_min = 4826, pos_max = 4826, n_tokens = 4827, n_swa = 0, pos_next = 0, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | erased invalidated context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_swa = 0, pos_next = 0, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | 512 tokens since last checkpoint at 0, creating new checkpoint during processing at position 4096",
+   "slot update_slots: id  0 | task 33 | created context checkpoint 1 of 32 (pos_min = 2047, pos_max = 2047, n_tokens = 2048, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | 512 tokens since last checkpoint at 2048, creating new checkpoint during processing at position 4834",
+   "slot update_slots: id  0 | task 33 | created context checkpoint 2 of 32 (pos_min = 4095, pos_max = 4095, n_tokens = 4096, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | created context checkpoint 3 of 32 (pos_min = 4833, pos_max = 4833, n_tokens = 4834, size = 50.251 MiB)",
+   "slot update_slots: id  0 | task 33 | created context checkpoint 4 of 32 (pos_min = 5345, pos_max = 5345, n_tokens = 5346, size = 50.251 MiB)",
+   "srv        update:    - prompt 0xa00c77c10:    5357 tokens, checkpoints:  4,   418.761 MiB",
+   "slot update_slots: id  0 | task 46 | Checking checkpoint with [5338, 5338] against 5343...",
+   "slot update_slots: id  0 | task 46 | restored context checkpoint (pos_min = 5338, pos_max = 5338, n_tokens = 5339, n_past = 5339, size = 50.251 MiB)"
+  ]
+ },
+ "_meta": {
+  "experiment": "hybrid_prefix",
+  "started_utc": "2026-09-24T10:37:07Z",
+  "seconds": 327.7,
+  "loadavg_end": [
+   5.197265625,
+   7.23486328125,
+   6.3291015625
+  ]
+ }
+}

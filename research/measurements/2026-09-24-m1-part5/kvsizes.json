@@ -1,0 +1,42 @@
+{
+ "llama3.2-3b": [
+  "print_info: n_swa                 = 0",
+  "llama_context: n_ctx_seq     = 16384",
+  "llama_context: n_ctx_seq (16384) < n_ctx_train (131072) -- the full capacity of the model will not be utilized",
+  "llama_kv_cache:       MTL0 KV buffer size =  1792.00 MiB",
+  "llama_kv_cache: size = 1792.00 MiB ( 16384 cells,  28 layers,  1/1 seqs), K (f16):  896.00 MiB, V (f16):  896.00 MiB"
+ ],
+ "qwen2.5-coder-3b": [
+  "print_info: n_swa                 = 0",
+  "llama_context: n_ctx_seq     = 16384",
+  "llama_context: n_ctx_seq (16384) < n_ctx_train (32768) -- the full capacity of the model will not be utilized",
+  "llama_kv_cache:       MTL0 KV buffer size =   576.00 MiB",
+  "llama_kv_cache: size =  576.00 MiB ( 16384 cells,  36 layers,  1/1 seqs), K (f16):  288.00 MiB, V (f16):  288.00 MiB"
+ ],
+ "qwen3-8b (deepseek-r1)": [
+  "print_info: n_swa                 = 0",
+  "llama_context: n_ctx_seq     = 16384",
+  "llama_context: n_ctx_seq (16384) < n_ctx_train (131072) -- the full capacity of the model will not be utilized",
+  "llama_kv_cache:       MTL0 KV buffer size =  2304.00 MiB",
+  "llama_kv_cache: size = 2304.00 MiB ( 16384 cells,  36 layers,  1/1 seqs), K (f16): 1152.00 MiB, V (f16): 1152.00 MiB"
+ ],
+ "qwen3.5-9b (hybrid)": [
+  "print_info: n_swa                 = 0",
+  "llama_context: n_ctx_seq     = 16384",
+  "llama_context: n_ctx_seq (16384) < n_ctx_train (262144) -- the full capacity of the model will not be utilized",
+  "llama_kv_cache:       MTL0 KV buffer size =   512.00 MiB",
+  "llama_kv_cache: size =  512.00 MiB ( 16384 cells,   8 layers,  1/1 seqs), K (f16):  256.00 MiB, V (f16):  256.00 MiB",
+  "llama_memory_recurrent:       MTL0 RS buffer size =    50.25 MiB",
+  "llama_memory_recurrent: size =   50.25 MiB (     1 cells,  32 layers,  1 seqs), R (f32):    2.25 MiB, S (f32):   48.00 MiB"
+ ],
+ "_meta": {
+  "experiment": "kvsizes",
+  "started_utc": "2026-09-24T09:24:40Z",
+  "seconds": 29.1,
+  "loadavg_end": [
+   7.47705078125,
+   7.13037109375,
+   5.9521484375
+  ]
+ }
+}

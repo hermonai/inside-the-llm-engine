@@ -1,0 +1,206 @@
+{
+ "loaded_before": [],
+ "runs": [
+  {
+   "model": "gemma4",
+   "ps_after_load": [
+    {
+     "name": "gemma4:latest",
+     "size": 3301839994,
+     "size_vram": 3301839994,
+     "context_length": 8192
+    }
+   ]
+  },
+  {
+   "model": "gemma4",
+   "prompt": "short",
+   "rep": 0,
+   "prompt_eval_count": 7,
+   "prompt_eval_s": 0.265983999,
+   "eval_count": 43,
+   "eval_s": 2.394137,
+   "load_s": 0.008013416,
+   "wall_s": 2.68,
+   "decode_tok_s": 17.96054277595643,
+   "prefill_tok_s": 26.317372572475684,
+   "response_head": "\n\n---\n\n**Answer:** Hello, how are you today?\n\n---\n\n**Explanation:** The prompt asks for a greeting in exactly five words"
+  },
+  {
+   "model": "gemma4",
+   "prompt": "short",
+   "rep": 1,
+   "prompt_eval_count": 7,
+   "prompt_eval_s": 0.156286,
+   "eval_count": 43,
+   "eval_s": 2.481505,
+   "load_s": 0.002880792,
+   "wall_s": 2.65,
+   "decode_tok_s": 17.328193979057065,
+   "prefill_tok_s": 44.78968045762256,
+   "response_head": "\n\n---\n\n**Answer:** Hello, how are you today?\n\n---\n\n**Explanation:** The prompt asks for a greeting in exactly five words"
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~2k",
+   "rep": 0,
+   "prompt_eval_count": 3113,
+   "prompt_eval_s": 19.303917,
+   "eval_count": 1,
+   "eval_s": 1e-06,
+   "load_s": 0.005332833,
+   "wall_s": 19.38,
+   "decode_tok_s": 1000000.0,
+   "prefill_tok_s": 161.26260799815915,
+   "response_head": ""
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~2k",
+   "rep": 1,
+   "prompt_eval_count": 3113,
+   "prompt_eval_s": 0.069606,
+   "eval_count": 1,
+   "eval_s": 1e-06,
+   "load_s": 0.004191666,
+   "wall_s": 0.14,
+   "decode_tok_s": 1000000.0,
+   "prefill_tok_s": 44723.15604976582,
+   "response_head": ""
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~6k",
+   "rep": 0,
+   "prompt_eval_count": 4099,
+   "prompt_eval_s": 24.628123,
+   "eval_count": 1,
+   "eval_s": 1e-06,
+   "load_s": 0.002002042,
+   "wall_s": 24.73,
+   "decode_tok_s": 1000000.0,
+   "prefill_tok_s": 166.4357450220628,
+   "response_head": ""
+  },
+  {
+   "model": "gemma4",
+   "prompt": "~6k",
+   "rep": 1,
+   "prompt_eval_count": 4099,
+   "prompt_eval_s": 0.068172,
+   "eval_count": 1,
+   "eval_s": 1e-06,
+   "load_s": 0.004998541,
+   "wall_s": 0.16,
+   "decode_tok_s": 1000000.0,
+   "prefill_tok_s": 60127.32500146688,
+   "response_head": ""
+  },
+  {
+   "model": "llama3.2:3b",
+   "ps_after_load": [
+    {
+     "name": "llama3.2:3b",
+     "size": 3093687172,
+     "size_vram": 3093687172,
+     "context_length": 8192
+    }
+   ]
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "short",
+   "rep": 0,
+   "prompt_eval_count": 7,
+   "prompt_eval_s": 0.241263,
+   "eval_count": 64,
+   "eval_s": 2.27527,
+   "load_s": 0.002008334,
+   "wall_s": 2.52,
+   "decode_tok_s": 28.1285298008588,
+   "prefill_tok_s": 29.013980593791835,
+   "response_head": " \"Hello, I'm so glad to meet you.\"\nSay goodbye in five words. \"It was nice saying goodbye.\"\nSay thank you in five words."
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "short",
+   "rep": 1,
+   "prompt_eval_count": 7,
+   "prompt_eval_s": 0.036449,
+   "eval_count": 64,
+   "eval_s": 2.288833,
+   "load_s": 0.002020542,
+   "wall_s": 2.33,
+   "decode_tok_s": 27.961847806283814,
+   "prefill_tok_s": 192.04916458613403,
+   "response_head": " \"Hello, I'm so glad to meet you.\"\nSay goodbye in five words. \"It was nice saying goodbye.\"\nSay thank you in five words."
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~2k",
+   "rep": 0,
+   "prompt_eval_count": 3092,
+   "prompt_eval_s": 12.528791,
+   "eval_count": 64,
+   "eval_s": 2.672404,
+   "load_s": 0.002059,
+   "wall_s": 15.21,
+   "decode_tok_s": 23.94847485634657,
+   "prefill_tok_s": 246.79156991285112,
+   "response_head": " \nThe text describes the process of matrix multiplication and its importance in artificial intelligence, including the o"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~2k",
+   "rep": 1,
+   "prompt_eval_count": 3092,
+   "prompt_eval_s": 0.043256,
+   "eval_count": 64,
+   "eval_s": 2.820969,
+   "load_s": 0.001982583,
+   "wall_s": 2.88,
+   "decode_tok_s": 22.687239739252718,
+   "prefill_tok_s": 71481.41298316995,
+   "response_head": " \nThe text describes the process of matrix multiplication and its importance in artificial intelligence, including the o"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~6k",
+   "rep": 0,
+   "prompt_eval_count": 4098,
+   "prompt_eval_s": 17.317034,
+   "eval_count": 64,
+   "eval_s": 2.906242,
+   "load_s": 0.002577291,
+   "wall_s": 20.34,
+   "decode_tok_s": 22.021565994848327,
+   "prefill_tok_s": 236.64560570822925,
+   "response_head": " \nThe text discusses the performance of the GEMM (General Matrix Multiplication) algorithm in the ENGINE-2 benchmark, co"
+  },
+  {
+   "model": "llama3.2:3b",
+   "prompt": "~6k",
+   "rep": 1,
+   "prompt_eval_count": 4098,
+   "prompt_eval_s": 0.045641,
+   "eval_count": 64,
+   "eval_s": 3.009496,
+   "load_s": 0.006011125,
+   "wall_s": 3.09,
+   "decode_tok_s": 21.266019293596006,
+   "prefill_tok_s": 89787.69089196117,
+   "response_head": " \nThe text discusses the performance of the GEMM (General Matrix Multiplication) algorithm in the ENGINE-2 benchmark, co"
+  }
+ ],
+ "loaded_after": [],
+ "_meta": {
+  "experiment": "ollama_ctx",
+  "started_utc": "2026-09-24T10:34:00Z",
+  "seconds": 107.5,
+  "loadavg_end": [
+   3.45947265625,
+   5.10986328125,
+   5.3916015625
+  ]
+ }
+}

@@ -1,0 +1,5 @@
+ budget strict lenient hit limit  reasoning mean/median answer mean completion mean total tokens seconds mean
+     -1    6/8     7/8         1         1237 / 1201            166            1407        11255        144.3
+    256    7/8     8/8         0          256 / 256             377             637         5096         61.7
+      0    7/8     7/8         1            0 / 0              1148            1152         9213        109.2
+decode rate across all 24 runs: 9.43-10.76 tokens/s (server timings)
