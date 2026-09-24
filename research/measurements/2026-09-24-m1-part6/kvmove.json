@@ -1,0 +1,430 @@
+{
+ "llama3.2-3b": [
+  {
+   "target_tokens": 1024,
+   "prompt_tokens": 1021,
+   "cold": {
+    "content": " path",
+    "prompt_n": 1021,
+    "prompt_ms": 3677.42,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 3.688
+   },
+   "save": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-1024.bin",
+    "n_saved": 1021,
+    "n_written": 117113484,
+    "timings": {
+     "save_ms": 192.65
+    },
+    "wall_s": 0.195
+   },
+   "ram_restore": {
+    "content": " path",
+    "prompt_n": 1,
+    "prompt_ms": 57.978,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.086
+   },
+   "file_restore_pagecache": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-1024.bin",
+    "n_restored": 1021,
+    "n_read": 117113484,
+    "timings": {
+     "restore_ms": 17.353
+    },
+    "wall_s": 0.018
+   },
+   "after_pagecache_restore": {
+    "content": " path",
+    "prompt_n": 1,
+    "prompt_ms": 47.539,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.051
+   },
+   "uncached_copy_s": 0.225,
+   "file_restore_ssd": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-1024-nocache.bin",
+    "n_restored": 1021,
+    "n_read": 117113484,
+    "timings": {
+     "restore_ms": 67.893
+    },
+    "wall_s": 0.069
+   },
+   "after_ssd_restore": {
+    "content": " path",
+    "prompt_n": 1,
+    "prompt_ms": 43.4,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.046
+   },
+   "file_bytes": 117113484,
+   "same_answer": true
+  },
+  {
+   "target_tokens": 4096,
+   "prompt_tokens": 4096,
+   "cold": {
+    "content": " a",
+    "prompt_n": 4096,
+    "prompt_ms": 16547.969,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 16.566
+   },
+   "save": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-4096.bin",
+    "n_saved": 4096,
+    "n_written": 469828284,
+    "timings": {
+     "save_ms": 616.07
+    },
+    "wall_s": 0.618
+   },
+   "ram_restore": {
+    "content": " a",
+    "prompt_n": 1,
+    "prompt_ms": 54.787,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.088
+   },
+   "file_restore_pagecache": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-4096.bin",
+    "n_restored": 4096,
+    "n_read": 469828284,
+    "timings": {
+     "restore_ms": 249.939
+    },
+    "wall_s": 0.251
+   },
+   "after_pagecache_restore": {
+    "content": " a",
+    "prompt_n": 1,
+    "prompt_ms": 51.466,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.055
+   },
+   "uncached_copy_s": 0.724,
+   "file_restore_ssd": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-4096-nocache.bin",
+    "n_restored": 4096,
+    "n_read": 469828284,
+    "timings": {
+     "restore_ms": 260.698
+    },
+    "wall_s": 0.262
+   },
+   "after_ssd_restore": {
+    "content": " a",
+    "prompt_n": 1,
+    "prompt_ms": 49.272,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.054
+   },
+   "file_bytes": 469828284,
+   "same_answer": true
+  },
+  {
+   "target_tokens": 16384,
+   "prompt_tokens": 16384,
+   "cold": {
+    "content": ".",
+    "prompt_n": 16384,
+    "prompt_ms": 96558.438,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 96.602
+   },
+   "save": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-16384.bin",
+    "n_saved": 16384,
+    "n_written": 1879311036,
+    "timings": {
+     "save_ms": 3084.304
+    },
+    "wall_s": 3.091
+   },
+   "ram_restore": {
+    "content": ".",
+    "prompt_n": 1,
+    "prompt_ms": 174.187,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 1.596
+   },
+   "file_restore_pagecache": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-16384.bin",
+    "n_restored": 16384,
+    "n_read": 1879311036,
+    "timings": {
+     "restore_ms": 1337.057
+    },
+    "wall_s": 1.34
+   },
+   "after_pagecache_restore": {
+    "content": ".",
+    "prompt_n": 1,
+    "prompt_ms": 108.011,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.142
+   },
+   "uncached_copy_s": 3.981,
+   "file_restore_ssd": {
+    "id_slot": 0,
+    "filename": "llama3.2-3b-16384-nocache.bin",
+    "n_restored": 16384,
+    "n_read": 1879311036,
+    "timings": {
+     "restore_ms": 694.282
+    },
+    "wall_s": 0.696
+   },
+   "after_ssd_restore": {
+    "content": ".",
+    "prompt_n": 1,
+    "prompt_ms": 88.192,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.113
+   },
+   "file_bytes": 1879311036,
+   "same_answer": true
+  }
+ ],
+ "qwen3-8b": [
+  {
+   "target_tokens": 1024,
+   "prompt_tokens": 1024,
+   "cold": {
+    "content": " path",
+    "prompt_n": 1024,
+    "prompt_ms": 9754.838,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 9.796
+   },
+   "save": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-1024.bin",
+    "n_saved": 1024,
+    "n_written": 151012220,
+    "timings": {
+     "save_ms": 284.113
+    },
+    "wall_s": 0.289
+   },
+   "ram_restore": {
+    "content": " path",
+    "prompt_n": 1,
+    "prompt_ms": 133.121,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.16
+   },
+   "file_restore_pagecache": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-1024.bin",
+    "n_restored": 1024,
+    "n_read": 151012220,
+    "timings": {
+     "restore_ms": 147.033
+    },
+    "wall_s": 0.148
+   },
+   "after_pagecache_restore": {
+    "content": " path",
+    "prompt_n": 1,
+    "prompt_ms": 123.51,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.129
+   },
+   "uncached_copy_s": 0.295,
+   "file_restore_ssd": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-1024-nocache.bin",
+    "n_restored": 1024,
+    "n_read": 151012220,
+    "timings": {
+     "restore_ms": 66.225
+    },
+    "wall_s": 0.071
+   },
+   "after_ssd_restore": {
+    "content": " path",
+    "prompt_n": 1,
+    "prompt_ms": 109.237,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.12
+   },
+   "file_bytes": 151012220,
+   "same_answer": true
+  },
+  {
+   "target_tokens": 4096,
+   "prompt_tokens": 4095,
+   "cold": {
+    "content": " a",
+    "prompt_n": 4095,
+    "prompt_ms": 51226.551,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 51.396
+   },
+   "save": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-4096.bin",
+    "n_saved": 4095,
+    "n_written": 603898732,
+    "timings": {
+     "save_ms": 1159.543
+    },
+    "wall_s": 1.182
+   },
+   "ram_restore": {
+    "content": " a",
+    "prompt_n": 1,
+    "prompt_ms": 200.976,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.998
+   },
+   "file_restore_pagecache": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-4096.bin",
+    "n_restored": 4095,
+    "n_read": 603898732,
+    "timings": {
+     "restore_ms": 595.665
+    },
+    "wall_s": 0.599
+   },
+   "after_pagecache_restore": {
+    "content": " a",
+    "prompt_n": 1,
+    "prompt_ms": 155.553,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.199
+   },
+   "uncached_copy_s": 1.517,
+   "file_restore_ssd": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-4096-nocache.bin",
+    "n_restored": 4095,
+    "n_read": 603898732,
+    "timings": {
+     "restore_ms": 344.888
+    },
+    "wall_s": 0.35
+   },
+   "after_ssd_restore": {
+    "content": " a",
+    "prompt_n": 1,
+    "prompt_ms": 163.164,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 0.203
+   },
+   "file_bytes": 603898732,
+   "same_answer": true
+  },
+  {
+   "target_tokens": 16384,
+   "prompt_tokens": 16382,
+   "cold": {
+    "content": " speed",
+    "prompt_n": 16382,
+    "prompt_ms": 282904.828,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 283.177
+   },
+   "save": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-16384.bin",
+    "n_saved": 16382,
+    "n_written": 2415887196,
+    "timings": {
+     "save_ms": 8918.81
+    },
+    "wall_s": 8.954
+   },
+   "ram_restore": {
+    "content": " speed",
+    "prompt_n": 1,
+    "prompt_ms": 607.738,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 71.142
+   },
+   "file_restore_pagecache": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-16384.bin",
+    "n_restored": 16382,
+    "n_read": 2415887196,
+    "timings": {
+     "restore_ms": 4045.343
+    },
+    "wall_s": 4.444
+   },
+   "after_pagecache_restore": {
+    "content": " speed",
+    "prompt_n": 1,
+    "prompt_ms": 406.283,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 3.172
+   },
+   "uncached_copy_s": 11.45,
+   "file_restore_ssd": {
+    "id_slot": 0,
+    "filename": "qwen3-8b-16384-nocache.bin",
+    "n_restored": 16382,
+    "n_read": 2415887196,
+    "timings": {
+     "restore_ms": 3665.025
+    },
+    "wall_s": 3.829
+   },
+   "after_ssd_restore": {
+    "content": " speed",
+    "prompt_n": 1,
+    "prompt_ms": 425.909,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 1.768
+   },
+   "file_bytes": 2415887196,
+   "same_answer": true
+  }
+ ],
+ "_meta": {
+  "experiment": "kvmove",
+  "started_utc": "2026-09-24T17:05:47Z",
+  "seconds": 616.9,
+  "loadavg_end": [
+   47.5576171875,
+   38.18505859375,
+   26.07275390625
+  ]
+ }
+}

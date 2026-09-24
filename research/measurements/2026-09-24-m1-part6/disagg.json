@@ -1,0 +1,164 @@
+{
+ "runs": [
+  {
+   "rep": 0,
+   "prompt_tokens": 4000,
+   "baseline": {
+    "content": " Matrix multiplication is a fundamental operation in AI that involves computing the dot product of rows from a matrix with columns from another matrix, and its implementation is crucial for the performance of many AI models. The optimal implementation of matrix multiplication depends on the shape of the input matrices, and ENGINE-2, a model operation, builds a",
+    "prompt_n": 4013,
+    "prompt_ms": 16113.482,
+    "predicted_n": 64,
+    "predicted_ms": 3865.372,
+    "wall_s": 19.987
+   },
+   "prefill_on_P": {
+    "content": " Matrix",
+    "prompt_n": 4013,
+    "prompt_ms": 16315.78,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 16.377
+   },
+   "save_on_P": {
+    "id_slot": 0,
+    "filename": "disagg-0.bin",
+    "n_saved": 4013,
+    "n_written": 460307852,
+    "timings": {
+     "save_ms": 1651.677
+    },
+    "wall_s": 1.659
+   },
+   "restore_on_D": {
+    "id_slot": 0,
+    "filename": "disagg-0.bin",
+    "n_restored": 4013,
+    "n_read": 460307852,
+    "timings": {
+     "restore_ms": 172.927
+    },
+    "wall_s": 0.174
+   },
+   "decode_on_D": {
+    "content": " Matrix multiplication is a fundamental operation in AI that involves computing the dot product of rows from a matrix with columns from another matrix, and its implementation is crucial for the performance of many AI models. The optimal implementation of matrix multiplication depends on the shape of the input matrices, and ENGINE-2, a model operation, builds a",
+    "prompt_n": 1,
+    "prompt_ms": 72.67,
+    "predicted_n": 64,
+    "predicted_ms": 3228.447,
+    "wall_s": 3.32
+   },
+   "file_bytes": 460307852,
+   "identical_text": true
+  },
+  {
+   "rep": 1,
+   "prompt_tokens": 4000,
+   "baseline": {
+    "content": " Matrix multiplication is a fundamental operation in AI that involves computing the dot product of rows from a matrix with columns from another matrix, and its implementation is crucial for the performance of many AI models. The optimal implementation of matrix multiplication depends on the shape of the input matrices, and ENGINE-2, a model operation, builds a",
+    "prompt_n": 4013,
+    "prompt_ms": 16154.848,
+    "predicted_n": 64,
+    "predicted_ms": 3189.789,
+    "wall_s": 19.36
+   },
+   "prefill_on_P": {
+    "content": " Matrix",
+    "prompt_n": 4013,
+    "prompt_ms": 16125.71,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 16.162
+   },
+   "save_on_P": {
+    "id_slot": 0,
+    "filename": "disagg-1.bin",
+    "n_saved": 4013,
+    "n_written": 460307852,
+    "timings": {
+     "save_ms": 276.68
+    },
+    "wall_s": 0.284
+   },
+   "restore_on_D": {
+    "id_slot": 0,
+    "filename": "disagg-1.bin",
+    "n_restored": 4013,
+    "n_read": 460307852,
+    "timings": {
+     "restore_ms": 334.671
+    },
+    "wall_s": 0.336
+   },
+   "decode_on_D": {
+    "content": " Matrix multiplication is a fundamental operation in AI that involves computing the dot product of rows from a matrix with columns from another matrix, and its implementation is crucial for the performance of many AI models. The optimal implementation of matrix multiplication depends on the shape of the input matrices, and ENGINE-2, a model operation, builds a",
+    "prompt_n": 1,
+    "prompt_ms": 74.18,
+    "predicted_n": 64,
+    "predicted_ms": 3314.35,
+    "wall_s": 3.409
+   },
+   "file_bytes": 460307852,
+   "identical_text": true
+  },
+  {
+   "rep": 2,
+   "prompt_tokens": 4000,
+   "baseline": {
+    "content": " Matrix multiplication is a fundamental operation in AI that involves computing the dot product of rows from a matrix with columns from another matrix, and its implementation is crucial for the performance of many AI models. The optimal implementation of matrix multiplication depends on the shape of the input matrices, and ENGINE-2, a model operation, builds a",
+    "prompt_n": 4013,
+    "prompt_ms": 16216.257,
+    "predicted_n": 64,
+    "predicted_ms": 3602.424,
+    "wall_s": 19.835
+   },
+   "prefill_on_P": {
+    "content": " Matrix",
+    "prompt_n": 4013,
+    "prompt_ms": 17074.238,
+    "predicted_n": 1,
+    "predicted_ms": 0.001,
+    "wall_s": 17.11
+   },
+   "save_on_P": {
+    "id_slot": 0,
+    "filename": "disagg-2.bin",
+    "n_saved": 4013,
+    "n_written": 460307852,
+    "timings": {
+     "save_ms": 257.008
+    },
+    "wall_s": 0.26
+   },
+   "restore_on_D": {
+    "id_slot": 0,
+    "filename": "disagg-2.bin",
+    "n_restored": 4013,
+    "n_read": 460307852,
+    "timings": {
+     "restore_ms": 256.579
+    },
+    "wall_s": 0.258
+   },
+   "decode_on_D": {
+    "content": " Matrix multiplication is a fundamental operation in AI that involves computing the dot product of rows from a matrix with columns from another matrix, and its implementation is crucial for the performance of many AI models. The optimal implementation of matrix multiplication depends on the shape of the input matrices, and ENGINE-2, a model operation, builds a",
+    "prompt_n": 1,
+    "prompt_ms": 80.551,
+    "predicted_n": 64,
+    "predicted_ms": 3713.289,
+    "wall_s": 3.812
+   },
+   "file_bytes": 460307852,
+   "identical_text": true
+  }
+ ],
+ "_meta": {
+  "experiment": "disagg",
+  "started_utc": "2026-09-24T17:20:36Z",
+  "seconds": 128.9,
+  "loadavg_end": [
+   13.86083984375,
+   20.95703125,
+   22.748046875
+  ]
+ }
+}
