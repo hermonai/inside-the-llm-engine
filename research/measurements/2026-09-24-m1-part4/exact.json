@@ -1,0 +1,124 @@
+{
+ "runs": [
+  {
+   "prompt": 0,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 224,
+   "draft_n_accepted": 224,
+   "base_chars": 1261,
+   "spec_chars": 1261,
+   "base_text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+   "spec_text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step."
+  },
+  {
+   "prompt": 1,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 208,
+   "draft_n_accepted": 193,
+   "base_chars": 1261,
+   "spec_chars": 1261,
+   "base_text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+   "spec_text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step."
+  },
+  {
+   "prompt": 2,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "base_chars": 595,
+   "spec_chars": 595,
+   "base_text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses.",
+   "spec_text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses."
+  },
+  {
+   "prompt": 3,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "base_chars": 1205,
+   "spec_chars": 1205,
+   "base_text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way.",
+   "spec_text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way."
+  },
+  {
+   "prompt": 4,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 16,
+   "draft_n_accepted": 7,
+   "base_chars": 1390,
+   "spec_chars": 1390,
+   "base_text": "TCP Slow Start is a congestion control algorithm used in TCP (Transmission Control Protocol) to prevent network congestion. It's a crucial mechanism to ensure that data is transmitted efficiently and fairly over the network. Here's a step-by-step explanation of how TCP Slow Start works:\n\n**Step 1: Initial Connection Establishment**\n\nWhen a new connection is established, the TCP sender and receiver agree on a maximum window size (cwnd) and a maximum congestion window (ssthresh). The initial values of cwnd and ssthresh are typically set to 1 and 1, respectively.\n\n**Step 2: Initial Transmission**\n\nThe sender starts transmitting data at a rate of 1 packet per second. This is the initial rate, which is the minimum rate at which data can be transmitted.\n\n**Step 3: Congestion Detection**\n\nAs the sender transmits data, the network sends acknowledgments (ACKs) back to the sender. The sender uses these ACKs to determine if the network is congested. If the sender receives an ACK for a packet that was sent more than 1 second ago, it assumes the network is not congested and can increase the transmission rate.\n\n**Step 4: Slow Start Phase**\n\nWhen the sender receives an ACK for a packet that was sent more than 1 second ago, it increases the congestion window (cwnd) by 1 packet. This is the slow start phase, where the sender increases the transmission rate gradually.\n\n**Step 5: Window",
+   "spec_text": "TCP Slow Start is a congestion control algorithm used in TCP (Transmission Control Protocol) to prevent network congestion. It's a crucial mechanism to ensure that data is transmitted efficiently and fairly over the network. Here's a step-by-step explanation of how TCP Slow Start works:\n\n**Step 1: Initial Connection Establishment**\n\nWhen a new connection is established, the TCP sender and receiver agree on a maximum window size (cwnd) and a maximum congestion window (ssthresh). The initial values of cwnd and ssthresh are typically set to 1 and 1, respectively.\n\n**Step 2: Initial Transmission**\n\nThe sender starts transmitting data at a rate of 1 packet per second. This is the initial rate, which is the minimum rate at which data can be transmitted.\n\n**Step 3: Congestion Detection**\n\nAs the sender transmits data, the network sends acknowledgments (ACKs) back to the sender. The sender uses these ACKs to determine if the network is congested. If the sender receives an ACK for a packet that was sent more than 1 second ago, it assumes the network is not congested and can increase the transmission rate.\n\n**Step 4: Slow Start Phase**\n\nWhen the sender receives an ACK for a packet that was sent more than 1 second ago, it increases the congestion window (cwnd) by 1 packet. This is the slow start phase, where the sender increases the transmission rate gradually.\n\n**Step 5: Window"
+  },
+  {
+   "prompt": 5,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "base_chars": 1127,
+   "spec_chars": 1127,
+   "base_text": "```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lists into a single sorted list.\n\n    Args:\n        list1 (list): The first sorted list.\n        list2 (list): The second sorted list.\n\n    Returns:\n        list: A new sorted list containing all elements from both input lists.\n\n    Example:\n        >>> merge_sorted_lists([1, 3, 5], [2, 4, 6])\n        [1, 2, 3, 4, 5, 6]\n    \"\"\"\n    merged_list = []\n    i = j = 0\n\n    # Merge smaller elements first\n    while i < len(list1) and j < len(list2):\n        if list1[i] < list2[j]:\n            merged_list.append(list1[i])\n            i += 1\n        else:\n            merged_list.append(list2[j])\n            j += 1\n\n    # Append any remaining elements\n    merged_list.extend(list1[i:])\n    merged_list.extend(list2[j:])\n\n    return merged_list\n```\n\nDoctests:\n\n```python\nimport unittest\n\nclass TestMergeSortedLists(unittest.TestCase):\n    def test_empty_lists(self):\n        self.assertEqual(merge_sorted_lists([], []), [])\n\n    def test_one_list(self):\n        self.assertEqual(merge_sorted_lists([1, 3, 5], []), [1, 3, 5])\n\n    def test_both_lists(self",
+   "spec_text": "```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lists into a single sorted list.\n\n    Args:\n        list1 (list): The first sorted list.\n        list2 (list): The second sorted list.\n\n    Returns:\n        list: A new sorted list containing all elements from both input lists.\n\n    Example:\n        >>> merge_sorted_lists([1, 3, 5], [2, 4, 6])\n        [1, 2, 3, 4, 5, 6]\n    \"\"\"\n    merged_list = []\n    i = j = 0\n\n    # Merge smaller elements first\n    while i < len(list1) and j < len(list2):\n        if list1[i] < list2[j]:\n            merged_list.append(list1[i])\n            i += 1\n        else:\n            merged_list.append(list2[j])\n            j += 1\n\n    # Append any remaining elements\n    merged_list.extend(list1[i:])\n    merged_list.extend(list2[j:])\n\n    return merged_list\n```\n\nDoctests:\n\n```python\nimport unittest\n\nclass TestMergeSortedLists(unittest.TestCase):\n    def test_empty_lists(self):\n        self.assertEqual(merge_sorted_lists([], []), [])\n\n    def test_one_list(self):\n        self.assertEqual(merge_sorted_lists([1, 3, 5], []), [1, 3, 5])\n\n    def test_both_lists(self"
+  },
+  {
+   "prompt": 6,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "base_chars": 1327,
+   "spec_chars": 1327,
+   "base_text": "Here's the list of planets in our solar system, along with an interesting fact about each:\n\n1. Mercury - Mercury is the closest planet to the Sun, with an average distance of about 58 million kilometers (36 million miles).\n\n2. Venus - Venus is the hottest planet in the solar system, with surface temperatures reaching as high as 462\u00b0C (863\u00b0F).\n\n3. Earth - Earth is the only known planet in the universe with liquid water, which is essential for life as we know it.\n\n4. Mars - Mars has the tallest volcano in our solar system, Olympus Mons, which stands at a height of approximately 27 km (17 miles).\n\n5. Jupiter - Jupiter is the largest planet in our solar system, with a diameter of approximately 142,984 km (88,846 miles), which is more than 11 times the diameter of Earth.\n\n6. Saturn - Saturn has the most extensive ring system in our solar system, consisting of seven main rings and numerous smaller ringlets.\n\n7. Uranus - Uranus is tilted on its side, with its axis lying almost in the plane of its orbit around the Sun, resulting in extreme seasons on the planet.\n\n8. Neptune - Neptune has the strongest winds in our solar system, with gusts reaching up to 2,100 km/h (1,300 mph), making them much faster than any hurricane on Earth.\n\nNote: Pluto is no longer considered a planet but is now classified as a dwarf planet.",
+   "spec_text": "Here's the list of planets in our solar system, along with an interesting fact about each:\n\n1. Mercury - Mercury is the closest planet to the Sun, with an average distance of about 58 million kilometers (36 million miles).\n\n2. Venus - Venus is the hottest planet in the solar system, with surface temperatures reaching as high as 462\u00b0C (863\u00b0F).\n\n3. Earth - Earth is the only known planet in the universe with liquid water, which is essential for life as we know it.\n\n4. Mars - Mars has the tallest volcano in our solar system, Olympus Mons, which stands at a height of approximately 27 km (17 miles).\n\n5. Jupiter - Jupiter is the largest planet in our solar system, with a diameter of approximately 142,984 km (88,846 miles), which is more than 11 times the diameter of Earth.\n\n6. Saturn - Saturn has the most extensive ring system in our solar system, consisting of seven main rings and numerous smaller ringlets.\n\n7. Uranus - Uranus is tilted on its side, with its axis lying almost in the plane of its orbit around the Sun, resulting in extreme seasons on the planet.\n\n8. Neptune - Neptune has the strongest winds in our solar system, with gusts reaching up to 2,100 km/h (1,300 mph), making them much faster than any hurricane on Earth.\n\nNote: Pluto is no longer considered a planet but is now classified as a dwarf planet."
+  },
+  {
+   "prompt": 7,
+   "identical": false,
+   "first_diff_char": 1109,
+   "draft_n": 203,
+   "draft_n_accepted": 203,
+   "base_chars": 1154,
+   "spec_chars": 1109,
+   "base_text": "Le temps \u00e9tait froid, nous sommes rest\u00e9s \u00e0 l'int\u00e9rieur et avons lu des livres tout l'apr\u00e8s-midi.\n\nHere's a more natural-sounding translation:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l",
+   "spec_text": "Le temps \u00e9tait froid, nous sommes rest\u00e9s \u00e0 l'int\u00e9rieur et avons lu des livres tout l'apr\u00e8s-midi.\n\nHere's a more natural-sounding translation:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\nLe temps \u00e9tait froid, nous avons donc pass\u00e9 l'apr\u00e8s-midi \u00e0 lire des livres \u00e0 l'int\u00e9rieur.\n\nOr, the more natural-sounding translation is:\n\n"
+  },
+  {
+   "prompt": 8,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "base_chars": 822,
+   "spec_chars": 822,
+   "base_text": "...coding is so effective. By reusing the same weights for multiple sequences, the model can perform more arithmetic operations than it actually needs, effectively \"wasting\" compute resources that would otherwise be idle. This waste is then used to make predictions for the next sequence in the batch, allowing the model to make educated guesses about what the next sequence might look like. This process is repeated for each sequence in the batch, with the model using its spare compute resources to make predictions that are more accurate than if it had to perform the same calculations for each sequence individually. As a result, continuous batching and speculative decoding can significantly improve the efficiency and accuracy of the model, making it possible to process large amounts of data quickly and accurately.",
+   "spec_text": "...coding is so effective. By reusing the same weights for multiple sequences, the model can perform more arithmetic operations than it actually needs, effectively \"wasting\" compute resources that would otherwise be idle. This waste is then used to make predictions for the next sequence in the batch, allowing the model to make educated guesses about what the next sequence might look like. This process is repeated for each sequence in the batch, with the model using its spare compute resources to make predictions that are more accurate than if it had to perform the same calculations for each sequence individually. As a result, continuous batching and speculative decoding can significantly improve the efficiency and accuracy of the model, making it possible to process large amounts of data quickly and accurately."
+  },
+  {
+   "prompt": 9,
+   "identical": true,
+   "first_diff_char": null,
+   "draft_n": 64,
+   "draft_n_accepted": 1,
+   "base_chars": 651,
+   "spec_chars": 651,
+   "base_text": "Here's a JSON array of five objects, each with fields id, name, and email, for fictional users:\n\n```json\n[\n  {\n    \"id\": 1,\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\"\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Jane Smith\",\n    \"email\": \"jane.smith@example.com\"\n  },\n  {\n    \"id\": 3,\n    \"name\": \"Bob Johnson\",\n    \"email\": \"bob.johnson@example.com\"\n  },\n  {\n    \"id\": 4,\n    \"name\": \"Alice Williams\",\n    \"email\": \"alice.williams@example.com\"\n  },\n  {\n    \"id\": 5,\n    \"name\": \"Mike Davis\",\n    \"email\": \"mike.davis@example.com\"\n  }\n]\n```\n\nThis JSON array represents a collection of five users, each with a unique id, name, and email address.",
+   "spec_text": "Here's a JSON array of five objects, each with fields id, name, and email, for fictional users:\n\n```json\n[\n  {\n    \"id\": 1,\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\"\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Jane Smith\",\n    \"email\": \"jane.smith@example.com\"\n  },\n  {\n    \"id\": 3,\n    \"name\": \"Bob Johnson\",\n    \"email\": \"bob.johnson@example.com\"\n  },\n  {\n    \"id\": 4,\n    \"name\": \"Alice Williams\",\n    \"email\": \"alice.williams@example.com\"\n  },\n  {\n    \"id\": 5,\n    \"name\": \"Mike Davis\",\n    \"email\": \"mike.davis@example.com\"\n  }\n]\n```\n\nThis JSON array represents a collection of five users, each with a unique id, name, and email address."
+  }
+ ],
+ "_meta": {
+  "experiment": "exact",
+  "started_utc": "2026-09-24T04:29:32Z",
+  "seconds": 207.5,
+  "loadavg_end": [
+   4.392578125,
+   6.59423828125,
+   8.6689453125
+  ]
+ }
+}

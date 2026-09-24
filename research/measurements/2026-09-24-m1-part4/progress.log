@@ -1,0 +1,16 @@
+2026-09-24T04:14:50Z waiting: load1=7.17 before verify
+2026-09-24T04:15:20Z waiting: load1=8.76 before verify
+2026-09-24T04:15:50Z waiting: load1=12.22 before verify
+2026-09-24T04:16:20Z waiting: load1=9.33 before verify
+2026-09-24T04:16:50Z waiting: load1=10.92 before verify
+2026-09-24T04:17:20Z waiting: load1=8.21 before verify
+2026-09-24T04:17:50Z waiting: load1=6.44 before verify
+2026-09-24T04:18:31Z verify-3b exit=0
+2026-09-24T04:18:59Z verify-8b exit=0
+2026-09-24T04:19:02Z verify-draft exit=0
+2026-09-24T04:29:01Z ngram exit=0
+2026-09-24T04:29:02Z waiting: load1=6.63 before exact
+2026-09-24T04:32:59Z exact exit=0
+2026-09-24T04:35:12Z concurrent exit=0
+2026-09-24T04:42:47Z draftmodel exit=0
+2026-09-24T04:42:47Z done

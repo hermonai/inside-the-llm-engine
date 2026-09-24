@@ -1,0 +1,674 @@
+{
+ "runs": [
+  {
+   "workload": "quote",
+   "temperature": 0.0,
+   "rep": 0,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 18.002,
+    "predicted_n": 245,
+    "predicted_ms": 16475.662,
+    "tok_s": 14.87041916737549,
+    "prompt_n": 294,
+    "prompt_ms": 1414.095,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 5.371,
+    "predicted_n": 250,
+    "predicted_ms": 3797.552,
+    "tok_s": 65.83188327638437,
+    "prompt_n": 294,
+    "prompt_ms": 1548.907,
+    "draft_n": 224,
+    "draft_n_accepted": 224
+   },
+   "identical": true
+  },
+  {
+   "workload": "quote",
+   "temperature": 0.0,
+   "rep": 1,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 17.519,
+    "predicted_n": 245,
+    "predicted_ms": 15950.204,
+    "tok_s": 15.360305109577281,
+    "prompt_n": 294,
+    "prompt_ms": 1543.597,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 5.274,
+    "predicted_n": 250,
+    "predicted_ms": 3810.764,
+    "tok_s": 65.60364273410791,
+    "prompt_n": 294,
+    "prompt_ms": 1450.829,
+    "draft_n": 224,
+    "draft_n_accepted": 224
+   },
+   "identical": true
+  },
+  {
+   "workload": "quote",
+   "temperature": 0.0,
+   "rep": 2,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 16.526,
+    "predicted_n": 245,
+    "predicted_ms": 15100.062,
+    "tok_s": 16.22509894330235,
+    "prompt_n": 294,
+    "prompt_ms": 1407.638,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 5.66,
+    "predicted_n": 250,
+    "predicted_ms": 4085.567,
+    "tok_s": 61.19101706078985,
+    "prompt_n": 294,
+    "prompt_ms": 1546.428,
+    "draft_n": 224,
+    "draft_n_accepted": 224
+   },
+   "identical": true
+  },
+  {
+   "workload": "edit",
+   "temperature": 0.0,
+   "rep": 0,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 20.352,
+    "predicted_n": 245,
+    "predicted_ms": 18677.044,
+    "tok_s": 13.117707491613768,
+    "prompt_n": 307,
+    "prompt_ms": 1578.181,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 7.499,
+    "predicted_n": 254,
+    "predicted_ms": 6008.976,
+    "tok_s": 42.270097267820674,
+    "prompt_n": 307,
+    "prompt_ms": 1453.375,
+    "draft_n": 208,
+    "draft_n_accepted": 193
+   },
+   "identical": true
+  },
+  {
+   "workload": "edit",
+   "temperature": 0.0,
+   "rep": 1,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 16.514,
+    "predicted_n": 245,
+    "predicted_ms": 15025.388,
+    "tok_s": 16.30573533275813,
+    "prompt_n": 307,
+    "prompt_ms": 1471.048,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 7.135,
+    "predicted_n": 254,
+    "predicted_ms": 5706.311,
+    "tok_s": 44.512120001871615,
+    "prompt_n": 307,
+    "prompt_ms": 1419.116,
+    "draft_n": 208,
+    "draft_n_accepted": 193
+   },
+   "identical": true
+  },
+  {
+   "workload": "edit",
+   "temperature": 0.0,
+   "rep": 2,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 17.611,
+    "predicted_n": 245,
+    "predicted_ms": 16142.013,
+    "tok_s": 15.177784827703954,
+    "prompt_n": 307,
+    "prompt_ms": 1451.18,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 7.909,
+    "predicted_n": 254,
+    "predicted_ms": 6392.475,
+    "tok_s": 39.73421874938893,
+    "prompt_n": 307,
+    "prompt_ms": 1503.738,
+    "draft_n": 208,
+    "draft_n_accepted": 193
+   },
+   "identical": true
+  },
+  {
+   "workload": "summarize",
+   "temperature": 0.0,
+   "rep": 0,
+   "base": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses.",
+    "elapsed_s": 9.088,
+    "predicted_n": 110,
+    "predicted_ms": 7536.055,
+    "tok_s": 14.596496442767469,
+    "prompt_n": 289,
+    "prompt_ms": 1499.712,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses.",
+    "elapsed_s": 9.07,
+    "predicted_n": 110,
+    "predicted_ms": 7544.646,
+    "tok_s": 14.579875583294431,
+    "prompt_n": 289,
+    "prompt_ms": 1492.471,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "identical": true
+  },
+  {
+   "workload": "summarize",
+   "temperature": 0.0,
+   "rep": 1,
+   "base": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses.",
+    "elapsed_s": 9.018,
+    "predicted_n": 110,
+    "predicted_ms": 7491.476,
+    "tok_s": 14.683354788829332,
+    "prompt_n": 289,
+    "prompt_ms": 1517.756,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses.",
+    "elapsed_s": 8.857,
+    "predicted_n": 110,
+    "predicted_ms": 7420.444,
+    "tok_s": 14.823910806415357,
+    "prompt_n": 289,
+    "prompt_ms": 1427.685,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "identical": true
+  },
+  {
+   "workload": "summarize",
+   "temperature": 0.0,
+   "rep": 2,
+   "base": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses.",
+    "elapsed_s": 9.167,
+    "predicted_n": 110,
+    "predicted_ms": 7708.835,
+    "tok_s": 14.269341606092231,
+    "prompt_n": 289,
+    "prompt_ms": 1442.433,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be decoded, with each decode step performing a limited number of arithmetic operations per weight. Continuous batching and speculative decoding allow the engine to reuse weights and reduce compute time, but the effectiveness of these techniques depends on the frequency and cost of the guesses. Engines use a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors such as the batch size, machine busyness, and the cost of the guesses.",
+    "elapsed_s": 9.203,
+    "predicted_n": 110,
+    "predicted_ms": 7616.891,
+    "tok_s": 14.44158778168153,
+    "prompt_n": 289,
+    "prompt_ms": 1571.547,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "identical": true
+  },
+  {
+   "workload": "free",
+   "temperature": 0.0,
+   "rep": 0,
+   "base": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way.",
+    "elapsed_s": 17.7,
+    "predicted_n": 269,
+    "predicted_ms": 17333.441,
+    "tok_s": 15.519134371530733,
+    "prompt_n": 54,
+    "prompt_ms": 328.55,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way.",
+    "elapsed_s": 17.078,
+    "predicted_n": 269,
+    "predicted_ms": 16703.059,
+    "tok_s": 16.104834449785514,
+    "prompt_n": 54,
+    "prompt_ms": 332.818,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "identical": true
+  },
+  {
+   "workload": "free",
+   "temperature": 0.0,
+   "rep": 1,
+   "base": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way.",
+    "elapsed_s": 17.37,
+    "predicted_n": 269,
+    "predicted_ms": 17008.271,
+    "tok_s": 15.81583454308789,
+    "prompt_n": 54,
+    "prompt_ms": 354.596,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way.",
+    "elapsed_s": 16.531,
+    "predicted_n": 269,
+    "predicted_ms": 16227.473,
+    "tok_s": 16.576826225500422,
+    "prompt_n": 54,
+    "prompt_ms": 291.31,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "identical": true
+  },
+  {
+   "workload": "free",
+   "temperature": 0.0,
+   "rep": 2,
+   "base": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way.",
+    "elapsed_s": 17.359,
+    "predicted_n": 269,
+    "predicted_ms": 17062.465,
+    "tok_s": 15.765600105260289,
+    "prompt_n": 54,
+    "prompt_ms": 292.994,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But its keeper, Emilia, had a secret: she collected lost letters. Every day, she'd scan the horizon for driftwood, seaweed, and the occasional piece of paper that had been torn from a sailor's pocket.\n\nOver the years, her collection grew. She'd found love letters from soldiers fighting in far-off wars, letters of apology from sailors who'd lost their way, and even a few from children who'd written to their parents while at sea. Emilia treasured each one, knowing the stories they held.\n\nAs the sun set, Emilia would sit by the fire, reading through her collection. She'd imagine the lives of those who'd written, the hopes and fears they'd expressed. She'd feel the weight of their longing, the ache of their loneliness.\n\nOne day, a young sailor stumbled onto the shore, his eyes red from crying. He'd lost his way, and his letter to his loved one had been swept away. Emilia took him in, listening to his story and adding his letter to her collection. As she read the words, she felt a sense of connection to the sailors who'd come before, and to the ones who'd yet to find their way.",
+    "elapsed_s": 17.16,
+    "predicted_n": 269,
+    "predicted_ms": 16804.372,
+    "tok_s": 16.00773893841436,
+    "prompt_n": 54,
+    "prompt_ms": 346.958,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "identical": true
+  },
+  {
+   "workload": "quote",
+   "temperature": 0.8,
+   "rep": 0,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 19.294,
+    "predicted_n": 245,
+    "predicted_ms": 17432.466,
+    "tok_s": 14.054236503315137,
+    "prompt_n": 294,
+    "prompt_ms": 1453.528,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 5.794,
+    "predicted_n": 250,
+    "predicted_ms": 3741.202,
+    "tok_s": 66.82344337461596,
+    "prompt_n": 294,
+    "prompt_ms": 1529.073,
+    "draft_n": 224,
+    "draft_n_accepted": 224
+   }
+  },
+  {
+   "workload": "quote",
+   "temperature": 0.8,
+   "rep": 1,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 16.602,
+    "predicted_n": 245,
+    "predicted_ms": 15097.135,
+    "tok_s": 16.22824463052096,
+    "prompt_n": 294,
+    "prompt_ms": 1482.935,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 5.633,
+    "predicted_n": 250,
+    "predicted_ms": 4176.376,
+    "tok_s": 59.86051064367767,
+    "prompt_n": 294,
+    "prompt_ms": 1448.124,
+    "draft_n": 224,
+    "draft_n_accepted": 224
+   }
+  },
+  {
+   "workload": "quote",
+   "temperature": 0.8,
+   "rep": 2,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 16.246,
+    "predicted_n": 245,
+    "predicted_ms": 14791.677,
+    "tok_s": 16.563368710660733,
+    "prompt_n": 294,
+    "prompt_ms": 1447.921,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the batch. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the batch reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the batch is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 5.116,
+    "predicted_n": 250,
+    "predicted_ms": 3642.452,
+    "tok_s": 68.63508427839268,
+    "prompt_n": 294,
+    "prompt_ms": 1457.473,
+    "draft_n": 224,
+    "draft_n_accepted": 224
+   }
+  },
+  {
+   "workload": "edit",
+   "temperature": 0.8,
+   "rep": 0,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous grouping pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 17.93,
+    "predicted_n": 245,
+    "predicted_ms": 15799.183,
+    "tok_s": 15.507130970000155,
+    "prompt_n": 307,
+    "prompt_ms": 1577.222,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous grouping pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 7.765,
+    "predicted_n": 254,
+    "predicted_ms": 5838.901,
+    "tok_s": 43.50133698105174,
+    "prompt_n": 307,
+    "prompt_ms": 1505.033,
+    "draft_n": 208,
+    "draft_n_accepted": 185
+   }
+  },
+  {
+   "workload": "edit",
+   "temperature": 0.8,
+   "rep": 1,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 17.612,
+    "predicted_n": 245,
+    "predicted_ms": 16112.319,
+    "tok_s": 15.205756539452825,
+    "prompt_n": 307,
+    "prompt_ms": 1466.595,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 7.156,
+    "predicted_n": 254,
+    "predicted_ms": 5685.878,
+    "tok_s": 44.672080547630465,
+    "prompt_n": 307,
+    "prompt_ms": 1458.172,
+    "draft_n": 208,
+    "draft_n_accepted": 193
+   }
+  },
+  {
+   "workload": "edit",
+   "temperature": 0.8,
+   "rep": 2,
+   "base": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 20.429,
+    "predicted_n": 245,
+    "predicted_ms": 18956.378,
+    "tok_s": 12.92440992683307,
+    "prompt_n": 307,
+    "prompt_ms": 1451.446,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "A serving engine spends most of its life waiting on memory. Each decode step reads every weight of the model once, performs a handful of arithmetic operations per weight, and produces a single token for each sequence in the group. The arithmetic units finish their share long before the next bytes arrive, so the step's duration is set by bandwidth rather than by compute. This imbalance is the reason continuous batching pays: every additional sequence in the group reuses the same weights that were already read, adding arithmetic that the machine had to spare. It is also the reason speculative decoding works. A step that verifies five guessed tokens reads the same weights as a step that produces one, and on hardware with idle arithmetic it costs little more. The catch is that the guesses must be right often enough, and cheap enough to make, for the saved steps to outweigh the extra work. When the group is already large, the arithmetic is no longer idle, and the same trade that halved latency can make every request slower. Engines therefore treat speculation as a policy rather than a switch: they measure how often drafts are accepted, how much a draft costs, and how busy the machine is, and they adjust the number of drafted tokens at every step.",
+    "elapsed_s": 7.533,
+    "predicted_n": 254,
+    "predicted_ms": 5919.07,
+    "tok_s": 42.91214667168998,
+    "prompt_n": 307,
+    "prompt_ms": 1582.372,
+    "draft_n": 208,
+    "draft_n_accepted": 193
+   }
+  },
+  {
+   "workload": "summarize",
+   "temperature": 0.8,
+   "rep": 0,
+   "base": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be available, with each decode step performing a limited number of arithmetic operations per weight. This imbalance is why continuous batching and speculative decoding are effective strategies, as they reuse existing weights and minimize additional compute. However, the success of these strategies depends on the machine's workload and the cost of making speculative guesses, and engines therefore use a policy-based approach to adjust the number of drafted tokens at each step.",
+    "elapsed_s": 7.667,
+    "predicted_n": 104,
+    "predicted_ms": 5893.722,
+    "tok_s": 17.64589507275708,
+    "prompt_n": 289,
+    "prompt_ms": 1444.845,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be available, with each decode step performing a limited number of arithmetic operations per weight. This imbalance is why continuous batching and speculative decoding are effective strategies, as they reuse existing weights and minimize additional compute. However, the success of these strategies depends on the machine's workload and the cost of making speculative guesses, and engines therefore use a policy-based approach to adjust the number of drafted tokens at each step.",
+    "elapsed_s": 7.799,
+    "predicted_n": 104,
+    "predicted_ms": 6066.178,
+    "tok_s": 17.144238101816335,
+    "prompt_n": 289,
+    "prompt_ms": 1430.979,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   }
+  },
+  {
+   "workload": "summarize",
+   "temperature": 0.8,
+   "rep": 1,
+   "base": {
+    "text": "Here is a three-sentence summary of the passage:\n\nIn a serving engine, a significant amount of time is spent waiting for new memory to arrive, which affects the duration of each decode step. To optimize performance, continuous batching allows the engine to reuse weights and perform arithmetic operations that would otherwise be idle, reducing latency. The engine uses a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors like the cost of guesses, machine availability, and batch size to balance performance and resource usage.",
+    "elapsed_s": 7.549,
+    "predicted_n": 104,
+    "predicted_ms": 6086.979,
+    "tok_s": 17.085651190845244,
+    "prompt_n": 289,
+    "prompt_ms": 1441.753,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "Here is a three-sentence summary of the passage:\n\nIn a serving engine, a significant amount of time is spent waiting for new memory to arrive, which affects the duration of each decode step. To optimize performance, continuous batching allows the engine to reuse weights and perform arithmetic operations that would otherwise be idle, reducing latency. The engine uses a policy-based approach to speculative decoding, adjusting the number of drafted tokens based on factors like the cost of guesses, machine availability, and batch size to balance performance and resource usage.",
+    "elapsed_s": 7.635,
+    "predicted_n": 104,
+    "predicted_ms": 6231.009,
+    "tok_s": 16.69071574122265,
+    "prompt_n": 289,
+    "prompt_ms": 1390.988,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   }
+  },
+  {
+   "workload": "summarize",
+   "temperature": 0.8,
+   "rep": 2,
+   "base": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be filled, causing each decode step to be limited by bandwidth rather than compute power. To optimize performance, the engine reuses weights that have already been read, making continuous batching and speculative decoding cost-effective. However, the engine must carefully balance the benefits of these techniques against the potential drawbacks, such as increased work for large batches, and adjust the number of drafted tokens accordingly.",
+    "elapsed_s": 6.944,
+    "predicted_n": 99,
+    "predicted_ms": 5533.031,
+    "tok_s": 17.892543887789532,
+    "prompt_n": 289,
+    "prompt_ms": 1398.154,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "Here is a three-sentence summary of the passage:\n\nA serving engine spends most of its time waiting for memory to be filled, causing each decode step to be limited by bandwidth rather than compute power. To optimize performance, the engine reuses weights that have already been read, making continuous batching and speculative decoding cost-effective. However, the engine must carefully balance the benefits of these techniques against the potential drawbacks, such as increased work for large batches, and adjust the number of drafted tokens accordingly.",
+    "elapsed_s": 7.959,
+    "predicted_n": 99,
+    "predicted_ms": 6507.217,
+    "tok_s": 15.213877145944267,
+    "prompt_n": 289,
+    "prompt_ms": 1438.712,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   }
+  },
+  {
+   "workload": "free",
+   "temperature": 0.8,
+   "rep": 0,
+   "base": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But there was more to the keeper's duties than just keeping the light burning bright. Emilia, the lighthouse keeper, had a secret passion - collecting lost letters.\n\nFor years, she'd been gathering these forgotten words, each one telling a story of love, loss, and longing. They'd wash up on the shore, soggy and worn, but still carrying the whispers of the past. Emilia cherished each one, preserving them in a special box in her tower.\n\nAs the sun set over the ocean, Emilia would sit amidst her collection, listening to the stories of strangers. She'd find herself lost in the romance of a sailor's farewell, or the sorrow of a woman's goodbye. The letters became a connection to the world beyond her isolated home.\n\nOne day, a letter arrived, postmarked from a distant land. Emilia's eyes welled up as she read the words of a young traveler, seeking refuge on the rocky coast. As she finished reading, the lighthouse beam shone bright, a beacon of hope for the unknown wanderer. And Emilia knew that in her tower, the stories would continue, a guiding light for those lost at sea.",
+    "elapsed_s": 17.042,
+    "predicted_n": 263,
+    "predicted_ms": 16644.67,
+    "tok_s": 15.800853967065734,
+    "prompt_n": 54,
+    "prompt_ms": 346.186,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "The lighthouse stood tall on the rocky coast, its beam slicing through the darkness to guide ships safely to shore. But there was more to the keeper's duties than just keeping the light burning bright. Emilia, the lighthouse keeper, had a secret passion - collecting lost letters.\n\nFor years, she'd been gathering these forgotten words, each one telling a story of love, loss, and longing. They'd wash up on the shore, soggy and worn, but still carrying the whispers of the past. Emilia cherished each one, preserving them in a special box in her tower.\n\nAs the sun set over the ocean, Emilia would sit amidst her collection, listening to the stories of strangers. She'd find herself lost in the romance of a sailor's farewell, or the sorrow of a woman's goodbye. The letters became a connection to the world beyond her isolated home.\n\nOne day, a letter arrived, postmarked from a distant land. Emilia's eyes welled up as she read the words of a young traveler, seeking refuge on the rocky coast. As she finished reading, the lighthouse beam shone bright, a beacon of hope for the unknown wanderer. And Emilia knew that in her tower, the stories would continue, a guiding light for those lost at sea.",
+    "elapsed_s": 16.977,
+    "predicted_n": 263,
+    "predicted_ms": 16579.88,
+    "tok_s": 15.862599729310466,
+    "prompt_n": 54,
+    "prompt_ms": 313.936,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   }
+  },
+  {
+   "workload": "free",
+   "temperature": 0.8,
+   "rep": 1,
+   "base": {
+    "text": "The wind whipped through the lighthouse keeper's hair as she stood at the edge of the rocky shore. Her eyes, weathered from years of salt spray, scanned the horizon for the day's arrival. It was a ritual she cherished \u2013 collecting the lost letters that washed up on the shore.\n\nEach morning, the keeper would sort through the tangled mess of paper, searching for the stories within. A young sailor's goodbye to his loved one, a sailor's lament to his captain, or a tender message from a pen pal \u2013 all were treasured by the keeper.\n\nAs she sorted, the keeper's imagination ran wild. She pictured the families who had written those letters, the ships that had set sail, and the destinations unknown. Tears pricked at the corners of her eyes as she held a yellowed envelope, its address worn and faded.\n\nThe keeper's lighthouse stood as a beacon, not just for ships, but for those seeking connection and solace. And in the lost letters, she found a sense of belonging, a reminder that even the most distant of journeys can lead to the most unexpected of loves. With a sigh, she tucked the next letter into her apron pocket, ready to unravel its story.",
+    "elapsed_s": 16.241,
+    "predicted_n": 247,
+    "predicted_ms": 15890.842,
+    "tok_s": 15.543543885213886,
+    "prompt_n": 54,
+    "prompt_ms": 318.706,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "The wind whipped through the lighthouse keeper's hair as she stood at the edge of the rocky shore. Her eyes, weathered from years of salt spray, scanned the horizon for the day's arrival. It was a ritual she cherished \u2013 collecting the lost letters that washed up on the shore.\n\nEach morning, the keeper would sort through the tangled mess of paper, searching for the stories within. A young sailor's goodbye to his loved one, a sailor's lament to his captain, or a tender message from a pen pal \u2013 all were treasured by the keeper.\n\nAs she sorted, the keeper's imagination ran wild. She pictured the families who had written those letters, the ships that had set sail, and the destinations unknown. Tears pricked at the corners of her eyes as she held a yellowed envelope, its address worn and faded.\n\nThe keeper's lighthouse stood as a beacon, not just for ships, but for those seeking connection and solace. And in the lost letters, she found a sense of belonging, a reminder that even the most distant of journeys can lead to the most unexpected of loves. With a sigh, she tucked the next letter into her apron pocket, ready to unravel its story.",
+    "elapsed_s": 15.433,
+    "predicted_n": 247,
+    "predicted_ms": 15117.981,
+    "tok_s": 16.338160499077222,
+    "prompt_n": 54,
+    "prompt_ms": 293.162,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   }
+  },
+  {
+   "workload": "free",
+   "temperature": 0.8,
+   "rep": 2,
+   "base": {
+    "text": "The lighthouse stood tall on the rugged coast, its beam slicing through the darkness to guide weary sailors home. But its keeper, Emilia, had a different purpose. By day, she tended the light, her hands moving with the precision of a seasoned sailor. By night, she collected lost letters, each one a story of love, loss, and longing.\n\nAs the storms raged outside, Emilia would sit by the fire, her eyes scanning the horizon for the next letter to add to her collection. She'd been doing it for years, ever since her own heart had been lost at sea. The letters came from all over \u2013 the world, it seemed, was full of those who'd lost their way.\n\nEmilia cherished each one, her fingers tracing the creases and folds. She'd read them aloud to the sea, her voice carrying the weight of their secrets. And as she listened, she'd feel the world expand, her own heart beating with the stories of those who'd come before her. The lighthouse was a beacon, but Emilia's heart was a vessel, carrying the dreams and disappointments of the lost. And in the darkness, she found a strange and beautiful solace.",
+    "elapsed_s": 15.226,
+    "predicted_n": 246,
+    "predicted_ms": 14909.975,
+    "tok_s": 16.49902162813821,
+    "prompt_n": 54,
+    "prompt_ms": 290.951,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   },
+   "spec": {
+    "text": "The lighthouse stood tall on the rugged coast, its beam slicing through the darkness to guide weary sailors home. But its keeper, Emilia, had a different purpose. By day, she tended the light, her hands moving with the precision of a seasoned sailor. By night, she collected lost letters, each one a story of love, loss, and longing.\n\nAs the storms raged outside, Emilia would sit by the fire, her eyes scanning the horizon for the next letter to add to her collection. She'd been doing it for years, ever since her own heart had been lost at sea. The letters came from all over \u2013 the world, it seemed, was full of those who'd lost their way.\n\nEmilia cherished each one, her fingers tracing the creases and folds. She'd read them aloud to the sea, her voice carrying the weight of their secrets. And as she listened, she'd feel the world expand, her own heart beating with the stories of those who'd come before her. The lighthouse was a beacon, but Emilia's heart was a vessel, carrying the dreams and disappointments of the lost. And in the darkness, she found a strange and beautiful solace.",
+    "elapsed_s": 15.67,
+    "predicted_n": 246,
+    "predicted_ms": 15311.565,
+    "tok_s": 16.066287149615338,
+    "prompt_n": 54,
+    "prompt_ms": 320.136,
+    "draft_n": 0,
+    "draft_n_accepted": 0
+   }
+  }
+ ],
+ "_meta": {
+  "experiment": "ngram",
+  "started_utc": "2026-09-24T04:19:02Z",
+  "seconds": 599.1,
+  "loadavg_end": [
+   6.63330078125,
+   8.78466796875,
+   9.8837890625
+  ]
+ }
+}

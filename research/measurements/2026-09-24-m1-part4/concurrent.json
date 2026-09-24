@@ -1,0 +1,118 @@
+{
+ "runs": [
+  {
+   "rep": 0,
+   "config": "base",
+   "wall_s": 25.24,
+   "aggregate_tok_s": 38.82,
+   "per_request_tok_s": [
+    11.775788977861515,
+    11.77604198384875,
+    11.77587727401803,
+    11.778551123791562
+   ],
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "tokens": 980
+  },
+  {
+   "rep": 0,
+   "config": "spec",
+   "wall_s": 12.69,
+   "aggregate_tok_s": 78.8,
+   "per_request_tok_s": [
+    31.168105802005233,
+    31.110004977600795,
+    31.126319569191818,
+    31.147260760381883
+   ],
+   "draft_n": 896,
+   "draft_n_accepted": 896,
+   "tokens": 1000
+  },
+  {
+   "rep": 1,
+   "config": "spec",
+   "wall_s": 11.98,
+   "aggregate_tok_s": 83.49,
+   "per_request_tok_s": [
+    31.546242880328442,
+    31.528188975424655,
+    31.590450282696622,
+    31.56604316997317
+   ],
+   "draft_n": 896,
+   "draft_n_accepted": 896,
+   "tokens": 1000
+  },
+  {
+   "rep": 1,
+   "config": "base",
+   "wall_s": 24.13,
+   "aggregate_tok_s": 40.62,
+   "per_request_tok_s": [
+    12.279172243457394,
+    12.274716368880378,
+    12.279601822132523,
+    12.280129297230756
+   ],
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "tokens": 980
+  },
+  {
+   "rep": 2,
+   "config": "base",
+   "wall_s": 24.39,
+   "aggregate_tok_s": 40.18,
+   "per_request_tok_s": [
+    12.138469316228628,
+    12.13838031002117,
+    12.13857396033114,
+    12.139725164550258
+   ],
+   "draft_n": 0,
+   "draft_n_accepted": 0,
+   "tokens": 980
+  },
+  {
+   "rep": 2,
+   "config": "spec",
+   "wall_s": 12.0,
+   "aggregate_tok_s": 83.34,
+   "per_request_tok_s": [
+    31.640362978244088,
+    31.608675494084693,
+    31.56025306778284,
+    31.5826561696024
+   ],
+   "draft_n": 896,
+   "draft_n_accepted": 896,
+   "tokens": 1000
+  },
+  {
+   "rep": "single",
+   "config": "base",
+   "tok_s": 21.74355824899569,
+   "draft_n": 0,
+   "draft_n_accepted": 0
+  },
+  {
+   "rep": "single",
+   "config": "spec",
+   "tok_s": 89.91657540134264,
+   "draft_n": 224,
+   "draft_n_accepted": 224
+  }
+ ],
+ "_meta": {
+  "experiment": "concurrent",
+  "started_utc": "2026-09-24T04:33:00Z",
+  "seconds": 132.4,
+  "loadavg_end": [
+   4.1650390625,
+   5.98876953125,
+   8.14794921875
+  ]
+ }
+}

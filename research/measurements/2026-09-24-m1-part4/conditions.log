@@ -1,0 +1,6 @@
+--- verify: 2026-09-24T04:18:20Z load { 5.75 11.35 10.55 } total = 17408.00M  used = 16511.31M  free = 896.69M  (encrypted)
+--- ngram: 2026-09-24T04:19:02Z load { 4.94 10.47 10.26 } total = 20480.00M  used = 19152.00M  free = 1328.00M  (encrypted)
+--- exact: 2026-09-24T04:29:32Z load { 5.67 8.36 9.69 } total = 19456.00M  used = 18189.81M  free = 1266.19M  (encrypted)
+--- concurrent: 2026-09-24T04:32:59Z load { 4.39 6.59 8.67 } total = 20480.00M  used = 19224.38M  free = 1255.62M  (encrypted)
+--- draftmodel: 2026-09-24T04:35:12Z load { 4.17 5.99 8.15 } total = 20480.00M  used = 19735.62M  free = 744.38M  (encrypted)
+--- end: 2026-09-24T04:42:47Z load { 8.74 7.05 7.87 } total = 21504.00M  used = 19900.12M  free = 1603.88M  (encrypted)
