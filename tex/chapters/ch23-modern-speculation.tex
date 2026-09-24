@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 23 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part4.md (draftmodel, verify).
 \chapter{Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction}\label{ch:modern-speculation}
 
 \begin{ChapterIntent}
@@ -15,30 +16,223 @@ run and to integrate.
 
 \OpeningSection{Drafting from the model's own features}
 
+The obvious drafter is a smaller model. On the M1 we paired an
+8-billion-parameter target, DeepSeek-R1-0528-Qwen3-8B, with a 3-billion-parameter
+drafter, Qwen2.5-Coder-3B, both quantized to four bits, in llama.cpp's server.
+The drafter disagreed with its target more than half the time: of the tokens
+it drafted, the target accepted 98 of 208 on one task and 106 of 231 on another,
+46 to 47\% (measured; record \texttt{2026-09-24-m1-part4}). It was not cheap
+either. One step of the drafter took 0.38 of a step of the target, close to the
+ratio of their bytes; and because the two models' vocabularies differ, the
+server translated every draft between them through text. The result, priced in
+\Chref{when-speculation-loses}, was decoding at half its normal speed.
+
+A drafter must predict what the target is about to say, cheaply. A separate
+model trained on different data and tokenized differently predicts what
+\emph{it} would say, at a third of the target's cost. The drafters of this
+chapter reverse both terms. They are built from the target itself --- its
+hidden features, its output head, heads trained alongside it --- so they agree
+with it far more often, and they cost a small fraction of a target step.
+
 \NapkinSection{Napkin math: draft cost against acceptance length}
+
+Let a drafter propose $\gamma$ tokens per verification pass at a cost of $c$
+target steps each, and let the target accept $\tau$ tokens per pass on average,
+counting the one it always produces. Ignoring the extra cost of verifying
+several tokens at once, the speedup is
+\begin{equation}
+S \approx \frac{\tau}{1 + \gamma\,c}.
+\label{eq:draft-speedup}
+\end{equation}
+Every modern drafter attacks the denominator. A separate model a third the
+size of its target has $c \approx 0.37$ in bytes read, the opening's case, so
+four drafted tokens cost more than a whole target step. A drafter built from one
+extra transformer layer that reuses the target's embedding table and output
+head reads that layer plus the output head per drafted token. For Llama~3.2~3B
+the output head alone is 394 million parameters --- 12\% of the model --- so
+such a drafter still costs about 15\% of a step; for Llama~3's
+70-billion-parameter model, with the same vocabulary, 80 layers and width 8,192
+\cite{llama2024herd}, the head is about 1.5\% of the parameters and one layer
+about 1.2\% (derived). Drafting from the target's
+own features pays best on large models, which is where its published speedups
+were measured.
 
 \section{Drafting from hidden features}
 
+EAGLE drafts not tokens but features: a small network, a single transformer
+layer, predicts the target's next second-to-top-layer feature vector from the
+current one and the token just sampled, and the target's own output head turns
+each predicted feature into a token distribution \cite{li2024eagle}. Features
+carry more of what the target is about to do than tokens do, and feeding the
+drafter the token sequence advanced by one step resolves the ambiguity of which
+continuation was sampled. Verification uses the rule of
+\Chref{speculative-decoding}, so the output distribution is unchanged. Its
+authors reported latency speedups of 2.7 to 3.5 times on LLaMA2-Chat 70B and
+doubled throughput (their measurement).
+
 \section{EAGLE and EAGLE-2: dynamic draft trees}
+
+A single chain of drafted tokens fails at its first wrong guess. A tree hedges:
+at each depth the drafter keeps several candidates, and one verification pass
+checks every root-to-leaf path. The tree's shape matters, and the best shape
+depends on the context: after \emph{New} a tree should branch; inside a quoted
+URL it should run deep. EAGLE-2 grows the tree where its drafter is confident,
+using the drafter's probabilities as estimates of acceptance, which its authors
+found well calibrated; they reported speedups of 3.05 to 4.26 times, 20 to 40\%
+faster than EAGLE \cite{li2024eagle2} (their measurement).
 
 \section{EAGLE-3: tokens, not features}
 
+EAGLE-3's authors found that predicting features limited how much the drafter
+improved with more training data. Their third version predicts tokens directly,
+fuses features from several layers of the target rather than only the top one,
+and during training feeds the drafter its own earlier predictions, as it will
+see them when drafting several steps ahead --- a procedure they call
+training-time test \cite{li2025eagle3}. They reported speedups up to 6.5 times,
+about 1.4 times EAGLE-2, and 1.38 times the throughput at batch 64 inside
+SGLang (their measurement). EAGLE-3 is supported by vLLM and SGLang
+\cite{vllm2026specdecode,sglang2026specdecode}.
+
 \section{Tree attention and verification}
+
+Verifying a tree in one forward pass needs an attention mask shaped like the
+tree: each drafted token attends to the prompt, to the tokens already accepted
+and to its own ancestors in the tree, and to nothing on other branches. The
+tree's nodes are laid out as one flat sequence of positions, the mask encodes
+the branching, and the target computes logits for every node at once. SpecInfer
+introduced this token-tree verification, reporting 1.5 to 2.8 times faster
+distributed serving and 2.6 to 3.5 times faster offloaded serving
+\cite{miao2024specinfer} (their measurement). After verification the engine
+keeps the cache entries of the longest accepted path and discards the rest, the
+tree version of \Chref{speculative-decoding}'s rollback. SGLang exposes the
+tree's shape as three settings --- drafting depth, branching per step and
+the number of tokens verified --- with defaults that differ by model family
+\cite{sglang2026specdecode}.
+
+\FigureIntent{A draft tree of depth three with branching two, its nodes laid
+out as a flat sequence, and the tree attention mask beside it: each row lit
+for the prompt, for the node's ancestors and for itself; the accepted path
+highlighted and the discarded branches' cache entries crossed out.}
 
 \section{Medusa heads}
 
+Medusa skips the separate drafter: it adds several output heads to the target,
+head $i$ predicting the token $i$ positions ahead from the last hidden state,
+and builds a tree from the top candidates of each head \cite{cai2024medusa}.
+With the backbone frozen, its authors reported more than 2.2 times speedup;
+training heads and backbone together, 2.3 to 3.6 times (their measurement).
+Medusa also offered a \emph{typical acceptance} rule that accepts plausible
+tokens rather than exactly verified ones. It raises acceptance and gives up the
+guarantee that the output distribution is the target's: an engineering choice
+the ledger must record, not a free improvement.
+
 \section{Multi-token prediction trained with the model}
+
+The drafter can be part of the model from the start. Gloeckle and colleagues
+trained models to predict several future tokens with independent heads on a
+shared trunk; the auxiliary task improved 13-billion-parameter models on
+coding benchmarks, and models trained to predict four tokens ran up to three
+times faster with self-speculative decoding, including at large batch sizes
+\cite{gloeckle2024mtp} (their measurement). DeepSeek-V3 trains one extra
+multi-token-prediction module. Its report states that the module can be
+discarded at inference, and that used as a drafter its second-token prediction
+was accepted 85 to 90\% of the time, raising decoding speed to 1.8 times the
+tokens per second \cite{deepseek2024v3}. When a model ships with such a module,
+the drafter's training cost has already been paid.
 
 \section{Parallel drafting}
 
+An autoregressive drafter still runs $\gamma$ small steps in sequence before
+each verification, and at high speed those steps are the bottleneck. P-EAGLE
+drafts all $\gamma$ tokens in one forward pass of the drafter, which lets it
+draft deeper at the same cost; its developers reported acceptance 13 to 31\%
+higher than EAGLE-3 at equal depth and speedups over EAGLE-3 of 1.55 to 1.69
+times at a concurrency of one \cite{vllm2026peagle}. Speculative speculative
+decoding attacks the remaining sequential dependency: while the target verifies
+one draft, the drafter prepares drafts for the verification's likely outcomes,
+and its authors reported 30\% more speed than optimized speculative decoding
+\cite{kumar2026ssd} (their measurement).
+
 \section{Choosing a method}
+
+\begin{center}\small
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.2\linewidth}@{}}
+\toprule
+Drafter & Training needed & Draft cost & Distribution \\
+\midrule
+Prompt or suffix lookup & none & a table lookup & exact \\
+Smaller model & none, if one exists & a large fraction of a step & exact \\
+EAGLE family & a one-layer drafter per target & one layer plus the output head & exact \\
+Medusa & heads per target & heads only & exact or typical \\
+Multi-token prediction & with the model & one module & exact \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Lookup drafters cost nothing and win only where the output repeats its context
+(\Chref{speculative-decoding}). Model-based drafters win broadly but must be
+trained for each target and kept in step with it through every fine-tune.
+Multi-token-prediction modules shift that cost into pre-training, where the
+model's builder pays it once.
 
 \LedgerSection
 
+Drafting from the target's own features, heads or trained modules:
+
+\begin{ConstraintLedger}
+Latency & buys & Several accepted tokens per target pass: published speedups of 2.2 to 6.5 times at low concurrency. \\
+Compute & spends & Draft passes and verification of rejected tree branches; the saving shrinks as the batch fills (\Chref{when-speculation-loses}). \\
+Memory capacity & spends & Drafter weights or heads, and cache entries for every tree node verified. \\
+Correctness & risks & Exact with rejection sampling; not exact with typical acceptance. \\
+\end{ConstraintLedger}
+
 \LabSection{a draft tree and its verification mask}
 
-\HappenedSection{parallel drafting at high concurrency}
+\LabIntent{In \texttt{code/labs/ch23-draft-tree/}, a Rust builder for draft
+trees of configurable depth and branching over the mini-engine's model, the
+flattened position layout and the tree attention mask, and a verifier that
+accepts the longest matching path. An oracle verifies each path separately with
+ordinary causal attention and must agree with the one-pass verification. The
+reader measures accepted tokens per pass for chains and trees on a small corpus
+and finds the branching factor beyond which verification costs more than it
+saves.}
 
-\FrontierSection{}
+\HappenedSection{parallel drafting under load}
+
+P-EAGLE's release shows how a drafter's benefit depends on load. On NVIDIA
+B200 GPUs, with GPT-OSS and Qwen3-Coder models, parallel drafting beat EAGLE-3
+by 1.55 to 1.69 times at a concurrency of one --- and by only 1.05 to 1.23 times
+at a concurrency of 64 \cite{vllm2026peagle} (the developers' measurement).
+Nothing about the drafter changed between the two numbers. At concurrency one
+the GPU idles between tokens and every accepted token is time saved; at 64 the
+batch already keeps the GPU busy, and the extra drafted and verified tokens
+compete with other requests' work. The feature ships in vLLM from version 0.16
+as an option on the speculative configuration, and the numbers say when to turn
+it on --- the subject of \Chref{when-speculation-loses}.
+
+\FrontierSection{2026-09-24}
+
+Model-based drafting is now built into the major engines --- EAGLE-3, MTP
+modules and parallel drafting in vLLM, EAGLE-2 and EAGLE-3 trees and MTP in
+SGLang \cite{vllm2026specdecode,sglang2026specdecode} --- and into models
+themselves: DeepSeek-V3 trains a multi-token-prediction module
+\cite{deepseek2024v3}, and Qwen3.5's published configuration declares one
+\cite{qwen2026qwen35config}. Research is removing the remaining sequential
+steps \cite{vllm2026peagle,kumar2026ssd}. llama.cpp, in the build measured
+for this part, declares an EAGLE-3 draft type whose drafting function is not
+yet implemented (\texttt{common/speculative.cpp} at commit \texttt{d006858}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:draft-speedup}, find the
+acceptance length $\tau$ at which a drafter costing $c = 0.15$ per token with
+$\gamma = 4$ breaks even, and compare it with $c = 0.02$.
+\item \emph{Prediction.} A draft tree has depth 3 and branching 2 at every
+node. How many tokens does its verification pass process, and how many can it
+accept at most?
+\item \emph{Implementation.} Add dynamic branching to the lab's tree builder:
+expand the most probable nodes until a budget of verified tokens is spent.
+\item \emph{Falsification.} Construct a distribution for which typical
+acceptance produces an output sequence the target model would never sample.
+\end{enumerate}

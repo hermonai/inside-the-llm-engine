@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 24 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part4.md (concurrent, draftmodel,
+% ngram at temperature 0.8, verify).
 \chapter{When Speculation Loses}\label{ch:when-speculation-loses}
 
 \begin{ChapterIntent}
@@ -14,26 +16,202 @@ production engines must handle.
 
 \OpeningSection{Slower with speculation}
 
+The drafter of \Chref{modern-speculation}'s opening --- a 3-billion-parameter
+model speculating for an 8-billion-parameter target on the M1 --- did more than
+disappoint. Without speculation, the target decoded at 9.8 to 10.6 tokens per
+second; with the drafter, at \textbf{4.3 to 5.6}. Speculation made decoding
+about twice as slow, with 46 to 47\% of the drafts accepted (measured, two runs
+of two workloads each, alternating with the baseline; record
+\texttt{2026-09-24-m1-part4}).
+
+Even a drafter that is right every time pays less as the machine gets busier.
+Prompt lookup, repeating a passage for Llama~3.2~3B, accepted all 896 of its
+drafted tokens whether one request ran or four. For a single request it was
+4.1 times faster than decoding without speculation on the same servers; with
+four requests at once, 2.0 times, in three runs. The drafts had not changed. What
+changed was the verification pass: four sequences with 16 drafts each put 68
+tokens into every step instead of 4, on a machine whose arithmetic runs out at
+about a dozen.
+
+Both results follow from one inequality: speculation pays while a verification
+pass costs less than the tokens it accepts. This chapter builds that inequality
+from the roofline, finds where each measured case sits on it, and lists the
+ways a production engine can end up on the wrong side.
+
 \NapkinSection{Napkin math: the break-even batch size}
+
+Let a step that processes $n$ tokens take $t(n)$. Below the roofline's ridge
+(\Chref{roofline}) the step is bandwidth-bound and $t(n)$ barely grows with $n$;
+above it, $t(n)$ grows in proportion to $n$. Without speculation, a batch of
+$B$ sequences produces $B$ tokens per step of cost $t(B)$. With a free drafter,
+$\gamma$ drafts per sequence and $\tau$ accepted tokens per sequence per pass,
+it produces $B\tau$ tokens per pass of cost $t\bigl(B(\gamma+1)\bigr)$.
+Speculation pays while
+\begin{equation}
+\frac{t\bigl(B(\gamma+1)\bigr)}{t(B)} < \tau .
+\label{eq:spec-breakeven}
+\end{equation}
+While $B(\gamma+1)$ stays below the ridge's token count $n^{*}$ the left side is
+near one and any $\tau > 1$ wins. Once $B$ itself is above the ridge the left
+side approaches $\gamma+1$, which exceeds $\tau$ for any imperfect drafter:
+every rejected draft is arithmetic taken from another sequence. The break-even
+batch is therefore roughly $B_{\text{be}} \approx n^{*}/(\gamma+1)$.
+
+The ridge is where the hardware decides. For 16-bit weights, each token in a
+step does about one FLOP per byte of weights, so $n^{*}$ is about the ridge
+intensity itself: some 300 tokens on an H100 in BF16, which with $\gamma = 4$
+puts the break-even near 60 sequences (derived). On the M1, with a ridge of 38
+FLOP per byte and the 5.0-bit average weights of its quantized Llama~3.2~3B
+(\Chref{weight-quantization}), $n^{*}$ is about 12 tokens and the break-even
+is two or three sequences (derived). The measured cost of verifying
+on the M1 --- 2.3 single-token steps for 16 tokens of Llama~3.2~3B --- is this
+arithmetic showing through.
 
 \section{The break-even model}
 
+Equation~\eqref{eq:spec-breakeven} with a drafter's cost added becomes
+\begin{equation}
+\frac{\gamma\,c\,t(B) + t\bigl(B(\gamma+1)\bigr)}{t(B)} < \tau ,
+\end{equation}
+and every term moves with the workload. $\tau$ depends on the text and the
+sampling settings; $c$ on the drafter and the hardware; the ratio of step times
+on the batch and the context length. A speculation policy fixed at deployment
+is therefore wrong somewhere in every day's traffic, and the engines that
+handle it well measure acceptance and load continuously and adjust $\gamma$ ---
+down to zero --- as they change. TurboSpec, implemented in vLLM, closes this
+loop by predicting goodput for each speculation setting and choosing the best,
+after its authors found that speculation added without tuning could degrade
+serving \cite{liu2024turbospec}.
+
 \section{Large batches: no idle compute}
+
+Continuous batching (\Chref{continuous-batching}) and speculation compete for
+the same idle arithmetic. At low concurrency the GPU waits on memory and
+speculation fills the wait with verification; at high concurrency the batch
+fills it with other sequences, and every drafted token that is rejected is work
+taken from a request that would have used it. P-EAGLE's measurements trace the
+curve: 1.55 to 1.69 times faster than EAGLE-3 at a concurrency of one, 1.05 to
+1.23 times at 64 \cite{vllm2026peagle}. Long contexts move the ridge. When each
+sequence reads a long cache, attention's bytes dominate the step and the step
+stays bandwidth-bound at larger batches; MagicDec used a drafter with a sparse
+cache to exploit this and reported up to 2.51 times at batch sizes from 32 to
+256 \cite{sadhukhan2024magicdec} (their measurement).
 
 \section{Low acceptance: temperature and domain}
 
+Acceptance is a property of the text. Where the output copies its context,
+drafts from the context are almost always right; where the model composes new
+text, they are almost never proposed or almost always wrong. Temperature lowers
+acceptance for every drafter: the target's sample at each position must equal
+the draft, and a flatter distribution makes that less likely even when the
+draft is the most probable token. How much depends on how certain the model
+is. On the M1, raising the temperature from 0 to 0.8 barely moved prompt
+lookup's acceptance on copying tasks --- all 672 drafts accepted when
+repeating the passage, 571 of 624 against 579 of 624 when editing it ---
+because the next word of a quotation is nearly a certainty for the model. The
+losses come where the model is choosing: a separate drafter predicting a
+reasoning model's thoughts was accepted less than half the time even under
+greedy decoding.
+
 \section{Draft cost and memory}
+
+A separate drafter costs time and memory. Its time is the $\gamma c$ term; its
+memory is its weights and its own cache, taken from the batch's cache budget
+(\Chref{kv-cache}). On the M1 the 3-billion-parameter drafter cost 0.38 of a
+target step per drafted token and added 1.9~GB of weights to the target's
+5.2~GB, 37\% more, plus its own cache; with up to 16 drafts per pass, a
+rejected draft chain can cost several target steps. A drafter is worth its
+memory only if the
+speculation it enables saves more than the batch that memory would otherwise
+have held.
 
 \section{Interactions with the rest of the engine}
 
+Speculation touches every other mechanism in this part of the book. Drafted
+tokens count against the step's token budget, so they compete with prompt
+chunks (\Chref{chunked-prefill}). Constrained decoding must apply the grammar
+to every verified position and stop at the first invalid draft
+(\Chref{structured-output}); llama.cpp's verification samples each position
+through the full sampler chain, grammar included, for that reason
+(\texttt{common/sampling.cpp} at commit \texttt{d006858}). Repetition penalties
+and logit biases must see exactly the tokens they would have seen without
+speculation. Rolled-back cache entries must never be shared through a prefix
+cache (\Chref{prefix-caching}). And streaming changes shape: tokens arrive in
+bursts of up to $\gamma+1$, so time per output token improves while the gap
+before each burst grows, which matters to an interface that renders token by
+token.
+
 \section{Measuring speculation honestly}
+
+A speedup from speculation is meaningful only with its conditions: the
+acceptance rate and draft length; the concurrency and the temperature; the
+workload's share of decode against prefill (\Chref{prefill-decode}); and a
+check that the outputs are the ones the target would have produced. Report the
+distribution of time per output token, not only its mean, because speculation
+makes it bimodal. Measure at the concurrency the service runs at, not at one.
+And compare like with like: two runs that produce different text are two
+different workloads (\Chref{benchmarking}).
 
 \LedgerSection
 
+Speculating at a given batch size, temperature and drafter:
+
+\begin{ConstraintLedger}
+Latency & buys & Tokens per pass above one, while the verification pass stays below the ridge (equation~\eqref{eq:spec-breakeven}). \\
+Compute & spends & Every rejected draft; at batch sizes past $n^{*}/(\gamma+1)$, arithmetic taken from other sequences. \\
+Memory capacity & spends & A drafter's weights and cache, taken from the batch. \\
+Latency & risks & Burstier streams, and slower requests when acceptance or idle compute falls. \\
+\end{ConstraintLedger}
+
 \LabSection{find your break-even point}
+
+\LabIntent{In \texttt{code/labs/ch24-break-even/}, a harness that measures the
+step time $t(n)$ of the reader's engine for $n$ from 1 to 512 tokens, fits the
+ridge, and predicts the break-even batch of
+equation~\eqref{eq:spec-breakeven} for several draft lengths and acceptance
+rates; a second part runs the lab of \Chref{speculative-decoding} at increasing
+concurrency and marks where the measured speedup crosses one. The prediction
+is checked against the measurement, and disagreements are the exercise.}
 
 \HappenedSection{a speedup that vanished outside its workload}
 
-\FrontierSection{}
+Hermon's prompt-lookup speculation gained 1.33 times on four concurrent quote
+requests on an Apple M3 Pro (\Chref{speculative-decoding}). Its developers then
+ran it on a Linux machine with two GPUs, Qwen2.5-1.5B quantized to four bits,
+eight concurrent requests, each asked to write a 250-word essay quoting a
+passage several times. The drafts were good: 1,443 of 2,624 accepted, 55\%. The
+run was \textbf{6\% slower}: 133.4 tokens per second against 141.3 without
+speculation (Hermon \texttt{docs/PERFORMANCE.md}, 2026-05-12; the developers'
+measurement). Their explanation is this chapter's napkin math. With eight
+sequences and five drafts each, a fully speculating step processed 48 tokens
+instead of 8; for a small model on fast GPUs each forward pass was cheap, so
+fattening it cost more than the accepted tokens saved. They wrote the rule down
+--- turn speculation on for larger models at modest concurrency on text that
+quotes its context, and measure before turning it on elsewhere --- and left it
+off by default.
+
+\FrontierSection{2026-09-24}
+
+Engines are turning speculation from a flag into a controller: TurboSpec's
+closed loop in vLLM chooses the speculation setting by predicted goodput
+\cite{liu2024turbospec}; drafters that cost less per pass push the break-even
+batch outward \cite{vllm2026peagle}; and long-context serving, where the cache
+keeps steps bandwidth-bound, extends speculation to large batches
+\cite{sadhukhan2024magicdec}. The break-even arithmetic will keep moving as
+hardware ridges rise: each generation that raises arithmetic faster than
+bandwidth makes idle compute more plentiful, and speculation more valuable.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} With $t(n) = \max(t_0, a\,n)$, derive the break-even
+batch size as a function of $\gamma$, $\tau$, $t_0$ and $a$.
+\item \emph{Prediction.} For an H100 serving an 8-billion-parameter model in
+FP8, estimate $n^{*}$ and the break-even batch at $\gamma = 4$.
+\item \emph{Implementation.} Add an adaptive draft length to the lab of
+\Chref{speculative-decoding} that shrinks $\gamma$ when recent acceptance
+falls, and compare it with a fixed $\gamma$ across a workload that alternates
+between quoting and free writing.
+\item \emph{Falsification.} Find a concurrency at which speculation helps on
+your machine at temperature 0 but hurts at temperature 1.
+\end{enumerate}

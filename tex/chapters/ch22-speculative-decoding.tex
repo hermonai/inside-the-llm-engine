@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 22 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part4.md (ngram, exact, verify).
 \chapter{Speculative Decoding: The Draft--Verify Contract}\label{ch:speculative-decoding}
 
 \begin{ChapterIntent}
@@ -15,28 +16,258 @@ back the KV cache after a rejection.
 
 \OpeningSection{Several tokens for the price of one step}
 
+Ask Llama~3.2~3B, through llama.cpp's server on the M1, to repeat a
+218-word passage from its prompt. Without speculation it produced the 245
+tokens of its answer at 15 to 16 tokens per second, one forward pass per token.
+With prompt-lookup speculation --- drafts copied from the prompt wherever the
+last dozen tokens of output match it --- the drafter proposed 224 tokens and
+the model accepted every one. The answer took about 21 forward passes instead
+of 245, arrived at 60 to 65 tokens per second, \textbf{3.7 to 4.3 times faster},
+and was identical, character for character, to the answer without speculation
+in all three runs (measured; record \texttt{2026-09-24-m1-part4}).
+
+Change the task and the gain changes with it. Asked to rewrite the passage
+with one word replaced, the model accepted 193 of 208 drafts and ran 2.5 to 3.1
+times faster. Asked to summarize the passage, or to write a story, it produced
+no run of a dozen tokens that the prompt contained, the drafter proposed
+nothing, and the speed was unchanged. Across ten greedy prompts, the outputs
+with and without speculation were identical wherever both ran; the one
+difference was a speculative run that ended 45 characters early, as expected
+from a server that counts a pass's accepted drafts against the length limit
+before emitting them (\texttt{tools/server/server-context.cpp} at commit
+\texttt{d006858}).
+
+Eleven or twelve tokens per forward pass, then, but a four-fold speedup.
+The gap is the price of verification: each pass checked 17 tokens, which on
+this laptop costs about 2.3 ordinary steps. This chapter derives the contract
+that made those outputs identical, the arithmetic that predicts the speedup,
+and the drafters that make it possible.
+
 \NapkinSection{Napkin math: acceptance rate and expected speedup}
+
+Suppose a drafter proposes $\gamma$ tokens and the target accepts each one,
+independently, with probability $\alpha$, stopping at the first rejection.
+Every verification pass also yields one token from the target itself --- the
+correction after a rejection, or a bonus token after a full acceptance --- so
+the expected number of tokens per pass is
+\begin{equation}
+\mathbb{E}[\text{tokens per pass}] = \frac{1-\alpha^{\gamma+1}}{1-\alpha},
+\label{eq:spec-tokens}
+\end{equation}
+Leviathan and colleagues' equation \cite{leviathan2023speculative}. If a
+drafted token costs $c$ target steps and a verification pass costs $v$ target
+steps, the speedup over ordinary decoding is
+\begin{equation}
+S = \frac{1-\alpha^{\gamma+1}}{(1-\alpha)\,(\gamma c + v)}.
+\label{eq:spec-speedup}
+\end{equation}
+With $v = 1$ this is their walltime improvement factor. That assumption ---
+verifying $\gamma+1$ tokens costs one step --- holds where decode leaves the
+arithmetic idle (\Chref{roofline}). On the M1 it does not quite: processing 16
+tokens at once cost 2.3 single-token steps for Llama~3.2~3B and 2.7 for an
+8-billion-parameter model (measured with \texttt{llama-bench}; record
+\texttt{2026-09-24-m1-part4}; Figure~\ref{fig:ch22-verify-cost}).
+
+\EngineFigure{ch22-verify-cost}{The time of one forward pass over $k$ tokens
+of one sequence, relative to a single token, on the M1 (measured). A
+verification pass over $\gamma$ drafts processes $k=\gamma+1$ tokens; the
+dashed line is the assumption behind the textbook speedup formula. On this
+machine a multi-token pass runs different matrix kernels from a single-token
+one (\Chref{roofline}) and costs 1.4 to 3 single-token steps, with a staircase
+at small $k$; beyond about 12 tokens the curve is flat, so a 32-token pass costs
+what a 12-token pass does.}{fig:ch22-verify-cost}
+
+With $\alpha = 0.8$, $\gamma = 4$ and a free
+drafter, equation~\eqref{eq:spec-tokens} gives 3.4 tokens per pass; at $v = 1$
+that is a 3.4-fold speedup, and at $v = 1.6$, the M1's measured cost of a
+five-token pass for the 3B model, about 2.1 (derived).
 
 \section{Verification is cheap at decode}
 
+A decode step reads every weight to produce one token per sequence
+(\Chref{roofline}). Feeding the model $k$ tokens of the same sequence instead ---
+the last accepted token followed by $k-1$ guesses --- reads the same weights
+once and produces $k$ sets of logits, one per position, exactly as a short
+prefill does. Where decode is bandwidth-bound, the extra arithmetic fills
+capacity that was idle, and $k$ tokens cost nearly the same as one. The cache
+reads grow by the $k-1$ extra positions' attention, a small addition at short
+context. Verification is therefore nearly free on hardware with idle arithmetic
+and becomes expensive exactly when the arithmetic is already in use ---
+\Chref{when-speculation-loses}.
+
 \section{Draft, verify, accept}
+
+The loop has three steps. The drafter proposes $\gamma$ tokens
+$x_1,\dots,x_\gamma$ continuing the accepted text. The target runs once on the
+last accepted token and the $\gamma$ drafts, producing distributions
+$p_1,\dots,p_{\gamma+1}$ for every position. The engine then walks the drafts
+in order, accepting each by the rule of the next section; at the first
+rejection it replaces the rejected token with one drawn from the target and
+discards the rest. If every draft is accepted, $p_{\gamma+1}$ supplies one more
+token for free. Each pass therefore emits between one and $\gamma+1$ tokens, and
+never fewer than ordinary decoding would.
+
+\FigureIntent{One verification pass as a timeline: the drafter's $\gamma$
+small steps, the target's single pass over $\gamma+1$ positions, the accepted
+prefix, the rejected tail discarded from the cache, and the correction or bonus
+token; beside it, the same tokens produced by ordinary decoding, one pass
+each.}
 
 \section{The acceptance rule that preserves the distribution}
 
+Let the drafter sample $x$ from its distribution $q$ and let the target's
+distribution at that position be $p$. Accept $x$ with probability
+$\min\!\bigl(1, p(x)/q(x)\bigr)$; on rejection, sample a replacement from the
+residual distribution
+\begin{equation}
+p'(y) = \frac{\max\bigl(0,\,p(y)-q(y)\bigr)}{\sum_{z}\max\bigl(0,\,p(z)-q(z)\bigr)}.
+\label{eq:residual}
+\end{equation}
+The emitted token then has exactly the distribution $p$
+\cite{leviathan2023speculative,chen2023speculative}. The proof is two lines.
+Let $\beta = \sum_y \min(p(y), q(y))$ be the probability of accepting. The
+emitted token is $y$ either because $y$ was drafted and accepted, with
+probability $q(y)\min(1, p(y)/q(y)) = \min(p(y), q(y))$, or because a
+rejection occurred and $y$ was resampled, with probability $(1-\beta)\,p'(y) =
+p(y) - \min(p(y), q(y))$. The two add to $p(y)$. Applied position by
+position, the whole output is distributed exactly as the target would have
+generated it, however poor the drafter: a bad drafter costs speed, never
+correctness.
+
+Two special cases matter in practice. Under greedy decoding, a draft is
+accepted if and only if it equals the target's most likely token. And when the
+drafter is deterministic --- a lookup table, or a small model taking its own
+most likely token --- $q$ puts all its mass on $x$, and the rule reduces to
+\emph{sample from $p$ and compare}: accept if the target's sample equals $x$.
+That is what llama.cpp's server does at every drafted position
+(\texttt{common\_sampler\_sample\_and\_accept\_n} in \texttt{common/sampling.cpp}
+at commit \texttt{d006858}); since its drafts are deterministic proposals, the
+rule is exact.
+
 \section{Expected speedup}
+
+Equation~\eqref{eq:spec-speedup} has three levers. Acceptance $\alpha$ depends
+on how well the drafter predicts the target on this text; it is high where the
+output is predictable and low where the model is choosing freely. Draft length
+$\gamma$ has an optimum: each extra draft adds cost $c$ and helps only if all
+drafts before it were accepted, so the marginal draft is worth $\alpha^{\gamma}$
+tokens. And the costs $c$ and $v$ belong to the hardware and the batch. Real
+acceptance is not independent from token to token: inside a quoted passage
+every draft is right, inside a fresh sentence most are wrong, and engines adapt
+$\gamma$ to the recent acceptance for that reason
+(\Chref{when-speculation-loses}).
 
 \section{Drafts from n-grams and the prompt}
 
+The cheapest drafter is the text already present. Prompt lookup searches the
+prompt and the output so far for the most recent earlier occurrence of the last
+few tokens and proposes what followed them. llama.cpp's simple n-gram drafter
+matches the last 12 tokens and proposes up to 48 that followed, capped by the
+server's draft limit of 16 (\texttt{common/ngram-map.cpp} and the server's
+\texttt{--spec-type} option at commit \texttt{d006858}); vLLM offers the same
+idea with configurable match lengths \cite{vllm2026specdecode}. Its cost is a
+search, $c \approx 0$, and its acceptance is high exactly when the output
+repeats the context: quoting, editing, code that reuses identifiers, structured
+data that echoes a schema. SuffixDecoding extends the table to earlier requests'
+outputs, which pays off in agent loops that repeat themselves; its authors
+reported up to 5.3 times on agentic benchmarks \cite{oliaro2025suffixdecoding}.
+Lookahead decoding needs no drafter at all: it generates n-grams from Jacobi
+iterations of the model itself and verifies them in the same pass, reporting up
+to 1.8 times on MT-bench \cite{fu2024lookahead} (their measurements).
+
 \section{Drafts from a smaller model}
+
+A smaller model of the same family, sharing the tokenizer, predicts the target
+well on ordinary text. Its cost $c$ is its step time over the target's: on the
+M1, a 3-billion-parameter draft for an 8-billion-parameter target measured
+0.38, close to the ratio of their bytes. That is expensive:
+equation~\eqref{eq:spec-speedup} with $c = 0.38$ and $\gamma = 4$ needs high
+acceptance just to break even. Drafters are therefore made much smaller than
+their targets, or built from the target itself (\Chref{modern-speculation}).
+llama.cpp adds two refinements. It stops drafting when the drafter's own
+probability for its next token falls below a threshold, 0.75 by default, so
+that uncertain drafts are not paid for; and it can pair a drafter and target
+whose vocabularies differ by translating tokens through text, at extra cost
+(server options at commit \texttt{d006858}).
 
 \section{Rolling back the cache}
 
+Verification writes the cache entries of every drafted position. After a
+rejection, the entries past the accepted prefix are wrong --- they encode tokens
+that will never be part of the output --- and must be discarded before the next
+pass. With a contiguous or paged cache this is a truncation of the sequence's
+length and costs nothing; llama.cpp's server keeps the accepted tokens and cuts
+the rest from the slot's token list before the next step
+(\texttt{tools/server/server-context.cpp} at commit \texttt{d006858}). The
+drafter's own cache must be rolled back the same way. Models whose state is not
+a list of per-token entries --- recurrent and state-space layers
+(\Chref{hybrid-models}) --- cannot truncate: they must checkpoint their state
+before a speculative pass and restore it after a rejection.
+
 \LedgerSection
+
+Drafting cheaply and verifying $\gamma$ tokens per target pass:
+
+\begin{ConstraintLedger}
+Latency & buys & Up to $\gamma+1$ tokens per target pass (equation~\eqref{eq:spec-tokens}); several-fold where the output is predictable. \\
+Compute & spends & The drafter's work, and the target's work on rejected drafts: $\gamma c + v$ steps per pass (equation~\eqref{eq:spec-speedup}). \\
+Memory capacity & spends & A drafter's weights and cache; cache entries for drafts that will be discarded. \\
+Correctness & risks & Exact by construction; batched verification changes floating-point order, so greedy outputs can differ in rare places. \\
+\end{ConstraintLedger}
 
 \LabSection{speculative sampling with an exactness test}
 
+\LabIntent{In \texttt{code/labs/ch22-speculative/}, a Rust implementation of
+the draft--verify loop over the mini-engine's model, with a prompt-lookup
+drafter and a deliberately poor random drafter. The exactness test draws a
+hundred thousand samples with and without speculation from a small fixed
+context and compares their empirical distributions with a chi-squared test; a
+greedy test compares token sequences. The reader measures tokens per pass
+against equation~\eqref{eq:spec-tokens}, then breaks the rule --- accepting
+without the residual resample --- and watches the distribution test fail.}
+
 \HappenedSection{prompt lookup on retrieval workloads}
 
-\FrontierSection{}
+Hermon added prompt-lookup speculation to its batched runtime and measured it
+where it should win: on an Apple M3 Pro, Llama-3-3B quantized to four bits,
+four concurrent requests asking the model to quote a passage from their
+prompts. Speculation cut the decode steps from 64 to 40 and raised aggregate
+throughput from 51.3 to 68.1 tokens per second, 1.33 times, with 96 of 160
+drafted tokens accepted (Hermon \texttt{docs/PERFORMANCE.md}, 2026-05-12; the
+developers' measurement). Their notes list where they expected it to win ---
+retrieval, code completion, summarization, tool calls that echo their inputs
+--- and where not: open-ended writing, arithmetic, translation, whose tokens
+are new. The feature is off unless two environment variables set its n-gram
+and draft lengths (\texttt{crates/hermon-runtime/src/batched.rs} at commit
+\texttt{2a3fd52}; PREVIEW). Measured on a second machine and workload, the same
+feature gained only 1.09 times when prefill dominated (\Chref{prefill-decode})
+and lost 6\% at higher concurrency (\Chref{when-speculation-loses}): the
+technique was the same; the ledger was not.
+
+\FrontierSection{2026-09-24}
+
+Speculative decoding is standard in every major engine, and the menu of
+drafters keeps growing: vLLM ships model-based drafters, n-gram and suffix
+lookup \cite{vllm2026specdecode}; SGLang ships tree-based EAGLE drafting and
+n-gram lookup \cite{sglang2026specdecode}; llama.cpp ships draft models and
+five kinds of n-gram lookup. Model-free drafting is being extended to the
+repetitive traffic of agents \cite{oliaro2025suffixdecoding}. The drafters
+built from the target itself are \Chref{modern-speculation}'s subject; when
+speculation stops paying is \Chref{when-speculation-loses}'s.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Show that under greedy decoding the rule of
+equation~\eqref{eq:residual} accepts a draft exactly when it equals the
+target's most likely token, and find the probability of accepting when both
+distributions are uniform over $n$ tokens.
+\item \emph{Prediction.} Using equation~\eqref{eq:spec-speedup}, find the
+draft length $\gamma$ that maximizes speedup for $\alpha = 0.6$, $c = 0.05$ and
+$v = 1$, then for $v = 1 + 0.1\gamma$.
+\item \emph{Implementation.} Add a smaller-model drafter to the lab and measure
+its cost ratio $c$ on your machine.
+\item \emph{Falsification.} Find a drafter and text for which speculation with
+exact verification is slower than ordinary decoding on your machine. Which term
+of equation~\eqref{eq:spec-speedup} is responsible?
+\end{enumerate}
