@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 15 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part3.md (contbatch);
+% research/measurements/2026-09-23-m1-llama32-3b.md (batched decode staircase).
 \chapter{Continuous Batching}\label{ch:continuous-batching}
 
 \begin{ChapterIntent}
@@ -15,26 +17,217 @@ execution.
 
 \OpeningSection{The request that waited for a stranger's essay}
 
+Start llama.cpp's server on the M1 with four request slots and Llama~3.2~3B.
+One client asks for a 512-token answer. Two seconds later a second client asks
+for 32 tokens --- a one-line reply that needs about 1.3 seconds of decoding.
+With the server's continuous batching switched off, the second client's first
+token arrived \textbf{20.5 to 21.6 seconds} after it asked, in three runs: it
+waited for the stranger's essay to finish before its own prompt was even read.
+With continuous batching on --- the default --- its first token arrived in
+\textbf{0.50 seconds}, and its whole answer was complete 2.9 seconds after it
+asked (measured; record \texttt{2026-09-24-m1-part3}).
+
+The switch changes one condition in the server's scheduling loop. At every
+iteration, llama.cpp first adds one token for each sequence that is decoding;
+new prompts are then added to the same batch only if continuous batching is on
+or if nothing is decoding (\texttt{tools/server/server-context.cpp} at commit
+\texttt{d006858}, the source of the measured build). Off, the server batches
+whole requests: a new one starts when the current batch drains. On, the batch
+is re-formed at every step, and a newcomer joins the very next forward pass.
+
+The first client paid something for the second's speed. Its essay took 23.3 to
+25.7 seconds instead of 22.1 to 23.2, and while the two shared the machine each
+step took 75~ms instead of 40. On this laptop that is nearly the cost of two
+separate steps: the M1's matrix kernels for a batch of two are almost as slow
+as two batches of one (\Chref{roofline}), so here continuous batching bought
+the newcomer's latency, not throughput. On a data-center GPU, where a decode
+step of a small model costs about the same for one sequence as for thirty-two
+(\Chref{roofline}), it buys both.
+This chapter is about the scheduler that makes the choice at every step.
+
 \NapkinSection{Napkin math: occupancy of a static batch}
+
+Batch $B$ requests together and run them until all have finished. Request $i$
+needs $L_i$ output tokens, so the batch occupies $B$ slots for $\max_i L_i$
+steps but does useful work in only $\sum_i L_i$ slot-steps. Its occupancy is
+\begin{equation}
+\eta_{\text{static}} = \frac{\sum_{i=1}^{B} L_i}{B\,\max_i L_i}
+= \frac{\bar{L}}{L_{\max}},
+\label{eq:static-occupancy}
+\end{equation}
+the mean output length over the longest. Chat and agent outputs are skewed:
+most answers are short and a few run to thousands of tokens. With a mean of 300
+and a longest of 2,000 in a batch of 32 (illustrative), $\eta=0.15$ --- 85\% of
+the batch's decode capacity is spent carrying finished sequences, and every
+request that arrives meanwhile waits up to 2,000 steps to start.
+
+Iteration-level scheduling replaces the batch's lifetime with a single step.
+A finished sequence frees its slot after the step that produced its last
+token, and a waiting request takes the slot at the next step, so occupancy
+stays near one whenever work is queued. The only waits left are the ones
+memory imposes (\Chref{paged-kv}) and the one-step delay before a newcomer's
+prompt joins the batch. With the step time $t(B)$ of \Chref{roofline}, the
+throughput of a full batch is $B/t(B)$, and the latency each sequence feels is
+$t(B)$ per token: the scheduler's job is to pick the $B$ at which that
+trade-off is worth making.
 
 \section{Static batching and its waste}
 
+Early serving systems scheduled requests the way a training loop schedules
+examples: assemble a batch, run it to completion, return every result. That
+suits encoders, whose requests all finish in one pass. It fails for generation
+twice over. Short requests finish early and hold their slots idle, the waste of
+equation~\eqref{eq:static-occupancy}; and requests that arrive during a batch
+cannot join it, so their time to first token includes the remaining lifetime of
+someone else's batch. Padding sequences to a common length adds a third waste:
+arithmetic on tokens that do not exist.
+
 \section{Iteration-level scheduling}
+
+Orca, presented at OSDI in 2022, named the fix: schedule at the granularity of
+one iteration of the model rather than one request \cite{yu2022orca}. After
+each step the scheduler returns finished sequences, admits new ones, and forms
+the next batch from whatever is running. Its authors reported 36.9 times the
+throughput of NVIDIA's FasterTransformer on GPT-3 175B at the same latency
+(their measurement, 2022). Every serving engine now works this way; vLLM's V1
+engine reduces a scheduling decision to a map from request identifier to the
+number of tokens that request contributes to the next step, which covers
+decodes, prompt chunks and speculative drafts with one representation
+\cite{vllm2025v1}.
 
 \section{What can share a batch}
 
+Most of a Transformer layer treats tokens independently. The projections,
+normalizations and feed-forward network see a matrix whose rows are tokens,
+and it does not matter which request a row came from: tokens from different
+sequences --- one decode token from each of thirty sequences, plus a chunk of
+someone's prompt --- can be concatenated into one matrix and multiplied by the
+weights once. That is where batching's saving comes from: the weights are read
+once per step for everyone (\Chref{roofline}). Orca called this
+\emph{selective batching}.
+
+Attention is the exception. Each token attends only to its own sequence's keys
+and values, so the attention kernel must know where each sequence's cache lives
+and how long it is. Engines therefore batch the token-wise work as one ragged
+matrix and run attention with kernels built for variable-length, per-sequence
+caches (\Chref{decode-attention}, \Chref{paged-kv}). Some differences between
+requests still forbid sharing a step. llama.cpp's server batches two slots only
+if their tasks are of the same type and they use identical LoRA adapter
+settings (\texttt{can\_batch\_with} in the same source); an embedding request
+and a generation request, or two requests with different adapters, take turns
+(\Chref{multi-model-serving}).
+
 \section{The batch as a moving set}
+
+A continuous-batching scheduler keeps two collections: the requests that are
+running, each with its cache and its position, and a queue of requests waiting
+to start. Each step it removes the sequences that finished, decides whether
+the waiting requests at the head of the queue fit --- in the step's token
+budget and in cache memory --- and builds the step's batch: one token for each
+running sequence, plus prompt tokens for newcomers. The cost of that decision
+recurs every few milliseconds, so the data structures are built for it: vLLM's
+V1 engine keeps a persistent batch of input tensors and applies only the
+changes between steps \cite{vllm2025v1}.
+
+\FigureIntent{A timeline of eight requests with different output lengths
+under static and continuous batching: rows are batch slots, columns are steps;
+static batching shows idle cells after each short request and a queue that
+waits for the batch to drain; continuous batching shows slots refilled at the
+next step.}
 
 \section{Throughput--latency curves}
 
+Adding sequences to the batch raises throughput until the step turns
+compute-bound, and it raises every sequence's time per token all along. On the
+M1, the batched-decode measurement of \Chref{roofline} traces the curve:
+aggregate decode throughput rose from 20 tokens per second at one sequence to
+176 at thirty-two, while each sequence's step time grew from 50~ms to 182~ms
+(record \texttt{2026-09-23-m1-llama32-3b}). A serving system chooses a point on
+that curve by capping the batch --- in sequences, in tokens per step, or in
+cache memory --- and the right point depends on the latency its users will
+accept. \Chref{scheduling} turns that choice into admission control.
+
 \section{Overlapping scheduling with execution}
+
+A step on a fast GPU can take a few milliseconds, and the CPU work around it
+--- scheduling, preparing inputs, sampling, detokenizing, streaming --- can take
+a comparable time. Done serially, it leaves the GPU idle between steps. Engines
+now overlap the two. vLLM's V1 engine moved the scheduling loop into its own
+process, apart from the API server that tokenizes and streams
+\cite{vllm2025v1}. SGLang's scheduler runs one batch ahead, preparing step
+$n+1$ while the GPU executes step $n$; its developers reported 1.1 times the
+throughput of their previous release \cite{sglang2024v04}. vLLM's second
+model runner makes the same overlap a design constraint, keeping request state
+on the device and building inputs there, and reported 6.3\% lower time per
+output token on four GB200s \cite{vllm2026mrv2} (both the developers'
+measurements).
 
 \LedgerSection
 
+Scheduling at every step instead of every request:
+
+\begin{ConstraintLedger}
+Compute & buys & A full batch whenever work is queued: occupancy near one instead of $\bar{L}/L_{\max}$ (equation~\eqref{eq:static-occupancy}). \\
+Latency & buys & A newcomer starts at the next step: 0.50~s instead of 20.5--21.6~s to the first token in the opening measurement. \\
+Latency & spends & Every running sequence's time per token rises with the batch: the essay took 1--2.5~s longer. \\
+Memory capacity & spends & Cache for every sequence in the batch; the batch is capped by memory (\Chref{paged-kv}). \\
+Correctness & risks & Results can depend on the batch a request shared (\Chref{fast-wrong-answers}). \\
+\end{ConstraintLedger}
+
 \LabSection{a continuous-batching simulator driven by measured step times}
+
+\LabIntent{In \texttt{code/labs/ch15-continuous-batching/}, a Rust
+discrete-event simulator that replays a trace of arrivals and output lengths
+through static and iteration-level schedulers, using a step-time table
+measured on the reader's machine (or the M1 table of \Chref{roofline}). It
+reports throughput, time to first token and time per output token for each
+policy, and checks itself against a brute-force step-by-step oracle on small
+traces. The reader predicts the occupancy of equation~\eqref{eq:static-occupancy}
+for a skewed trace before running it.}
 
 \HappenedSection{one context, many sequences}
 
-\FrontierSection{}
+Hermon's first concurrent runtime gave each request its own llama.cpp context:
+a pool of four contexts, each with its own KV cache, running in parallel. On an
+Apple M3 Pro with four concurrent requests for 128 tokens, the pool produced
+19.1 tokens per second in aggregate --- no better than Ollama's 18.5 on the
+same benchmark, and every user waited 13.4 seconds (Hermon
+\texttt{docs/PERFORMANCE.md}, 2026-05-11; the developers' measurement). Four
+contexts meant four forward passes per step, each reading all the weights: the
+parallelism was real and the batching was absent.
+
+The replacement configured one context for several sequences sharing one KV
+cache. Each step built a single batch with one new token per active sequence
+and ran one forward pass for all of them. Aggregate throughput rose to
+\textbf{41.4 tokens per second} and every user finished in 6.19 seconds. The
+lesson is the one this chapter's napkin math predicts: concurrency does not
+batch anything by itself; the weights are read once per step only when the
+sequences share the step. The batched runtime is Hermon's default at commit
+\texttt{2a3fd52} (\texttt{crates/hermon-runtime/src/dispatch.rs}; DEFAULT).
+
+\FrontierSection{2026-09-24}
+
+Iteration-level scheduling is universal; the frontier is what shares the step
+and how little the CPU delays it. vLLM's V1 scheduler treats prompt chunks,
+decodes and drafts uniformly and enables chunked prefill and prefix caching by
+default \cite{vllm2025v1,vllm2026optimization}; its second model runner,
+announced in March 2026 and still opt-in, is built around asynchronous
+scheduling \cite{vllm2026mrv2}; SGLang overlaps scheduling with execution
+\cite{sglang2024v04}. The remaining questions --- which requests to
+admit, and which to preempt when memory runs out --- are \Chref{scheduling}'s.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} For output lengths drawn from an exponential
+distribution with mean $\mu$, estimate $\eta_{\text{static}}$ for a batch of
+$B$ requests. How does it scale with $B$?
+\item \emph{Prediction.} Using the M1 step times of \Chref{roofline}, predict
+the essay's completion time when the 32-token request joins at 2~s, and compare
+with the measured 23.3--25.7~s.
+\item \emph{Implementation.} Add a cap on tokens per step to the lab's
+scheduler and plot time to first token against it.
+\item \emph{Falsification.} Find a workload for which static batching has
+higher throughput than continuous batching on the same hardware. What makes it
+possible?
+\end{enumerate}

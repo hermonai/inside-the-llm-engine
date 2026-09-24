@@ -1,10 +1,12 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 14 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
 % The sections from "One prediction is not yet a service" to "What we have
 % established" are the first edition's Chapter 1, moved here with git mv on
 % 2026-09-23. They are the mechanism of this chapter; the ZERO pass reworks
 % them around the anatomy. Commands are regression checked by
 % scripts/check-textbook.py.
+% Measurements: research/measurements/2026-09-24-m1-part3.md (lifecycle, cancel2,
+% sse_bytes).
 \chapter{The Request Lifecycle: Streaming, Cancellation and Terminal Ownership}\label{ch:request-lifecycle}\label{chapter-1-the-missing-half-of-ai}
 
 \begin{ChapterIntent}
@@ -20,7 +22,57 @@ first edition's executable request trace.
 
 \OpeningSection{Time to first token, measured}
 
+Ask llama.cpp's server on the M1 for 128 tokens after a 200-token prompt, and
+stream the answer. In five runs the first token arrived \textbf{741 to 762
+milliseconds} after the request was sent; after that a token arrived every 40
+milliseconds or so --- median gaps of 39.1 to 40.5~ms, with the slowest gap of
+each run between 53 and 83~ms --- and the whole answer took about six seconds
+(measured with Llama~3.2~3B; record \texttt{2026-09-24-m1-part3}). The server's
+own accounting says where those first three-quarters of a second went: 738 to
+757~ms of processing the prompt. Everything else --- parsing the request, scheduling it, sampling,
+detokenizing, framing an event, crossing a socket --- fit in the few
+milliseconds left.
+
+Then the clients hung up. A client that closed its streaming connection after
+its twentieth token left a server that noticed within 71~ms: the request's slot
+was released after 21 tokens, one of them generated after the disconnect. A
+client that asked for a long answer \emph{without} streaming and hung up after
+three seconds left a server that behaved in two ways. On an otherwise idle
+server, the request was cancelled within a second and a half. While another
+client was streaming, it was not cancelled at all: the server kept generating
+for the absent client for another 37 seconds, some 490 tokens nobody would
+read, and stopped only when the other stream ended. The case study at the end
+of this chapter explains why.
+
+A request is not a function call. It is a small state machine with a clock
+attached, and its contract --- what the client sees, when, what the engine
+spends, and when it stops --- decides both the latency users feel and the
+capacity the engine wastes. This chapter makes that contract explicit.
+
 \NapkinSection{Napkin math: what a stream costs the engine}
+
+A streamed token becomes an event on the wire. In the measured build each
+event on llama.cpp's own completion endpoint was about 122 bytes and on its
+OpenAI-compatible chat endpoint about 306 bytes, for a token that carries three
+or four characters of text (measured). At 25 tokens per second a stream sends
+about 7.7~KB/s on the OpenAI-compatible endpoint, and ten thousand concurrent
+streams send about 77~MB/s: real, but small next to the machines producing
+them (derived). Each event also costs CPU for detokenization and
+serialization, which engines move off the scheduling loop
+(\Chref{continuous-batching}).
+
+The larger cost of a stream is its duration. From admission to its terminal
+event a request holds a batch slot and its KV cache: for Qwen3-8B at 4,096
+tokens of context, 576~MiB (\Chref{kv-cache}). A request that should have been
+cancelled but runs to completion wastes both, and the waste is easy to price:
+\begin{equation}
+W_{\text{orphan}} = n_{\text{left}}\;t_{\text{token}}\quad\text{of a slot, holding }m_{kv}\,S\text{ bytes},
+\label{eq:orphan-waste}
+\end{equation}
+for $n_{\text{left}}$ tokens left to generate at $t_{\text{token}}$ each. The
+opening's orphan held a slot for 37 seconds. At a hosted service's scale, a
+fraction of a percent of abandoned requests that are never cancelled is a
+fraction of a percent of the fleet serving nobody.
 
 \section{One prediction is not yet a service}
 Suppose a model has just produced four numbers. One number is larger than the
@@ -310,10 +362,73 @@ the UTF-8 buffer without changing the request's terminal contract.
 
 \LedgerSection
 
+Streaming output as events and ending every request with exactly one terminal
+outcome:
+
+\begin{ConstraintLedger}
+Latency & buys & The first words after the time to first token (0.74~s on the M1) instead of after the whole answer (6~s). \\
+Memory capacity & spends & A batch slot and the request's KV cache from admission to its terminal event; an uncancelled orphan holds them to completion. \\
+Compute & risks & Tokens generated after a client leaves are wasted: 490 in the opening's orphan (equation~\eqref{eq:orphan-waste}). \\
+Correctness & buys & One terminal outcome per request, so a prefix is never mistaken for a completed answer. \\
+\end{ConstraintLedger}
+
 \LabSection{the request trace}
+
+\LabIntent{In \texttt{code/labs/ch14-request-lifecycle/}, the mini-engine's
+request trace (\texttt{engine0 --trace}) is extended with a streaming sink that
+records every event with a monotonic timestamp and a cancellation source that
+can fire at any declared boundary. Property tests drive thousands of random
+event orders and check the terminal contract of
+equation~\eqref{eq:terminal-contract}; the reader then adds a slow consumer and
+measures how long a cancellation takes to reach the model loop.}
 
 \HappenedSection{cancellation that did not reach the model}
 
-\FrontierSection{}
+The orphaned request of this chapter's opening was not an accident of the
+measurement. llama.cpp's server, at the commit of the measured build, handles a
+non-streamed request on an HTTP thread that waits for the request's result. It
+waits in slices of one second, and only when a slice expires with no result
+does it ask the socket whether the client is still there; if the client has
+gone, it posts a cancellation that releases the request's slot
+(\texttt{HTTP\_POLLING\_SECONDS} in \texttt{tools/server/server-context.cpp}
+and \texttt{recv\_with\_timeout} in \texttt{tools/server/server-queue.cpp} at
+commit \texttt{d006858}). The waiting threads of all requests share one
+condition variable, and every result delivered for \emph{any} request wakes
+them all; a woken thread that finds nothing for itself starts a fresh
+one-second wait. While another client is streaming --- a result every 40~ms ---
+no thread's wait ever expires, so no thread ever checks its socket. The
+measurement showed exactly that: cancelled within a second and a half on a
+quiet server, never cancelled while a neighbor streamed.
+
+The first attempt to measure this found it by accident. The measuring script
+polled the server's slot-status endpoint every 20~milliseconds to see when the
+request would be released; each poll produced a result, each result reset the
+waiting thread's timer, and the observer kept alive the request it was
+observing. The measurement was rerun with a poll every 1.5 seconds, longer
+than the server's slice, and with a separate streaming client as the
+neighbor --- which is when the mechanism became clear. Both runs are in the
+record.
+
+vLLM makes the opposite design choice. Its OpenAI-compatible handlers are
+wrapped so that each request's work races a listener for the HTTP server's
+disconnect message; whichever finishes first cancels the other, and the
+engine aborts the request when its generator is cancelled
+(\texttt{vllm/entrypoints/serve/utils/api\_utils.py} and
+\texttt{vllm/v1/engine/async\_llm.py} at commit \texttt{bcdacfc}). Disconnects
+there are events, not polls. The lesson is the chapter's: cancellation is part
+of the request's contract, and a contract enforced by a timer that other
+traffic can reset is not enforced.
+
+\FrontierSection{2026-09-24}
+
+The lifecycle contract is becoming explicit in APIs. OpenAI's Responses API
+streams typed events --- a response created, text deltas, a completion or an
+error --- rather than bare tokens \cite{openai2026streaming}, and its
+background mode decouples a request from the connection that started it:
+a long response keeps running when the client disconnects, is cancelled only
+by an explicit, idempotent cancel call, and can be resumed from a sequence
+number if the stream drops \cite{openai2026background}. Engines are moving
+the same way: detokenization and streaming in processes of their own
+(\Chref{continuous-batching}) and cancellation driven by events.
 
 \input{worked/ch14-request-lifecycle.tex}

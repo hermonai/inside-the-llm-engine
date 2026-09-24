@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 17 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part3.md (prefix).
 \chapter{Prefix Caching and RadixAttention}\label{ch:prefix-caching}
 
 \begin{ChapterIntent}
@@ -14,28 +15,218 @@ two prefixes that look identical are not.
 
 \OpeningSection{The system prompt you paid for a million times}
 
+Send llama.cpp's server, on the M1, a 3,000-token document followed by a
+question. Its first token arrives after \textbf{11.5 seconds}: the time to
+prefill 3,016 tokens of Llama~3.2~3B on a laptop GPU. Send the same document
+with a different question and the first token arrives after \textbf{0.16
+seconds}. The server reported that it reused 3,004 cached tokens and processed
+only 12 (measured; record \texttt{2026-09-24-m1-part3}). The second request
+cost one seventy-second of the first.
+
+Now make the smallest change a real application makes. Put a date line in
+front of the document --- \texttt{Date: 2026-09-24} --- and the server
+recomputes everything: 11.9 seconds. Change the date to the next day and it
+recomputes everything again, 12.2 seconds, reusing only the nine tokens before
+the digit that changed. The document after the date is identical, byte for
+byte; the cache cannot use it, because a token's keys and values depend on
+every token before it. A prefix cache reuses prefixes, and one differing token
+ends the prefix.
+
+Evict the document by sending a different one, then return to it, and the
+first token arrives after 0.36 seconds instead of twelve. When the slot
+switched documents the server had copied the old one's cache, 331~MiB for
+3,023 tokens, into a host-memory prompt cache, taking about 150~ms; returning,
+it found the stored prefix and copied it back, taking about 190~ms. Prefix
+caching is a trade of memory for compute, and this chapter prices it.
+
 \NapkinSection{Napkin math: memory kept against compute saved}
+
+Prefill costs about $2P$ FLOPs per token (\Chref{prefill-decode}); keeping a
+token's cache costs $m_{kv}$ bytes (\Chref{kv-cache}). Every cached token
+therefore converts $m_{kv}$ bytes of retained memory into $2P$ FLOPs not
+spent:
+\begin{equation}
+\rho = \frac{2P}{m_{kv}}\quad[\text{FLOP saved per byte kept}].
+\label{eq:prefix-exchange}
+\end{equation}
+For Llama~3.2~3B, $\rho = 6.4\times10^{9}/114{,}688 \approx 56{,}000$; for
+Qwen3-8B, whose cache is 144~KiB per token in BF16, about 111,000 (derived).
+An H100 that holds 20~GB of cached prefixes for Qwen3-8B keeps about 136,000
+tokens ready, worth 2.2~PFLOP of prefill --- a few seconds of the whole GPU ---
+every time all of them are reused.
+
+The same arithmetic prices a commercial prompt cache. Anthropic charges 1.25
+times the input price to write a five-minute cache entry and 0.1 times to read
+one \cite{anthropic2026promptcaching}. Without caching, $k$ further uses of a
+prefix cost $k+1$ full prefills; with it, $1.25 + 0.1k$. Caching pays when
+$k > 0.28$: a single reuse, on average, repays the write (derived).
 
 \section{What can be reused}
 
+A token's keys and values are a function of the model, of the adapter if any,
+of the token itself and of every token before it, including their positions.
+Two requests can therefore share cache for exactly the tokens up to their first
+difference, provided the model, adapter and any image or audio inputs in that
+span are the same. Sampling parameters do not matter: they act after the
+forward pass. Reusing the cache of text that appears later in a prompt ---
+a retrieved document at a different offset --- is not exact, because the
+positions and the preceding context differ; methods that approximate it are
+research. This chapter covers exact prefixes.
+
 \section{Hash-chained blocks}
+
+With a paged cache (\Chref{paged-kv}), prefixes can be shared block by block.
+vLLM gives every full block a hash computed from its parent block's hash, its
+own tokens and extra keys --- the adapter, multimodal inputs and an optional
+per-request salt --- so a block's hash identifies the whole prefix that ends
+with it \cite{vllm2026prefixcaching}. To admit a request, the scheduler hashes
+the request's full blocks from the left and looks each hash up until the first
+miss; every hit is a block of prefill skipped. Freed blocks keep their contents
+and hashes in a least-recently-used queue until they are reallocated, so a
+cache hit can revive a block that no request holds. Prefix caching is on by
+default in vLLM's V1 engine, whose developers reported under 1\% throughput
+loss when every lookup misses \cite{vllm2025v1} (their measurement).
 
 \section{A radix tree over tokens}
 
+SGLang's RadixAttention keeps cached prefixes in a radix tree whose edges are
+labeled with token sequences and whose nodes own the corresponding cache
+\cite{zheng2023sglang}. Inserting a finished request's tokens shares every
+prefix already in the tree; matching a new request walks down the tree as far
+as the tokens agree. The tree makes the structure of the workload visible ---
+a system prompt at the root, few-shot examples below it, conversations as
+branches --- and the scheduler can use it: running requests that share a long
+prefix together raises the hit rate. The SGLang authors reported up to 6.4
+times the throughput of other systems on workloads built from multiple
+generation calls (their measurement).
+
+\FigureIntent{A radix tree built from four requests: a shared system prompt at
+the root, two few-shot branches, and conversation leaves; each node labeled
+with its token span and reference count, least-recently-used leaves shaded as
+eviction candidates.}
+
 \section{Eviction over a tree}
+
+Cache memory is finite, so the tree is pruned. Leaves go first, in
+least-recently-used order, because evicting an interior node would orphan the
+branches below it, and a node that a running request is reading carries a
+reference count that pins it. Hash-chained blocks follow the same rule
+implicitly: a block is freed only when its reference count reaches zero, and
+the least recently used free blocks are reallocated first. Eviction interacts
+with scheduling: a cache that is too small to hold the working set of prefixes
+thrashes, and each thrash costs a full prefill.
 
 \section{Cache-aware scheduling and routing}
 
+Within one server, the scheduler can favor requests with the longest cached
+prefix. Across servers, the router decides whether a hit is possible at all:
+two requests with the same system prompt sent to different replicas each pay
+the prefill. SGLang's cache-aware load balancer keeps an approximate radix tree
+per worker and routes each request to the worker with the longest match; its
+developers reported the cache hit rate rising from 20\% to 75\% and throughput
+by 1.9 times on their benchmark \cite{sglang2024v04}. OpenAI documents that it
+routes requests by a hash of the prompt's initial tokens for the same reason
+\cite{openai2026promptcaching}.
+
 \section{When the same prefix is not the same prefix}
+
+The opening's date line is the common failure: a value that changes between
+requests, placed before content that does not. Timestamps, request
+identifiers, reordered tool definitions, a template that renders whitespace
+differently, a document inserted before the instructions instead of after ---
+each ends the shared prefix at its first changed token. The fix is layout:
+stable content first, variable content last. A subtler failure is sharing the
+cache when it should not be shared. A hit is faster than a miss, so response
+time reveals whether someone else sent the same prefix recently. Gu and
+colleagues audited API providers with timing tests in 2025 and detected cache
+sharing across users at seven of them \cite{gu2025promptcaching}; vLLM's
+per-request salt confines reuse to requests that agree on it
+\cite{vllm2026prefixcaching}.
 
 \section{Agents and multi-turn sessions}
 
+A conversation resends its whole history every turn, and an agent resends its
+instructions, tool definitions and every tool result at every step. Without
+prefix caching each turn repays the prefill of everything before it, so the
+cost of a session grows with the square of its length; with it, each turn
+prefills only what is new. The cache must survive between turns, which is a
+question of retention: a user who pauses longer than the cache's lifetime pays
+the full prefill again. That is why engines add tiers below GPU memory ---
+llama.cpp's server keeps evicted prompts in host memory, 8~GiB by default in
+the measured build, which is how the opening's evicted document came back in
+0.36 seconds --- and why prompt-caching products state a time to live
+(\Chref{kv-storage-tier}).
+
 \LedgerSection
+
+Keeping the KV cache of processed prefixes and reusing it:
+
+\begin{ConstraintLedger}
+Compute & buys & Prefill skipped for every cached token: $2P$ FLOPs per token, about 56,000 FLOPs per byte kept for Llama~3.2~3B (equation~\eqref{eq:prefix-exchange}). \\
+Latency & buys & Time to first token: 11.5~s to 0.16~s for a 3,000-token document on the M1. \\
+Memory capacity & spends & The cache of every retained prefix: 331~MiB for 3,023 tokens, in GPU or host memory. \\
+Memory bandwidth & spends & Copies between tiers: about 150~ms to save and 190~ms to restore that prefix from host memory. \\
+Correctness & risks & Reuse must be exact and isolated; a shared cache leaks timing across users. \\
+\end{ConstraintLedger}
 
 \LabSection{a radix cache with an exactness test}
 
+\LabIntent{In \texttt{code/labs/ch17-prefix-caching/}, a Rust radix tree over
+token sequences, attached to the mini-engine's KV cache, with LRU leaf eviction
+and reference counts. The exactness test compares every cached continuation
+with a recomputation from scratch, bit for bit. The reader replays a synthetic
+agent trace and measures the hit rate and saved FLOPs as the cache size shrinks,
+then breaks the cache by inserting a timestamp at the start of every prompt.}
+
 \HappenedSection{warm against cold}
 
-\FrontierSection{}
+Hermon's first prefix cache was not the design in this chapter, because the
+library under it would not allow that design. The textbook approach copies a
+matched prefix from a cache region into a fresh sequence. At the commit Hermon
+vendors, llama.cpp's sequence-copy primitive can share a range of positions
+between sequences that live in the same stream of the cache, but between
+separate streams --- the layout Hermon's slots used --- it asserts that only a
+whole buffer can be copied (\texttt{src/llama-kv-cache.cpp} line 456 at commit
+\texttt{389ff61d}). Hermon's developers therefore stopped
+moving caches at all: each slot keeps its last prompt's cache warm, and the
+scheduler routes a new request to the slot whose cached tokens match its prompt
+longest, erasing only the divergent suffix (\texttt{crates/hermon-runtime/src/batched.rs}
+at commit \texttt{2a3fd52}; DEFAULT).
+
+They measured it on an Apple M3 Pro with four concurrent requests. On an
+agent-shaped workload --- a shared prefix of about 97 tokens and 32-token
+answers --- the measured batch took 2.86 seconds instead of 4.89, 1.71 times
+faster; on a chat workload with 128-token answers, where decode dominates, the
+gain was 11\% (Hermon \texttt{docs/PERFORMANCE.md}, 2026-05-12; the developers'
+measurements). Slot affinity works when conversations stay on their slots and
+fails when more prefixes are hot than there are slots. That limit is one of the
+reasons Hermon began the paged engine of \Chref{paged-kv}.
+
+\FrontierSection{2026-09-24}
+
+Prefix caching is on by default in the major engines
+\cite{vllm2025v1,zheng2023sglang} and has become a product with a price list:
+Anthropic's cache writes cost 1.25 or 2 times the input price for five-minute or
+one-hour lifetimes and reads 0.1 times or less, with caches isolated per
+organization and workspace \cite{anthropic2026promptcaching}; OpenAI caches
+prompts automatically --- from 1,024 tokens on its newest models, which pay 0.1
+times the input price for cached tokens --- and states that caches are not
+shared across organizations \cite{openai2026promptcaching}. The 2025 audit of
+cross-user sharing \cite{gu2025promptcaching} shows why that sentence is now in
+the documentation. Caches are moving down the memory hierarchy to host memory
+and disk, and across machines (\Chref{kv-storage-tier}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:prefix-exchange}, compute
+$\rho$ for a model with multi-head latent attention (\Chref{shrinking-kv}).
+Does a smaller cache make prefix caching more or less attractive?
+\item \emph{Prediction.} A chat session has ten turns of 200 new tokens each
+after a 2,000-token system prompt. How many prompt tokens are prefilled with and
+without a prefix cache?
+\item \emph{Implementation.} Add a per-tenant salt to the lab's radix tree and
+show that tenants no longer share nodes.
+\item \emph{Falsification.} Construct a workload for which a prefix cache
+lowers throughput.
+\end{enumerate}
