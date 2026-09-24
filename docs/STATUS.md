@@ -6,10 +6,11 @@ edition's status ledger, with its dated milestone entries, is
 
 ## Where the book is
 
-**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I–V.**
+**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I–VI.**
 Every chapter and appendix exists under the new numbering with its intent and
-section headings in the chapter anatomy. Chapters 1–30 are zero drafts built
-on measurements taken for them. The first edition's Chapters 2–9 are Appendix
+section headings in the chapter anatomy. Chapters 1–34 are zero drafts built
+on measurements taken for them (Part VI's multi-device numbers are derived from
+specifications and operators' reports until a multi-GPU host is available). The first edition's Chapters 2–9 are Appendix
 A.1–A.8, and its Chapter 1 is now the mechanism of Chapter 14, with the
 anatomy built around it. The plan is [`STRUCTURE.md`](STRUCTURE.md); the
 policy is [`../AUTHORING.md`](../AUTHORING.md); superseded governance is in
@@ -57,10 +58,10 @@ if this table is stale. Words are approximate prose words.
 | 28 | Long Context: Windows, Sinks and Sparse Attention | ZERO | 2,520 | 0 |
 | 29 | Reasoning Models and Test-Time Compute | ZERO | 2,042 | 0 |
 | 30 | Multimodal Inference | ZERO | 1,934 | 0 |
-| 31 | Tensor, Pipeline and Context Parallelism | SKELETON | 131 | 0 |
-| 32 | Expert Parallelism at Scale | SKELETON | 115 | 0 |
-| 33 | Disaggregated Serving | SKELETON | 115 | 0 |
-| 34 | The KV Cache as a Distributed Storage Tier | SKELETON | 131 | 0 |
+| 31 | Tensor, Pipeline and Context Parallelism | ZERO | 2,329 | 1 |
+| 32 | Expert Parallelism at Scale | ZERO | 2,084 | 1 |
+| 33 | Disaggregated Serving | ZERO | 1,916 | 0 |
+| 34 | The KV Cache as a Distributed Storage Tier | ZERO | 2,202 | 1 |
 | 35 | Offloading Across VRAM, RAM and NVMe | SKELETON | 133 | 0 |
 | 36 | Streaming Experts From Disk: A Measured Case Study | SKELETON | 166 | 0 |
 | 37 | Unified Inference Memory | SKELETON | 120 | 0 |
@@ -89,15 +90,15 @@ if this table is stale. Words are approximate prose words.
 | G | `tex/appendices/g-reproducing-measurements.tex` | SKELETON | 69 |
 <!-- chapter-status:end -->
 
-## Verified at the end of session 5 (2026-09-24)
+## Verified at the end of session 6 (2026-09-25 local; runs on 2026-09-24 UTC)
 
 | Check | Result |
 | --- | --- |
-| `make textbook-check` | pass: 42 chapters (12 SKELETON, 30 ZERO), 15 appendix files, 75 native figures (all used), 27 worked problems, CLI trace and worked calculations |
-| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; the pages of Figures 25.1, 26.1 and 27.1 and Table 28.1 inspected as images |
+| `make textbook-check` | pass: 42 chapters (8 SKELETON, 34 ZERO), 15 appendix files, 76 native figures (all used), 27 worked problems, CLI trace and worked calculations |
+| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; the page of Figure 34.1 inspected as an image |
 | `cargo test --workspace` in `code/mini-engine` | 220 pass; `cargo check`, `cargo fmt --check` and `clippy -D warnings` clean |
 | All CI steps run locally | pass (all 13 script steps and the four cargo steps), with the new files staged |
-| Secrets guard | `scripts/check-structure.sh` passes with the Part V raw outputs staged (`git add -N`); logs redacted to `<loopback>`, scripts use `localhost` |
+| Secrets guard | `scripts/check-structure.sh` passes with the Part VI raw outputs staged (`git add -N`); logs redacted to `<loopback>`, scripts use `localhost` |
 
 **Correction to session 3.** Session 3 ran the CI steps before committing its
 raw measurement outputs, so the secrets guard never saw them; once committed,
@@ -109,17 +110,21 @@ Measurement records: `research/measurements/2026-09-23-m1-llama32-3b.md`,
 `2026-09-23-gguf-tensor-bytes.md`, `2026-09-23-m1-part2.md` (Chapters 7–13),
 `2026-09-24-m1-part3.md` (Chapters 14–21), `2026-09-24-m1-part4.md`
 (Chapters 22–24: verification cost, prompt-lookup and draft-model speculation,
-greedy exactness, concurrency) and `2026-09-24-m1-part5.md` (Chapters 25–30:
+greedy exactness, concurrency), `2026-09-24-m1-part5.md` (Chapters 25–30:
 KV-cache and recurrent-state allocations, decode speed against context for two
 GQA ratios and for a hybrid, thinking budgets, Gemma 4's sliding windows and
 image tokens in Ollama, prefix reuse with recurrent state, and llama.cpp's
-expert matrix product). All were taken on the Apple M1 during an ordinary
-desktop session, Parts IV and V under load from other work. Re-measure on a
-quiet machine before any chapter is FULL.
+expert matrix product) and `2026-09-24-m1-part6.md` (Chapters 31–34: a model
+split across two llama.cpp processes through the RPC backend, SSD bandwidth,
+restoring a KV cache from files and host memory against recomputing it, and
+prefill and decode on two servers with the cache moved through a file). All
+were taken on the Apple M1 during an ordinary desktop session, Parts IV–VI
+under load from other work. Re-measure on a quiet machine before any chapter
+is FULL.
 
 ## Open markers
 
-Thirteen `\todo` markers remain, all visible in the PDF.
+Sixteen `\todo` markers remain, all visible in the PDF.
 
 **Part I (9).**
 
@@ -147,6 +152,14 @@ arena PREVIEW, at `2a3fd52`), and chunked-prefill adoption in Chapter 4.
 Resolved in session 5: Chapter 5's Kimi Delta Attention marker, from the Kimi
 Linear paper (arXiv:2510.26692).
 
+**Part VI (3).** Measurements that need hardware this session did not have:
+NCCL all-reduce latency on an 8-GPU NVLink node (Chapter 31); dispatch and
+combine latency and bandwidth on a multi-GPU node (Chapter 32); and, on a
+discrete-GPU host such as the RTX 5060 Ti, PCIe host-to-device bandwidth,
+uncached NVMe reads and an 8B model's prefill rate (Chapter 34). Every other
+Part VI claim is measured, derived, or read from a primary source or pinned
+source code; the sources are in `research/FRONTIER.md`, "Part VI additions".
+
 **Part V (0).** Every Part V claim is measured, derived, or read from a
 primary source or pinned source code (llama.cpp `d006858`, vLLM `bcdacfc`,
 Hermon `2a3fd52`); the sources are in `research/FRONTIER.md`, "Part V
@@ -168,20 +181,19 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
 
 ## Next
 
-1. Zero-draft Part VI (Chapters 31–34: tensor, pipeline and context
-   parallelism; expert parallelism at scale; disaggregated serving; the KV
-   cache as a distributed storage tier). It is frontier-heavy and
-   multi-device: first read the leads in `research/FRONTIER.md` (NVIDIA Dynamo,
-   llm-d, LMCache, SGLang HiCache, NIXL) and the Part V rows on context and data
-   parallelism, then decide which openings the M1 can honestly measure and mark
-   the rest `\todo{measure: …}` for a GPU host.
-2. Zero-draft Parts VII–IX (Chapters 35–42); Chapter 36 extends Chapter 26's
-   Hermon case.
+1. Zero-draft Part VII (Chapters 35–37: offloading across VRAM, RAM and
+   NVMe; the Hermon expert-streaming case study; unified inference memory).
+   The M1 is itself a unified-memory machine, so Chapter 37 can open on a local
+   measurement; Chapter 36 extends Chapter 26's Hermon case from
+   `docs/KERNEL_DESIGN.md` §K6 at a pinned commit; Chapter 35 is best measured
+   over PCIe on the RTX 5060 Ti host when it is available. First read the leads
+   in `research/FRONTIER.md` (FlexGen, PowerInfer, NVLink-C2C and
+   unified-memory systems).
+2. Zero-draft Parts VIII–IX (Chapters 38–42).
 3. Clear the Part II source markers; they need documentation, not hardware.
-4. When a GPU host is available, clear the measurement markers, and repeat the
-   Part II–V probes on it (the M1 results are single-machine and
-   Metal-specific; the probes in the Part III–V records run against any
-   llama.cpp server).
+4. When the GPU host is available, clear the single-GPU measurement markers
+   (Chapters 3, 34, 35) and repeat the Part II–VI probes on it; the multi-GPU
+   markers (Chapters 6, 31, 32) need a multi-GPU node.
 5. Then pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building
    each chapter's lab in `code/labs/`.
 
@@ -223,6 +235,22 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
   speed. That is a true and useful result, but a same-family drafter (Llama
   3.2 1B for the 3B, about 1.3 GB through Ollama) would show the winning case
   too. It was not downloaded, because downloads need your permission.
+- **Part VI on one laptop.** Chapters 31–34 measure what one machine can
+  show honestly: a model split across two llama.cpp processes (a pipeline
+  boundary with no network in it), and a KV cache moved through files and host
+  memory instead of recomputed, including an emulated prefill/decode split
+  whose output matched a single server's. Tensor-parallel collectives, expert
+  all-to-alls and network transfers are derived from datasheets, papers and
+  operators' reports, and marked for measurement on a multi-GPU node. A first
+  pass of the split ran through load spikes (the one-minute load reached 81)
+  and showed 13–35% costs; the interleaved repeat showed 1.5–1.7 ms per token,
+  and the chapter reports both.
+- **Two storage-tier caveats (Chapter 34).** A copy written with caching
+  disabled still restored faster than the SSD's measured uncached reads, so
+  the chapter treats the two file measurements as one tier; and llama.cpp's
+  host-memory prompt cache took 67 seconds to return a 2.3 GiB cache while the
+  machine was deep in swap. The chapter makes the second a point about tiers
+  rather than a claim about llama.cpp.
 - **A mixture-of-experts model for Chapter 26.** Chapter 26's opening
   measures llama.cpp's expert matrix product alone, with synthetic weights and
   uniform routing, because no MoE model was on the machine and downloads need
