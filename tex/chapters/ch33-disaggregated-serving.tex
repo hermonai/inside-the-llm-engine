@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 33 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part6.md (disagg, kvmove, ssd).
 \chapter{Disaggregated Serving}\label{ch:disaggregated-serving}
 
 \begin{ChapterIntent}
@@ -11,30 +12,213 @@ network, derives when disaggregation raises goodput and when it does not, and
 surveys the scheduling and transfer machinery production systems use.
 \end{ChapterIntent}
 
-\OpeningSection{More requests within the objective}
+\OpeningSection{Prefill here, decode there}
+
+Disaggregation can be emulated on a laptop. One llama.cpp server prefills a
+4,013-token prompt for Llama~3.2~3B and saves its slot's cache to a file ---
+439~MiB. A second server, which has never seen the prompt, restores the file
+and generates. In three runs the second server processed one token of the
+prompt instead of 4,013, and its 64-token answer matched, character for
+character, the answer a single server produced from scratch. Prefill took 16.1
+to 17.1 seconds; saving and restoring the cache took 0.5 to 0.6 seconds, after
+1.8 in the first run; the second server's first token came 0.07 seconds after
+the restore (measured; record \texttt{2026-09-24-m1-part6}).
+
+Nothing about a KV cache ties it to the device that computed it. It is data,
+and it can be moved --- which is what lets a service compute prompts on one
+pool of machines and generate on another, each sized and configured for its
+own phase. This chapter prices that move against the prefill it replaces,
+derives when separating the phases pays, and follows the systems that do it
+over networks rather than through a file.
 
 \NapkinSection{Napkin math: KV transfer time against prefill time}
 
+Prefill of $S$ tokens on hardware delivering $\pi$ FLOP/s at utilization $u$
+costs about $2PS/(\pi u)$ seconds for a model of $P$ parameters; shipping the
+resulting cache of $k$ bytes per token over a link of $\beta$ bytes per second
+costs $Sk/\beta$. Their ratio,
+\begin{equation}
+\frac{t_{\text{transfer}}}{t_{\text{prefill}}} \approx \frac{k\,\pi\,u}{2\,P\,\beta},
+\label{eq:pd-ratio}
+\end{equation}
+does not depend on the prompt's length, ignoring attention's own growth, which
+only makes prefill costlier at long contexts. For Llama~3 70B on eight H100s
+($k = 320$~KiB, $\pi = 8 \times 989$~TFLOP/s, $u = 0.5$) the cache takes 18\% of
+the prefill time to cross one 400~Gb/s port and 2.3\% if each GPU sends its own
+share over its own port; for Qwen3-8B on one H100 over one port, 9\% (derived).
+An 8,192-token prompt of the 70B model makes 2.7~GB of cache, 54~ms on one
+port, against 290~ms of prefill (derived). Moving the cache is cheaper than
+making it, by a margin set by the model's cache bytes per FLOP --- which is why
+the cache-shrinking designs of \Chref{shrinking-kv} and \Chref{hybrid-models}
+make disaggregation easier, and why the transfer can be streamed layer by layer
+while prefill continues.
+
 \section{Interference, revisited}
+
+\Chref{chunked-prefill} measured what a long prompt does to the requests
+decoding beside it: every decode step that shares a batch with a prefill chunk
+waits for it. Chunked prefill bounds the damage by capping each step's tokens,
+but the two phases still compete for one budget, and the budget that is right
+for time to first token is wrong for time per output token. vLLM's
+documentation gives the same two reasons for its experimental disaggregated
+mode --- tuning the two latencies separately, and controlling tail latency
+between tokens --- and adds, emphatically, that disaggregated prefill ``DOES
+NOT improve throughput'' (\texttt{docs/features/disagg\_prefill.md} at commit
+\texttt{bcdacfc}). Disaggregation is a latency tool first.
 
 \section{Separate pools}
 
+Give prefill and decode their own devices and each can be configured for its
+phase. Prefill is compute-bound (\Chref{prefill-decode}) and wants tensor or
+context parallelism to finish long prompts quickly; decode is bandwidth- and
+capacity-bound and wants large batches, wide expert parallelism and all the
+memory it can get for cache. DistServe made this the design principle: assign
+prefill and decoding to different GPUs, choose resources and parallelism per
+phase, and place the phases with the cluster's bandwidth in mind; its authors
+report serving 7.4 times more requests, or meeting 12.6 times tighter latency
+objectives, with more than 90\% of requests within their constraints
+(\cite{zhong2024distserve}; their measurement). Splitwise argued the same from
+the hardware side, since the two phases stress different resources, and
+reported 1.4 times the throughput at 20\% lower cost, or 2.35 times the
+throughput at the same cost and power (\cite{patel2023splitwise}; their
+measurement).
+
+The pools need not even be the same hardware. A prefill pool wants arithmetic;
+a decode pool wants memory bandwidth and capacity per dollar. Separating them
+lets each be bought for what it does.
+
 \section{Moving the KV cache}
+
+Disaggregation lives or dies on the transfer. The prefill pool must hand each
+request's cache to a decode device quickly, without stalling either, and the
+decode side must receive it into its own paged layout (\Chref{paged-kv}).
+Engines have converged on connectors: vLLM's documentation lists nine kinds of
+KV connector, including NVIDIA's NIXL, Moonshot's Mooncake transfer engine and
+LMCache (\texttt{docs/features/disagg\_prefill.md} at \texttt{bcdacfc}). NIXL
+abstracts ``various types of memory (e.g., CPU and GPU) and storage'' behind one
+point-to-point transfer interface \cite{nvidia2026nixl}, with plug-in backends
+such as UCX for RDMA networks. Because a layer's cache is final as soon as that
+layer finishes, the transfer can start before the prefill ends, which can hide
+most of Equation~\ref{eq:pd-ratio}.
+
+Correctness rides on the transfer too. The decode side must end up with the
+cache the prefill side computed, for the same tokens, in the layout its kernels
+expect; any mismatch in precision, block size or tokenization silently changes
+the continuation. The opening's measurement checks the only thing that matters:
+the text is the same.
 
 \section{When disaggregation pays}
 
+Disaggregation pays when its latency control is worth the pools' rigidity. It
+wins when prompts are long enough that prefill would stall decoding, when the
+latency objectives for the two phases differ, and when the traffic is large
+enough to keep two pools busy. It loses when prompts are short (the transfer
+and scheduling overhead is then a large share of a small prefill), when load is
+small or bursty (a fixed split leaves one pool idle), and when prefix caching
+already removes most prefill (\Chref{prefix-caching}). And it does not raise the
+throughput a well-tuned colocated engine achieves, in vLLM's own assessment. Its
+wins are in goodput --- requests served within their objectives --- which is
+the metric DistServe optimized.
+
 \section{Scheduling across pools}
+
+With two pools, scheduling gains a dimension. A request must be routed to a
+prefill instance, likely one that already holds part of its prefix in cache,
+then to a decode instance with room for its cache to grow; and the ratio of
+prefill to decode capacity must follow the traffic, because a reasoning
+workload is decode-heavy (\Chref{reasoning-workloads}) where a
+retrieval-augmented one is prefill-heavy. NVIDIA's Dynamo routes by worker load
+and KV-cache overlap and resizes its pools with a planner \cite{nvidia2026dynamo};
+llm-d offers prefix-cache-aware routing and prefill/decode disaggregation on
+Kubernetes over vLLM \cite{llmd2026}; Mooncake's scheduler places requests to
+maximize throughput within latency objectives \cite{qin2024mooncake}.
 
 \section{Production architectures}
 
+Two of the largest open-model services run this way. DeepSeek serves
+V3 and R1 with prefill and decode on separate groups --- prefill units of 4
+nodes and decode units of 18, with different expert-parallel widths in each
+(\cite{deepseek2025inference}; \Chref{expert-parallelism}), and Moonshot's
+Kimi runs on Mooncake, described below. SGLang's team
+reproduced a comparable system on 96 H100 GPUs with prefill--decode
+disaggregation and large-scale expert parallelism (\cite{sglang2025largeep};
+the developers' measurement), and both NVIDIA's Dynamo and the llm-d project
+package the pattern for others, each reporting large gains on its own
+benchmarks (vendor claims, \cite{nvidia2026dynamo,llmd2026}).
+
 \section{Failure and rebalancing}
+
+Two pools double the ways to fail. A prefill instance can die after computing a
+cache and before sending it; the request must be prefilled again elsewhere. A
+decode instance can die holding hundreds of requests' caches; each must be
+rebuilt, by recomputation or from a copy in a storage tier
+(\Chref{kv-storage-tier}). And the balance between pools drifts with the
+traffic, so a system must move capacity between them, which takes minutes if
+it means loading models. Overload is the hardest case: accepting a request the
+decode pool cannot absorb wastes the prefill spent on it, which is why Mooncake
+rejects some requests at arrival, before prefill, on a prediction of decode
+load (\cite{qin2024mooncake}; the case below).
 
 \LedgerSection
 
+Running prefill and decode on separate pools:
+
+\begin{ConstraintLedger}
+Latency & buys & Time to first token and time per output token tuned separately; decode no longer waits for prefill chunks. \\
+Memory bandwidth & spends & Every request's cache crosses the network once: 2.7~GB for an 8,192-token prompt of Llama~3 70B, about a fifth of its prefill time on one 400~Gb/s port unless streamed or spread over ports. \\
+Cost & risks & Two fixed pools idle when the traffic mix changes; throughput is not higher than a well-tuned colocated engine. \\
+Correctness & risks & The decode side must receive exactly the cache prefill computed, in its own layout. \\
+\end{ConstraintLedger}
+
 \LabSection{a two-pool simulator}
+
+\LabIntent{In \texttt{code/labs/ch33-disaggregated-serving/}, an event
+simulator of a colocated server and of separate prefill and decode pools,
+driven by a trace of prompt and output lengths, with transfer time from
+Equation~\ref{eq:pd-ratio} and the step-time model of \Chref{napkin-math}. It
+reports goodput against latency objectives for each design and sweeps the pool
+ratio; an exact reference replays small traces by hand. Break it by switching
+the trace from chat to reasoning halfway through and watching the fixed pools.}
 
 \HappenedSection{a KV-centric serving platform}
 
-\FrontierSection{}
+Moonshot AI's Mooncake, which serves its Kimi assistant, is built around the
+cache rather than around the model \cite{qin2024mooncake}. Prefill and decode
+run in separate clusters, and the otherwise idle CPU memory and SSDs of the GPU
+servers form a disaggregated cache of KV blocks that any instance can read, so
+a prompt's prefix computed once can serve later requests anywhere. A
+KV-centric scheduler balances throughput against latency objectives, and under
+overload a prediction-based policy rejects requests early. The authors report
+that it let Kimi handle 75\% more requests on real workloads, and ``up to a
+525\% increase in throughput'' in simulated scenarios (their measurement). The
+early rejection took two tries, a story \Chref{scheduling} tells in full:
+rejecting on the decode pool's current load made the two pools' loads oscillate,
+and only a prediction of decode load at the time a request would arrive there
+settled it. Separating the phases had turned one feedback loop into two coupled
+ones.
+
+\FrontierSection{2026-09-24}
+
+Disaggregation is spreading along both axes of this Part: expert-parallel
+decode pools (\Chref{expert-parallelism}), encoder pools for images
+(\Chref{multimodal}), and cache tiers shared by all of them
+(\Chref{kv-storage-tier}). The machinery has become a product category ---
+transfer libraries, KV-aware routers, planners that resize pools --- and the
+open problems have moved from whether to split the phases to how to keep the
+pools balanced as the mix of chat, retrieval, agents and reasoning shifts under
+them.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Add attention's quadratic cost to
+  Equation~\ref{eq:pd-ratio} and find the prompt length at which the transfer's
+  share of prefill falls by half for Llama~3 70B.
+\item \emph{Prediction.} For a decode pool of 8 H100s serving Qwen3-8B with
+  4,096-token prompts arriving at 10 per second, compute the network bandwidth
+  the incoming caches need.
+\item \emph{Implementation.} Stream the cache layer by layer in the lab and
+  measure how much of the transfer the prefill hides.
+\item \emph{Falsification.} Find a traffic mix for which a colocated engine
+  with chunked prefill beats disaggregation on goodput at the same GPU count.
+\end{enumerate}

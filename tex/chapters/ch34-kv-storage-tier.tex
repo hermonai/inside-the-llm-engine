@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 34 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part6.md (kvmove, ssd).
 \chapter{The KV Cache as a Distributed Storage Tier}\label{ch:kv-storage-tier}
 
 \begin{ChapterIntent}
@@ -14,28 +15,230 @@ storage tier.
 
 \OpeningSection{Load or recompute}
 
+On the M1, llama.cpp's server took 97 seconds to compute the key/value cache
+of a 16,384-token prompt for Llama~3.2~3B, and 283 seconds for a model of the
+Qwen3-8B architecture. Restoring the same caches from files the server had
+saved --- 1.75 and 2.25~GiB --- took 0.7 to 1.3 seconds and 3.7 to 4.0 seconds.
+Every restored cache produced the same next token as the cold computation. The
+server's host-memory prompt cache, the tier that should have been fastest, was
+not: it gave back the smaller cache in 1.4 seconds and the larger in 67, on a
+16~GB machine with 19~GB of swap in use (measured; record
+\texttt{2026-09-24-m1-part6}).
+
+A restored file had the cache ready 33 to 123 times sooner than prefill did,
+counting the one prompt token left to process (derived from the measured times;
+Figure~\ref{fig:ch34-load-recompute}) --- because the laptop computes slowly, not because its
+storage is fast: its SSD read 1.5 to 1.9~GB/s with caching disabled. On a
+data-center GPU the same comparison is far closer, and for short prompts it
+reverses. And a tier's speed is what it delivers under load, not its place in
+a diagram: memory that can be paged out is not a memory tier.
+
+\EngineFigure{ch34-load-recompute}{Time until a prompt's KV cache is ready on
+the M1 with llama.cpp's server: recomputed by prefill, restored from a file the
+server saved, or brought back from its host-memory prompt cache, each including
+the one prompt token left to process (measured, one run each, on a loaded
+machine). Restoring beats recomputing by one to two orders of magnitude at
+every length. The host-memory cache matches the file until memory is
+overcommitted: for the larger model at 16,384 tokens it took 68 seconds, the
+point where this figure stops describing a healthy machine.}{fig:ch34-load-recompute} This chapter derives where the line falls for each tier of memory,
+and covers what it takes to run a cache that outlives its requests: an index,
+placement policies, routing, and keys that change whenever the cache must.
+
 \NapkinSection{Napkin math: the break-even for each tier}
+
+Prefill produces cache at a rate: tokens per second times bytes per token. A
+tier that can deliver cached bytes faster than prefill produces them is worth
+reading from; a slower one is not. Writing the prefill rate as $\pi u/(2P)$
+tokens per second for a model of $P$ parameters on hardware of peak $\pi$ at
+utilization $u$, the break-even bandwidth is
+\begin{equation}
+\beta^{*} = \frac{k\,\pi\,u}{2P},
+\label{eq:kv-breakeven}
+\end{equation}
+with $k$ the cache bytes per token. It is the same ratio as disaggregation's
+(Equation~\ref{eq:pd-ratio}), seen from the storage side, and it varies by more
+than two orders of magnitude between machines. For Qwen3-8B on one H100 at half
+its BF16 peak, prefill runs at about 30,000 tokens per second and produces
+4.5~GB of cache per second; for Llama~3 70B on eight H100s, 9.2~GB/s (derived).
+Only fast tiers --- host memory over PCIe, a 400~Gb/s network, a parallel file
+system --- beat recomputation there \todo{measure: on a discrete-GPU host,
+host-to-device PCIe bandwidth, NVMe read bandwidth with caching off and an 8B
+model's prefill rate, to place that machine on Equation~\ref{eq:kv-breakeven}}. On the laptop of this chapter's opening,
+llama.cpp prefilled Llama~3.2~3B at 170 to 280 tokens per second, 19 to 32~MB
+of cache per second (measured): almost any storage device is faster than
+that.
+
+Two corrections refine the picture. Each read also pays a fixed latency ---
+a lookup, a network round trip, an SSD access --- so short prefixes are
+cheaper to recompute whatever the bandwidth. And attention makes long prefills
+costlier than Equation~\ref{eq:kv-breakeven} assumes, which only favours
+loading as contexts grow.
 
 \section{KV that outlives its request}
 
+The cache starts outliving requests for many reasons. Prefix caching keeps
+shared system prompts and documents (\Chref{prefix-caching}); multi-turn
+sessions return with the whole conversation as their prefix; agents resend the
+same tools and files at every step; disaggregation hands every cache from one
+pool to another (\Chref{disaggregated-serving}). The commercial prompt caches of
+\Chref{prefix-caching} price the result: reading a cached prefix costs a tenth
+of processing it, or less, on both OpenAI's and Anthropic's APIs, for minutes to
+an hour or more.
+Each of these needs more cache than a GPU holds for longer than a request
+lasts --- which turns the cache from working memory into stored data.
+
 \section{Tiers: HBM, host memory, SSD, remote}
+
+Every tier trades capacity for bandwidth and latency. GPU memory is fast and
+full. Host memory is several times larger, reached over PCIe or a CPU--GPU link:
+vLLM's offloading connector copies completed blocks into pinned host memory by
+DMA and promotes hits back to the GPU on demand, and stages any further tier
+through that CPU tier (\texttt{docs/features/kv\_offloading\_usage.md} at commit
+\texttt{bcdacfc}). SSD is larger again and slower: SGLang's HiCache treats GPU
+memory as L1, host memory as L2 and distributed storage as L3
+\cite{sglang2026hicache}, and NVIDIA's Dynamo offloads ``across GPU $\to$ CPU
+$\to$ SSD $\to$ remote storage'' \cite{nvidia2026dynamo}. Remote storage pools
+the cache of a whole cluster: Mooncake builds one from the CPU memory and SSDs
+of the GPU servers \cite{qin2024mooncake}, and DeepSeek's 3FS, a parallel file
+system over SSDs and RDMA, reports more than 40~GiB/s of peak cache reads per
+client node (vendor numbers, \cite{deepseek2025threefs}).
 
 \section{The load-or-recompute break-even}
 
+Put Equation~\ref{eq:kv-breakeven} against the tiers and a pattern appears.
+On large GPUs, host memory and the network clear $\beta^{*}$ comfortably, a
+single SSD may or may not, and a request's position in the hierarchy decides
+whether its cache is worth fetching. On small hardware every tier clears it, and
+the question becomes capacity rather than speed. The same cache can be worth
+loading on one machine and worth recomputing on another, and a serving system
+that spans both must make the decision per request: vLLM lets a request cap the
+tokens it loads from offloaded tiers, recomputing the rest
+(\texttt{max\_load\_tokens}, \texttt{docs/features/kv\_offloading\_usage.md}).
+
 \section{Indexing and placement}
+
+A cache tier needs an index from token content to storage location. Engines
+key blocks by a hash of their tokens chained with the hash of the preceding
+block, plus anything else that changes the result --- adapters, images, a
+per-tenant salt (\Chref{prefix-caching}). SGLang's HiRadixTree extends the radix
+tree of \Chref{prefix-caching} so that each node records where its span's cache
+is stored \cite{sglang2026hicache}. Placement then needs policies. When to write
+down a tier: HiCache offers write-through, write-through only for blocks
+accessed often enough, and write-back on eviction \cite{sglang2026hicache}. How
+long to wait for a fetch: its prefetch policies range from starting prefill
+immediately with whatever has arrived to waiting for every block. And in what
+units: vLLM moves ``chunks'' of one or more blocks, larger chunks making larger
+I/Os (\texttt{kv\_offloading\_usage.md}). Every choice trades a hit rate against a
+latency.
 
 \section{Cache-aware routing}
 
+A cache is only as good as the probability that the next request reaches it.
+With many replicas, the router decides that probability. SGLang's cache-aware
+load balancer raised its hit rate from 20\% to 75\% and throughput 1.9 times in
+its developers' benchmark (\Chref{prefix-caching}); NVIDIA's Dynamo routes by
+worker load and KV overlap \cite{nvidia2026dynamo}; llm-d reports three times the
+output throughput and half the time to first token with prefix-cache-aware
+routing for Llama~3.1 70B on AMD MI300X (vendor claim, \cite{llmd2026}). A shared
+remote tier weakens the dependence on routing --- any replica can fetch any
+prefix --- at the cost of the fetch.
+
 \section{Consistency and invalidation}
+
+A KV cache is a pure function of the model's weights, its configuration
+(precision, position scaling, adapters) and the exact token sequence that
+precedes each position. Change any of them and every block that depends on it
+is invalid, and nothing in the bytes says so: a cache computed under one
+weight version and read under another yields text the new model would not
+have produced, with no error to show for it. Keys must
+therefore include the model version and every adapter and input hash, and
+tenants must be isolated, since a shared cache's timing reveals what others
+asked (\Chref{prefix-caching}). Positions are a trap of their own: truncating
+the start of a conversation shifts every later token's position and invalidates
+its cache, which CachedAttention avoids by decoupling positional encoding from
+the stored cache \cite{gao2024cachedattention}; LMCache's authors report that
+context truncation, widely used in industry, can cut the prefix hit ratio by
+about half \cite{liu2025lmcache}.
 
 \section{Production systems}
 
+The largest deployments already treat the cache as stored data. DeepSeek served
+56.3\% of a day's 608 billion input tokens from a KV cache on disk
+(\cite{deepseek2025inference}; the operator's report). CachedAttention, built
+for multi-turn conversations with a DRAM and SSD hierarchy, layer-wise
+preloading and asynchronous saving, reported up to 87\% lower time to first
+token and 7.8 times the prefill throughput \cite{gao2024cachedattention}; LMCache,
+which extracts caches from vLLM and SGLang and shares them across engines and
+queries, reports up to 15 times the throughput on multi-round question
+answering and document analysis \cite{liu2025lmcache}. Both are the authors'
+measurements, and both measure the hit case: a cache tier's value is its hit
+rate times the cost it avoids, minus what the misses and the tier itself cost.
+
 \LedgerSection
+
+Keeping KV caches beyond their requests, across memory tiers:
+
+\begin{ConstraintLedger}
+Compute & buys & Every hit replaces a prefill; the saving grows with prefix length and with attention's quadratic term. \\
+Latency & buys & Time to first token falls to the tier's read time --- where the tier beats the break-even bandwidth $\beta^{*}$. \\
+Memory capacity & spends & Host memory, SSDs and remote storage sized for the working set of prefixes. \\
+Correctness & risks & Stale or mis-keyed blocks produce wrong text silently; shared tiers leak timing across tenants. \\
+\end{ConstraintLedger}
 
 \LabSection{a tiered KV store with measured tier bandwidths}
 
+\LabIntent{In \texttt{code/labs/ch34-kv-storage-tier/}, a KV store with
+memory, file and simulated remote tiers behind one content-hashed index, fed
+by a trace of multi-turn sessions. The lab first measures the reader's own
+tiers --- memory copy, SSD reads with caching off --- and its engine's prefill
+rate, computes $\beta^{*}$ from Equation~\ref{eq:kv-breakeven}, and chooses
+load or recompute per request; an oracle recomputes every prefix and compares
+outputs. Break it by changing a model parameter without changing the key.}
+
 \HappenedSection{KV caches in DRAM and SSD at scale}
 
-\FrontierSection{}
+When DeepSeek published a day of its V3 and R1 service in March 2025, the
+most striking number was not a throughput but a hit rate: of 608 billion input
+tokens, 56.3\% were served from its KV cache on disk
+\cite{deepseek2025inference}. The day before, DeepSeek had released 3FS, a
+parallel file system over SSDs and RDMA whose documentation lists KV caching for
+inference among its uses, with 6.6~TiB/s of aggregate reads and more than
+40~GiB/s of peak cache reads per client node (vendor numbers,
+\cite{deepseek2025openweek,deepseek2025threefs}). A cache on
+disk is correct only if every writer and reader agrees on what it holds, and
+a September 2026 technical report shows how easily that fails: two replicas of
+a 27-billion-parameter model sharing one LMCache pool produced failures under
+imposed delays, traced to a code path that dropped the dependency on the
+current CUDA stream; restoring it fixed them. The same report found the shared
+cache cut the median time to first content token across replicas from 31.7 to
+0.6 seconds at 128K tokens of input, and gave little benefit when requests
+stayed on fixed replicas \cite{li2026sharedkv}. A shared cache is a distributed
+system, with the failure modes of one.
+
+\FrontierSection{2026-09-24}
+
+The cache is becoming a first-class storage workload: engine connectors that
+move it between GPUs, hosts and storage (\Chref{disaggregated-serving}),
+hierarchical caches inside engines \cite{sglang2026hicache}, cluster-wide stores
+\cite{qin2024mooncake,deepseek2025threefs}, and routers that know where it
+lives \cite{nvidia2026dynamo,llmd2026}. The research frontier is shifting from
+bandwidth to correctness and economics: keeping keys and invalidation exact
+across model updates and tenants, and pricing a tier by its hit rate against
+Equation~\ref{eq:kv-breakeven} rather than by its peak read speed.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Add a fixed read latency $\lambda$ to
+  Equation~\ref{eq:kv-breakeven} and find the shortest prefix worth loading
+  from a tier with $\lambda = 1$~ms for Qwen3-8B on an H100.
+\item \emph{Prediction.} A service caches 100,000 conversations of 20,000
+  tokens of Qwen3-8B. Size the SSD tier and compute the hit rate at which it
+  pays for itself in avoided H100 hours.
+\item \emph{Implementation.} Add write-back eviction and a prefetch deadline
+  to the lab, and measure hit rate and time to first token as the deadline
+  varies.
+\item \emph{Falsification.} Produce a wrong answer from the lab's store by
+  changing the position scaling of the model without changing the cache key,
+  then fix the key.
+\end{enumerate}

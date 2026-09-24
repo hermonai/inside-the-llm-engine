@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 31 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part6.md (rpc, rpc2, placement).
 \chapter{Tensor, Pipeline and Context Parallelism}\label{ch:model-parallelism}
 
 \begin{ChapterIntent}
@@ -12,30 +13,250 @@ interconnect's bandwidth, and shows how to choose a layout for a given model,
 context and latency target.
 \end{ChapterIntent}
 
-\OpeningSection{Two all-reduces per layer}
+\OpeningSection{A model split across two processes}
+
+Split Llama~3.2~3B between two llama.cpp processes on the M1: 15 of its 29
+layers behind llama.cpp's RPC server, reached over a loopback TCP connection,
+and 14 in the main process, both running on the same GPU. Generation slowed
+from 25.4 to 24.4 tokens per second, about 1.7~milliseconds more per token, and
+prefill of 512 tokens from 289 to 285 tokens per second (measured,
+configurations interleaved, two rounds of two runs; record
+\texttt{2026-09-24-m1-part6}). Only 12~KiB of activations crossed the boundary
+per token. What each token paid for was the round trip itself: copy the
+activations in, run the remote half of the graph, copy the result back, one
+command after another. In a first pass, with the machine heavily loaded by
+other work, the same split cost 13\% for this model and 35\% for an
+8-billion-parameter one; a boundary that is cheap on an idle machine is the
+first thing contention finds.
+
+That was one boundary per token. Tensor parallelism, the layout that makes
+large models fast on a single node, puts a synchronization in every layer ---
+two per layer, 56 per token for this model. At the laptop's 1.7~milliseconds
+each, those would take nearly 100~milliseconds per token, more than twice the
+whole 39-millisecond step (illustrative). Splitting a model is only worth it on links whose
+per-exchange latency is measured in microseconds, and this chapter is about
+pricing each way of splitting against the links that carry it.
 
 \NapkinSection{Napkin math: collective bytes against interconnect bandwidth}
 
+Split a model's matrices across $N$ devices and each device holds $1/N$ of the
+weights, reads $1/N$ of them per step, and must exchange partial results. The
+exchange is an all-reduce: every device contributes a vector and every device
+receives the sum. A ring all-reduce of $S$ bytes moves $2(N-1)/N \cdot S$
+bytes through each device's link, the factor NVIDIA's benchmarks call bus
+bandwidth \cite{nccltests2026performance}, so its time is about
+\begin{equation}
+t_{\text{AR}} \approx \alpha + \frac{2(N-1)}{N}\cdot\frac{S}{\beta},
+\label{eq:allreduce-time}
+\end{equation}
+with $\alpha$ a fixed latency per collective and $\beta$ the link's bandwidth in
+one direction.
+
+Megatron-LM's layout needs two all-reduces per transformer layer in the forward
+pass \cite{shoeybi2019megatron}, each of $B \cdot d \cdot b$ bytes for $B$ tokens
+in the step. For Llama~3 70B ($d = 8{,}192$, 80 layers) in BF16 on 8 GPUs, a
+decode step of one token all-reduces 16~KiB 160 times; each moves 28~KiB
+through each GPU's link, 64~ns at NVLink~4's 450~GB/s per direction (derived) ---
+negligible against $\alpha$, which for decode is the whole cost
+\todo{measure: NCCL all-reduce latency for 16~KiB to 1~MiB messages on an 8-GPU
+NVLink node}. Prefill is the opposite. For an 8,192-token prompt each
+all-reduce is 128~MiB, 235~MB through each link: 0.52~ms at 450~GB/s, 84~ms for
+the 160 of them, against 157~ms of arithmetic per GPU at full BF16 peak and
+about 315 at a more typical half of it (derived). On PCIe Gen5 instead of
+NVLink, the same all-reduces take 590~ms: communication would exceed the
+compute it serves (derived, at 64~GB/s per direction).
+
+Pipeline parallelism, which gives each device a contiguous block of layers,
+sends only the activations at each boundary: 16~KiB per token for this model,
+0.3~$\mu$s at the 50~GB/s of a 400~Gb/s network port, 2.7~ms for the whole
+8,192-token prompt (derived). Its cost is not bytes but idle time, which the
+section on bubbles prices.
+
 \section{Why split a model}
+
+Two reasons, and they pull toward different layouts. \emph{Capacity:} Llama~3
+70B in BF16 is 141~GB, more than an 80~GB H100, and a model that does not fit
+must be split somehow. \emph{Speed:} decode is bandwidth-bound
+(\Chref{roofline}), so eight GPUs reading one-eighth of the weights each produce
+a token about eight times sooner --- 5.3~ms per token for this model on eight
+H100s at batch 1, against 17.7~ms on one B200 that can hold it (derived from
+3.35 and 8~TB/s) --- as long as the communication does not eat the gain.
+Capacity cares only that the pieces fit; speed cares about every microsecond the
+pieces spend talking.
 
 \section{Tensor parallelism}
 
+Tensor parallelism splits each layer's matrices across devices so that every
+device takes part in every layer. Megatron-LM's arrangement pairs the splits so
+that most communication cancels: the feed-forward block's first matrix is split
+by columns and its second by rows, so each device computes a slice of the
+hidden activation and a partial output with no exchange in between; attention
+is split by heads, each device computing whole heads, and its output
+projection by rows. That leaves one all-reduce after attention and one after
+the feed-forward block --- ``only two all-reduces in the forward path'' per
+layer, in the paper's words \cite{shoeybi2019megatron}. vLLM implements this
+algorithm for its tensor parallelism (\texttt{docs/serving/parallelism\_scaling.md}
+at commit \texttt{bcdacfc}).
+
+The split has limits set by the model. Heads divide among devices only if there
+are at least as many key/value heads as devices; beyond that, key/value heads
+and their cache are replicated (\Chref{shrinking-kv}). And every layer now waits
+for the slowest device and the collective, so tensor parallelism wants
+identical devices on the fastest link available.
+
 \section{The collectives each layer pays}
+
+An all-reduce is a reduce-scatter followed by an all-gather: each device ends
+the first phase owning the sum of one slice, and the second phase shares the
+slices. The ring algorithm does each phase in $N-1$ steps over neighbouring
+links, which is where the factor $2(N-1)/N$ of
+Equation~\eqref{eq:allreduce-time} comes from; the all-gather and
+reduce-scatter alone each cost $(N-1)/N$ \cite{nccltests2026performance}. Two
+regimes follow. Decode moves kilobytes per collective and pays latency: 160
+collectives per token, each with its fixed $\alpha$, set a floor on time per
+token that no bandwidth removes. Prefill moves hundreds of megabytes and pays
+bandwidth, so it can hide communication behind the next layer's arithmetic if
+the engine overlaps them. Engines differ mainly in how much of each regime they
+manage to hide.
 
 \section{Pipeline parallelism and its bubbles}
 
+Pipeline parallelism gives each of $p$ devices a contiguous block of layers
+and passes activations from one to the next. It needs little bandwidth and no
+collective at all, so it crosses slow links well, and it splits a model of any
+shape, evenly or not. Its cost is time: one sequence's token must pass through
+the stages one after another, so pipeline parallelism shortens nothing for a
+single request --- it only lets several requests occupy different stages at
+once. GPipe introduced batch-splitting pipelining for training, dividing
+batches into micro-batches to keep the stages busy \cite{huang2019gpipe}; with $m$
+micro-batches in flight on $p$ stages, the fraction of time a stage sits idle
+waiting for work is $(p-1)/(m+p-1)$ (derived). Inference serving meets the same
+arithmetic with requests instead of micro-batches: pipeline stages stay busy
+only if enough independent batches are in flight.
+
+That is why vLLM's guidance is to use tensor parallelism within a node and
+pipeline parallelism across nodes, and pipeline parallelism even within a node
+when its GPUs lack NVLink, ``for higher throughput and lower communication
+overhead'' (\texttt{docs/serving/parallelism\_scaling.md} at \texttt{bcdacfc}).
+The opening's split was a pipeline in miniature: two stages, one request, and
+the whole cost of the boundary with none of the concurrency that would pay for
+it.
+
 \section{Context parallelism and ring attention}
+
+The third axis is the sequence. For a million-token prefill, splitting weights
+does not help enough, because attention's cost grows with the square of the
+context (\Chref{long-context}). Context parallelism gives each device a slice of
+the tokens; attention then needs every earlier token's keys and values. Ring
+attention passes key/value blocks around a ring of devices and overlaps each
+transfer with the attention computed on the block before
+\cite{liu2023ringattention}, and Meta's inference variants, passing keys and
+values or passing queries, prefilled a million tokens of Llama~3 405B in 77
+seconds on 128 H100s (their measurement, \cite{yang2024contextparallel}). For
+decode, the cache itself is split along the sequence; vLLM's decode context
+parallelism exists because tensor parallelism beyond the number of key/value
+heads only duplicates the cache (\Chref{shrinking-kv}). NVIDIA's Helix
+generalizes the idea: shard the cache across GPUs during attention, then reuse
+the same GPUs for tensor or expert parallelism in the feed-forward layers; its
+authors report up to 1.5 times lower token-to-token latency at fixed batch, and
+up to 32 times larger batches within the same latency budget for DeepSeek-R1
+on Blackwell \cite{bhatia2025helix}.
 
 \section{Choosing a layout}
 
+A layout is chosen by working through the constraints in order. First, fit: the
+weights plus the cache the target batch needs must fit across the devices.
+Second, the link: tensor parallelism only where the interconnect makes
+Equation~\eqref{eq:allreduce-time} small against the step --- NVLink within a
+node --- and pipeline parallelism across slower links. Third, the latency
+target: decode's per-token floor rises with every collective, so interactive
+services keep tensor groups small and replicate the model instead. Fourth, the
+workload: long prompts argue for context parallelism in prefill, mixtures of
+experts for expert parallelism (\Chref{expert-parallelism}), and a service with
+both prefill- and decode-heavy traffic may run the phases on different layouts
+altogether (\Chref{disaggregated-serving}). Pope and colleagues turned this
+reasoning into an analytical model and chose partitionings of PaLM for the
+application's latency or throughput target (\cite{pope2022scaling}; the case below).
+
 \section{Interconnects}
+
+The numbers that decide all of this are the links. An H100 SXM's NVLink moves
+900~GB/s and its PCIe Gen5 port 128~GB/s \cite{nvidia2026h100}; NVIDIA's
+figures count both directions together (its NVLink page says so; a PCIe Gen5
+$\times$16 link carries about 63~GB/s each way), and the NVL variant's NVLink
+moves 600~GB/s.
+Blackwell's NVLink doubles to 1.8~TB/s per GPU, 14.4~TB/s across a DGX B200's
+eight GPUs \cite{nvidia2026nvlink,nvidia2026dgxb200}, and a GB300 NVL72 rack
+connects 72 GPUs with 130~TB/s of NVLink in total and gives each GPU an
+800~Gb/s network port \cite{nvidia2026gb300}. Between nodes, 400~Gb/s
+InfiniBand ports, 50~GB/s each, are typical of the last generation
+\cite{nvidia2026dgxb200}. About a factor of ten separates NVLink from the
+network, per direction. Every layout decision is a decision about which of these
+links each byte crosses.
 
 \LedgerSection
 
+Splitting one model across $N$ devices:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & Each device holds about $1/N$ of the weights (and, if key/value heads allow, of the cache). \\
+Memory bandwidth & buys & Aggregate bandwidth: decode reads $1/N$ of the weights per device per token. \\
+Latency & spends & Two all-reduces per layer for tensor parallelism, a fixed cost per collective that dominates decode; boundaries and bubbles for pipelines. \\
+Cost & spends & The interconnect: NVLink-class links for tensor parallelism, many in-flight batches for pipelines. \\
+\end{ConstraintLedger}
+
 \LabSection{simulate tensor parallelism with threads}
+
+\LabIntent{In \texttt{code/labs/ch31-model-parallelism/}, one transformer
+layer split Megatron-style across $N$ worker threads that exchange partial
+sums through an explicit all-reduce, checked against the unsplit layer in
+float64. The lab counts bytes per collective, times each collective with a
+configurable latency and bandwidth, and reproduces the decode and prefill
+regimes of Equation~\ref{eq:allreduce-time}; a second part runs the same layer
+as a two-stage pipeline and measures the bubble against the formula. Break it
+by splitting attention across more workers than there are key/value heads.}
 
 \HappenedSection{partitioning PaLM for inference}
 
-\FrontierSection{}
+In 2022 a Google team faced the problem this chapter describes at the largest
+scale then served: PaLM, 540 billion parameters, on TPU v4 slices. Rather than
+choose one layout, they built a simple analytical model of inference
+efficiency and used it to pick multi-dimensional partitionings of the weights
+and activations for each application's requirements, reaching a new Pareto
+frontier of latency against model FLOPS utilization. With 8-bit weights, PaLM
+generated at 29~ms per token at small batch; processing input tokens at large
+batch it reached 76\% utilization; and multi-query attention let it serve
+contexts up to 32 times longer (the authors' measurements,
+\cite{pope2022scaling}). This chapter's napkin math says why the choice depends
+on the target: decode pays per-collective latency and prefill pays bandwidth,
+so a layout tuned for one is a compromise for the other, and a service that
+needs both must accept the compromise or run the two phases separately
+(\Chref{disaggregated-serving}).
+
+\FrontierSection{2026-09-24}
+
+The fabric is growing faster than the model: rack-scale NVLink domains of 72
+GPUs make tensor and expert groups of dozens of devices practical inside one
+fast network \cite{nvidia2026gb300}, and designs such as Helix split each layer
+differently for attention and for the feed-forward block
+\cite{bhatia2025helix}. Context parallelism is moving from research into
+engines for prefill and decode (\texttt{docs/serving/context\_parallel\_deployment.md}
+in vLLM). The open question is less which axis to split than how to switch
+between splits from one layer, or one phase, to the next.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Derive the ring all-reduce's $2(N-1)/N$ factor, and
+  show that a tree all-reduce trades it for fewer latency steps.
+\item \emph{Prediction.} For Qwen3-8B split across 2 GPUs over PCIe Gen5,
+  estimate the all-reduce time per decode token and per 4,096-token prefill,
+  and say which parallelism you would choose.
+\item \emph{Implementation.} Add overlap to the lab: start the all-reduce of
+  layer $\ell$ while layer $\ell+1$'s first matrix product runs, and measure
+  how much of the prefill regime's communication disappears.
+\item \emph{Falsification.} The opening's split cost about 1.7~ms per token on
+  one machine. Predict the cost with the two processes on two machines linked
+  by 10~Gb/s Ethernet, then measure it; say which term of
+  Equation~\ref{eq:allreduce-time} your prediction got wrong.
+\end{enumerate}

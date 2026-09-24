@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 32 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Numbers: derived from published configurations and operators' reports; the
+% imbalance figures are a seeded simulation in research/measurements/2026-09-24-m1-part6/.
 \chapter{Expert Parallelism at Scale}\label{ch:expert-parallelism}
 
 \begin{ChapterIntent}
@@ -14,26 +16,225 @@ local.
 
 \OpeningSection{An all-to-all in every layer}
 
+In early 2025 DeepSeek described how it serves V3 and R1. Decode ran on 18
+nodes of eight GPUs, and each GPU held just two of a layer's 256 routed experts
+and its shared expert; prefill ran on 4 nodes, nine routed experts per GPU, with
+32 redundant copies of the busiest experts (the operator's report,
+\cite{deepseek2025inference}). Each GPU holds a sliver of every MoE layer, and
+every token needs eight slivers per layer. So every token's hidden state leaves
+its GPU for up to eight others and eight results come back, in each of the
+model's 58 MoE layers.
+
+For one token of DeepSeek-V3 that is about 168~KiB per MoE layer --- the
+7,168-element hidden state sent to eight experts in FP8 and returned from them
+in BF16 --- and 9.5~MiB per token per forward pass (derived). At the 50~GB/s of
+one 400~Gb/s InfiniBand port, the traffic of a single token takes about
+200~$\mu$s, and a decode step in which a GPU serves 128 tokens needs 1.3~GB of
+it: 26 milliseconds of network time per step if nothing overlapped (derived,
+upper bounds, since routing that keeps some experts on the same node sends part
+of it over NVLink instead). DeepSeek reported 20 to 22 tokens per second per
+user from that system, about 45 to 50 milliseconds a step
+\cite{deepseek2025inference}. At this scale the machine that serves a
+mixture-of-experts model is first of all a network, and the engineering of
+expert parallelism is the engineering of hiding it
+\todo{measure: dispatch and combine latency and bandwidth on a multi-GPU node,
+for example with DeepEP's test suite or vLLM's all-to-all backends}.
+
 \NapkinSection{Napkin math: dispatch bytes per token}
+
+With $k$ experts per token, hidden width $d$, dispatch precision $b_{\text{d}}$
+and combine precision $b_{\text{c}}$ bytes, one token moves at most
+\begin{equation}
+V_{\text{token}} = k\,d\,(b_{\text{d}} + b_{\text{c}})
+\label{eq:ep-bytes}
+\end{equation}
+bytes per MoE layer, out and back. For DeepSeek-V3 ($k = 8$, $d = 7{,}168$, FP8
+out, BF16 back) that is 172,032 bytes; for Qwen3-30B-A3B ($k = 8$, $d = 2{,}048$,
+BF16 both ways), 65,536 bytes (derived). Two things reduce it. Tokens routed to
+several experts on the same GPU or node need to cross the slow link once, and
+DeepSeek-V3 was trained to send each token to at most 4 nodes (report section
+2.1.2, \cite{deepseek2024v3}), so the inter-node traffic per token is bounded by
+the nodes, not the experts. And a shared expert, computed where the token
+already is, sends nothing.
+
+Compare the arithmetic. A routed expert of DeepSeek-V3 does about $6 \times
+7{,}168 \times 2{,}048 \approx 88$ million FLOPs per token, so eight of them do
+705 million, while moving 172,032 bytes: about 4,100 FLOP per byte of network
+traffic (derived). An H100's dense FP8 peak of 1,979~TFLOP/s against a 50~GB/s
+NIC needs about 40,000 FLOP per network byte to balance --- the dispatch, not the expert, sets
+the step time unless communication overlaps computation, which is why every
+system in this chapter is built around overlap.
 
 \section{Placing experts}
 
+Expert parallelism assigns each expert to one device, so a layer's $E$ experts
+are spread over $G$ devices, $E/G$ each, and every device holds all of the
+attention and shared layers or a data-parallel share of them. The weights no
+longer need replicating: DeepSeek-V3's 671 billion parameters, mostly experts,
+fit across enough devices that each holds a few gigabytes of experts and has
+most of its memory left for cache. The attention layers are typically run data
+parallel --- each device serves different sequences --- which is how vLLM
+deploys DeepSeek-style models: EP for the experts, DP for attention, with
+$\text{EP} = \text{TP} \times \text{DP}$ ranks (\texttt{docs/serving/expert\_parallel\_deployment.md}
+at commit \texttt{bcdacfc}), and how DeepSeek describes its own service
+(``Routed Expert EP32, MLA/Shared Expert DP32'' in prefill;
+\Chref{shrinking-kv}).
+
+Placement is not arbitrary. Experts that are often chosen together can share a
+node, so a token's traffic stays local; DeepSeek's load balancer places
+``experts of the same group'' on the same node whenever possible to cut
+inter-node traffic \cite{deepseek2025eplb}.
+
 \section{Dispatch and combine}
+
+An MoE layer under expert parallelism runs in four steps. The router picks each
+token's experts where the token is. \emph{Dispatch} sends each token's hidden
+state to the devices holding its experts --- an all-to-all, since every device
+sends to every other. Each device runs its experts on the tokens it received,
+as a grouped GEMM (\Chref{mixture-of-experts}). \emph{Combine} sends the results
+back to the tokens' devices, where they are weighted by the gates and summed.
+
+The all-to-all is the hard collective. Unlike an all-reduce, its message sizes
+depend on the routing, so they are known only after the router runs, change
+every step, and are uneven. DeepSeek's DeepEP library implements dispatch and
+combine as dedicated GPU kernels with FP8 dispatch and BF16 combine; its
+current README reports, for 8,192 tokens per batch at DeepSeek-V3's shape,
+``bottleneck'' bandwidths of 90~GB/s over RDMA across two nodes of eight
+Hopper GPUs using 12 of each GPU's SMs, 61~GB/s across four nodes with 6 SMs,
+and 726~GB/s over NVLink within one Blackwell node with 64 SMs (vendor numbers,
+\cite{deepseek2025deepep}). The SM counts matter: every SM spent moving tokens
+is an SM not multiplying them.
 
 \section{Imbalance and redundant experts}
 
+The all-to-all finishes when the busiest device finishes. Even perfectly
+uniform routing leaves some device above the mean: with $\mu$ token--expert
+pairs per device on average across $G$ devices, the busiest gets about
+$1 + \sqrt{2\ln G/\mu}$ times the mean. A seeded simulation with DeepSeek-V3's
+routing shape gives 1.06 at 4,096 tokens per step on 32 GPUs, 1.19 at 512
+tokens and 1.38 at 128; on 128 GPUs at 512 tokens, 1.48 (derived by
+simulation; script in the Part VI record). Decode, with its small batches per
+device, sits at the bad end of that range --- and real routing is not uniform.
+vLLM's documentation warns that token counts across experts ``can be highly
+skewed'' in practice \cite{vllm2026eplb}.
+
+The remedy is to replicate the hot experts. DeepSeek duplicates high-load
+experts, chosen from online statistics and adjusted periodically, and packs
+the copies onto devices to even the load: 32 redundant experts in prefill,
+and in decode a design where 64 of 320 GPUs host redundant and shared experts
+(report section 3.4, \cite{deepseek2024v3}). Its open-source EPLB offers a
+hierarchical policy when nodes divide expert groups and a global one otherwise
+\cite{deepseek2025eplb}. vLLM's EPLB collects load statistics every forward
+pass, rebalances every 3,000 engine steps by default, and warns of the memory
+bill: one redundant expert per rank costs about 2.4~GB for DeepSeek-V3
+\cite{vllm2026eplb}. Redundancy trades memory --- and so cache capacity ---
+for tail latency.
+
 \section{Overlapping communication with compute}
+
+If dispatch and combine cannot be made cheap, they can be hidden. DeepSeek's
+prefill processes two micro-batches of similar size at once, overlapping the
+attention and MoE computation of one with the dispatch and combine of the
+other (report section 3.4.1, \cite{deepseek2024v3}). Within a kernel, the
+same idea appears as communication that proceeds while the GPU computes,
+without occupying the SMs the computation needs. The cost of overlap is
+latency: a request's step now waits for its partner micro-batch, and the batch
+must be large enough to split. Overlap therefore suits prefill and
+throughput-oriented decode better than a single interactive stream.
 
 \section{Wide expert parallelism across nodes}
 
+Why spread one model over 144 GPUs rather than 8? Because the batch that makes
+MoE decode efficient is enormous (Equation~\ref{eq:moe-ridge-batch},
+\Chref{mixture-of-experts}): each GPU should see enough tokens per expert to
+fill its matrix units, and with two experts per GPU and tokens gathered from
+the whole cluster, it does. Wide EP converts many small, bandwidth-bound expert
+products into fewer, fuller ones, at the price of the network. SGLang's team
+reported running DeepSeek on 96 H100 GPUs with prefill--decode disaggregation
+and large-scale EP at 52.3 thousand input and 22.3 thousand output tokens per
+second per node for 2,000-token inputs, and up to 5 times the output throughput
+of plain tensor parallelism on the same hardware (the developers'
+measurement, \cite{sglang2025largeep}). Rack-scale NVLink domains move the
+trade again: 72 GPUs sharing 130~TB/s of NVLink (\Chref{model-parallelism})
+put a whole wide-EP group inside one fast fabric.
+
 \section{Low-latency kernels for decode}
+
+Decode steps are short and latency-bound, and they want CUDA graphs, which
+cannot depend on how many tokens each expert receives. The answer is a masked
+layout: allocate every expert's buffer at its maximum size and pass the true
+counts as data, so one captured graph serves every step. DeepGEMM's grouped
+GEMM supports exactly this masked layout for decode (\Chref{mixture-of-experts},
+\cite{deepseek2025deepgemm}), and vLLM offers separate all-to-all backends for
+the two regimes: \texttt{deepep\_high\_throughput}, with a contiguous layout for
+prefill, and \texttt{deepep\_low\_latency}, with CUDA-graph support and a masked
+layout for decode (\texttt{docs/serving/expert\_parallel\_deployment.md} at
+\texttt{bcdacfc}).
 
 \LedgerSection
 
+Spreading experts across $G$ devices with an all-to-all per MoE layer:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & Each device holds $E/G$ experts of every layer instead of all of them; the freed memory becomes cache. \\
+Compute & buys & Tokens gathered from the whole cluster fill each expert's matrix products; batches per expert grow with $G$. \\
+Latency & spends & Two all-to-alls per MoE layer, 168~KiB per token per layer for DeepSeek-V3, finished by the busiest device. \\
+Memory capacity & spends & Redundant experts to tame imbalance: about 2.4~GB per redundant expert per rank for DeepSeek-V3. \\
+\end{ConstraintLedger}
+
 \LabSection{an all-to-all simulator with routing skew}
+
+\LabIntent{In \texttt{code/labs/ch32-expert-parallelism/}, a simulator that
+routes batches of tokens to experts under uniform and skewed popularity,
+places experts on $G$ devices, and reports per-device load, the straggler
+ratio and the bytes each device sends and receives per layer; an exact
+reference counts the same quantities with plain loops. A second part adds
+redundant replicas of the hottest experts and a placement heuristic, and
+measures how far each closes the gap to the mean. Break it by training the
+placement on one skew and testing it on another.}
 
 \HappenedSection{an open-source dispatch library}
 
-\FrontierSection{}
+DeepSeek released DeepEP on the second day of its February 2025 open-source
+week as ``the first open-source EP communication library for MoE model training
+and inference'': all-to-all kernels within and across nodes, high-throughput
+kernels for training and prefill, low-latency kernels for decode, native FP8
+dispatch, and control over how many GPU resources communication takes
+\cite{deepseek2025openweek}. It became a dependency of the open engines' expert
+parallelism: vLLM's installation guide for EP starts with installing DeepEP
+and DeepGEMM, and its high-throughput and low-latency all-to-all backends are
+built on it (\texttt{docs/serving/expert\_parallel\_deployment.md} at
+\texttt{bcdacfc}). The library kept moving: its second version replaced its
+communication layer with an NCCL-based backend and reports up to 1.3 times the
+first version's peak performance while using up to 4 times fewer SMs (vendor
+numbers, \cite{deepseek2025deepep}). The episode is a pattern this book keeps
+meeting: a serving technique becomes industry infrastructure the day a
+production team publishes the kernels behind it.
+
+\FrontierSection{2026-09-24}
+
+Expert parallelism is being pulled in two directions. Fabrics grow: rack-scale
+NVLink domains of 72 GPUs let wide EP run inside one high-bandwidth network,
+and NVIDIA's Dynamo reports seven times the throughput per GPU for DeepSeek-R1
+on such a rack (vendor claim, \cite{nvidia2026dynamo}). And models grow sparser: 16 of 896 experts in
+Kimi~K3 (\Chref{mixture-of-experts}) raises both the number of devices worth
+spreading over and the imbalance each step must absorb. Dispatch libraries,
+load balancers that move experts while serving, and routing trained with the
+deployment's topology in mind are where the work is.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Derive the straggler ratio $1 + \sqrt{2\ln G/\mu}$
+  from a normal approximation to each device's load, and state when it is an
+  underestimate.
+\item \emph{Prediction.} For Qwen3-30B-A3B with experts on 8 GPUs, compute the
+  dispatch and combine bytes per decode step at 64 tokens per GPU, and the time
+  on PCIe Gen5 and on NVLink~4.
+\item \emph{Implementation.} Add a redundant-expert placement to the lab that
+  minimizes the maximum load for a given popularity vector, and compare it with
+  replicating the $r$ most popular experts.
+\item \emph{Falsification.} Find a batch size and skew at which adding a
+  redundant expert makes the step \emph{slower} because the memory it took
+  reduced the batch.
+\end{enumerate}
