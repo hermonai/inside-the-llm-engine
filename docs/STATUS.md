@@ -6,9 +6,9 @@ edition's status ledger, with its dated milestone entries, is
 
 ## Where the book is
 
-**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I–IV.**
+**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I–V.**
 Every chapter and appendix exists under the new numbering with its intent and
-section headings in the chapter anatomy. Chapters 1–24 are zero drafts built
+section headings in the chapter anatomy. Chapters 1–30 are zero drafts built
 on measurements taken for them. The first edition's Chapters 2–9 are Appendix
 A.1–A.8, and its Chapter 1 is now the mechanism of Chapter 14, with the
 anatomy built around it. The plan is [`STRUCTURE.md`](STRUCTURE.md); the
@@ -31,7 +31,7 @@ if this table is stale. Words are approximate prose words.
 | 2 | The Forward Pass, Compressed | ZERO | 2,301 | 0 |
 | 3 | The Roofline: Why Decode Leaves Your GPU Idle | ZERO | 2,873 | 6 |
 | 4 | Prefill and Decode: Two Workloads, One Model | ZERO | 2,057 | 1 |
-| 5 | The KV Cache: Inference's Central Data Structure | ZERO | 2,099 | 1 |
+| 5 | The KV Cache: Inference's Central Data Structure | ZERO | 2,110 | 0 |
 | 6 | Napkin Math: Latency, Throughput and Cost per Token | ZERO | 1,951 | 2 |
 | 7 | Matrix Multiplication on Real Hardware | ZERO | 2,086 | 2 |
 | 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | ZERO | 2,083 | 0 |
@@ -51,12 +51,12 @@ if this table is stale. Words are approximate prose words.
 | 22 | Speculative Decoding: The Draft–Verify Contract | ZERO | 2,226 | 0 |
 | 23 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ZERO | 1,958 | 0 |
 | 24 | When Speculation Loses | ZERO | 1,769 | 0 |
-| 25 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | SKELETON | 148 | 0 |
-| 26 | Mixture of Experts | SKELETON | 143 | 0 |
-| 27 | Hybrid Models: State Spaces and Linear Attention | SKELETON | 155 | 0 |
-| 28 | Long Context: Windows, Sinks and Sparse Attention | SKELETON | 146 | 0 |
-| 29 | Reasoning Models and Test-Time Compute | SKELETON | 130 | 0 |
-| 30 | Multimodal Inference | SKELETON | 128 | 0 |
+| 25 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | ZERO | 3,098 | 0 |
+| 26 | Mixture of Experts | ZERO | 2,876 | 0 |
+| 27 | Hybrid Models: State Spaces and Linear Attention | ZERO | 2,661 | 0 |
+| 28 | Long Context: Windows, Sinks and Sparse Attention | ZERO | 2,520 | 0 |
+| 29 | Reasoning Models and Test-Time Compute | ZERO | 2,042 | 0 |
+| 30 | Multimodal Inference | ZERO | 1,934 | 0 |
 | 31 | Tensor, Pipeline and Context Parallelism | SKELETON | 131 | 0 |
 | 32 | Expert Parallelism at Scale | SKELETON | 115 | 0 |
 | 33 | Disaggregated Serving | SKELETON | 115 | 0 |
@@ -89,15 +89,15 @@ if this table is stale. Words are approximate prose words.
 | G | `tex/appendices/g-reproducing-measurements.tex` | SKELETON | 69 |
 <!-- chapter-status:end -->
 
-## Verified at the end of session 4 (2026-09-24)
+## Verified at the end of session 5 (2026-09-24)
 
 | Check | Result |
 | --- | --- |
-| `make textbook-check` | pass: 42 chapters (18 SKELETON, 24 ZERO), 15 appendix files, 72 native figures (all used), 27 worked problems, CLI trace and worked calculations |
-| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; Figure 22.1's page and Chapter 23's comparison table inspected as images |
-| `cargo test --workspace` in `code/mini-engine` | 220 pass; `cargo fmt --check` and `clippy -D warnings` clean |
-| All CI steps run locally | pass (17 steps), run on the committed tree this time — see the correction below |
-| Secrets guard | `scripts/check-structure.sh` passes after redacting loopback addresses from the Part III and IV raw outputs |
+| `make textbook-check` | pass: 42 chapters (12 SKELETON, 30 ZERO), 15 appendix files, 75 native figures (all used), 27 worked problems, CLI trace and worked calculations |
+| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; the pages of Figures 25.1, 26.1 and 27.1 and Table 28.1 inspected as images |
+| `cargo test --workspace` in `code/mini-engine` | 220 pass; `cargo check`, `cargo fmt --check` and `clippy -D warnings` clean |
+| All CI steps run locally | pass (all 13 script steps and the four cargo steps), with the new files staged |
+| Secrets guard | `scripts/check-structure.sh` passes with the Part V raw outputs staged (`git add -N`); logs redacted to `<loopback>`, scripts use `localhost` |
 
 **Correction to session 3.** Session 3 ran the CI steps before committing its
 raw measurement outputs, so the secrets guard never saw them; once committed,
@@ -107,25 +107,27 @@ scripts) and now runs the guard after staging.
 
 Measurement records: `research/measurements/2026-09-23-m1-llama32-3b.md`,
 `2026-09-23-gguf-tensor-bytes.md`, `2026-09-23-m1-part2.md` (Chapters 7–13),
-`2026-09-24-m1-part3.md` (Chapters 14–21) and `2026-09-24-m1-part4.md`
+`2026-09-24-m1-part3.md` (Chapters 14–21), `2026-09-24-m1-part4.md`
 (Chapters 22–24: verification cost, prompt-lookup and draft-model speculation,
-greedy exactness, concurrency). All were taken on the Apple M1 during an
-ordinary desktop session; Part IV's under heavier load from other work, so
-every Part IV comparison is paired. Re-measure on a quiet machine before any
-chapter is FULL.
+greedy exactness, concurrency) and `2026-09-24-m1-part5.md` (Chapters 25–30:
+KV-cache and recurrent-state allocations, decode speed against context for two
+GQA ratios and for a hybrid, thinking budgets, Gemma 4's sliding windows and
+image tokens in Ollama, prefix reuse with recurrent state, and llama.cpp's
+expert matrix product). All were taken on the Apple M1 during an ordinary
+desktop session, Parts IV and V under load from other work. Re-measure on a
+quiet machine before any chapter is FULL.
 
 ## Open markers
 
-Fourteen `\todo` markers remain, all visible in the PDF.
+Thirteen `\todo` markers remain, all visible in the PDF.
 
-**Part I (10).**
+**Part I (9).**
 
 - **GPU measurements** (Chapters 3, 6): the RTX 5060 Ti re-measurement of the
   prompt's example, and the H100 validation of Chapter 6's table. The GPU
   development host was unreachable in sessions 1 and 2.
-- **Sources** (Chapters 3, 4, 5): the M1's memory type; Rubin-class
-  specifications; engine adoption of disaggregation; the Kimi Delta Attention
-  paper.
+- **Sources** (Chapters 3, 4): the M1's memory type; Rubin-class
+  specifications; engine adoption of disaggregation.
 - **Chapter 3** needs the same kernel selection confirmed in the measured
   llama.cpp build, and worked solutions; **Chapter 6** needs DeepSeek's decode
   step reconstructed with expert-parallel communication (FULL pass).
@@ -142,6 +144,13 @@ Fourteen `\todo` markers remain, all visible in the PDF.
 Resolved in session 3: the Hermon status markers of Chapters 1, 4 and 5
 (continuous batching DEFAULT, prompt-lookup speculation and the CUDA cache
 arena PREVIEW, at `2a3fd52`), and chunked-prefill adoption in Chapter 4.
+Resolved in session 5: Chapter 5's Kimi Delta Attention marker, from the Kimi
+Linear paper (arXiv:2510.26692).
+
+**Part V (0).** Every Part V claim is measured, derived, or read from a
+primary source or pinned source code (llama.cpp `d006858`, vLLM `bcdacfc`,
+Hermon `2a3fd52`); the sources are in `research/FRONTIER.md`, "Part V
+additions", and the model rows added to its configuration table.
 
 **Part IV (0).** Every Part IV claim is measured, derived, or read from a
 primary source or pinned source (llama.cpp `d006858`, Hermon `2a3fd52`); the
@@ -159,17 +168,21 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
 
 ## Next
 
-1. Zero-draft Part V (Chapters 25–30: shrinking the KV cache, mixture of
-   experts, hybrid models, long context, reasoning, multimodal). Part V is
-   frontier-heavy: first read the leads in `research/FRONTIER.md` (Kimi
-   Linear, Mamba-2, Qwen3.5's linear layers, StreamingLLM, H2O, SnapKV, YaRN,
-   DeepSeek-V4's attention) and re-check the model configurations it cites.
-2. Clear the Part II source markers; they need documentation, not hardware.
-3. When a GPU host is available, clear the measurement markers, and repeat the
-   Part II–IV probes on it (the M1 results are single-machine and
-   Metal-specific; the probes in the Part III and IV records run against any
+1. Zero-draft Part VI (Chapters 31–34: tensor, pipeline and context
+   parallelism; expert parallelism at scale; disaggregated serving; the KV
+   cache as a distributed storage tier). It is frontier-heavy and
+   multi-device: first read the leads in `research/FRONTIER.md` (NVIDIA Dynamo,
+   llm-d, LMCache, SGLang HiCache, NIXL) and the Part V rows on context and data
+   parallelism, then decide which openings the M1 can honestly measure and mark
+   the rest `\todo{measure: …}` for a GPU host.
+2. Zero-draft Parts VII–IX (Chapters 35–42); Chapter 36 extends Chapter 26's
+   Hermon case.
+3. Clear the Part II source markers; they need documentation, not hardware.
+4. When a GPU host is available, clear the measurement markers, and repeat the
+   Part II–V probes on it (the M1 results are single-machine and
+   Metal-specific; the probes in the Part III–V records run against any
    llama.cpp server).
-4. Then pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building
+5. Then pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building
    each chapter's lab in `code/labs/`.
 
 ## Decisions for the author
@@ -210,6 +223,33 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
   speed. That is a true and useful result, but a same-family drafter (Llama
   3.2 1B for the 3B, about 1.3 GB through Ollama) would show the winning case
   too. It was not downloaded, because downloads need your permission.
+- **A mixture-of-experts model for Chapter 26.** Chapter 26's opening
+  measures llama.cpp's expert matrix product alone, with synthetic weights and
+  uniform routing, because no MoE model was on the machine and downloads need
+  your permission. IBM's Granite 3.1 MoE 3B through Ollama
+  (`granite3.1-moe:3b`, 2.0 GB from the Ollama registry) would allow an
+  end-to-end measurement with real routing on the M1; Qwen3-30B-A3B (about
+  18 GB in 4-bit form) does not fit this 16 GB laptop.
+- **The Qwen3.5-9B file.** Chapters 25 and 27 measure the Qwen3.5-9B
+  architecture with a community fine-tune found in the local Ollama store (its
+  GGUF name contains "Uncensored"); only architecture-dependent numbers are
+  used, and the record says so. Qwen's own weights in the same 4-bit form
+  would remove the caveat; that download also needs your permission.
+- **Gemma 4 through Ollama.** llama.cpp build 8660 cannot load the Gemma 4
+  GGUF, so Chapters 28 and 30 measure Gemma 4 in Ollama's own engine, which
+  does not report its cache layout: doubling the context grew memory by 42 MB
+  where the model's metadata implies 134 MB, and Chapter 28 says the gap is
+  unexplained. A newer llama.cpp would allow a same-engine comparison.
+- **Two more llama.cpp observations.** Measured in session 5 and not
+  reported: `--checkpoint-every-n-tokens` creates recurrent-state snapshots
+  only at logical-batch boundaries (2,048 tokens by default), so a smaller
+  interval has no effect unless `-b` is lowered too (Chapter 27); and
+  `test-backend-ops --output csv` omits the timing columns in perf mode (the
+  Part V record). Like the Part III behaviours, reporting them is your call.
+- **The reasoning measurement's scoring.** Chapter 29 reports two correctness
+  counts: answers in the requested "Answer: N" format, and correct values
+  anywhere (two runs gave the right number only as `\boxed{N}`). Eight easy
+  problems are presented as a cost measurement, not an accuracy benchmark.
 - **A third llama.cpp accounting quirk.** At `d006858` the server counts a
   speculative pass's accepted tokens before emitting them, so identical texts
   report 2–4% more tokens under speculation and a request can stop short of its
