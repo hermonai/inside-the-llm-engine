@@ -132,6 +132,42 @@ measurements). Bytes per KV token assume BF16/F16 cache unless stated.
 | Megakernels | Whole forward pass in one persistent kernel: about 100 kernels per Llama-1B forward pass normally; launch ≈2.1 µs (≈1.3 µs with CUDA graphs) on H100; megakernel reached 78% of H100 bandwidth vs ≤50% for engines, <1 ms per forward pass (May 2025) | Spector et al., [Hazy Research, 2025-05-27](https://hazyresearch.stanford.edu/blog/2025-05-27-no-bubbles) (research blog, measurements by the authors) | 2026-09-24 | research; active 2026 line (ForgeMegakernel, arXiv:2609.12379) | 13 |
 | ForgeMegakernel | Coding agents generate a decode megakernel per model through ten staged milestones, gated by an oracle that reads the mid-step KV cache and checks bytes, float64-referenced error and a precision contract; 14 decode configurations of models from 0.6B to 13B parameters; geometric mean 1.21× over SGLang 0.5.18 and 1.54× over Mirage Persistent Kernel; 50.5–85.9% of bandwidth; one H100 80GB | [arXiv 2609.12379](https://arxiv.org/abs/2609.12379) (11 Sep 2026; abstract and HTML body read) | 2026-09-24 | research | 13 |
 
+## Part III additions (checked 2026-09-24)
+
+Engine behaviour is read at pinned commits: llama.cpp `d006858` (the source of
+the Homebrew build 8660 measured in `research/measurements/2026-09-24-m1-part3.md`)
+and vLLM `main` at `bcdacfc` (2026-09-23).
+
+| Technique | What it is | Primary source | Checked | Maturity | Chapter |
+| --- | --- | --- | --- | --- | --- |
+| llama.cpp server scheduling | Per iteration: one token per decoding slot first, then prompt tokens up to the logical batch size (`-b`, default 2048); new prompts join only if continuous batching is on (default) or nothing is decoding; slots batch together only if same task type and equal LoRA settings (`can_batch_with`) | `tools/server/server-context.cpp` at `d006858` | 2026-09-24 | shipped (llama.cpp) | 15, 18, 21 |
+| llama.cpp KV layout and host prompt cache | `-kvu` unified KV is the default only when the slot count is automatic; otherwise each slot gets `n_ctx / n_parallel` cells; evicted slot prompts saved to a host-memory prompt cache (`--cache-ram`, default 8,192 MiB) and restored by prefix similarity | `server-context.cpp`, `llama-server --help` at build 8660; PR 16391 cited by the help text | 2026-09-24 | shipped (llama.cpp) | 16, 17, 34 |
+| llama.cpp KV exhaustion | On decode failure: try clearing idle slots, else halve the batch; at batch 1, "Context size has been exceeded." is sent to **every** processing slot and all are released; a TODO proposes terminating only the largest | `server-context.cpp` at `d006858` | 2026-09-24 | shipped (llama.cpp) | 19 |
+| llama.cpp disconnect detection | HTTP threads poll `is_connection_closed` only when a 1 s wait for results times out; every result for any request notifies all waiters and restarts the wait, so a disconnected non-streamed request is not cancelled while other results flow (measured) | `server-queue.cpp` (`recv_with_timeout`), `server-context.cpp` (`HTTP_POLLING_SECONDS = 1`) at `d006858`; cpp-httplib `is_socket_alive` | 2026-09-24 | shipped (llama.cpp); bug not yet reported upstream | 14 |
+| llama.cpp grammar sampling | Sample without the grammar, check only the chosen token, apply the full grammar mask and resample only if it is invalid; llguidance optional at build time | `common/sampling.cpp` at `d006858` | 2026-09-24 | shipped (llama.cpp) | 20 |
+| vLLM V1 scheduler and engine | Scheduling decision = {request_id: num_tokens}; chunked prefill and prefix caching on by default; EngineCore in its own process (ZeroMQ); persistent batch; prefix caching costs <1% at 0% hits | [vLLM V1 blog, 2025-01-27](https://vllm.ai/blog/2025-01-27-v1-alpha-release) | 2026-09-24 | shipped (vLLM) | 15, 17, 18 |
+| vLLM preemption and priority | Preemption mode RECOMPUTE by default in V1; chunked prefill decode-first; `max_num_batched_tokens` trades ITL (2,048) against TTFT/throughput (>8,192 for small models on large GPUs); victim = last running request (FCFS) or max(priority, arrival) (priority policy); victim's blocks freed, computed tokens reset, prepended to waiting queue | [Optimization and Tuning](https://docs.vllm.ai/en/latest/configuration/optimization.html); `vllm/v1/core/sched/scheduler.py`, `vllm/config/scheduler.py` at `bcdacfc` | 2026-09-24 | shipped (vLLM) | 16, 18, 19 |
+| vLLM Model Runner V2 | Async scheduling as a design constraint: step N+1 prepared while N runs; inputs built on the GPU; opt-in `VLLM_USE_V2_MODEL_RUNNER=1`; 6.3% lower TPOT on 4×GB200 (GLM-4.7-FP8, speculative decoding) | [vLLM blog, 2026-03-24](https://vllm.ai/blog/2026-03-24-mrv2) (developers' measurement) | 2026-09-24 | shipped (vLLM, opt-in) | 15 |
+| vLLM automatic prefix caching | Block hash = f(parent hash, block tokens, extra keys: LoRA, multimodal, cache salt); sha256 default; LRU free-block queue doubles as eviction order; `cache_salt` isolates reuse against timing attacks | [Prefix caching design](https://docs.vllm.ai/en/latest/design/prefix_caching.html) | 2026-09-24 | shipped (vLLM) | 16, 17 |
+| vLLM hybrid KV cache manager | Layers grouped into KV-cache groups with one page size; sliding-window groups keep only recent blocks; prefix hits intersected across groups | [Hybrid KV cache manager](https://docs.vllm.ai/en/latest/design/hybrid_kv_cache_manager.html) | 2026-09-24 | shipped (vLLM) | 16, 27 |
+| vLLM disconnect handling | `with_cancellation` races each handler against an ASGI `http.disconnect` listener; `AsyncLLM.generate` aborts the engine request on cancellation | `vllm/entrypoints/serve/utils/api_utils.py`, `vllm/v1/engine/async_llm.py` at `bcdacfc` | 2026-09-24 | shipped (vLLM) | 14 |
+| SGLang v0.4 | Overlap ("zero-overhead") scheduler one batch ahead, 1.1× over v0.3; cache-aware load balancer with approximate radix tree per worker, hit rate 20%→75%, 1.9× throughput; XGrammar up to 10× faster JSON decoding | [LMSYS blog, 2024-12-04](https://lmsys.org/blog/2024-12-04-sglang-v0-4/) (developers' measurements) | 2026-09-24 | shipped (SGLang) | 15, 17, 20 |
+| vAttention | Contiguous virtual KV memory with on-demand physical pages via CUDA VMM APIs; unmodified kernels; up to 1.23× throughput vs paged kernels in FlashAttention/FlashInfer | Prabhu et al., ASPLOS 2025, [arXiv:2405.04437](https://arxiv.org/abs/2405.04437) | 2026-09-24 | research | 16 |
+| Virtual Token Counter (fairness) | Token-weighted service counter; serve least-served backlogged client; \|W_f − W_g\| ≤ 2·max(w_p·L_input, w_q·M), tight, work-conserving | Sheng et al., [arXiv:2401.00588](https://arxiv.org/abs/2401.00588) (HTML body, Theorem 4.4) | 2026-09-24 | research | 19 |
+| Mooncake early rejection | Reject at arrival if decode is predicted to be overloaded; naive early rejection oscillates; prediction-based fix; replay of 23,000 requests at 2×: 4,183 / 3,771 / 3,589 rejected (baseline / early / predicted) | Qin et al., [arXiv:2407.00079](https://arxiv.org/abs/2407.00079) v4 (HTML body) | 2026-09-24 | shipped (Moonshot AI) | 19, 33 |
+| LoRA | Frozen weights plus trainable low-rank updates; 10,000× fewer trainable parameters, 3× less GPU memory than full fine-tuning GPT-3 175B; mergeable, so no added latency when served alone | Hu et al., [arXiv:2106.09685](https://arxiv.org/abs/2106.09685) | 2026-09-24 | industry standard | 21 |
+| S-LoRA | Adapters in host memory, fetched on demand; Unified Paging of adapter weights and KV cache; heterogeneous-batching kernels; up to 4× throughput vs HF PEFT and vLLM (then), orders of magnitude more adapters | Sheng et al., [arXiv:2311.03285](https://arxiv.org/abs/2311.03285) | 2026-09-24 | research | 21 |
+| Punica | SGMV kernel batches requests for different LoRA models over one base model; 12× throughput, +2 ms per token | Chen et al., [arXiv:2310.18547](https://arxiv.org/abs/2310.18547) | 2026-09-24 | research | 21 |
+| vLLM multi-LoRA | Adapters batched with base-model requests up to `max_loras`; `max_lora_rank` sizes memory; runtime load/unload endpoints behind `VLLM_ALLOW_RUNTIME_LORA_UPDATING` | [LoRA adapters](https://docs.vllm.ai/en/latest/features/lora.html) | 2026-09-24 | shipped (vLLM) | 21 |
+| RouteLLM | Router between a strong and a weak model trained on preference data; cost down by over 2× in some cases without quality loss | Ong et al., [arXiv:2406.18665](https://arxiv.org/abs/2406.18665) | 2026-09-24 | research | 21 |
+| ServerlessLLM | Multi-tier checkpoint loading, live migration, locality-aware scheduling; 10–200× lower latency than serverless baselines | Fu et al., OSDI 2024, [arXiv:2401.14351](https://arxiv.org/abs/2401.14351) | 2026-09-24 | research | 21 |
+| Grammar-aligned decoding | Masking distorts the distribution; ASAp samples from the model's distribution conditioned on the grammar | Park et al., NeurIPS 2024, [arXiv:2405.21047](https://arxiv.org/abs/2405.21047) | 2026-09-24 | research | 20 |
+| vLLM structured outputs | Backends xgrammar and guidance (outlines, lm-format-enforcer also named); `auto` picks per request; JSON schema, regex, choice, EBNF, structural tags | [Structured outputs](https://docs.vllm.ai/en/latest/features/structured_outputs.html) | 2026-09-24 | shipped (vLLM) | 20 |
+| Prompt caching (Anthropic) | Explicit or automatic breakpoints; 5-minute (1.25× write) or 1-hour (2× write) lifetimes refreshed on use; reads 0.1× (0.05× or 0.025× on some models); minimum 512–4,096 tokens by model; isolated per organization and workspace | [Prompt caching docs](https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching) | 2026-09-24 | shipped product | 17 |
+| Prompt caching (OpenAI) | Automatic; ≥1,024 tokens (GPT-5.6+), 128-token increments on earlier models; ≥30 min retention (GPT-5.6+); cached input 0.1× (GPT-5.6+, "up to 90%" earlier); routed by a hash of initial tokens; not shared across organizations | [Prompt caching guide](https://developers.openai.com/api/docs/guides/prompt-caching) | 2026-09-24 | shipped product | 17 |
+| Prompt-cache timing audit | Statistical timing tests detected cross-user cache sharing at seven API providers including OpenAI (2025) | Gu et al., ICML 2025, [arXiv:2502.07776](https://arxiv.org/abs/2502.07776) | 2026-09-24 | research | 17 |
+| Responses API streaming and background mode | Typed SSE events (`response.created`, `response.output_text.delta`, `response.completed`, `error`); background responses polled at `/v1/responses/{id}`, cancelled idempotently at `/v1/responses/{id}/cancel`, streams resumable with `sequence_number` and `starting_after` | [Streaming](https://developers.openai.com/api/docs/guides/streaming-responses), [Background mode](https://developers.openai.com/api/docs/guides/background) | 2026-09-24 | shipped product | 14 |
+
 ## Seeds for Parts III–VIII (verified; chapters not yet drafted)
 
 | Technique | What it is | Primary source | Checked | Maturity | Chapter |
@@ -160,8 +196,8 @@ measurements). Bytes per KV token assume BF16/F16 cache unless stated.
 
 Not yet read at a primary source; do not cite until they are.
 
-- Current vLLM V1 and SGLang scheduler, KV manager and overlap architectures,
-  at pinned commits (Chapters 15–19, 41).
+- SGLang's scheduler, KV manager and overlap loop at a pinned commit, and the
+  vLLM V1 internals beyond those logged above (Chapter 41).
 - NVIDIA Dynamo, llm-d, LMCache, SGLang HiCache, NIXL (Chapters 33–34).
 - Medusa, lookahead decoding, *Speculative Speculative Decoding*
   ([arXiv:2603.03251](https://arxiv.org/abs/2603.03251)) (Chapters 23–24).
@@ -169,7 +205,7 @@ Not yet read at a primary source; do not cite until they are.
   Qwen3.5's linear layers (Chapter 27).
 - StreamingLLM attention sinks, H2O, SnapKV, YaRN, DeepSeek-V4 CSA/HCA details
   (Chapter 28).
-- S-LoRA and Punica kernels (Chapter 21); FlexGen and PowerInfer (Chapter 35);
+- FlexGen and PowerInfer (Chapter 35);
   NVLink-C2C and unified-memory systems (Chapter 37).
 - MLPerf Inference v6.0 rules and results; InferenceMAX methodology (Chapter 39).
 - FlashAttention-4 and FlashMLA adoption in SGLang (vLLM checked 2026-09-24);
