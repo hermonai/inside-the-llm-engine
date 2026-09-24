@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 19 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part3.md (overload).
 \chapter{Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission}\label{ch:scheduling}
 
 \begin{ChapterIntent}
@@ -15,28 +16,205 @@ meets its latency objectives.
 
 \OpeningSection{Out of memory at the peak}
 
+Give llama.cpp's server one shared cache of 4,096 cells and four request slots,
+and send it four requests at once, each with a 200-token prompt and asking for
+1,200 tokens. Together they need about 5,600 cells, so the cache must run out,
+and on the M1 it did: after each request had generated 824 tokens, the next
+step found no free cell. The server retried with smaller and smaller batches,
+down to a single token, and then sent the same error to every request in
+flight: \emph{Context size has been exceeded}. \textbf{All four failed at the
+same instant}, 73.5 seconds after they were sent, and none received the rest of
+its answer. With 8,192 cells, the same four requests all completed their 1,200
+tokens in 113 seconds (measured; record \texttt{2026-09-24-m1-part3}).
+
+The behavior is written down in the server's source. When a decode step fails
+for lack of cache space even at a batch of one, the loop sends an error to
+every slot that is processing and releases them all; the comment beside it
+reads, in part, \emph{try to terminate only the largest active slot}, a change
+not yet made (\texttt{tools/server/server-context.cpp} at commit
+\texttt{d006858}). vLLM's scheduler handles the same moment differently: it
+evicts one running request --- the most recently admitted, or the lowest
+priority --- frees its cache, and puts it back at the head of the queue to be
+recomputed later (\texttt{vllm/v1/core/sched/scheduler.py} at commit
+\texttt{bcdacfc}). At the peak, the policy decides whether one user waits or
+every user fails.
+
 \NapkinSection{Napkin math: utilization, queues and Little's law}
+
+Two laws explain why serving systems degrade abruptly. Little's law says that
+the average number of requests in a system equals their arrival rate times
+their average time in it, $N = \lambda T$, for any stable system. And for a
+single server with random arrivals and service times, the classic M/M/1 model
+gives the mean time in system
+\begin{equation}
+T = \frac{1/\mu}{1-\rho},\qquad \rho = \frac{\lambda}{\mu},
+\label{eq:mm1}
+\end{equation}
+where $\mu$ is the service rate and $\rho$ the utilization. At 50\%
+utilization a request spends twice its service time in the system; at 90\%, ten
+times; at 95\%, twenty (derived). An LLM server is not an M/M/1 queue ---
+continuous batching serves many requests at once, and service times depend on
+the batch --- but the shape survives: near saturation, small increases in load
+produce large increases in waiting, and by Little's law the number of requests
+held, each with its cache, grows with the waiting.
+
+That is the second pressure. The cache a running request needs grows every
+step, and its final size depends on an output length nobody knows at admission.
+A scheduler can reserve for the worst case and waste memory
+(\Chref{paged-kv}), or admit optimistically and prepare to take memory back ---
+which is what preemption is.
 
 \section{Admission: will this request fit?}
 
+Admission control decides whether a new request may start. A conservative
+policy admits a request only if its prompt and its maximum output fit; it never
+preempts and wastes the unused reservation. An optimistic policy admits a
+request if its prompt fits now, keeps a margin of free blocks for the running
+requests to grow, and preempts when the margin is exhausted. Engines choose the
+optimistic side because output lengths are skewed: most requests stop long
+before their limit. llama.cpp's server, in the opening, admits anything that
+fits a slot's context and has no preemption, so its optimism ends in failure
+rather than in waiting.
+
 \section{Preemption by recomputation}
+
+To preempt by recomputation, the scheduler frees a victim's cache blocks,
+keeps the tokens it has already generated, and returns it to the waiting queue.
+When it runs again, its prompt and its generated tokens are prefilled together
+--- one pass of compute, at prefill efficiency --- and decoding continues where
+it stopped. The output is unaffected, because the recomputed cache is the same
+function of the same tokens. vLLM's V1 engine preempts this way by default,
+choosing recomputation over swapping because of its lower overhead in that
+engine \cite{vllm2026optimization}, and its implementation resets the victim's
+computed-token count to zero and prepends it to the queue so that it resumes
+first. A prefix cache (\Chref{prefix-caching}) can make the recomputation
+partly free, if the victim's blocks are still cached when it returns.
 
 \section{Preemption by swapping}
 
+The alternative moves the victim's blocks to host memory and back. Swapping
+spends interconnect bandwidth twice instead of compute once, and host memory
+instead of nothing. It wins when the cache is large relative to the compute
+that would rebuild it --- long contexts, cheap host transfers --- and loses when
+a short prompt could simply be prefilled again. The same arithmetic reappears
+when caches are deliberately kept in host memory or on disk
+(\Chref{kv-storage-tier}).
+
 \section{Fairness between tenants}
+
+First come, first served lets one client's burst occupy every slot while
+another client's single request waits behind it. Counting requests does not
+fix this, because requests differ in cost by orders of magnitude. The Virtual
+Token Counter scheduler measures service in tokens --- a weighted count of
+input and output tokens processed for each client --- and always serves the
+backlogged client that has received the least \cite{sheng2024vtc}. Its authors
+proved that over any interval, however long, the service received by two
+backlogged clients differs by at most twice the larger of two quantities --- the
+weighted cost of the longest prompt and of the most tokens the running batch
+can hold --- and that the bound is tight, while the scheduler stays
+work-conserving: spare capacity is never withheld (their analysis).
 
 \section{Priorities and deadlines}
 
+Some requests matter more: an interactive user ahead of a batch job, a paying
+tier ahead of a free one. vLLM offers a priority scheduling policy in which
+each request carries a priority value, and when it must preempt it picks the
+running request with the lowest priority, breaking ties by the latest arrival
+(\texttt{vllm/config/scheduler.py} and \texttt{vllm/v1/core/sched/scheduler.py}
+at commit \texttt{bcdacfc}). Deadlines are harder than priorities: a request
+whose deadline has passed is worth nothing, so continuing to serve it wastes
+the capacity that could rescue another.
+
 \section{Admission that knows the objective}
+
+The measure that captures this is goodput. DistServe defined it as the maximum
+request rate a system can serve while meeting both a time-to-first-token and a
+time-per-output-token objective for a stated fraction of requests
+\cite{zhong2024distserve}. Throughput counts every token; goodput counts only
+requests that met their objectives. An admission policy aimed at goodput
+rejects, early, requests it predicts will miss: a request refused in
+milliseconds costs its client a retry, while a request admitted, prefilled and
+then abandoned costs everyone the compute it consumed.
 
 \section{Overload: shedding and backpressure}
 
+When demand stays above capacity, some work must be refused; the only choice
+is where. Refusing at the door --- an immediate error with a hint to retry
+later --- keeps the requests already admitted within their objectives.
+Accepting everything lets queues and caches grow until requests time out
+after consuming resources, or, as in the opening, fail together. Two further
+rules matter at scale: bound the queue, so that waiting time cannot grow
+without limit; and make retries back off, because clients that retry at once
+multiply the load that caused the refusal.
+
 \LedgerSection
+
+Admitting optimistically and preempting under memory pressure, with fair and
+objective-aware admission:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & More concurrent requests than worst-case reservation allows; memory is reclaimed from one victim instead of failing everyone. \\
+Compute & spends & Recomputation of each preempted request's prompt and generated tokens. \\
+Memory bandwidth & spends & Swapping, when used: each victim's cache crosses the interconnect twice. \\
+Latency & moves & From the requests that keep running to the victims and the rejected; goodput, not mean latency, is the target. \\
+Correctness & risks & A recomputed cache must equal the evicted one; fairness and priority change who waits, not what is computed. \\
+\end{ConstraintLedger}
 
 \LabSection{a scheduler under a bursty load}
 
+\LabIntent{In \texttt{code/labs/ch19-scheduling/}, the batching simulator of
+\Chref{continuous-batching} gains a finite block pool, optimistic admission,
+preemption by recomputation or by swapping, a Virtual Token Counter policy and
+deadline-aware rejection. A bursty two-tenant trace is replayed under each
+policy; the report shows goodput, per-tenant service and the number of
+preemptions. An invariant check replays every preempted request without
+preemption and requires identical outputs.}
+
 \HappenedSection{early rejection in a production system}
 
-\FrontierSection{}
+Moonshot AI's Mooncake, which serves the Kimi assistant, separates prefill and
+decode onto different machines (\Chref{disaggregated-serving}), and its
+designers wrote down what overload did to it \cite{qin2024mooncake}. A request
+rejected by the decode cluster after its prefill had finished wasted the
+prefill's compute, so they rejected requests early, at arrival, when the decode
+cluster was predicted to be too busy. That created a new failure: the two
+clusters' loads began to oscillate in opposite phases. Rejections starved the
+prefill cluster of work; acceptance then overloaded decode; which triggered
+rejections again. Their fix was to base the decision on a prediction of the
+decode load at the time the request would arrive there, not on its current
+value.
+
+They measured the policies by replaying a trace of 23,000 requests at twice
+its original speed. The baseline rejected 4,183 requests; early rejection,
+3,771; prediction-based early rejection, 3,589 (the authors' measurement). The
+lesson generalizes beyond disaggregation: an admission controller is a feedback
+loop, and a feedback loop that reacts to the present value of a delayed quantity
+can oscillate.
+
+\FrontierSection{2026-09-24}
+
+Recomputation has become the default preemption policy in vLLM's V1 engine,
+with priority scheduling as an option \cite{vllm2026optimization}; the
+research frontier is scheduling for goodput under service-level objectives ---
+fairness measured in tokens \cite{sheng2024vtc}, admission that predicts
+load \cite{qin2024mooncake}, and disaggregated deployments whose two pools
+are scheduled separately \cite{zhong2024distserve}. llama.cpp's server, in the
+measured build, still fails every in-flight request when its cache is
+exhausted, a limitation its own source records.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:mm1}, find the utilization
+at which the mean time in system is five times the service time, and the
+utilization at which it is fifty times.
+\item \emph{Prediction.} In the opening measurement, how many cells would the
+cache need for all four requests to finish, and after how many generated tokens
+would a 6,000-cell cache fail?
+\item \emph{Implementation.} Add preemption by recomputation to the lab and
+compare the total compute spent with that of conservative admission on a skewed
+trace.
+\item \emph{Falsification.} Construct a two-tenant workload for which the
+Virtual Token Counter gives one tenant less than half of its fair share over a
+short window. Does this contradict the bound?
+\end{enumerate}

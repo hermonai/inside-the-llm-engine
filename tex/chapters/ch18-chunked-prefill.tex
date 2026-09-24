@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 18 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part3.md (chunked).
 \chapter{Chunked Prefill and Phase Interference}\label{ch:chunked-prefill}
 
 \begin{ChapterIntent}
@@ -14,28 +15,199 @@ separating the phases entirely becomes the better answer.
 
 \OpeningSection{A stall in the middle of a stream}
 
+A user is reading a streamed answer from llama.cpp's server on the M1: a new
+token every 40~ms or so. Three seconds in, someone else submits a 4,000-token
+document. With the server's default logical batch of 2,048 tokens, the first
+user's stream froze twice, for \textbf{7.6 to 8.5 seconds} each time, while the
+document was prefilled in two pieces; the second user's first token arrived
+16.0 to 16.3 seconds after the document was sent. Cut the batch to 512 tokens
+and the freezes became eight pauses of 1.8 to 2.3 seconds; cut it to 256 and
+they became sixteen or seventeen pauses of about one second, while the second
+user's first token came 16.4 to 17.3 seconds after submission (measured; two
+runs each; record \texttt{2026-09-24-m1-part3};
+Figure~\ref{fig:ch18-stall-comb}).
+
+\EngineFigure{ch18-stall-comb}{The gap before each token of a running stream
+while a 4,000-token prompt is prefilled beside it, for three chunk sizes, on
+the M1 (measured). The dashed lines mark the second request's arrival and its
+first token. Chunking changes the shape of the interference, not its total:
+the pauses sum to about 16 seconds in every row. The picture holds while
+prefill is compute-bound; see the napkin math for where it changes.}{fig:ch18-stall-comb}
+
+In every configuration the pauses added up to about the same sixteen seconds:
+the time to prefill the document. On this machine chunking decided how the
+interference was delivered --- two long freezes or many short hiccups --- not
+how much there was. The mechanism is in the server's scheduling loop: each
+iteration first adds one token for every decoding sequence, then fills the
+batch with prompt tokens up to the logical batch size, and runs the whole
+batch before anyone gets a token (\texttt{tools/server/server-context.cpp} at
+commit \texttt{d006858}). A decoding user's next token waits for the prompt
+chunk it rode with.
+
 \NapkinSection{Napkin math: a step's token budget}
+
+Let a step process $n$ tokens: $n_d$ decode tokens and a prompt chunk of $c$
+tokens. While prefill is compute-bound, the step time is roughly
+\begin{equation}
+t_{\text{step}} \approx t_0 + \frac{2P\,(n_d + c)}{\pi_{\text{eff}}},
+\label{eq:chunk-step}
+\end{equation}
+where $t_0$ is the time to read the weights and $\pi_{\text{eff}}$ is the
+achieved FLOP rate. Every decoding request's inter-token latency during the
+prefill is $t_{\text{step}}$, and the prefill finishes after $\lceil
+S_p/c\rceil$ such steps for a prompt of $S_p$ tokens. The token budget $n$
+therefore sets the worst inter-token latency directly.
+
+On the M1 the prefill ran at about 250 tokens per second, so a 2,048-token
+chunk costs about 8 seconds and a latency target of 100~ms would allow a chunk
+of about 25 tokens --- too small to keep the GPU efficient. On an H100 serving
+an 8-billion-parameter model at an effective 500~TFLOP/s, each prompt token
+costs about 33~$\mu$s, so a 2,048-token chunk adds about 70~ms to a step
+(derived). The same rule gives acceptable latency there and unacceptable
+latency here: the budget is a property of the hardware and model, not a
+constant. Chunking also costs time to first token: each extra step rereads
+the weights, $t_0$ per chunk, which is small while prefill is compute-bound
+and grows as chunks shrink toward the decode regime.
 
 \section{How prefill stalls decode}
 
+A step lasts as long as its largest piece of work. Decode tokens are cheap ---
+a few milliseconds of arithmetic on a data-center GPU --- but a decode token
+that shares a step with a long prompt waits for the prompt. Without chunking, a
+scheduler that admits a 32,000-token prompt into a running batch holds every
+decoding user for the entire prefill; with continuous batching
+(\Chref{continuous-batching}) this happens every time a long prompt arrives.
+Holding new prompts back instead protects the decoders and starves the
+newcomer, whose time to first token then includes the queue. Neither extreme is
+acceptable at scale.
+
 \section{Token budgets}
+
+The fix is to bound the work in a step. vLLM's scheduler takes a budget of
+tokens per step, schedules every pending decode first, and fills the rest with
+prompt tokens; its documentation recommends smaller budgets, such as 2,048, for
+inter-token latency and larger ones for time to first token and throughput
+\cite{vllm2026optimization}. llama.cpp's server does the same with its logical
+batch size, as the opening measured. The budget is a latency knob: it caps
+$t_{\text{step}}$ in equation~\eqref{eq:chunk-step} whatever arrives.
 
 \section{Chunking a prompt}
 
+A prompt processed in chunks is still one causal computation. Chunk $k$'s
+queries attend to the keys and values of every earlier chunk, which are already
+in the cache, and to their own; the result is identical to processing the whole
+prompt at once, up to floating-point order. The engine must therefore keep a
+partially prefilled sequence in the running set, with its cache growing chunk
+by chunk, and the attention kernel must handle queries over new tokens against
+cached ones --- the same kernel that serves prefix-cache hits
+(\Chref{prefix-caching}).
+
 \section{Stall-free batch composition}
+
+Sarathi-Serve made the construction explicit: split prompts into chunks of
+equal size, and compose every step as all the ongoing decodes plus as much
+prefill as fits the budget, so new requests are admitted without pausing the
+decodes \cite{agrawal2024sarathi}. Its authors called this stall-free
+scheduling and reported 2.6 to 5.6 times the serving capacity of their
+baselines under latency targets (their measurement). Equal-size chunks also
+make every step about equally long, which keeps inter-token latency steady ---
+the flat bottom of the lower rows of Figure~\ref{fig:ch18-stall-comb}.
 
 \section{Choosing the chunk size}
 
+Smaller chunks bound inter-token latency more tightly and cost time to first
+token, because the prompt takes more steps and each step rereads the weights.
+Larger chunks prefill faster and stall longer. On the M1 the cost was modest ---
+256-token chunks delayed the newcomer's first token by up to 6\% --- because
+every step there is compute-bound. On a GPU where a 256-token step is closer to
+the bandwidth-bound regime, the per-step weight read is a larger share and small
+chunks cost more. The choice follows from the service-level objectives:
+the largest chunk whose step time meets the inter-token target.
+
 \section{Chunks and attention kernels}
+
+A step that mixes decodes and prompt chunks runs two kinds of attention: one
+query per decoding sequence against a long cache, and many queries per prompt
+chunk against a shorter one. Kernels built for one shape handle the other
+poorly, so engines either launch separate kernels for the two groups or use
+kernels that accept a ragged mixture (\Chref{decode-attention}). Either way,
+the attention cost of a chunk grows with its position in the prompt: later
+chunks attend to more cached tokens, which is why the pauses in the opening
+measurement lengthened from 1.8 to 2.3 seconds across one prefill.
 
 \section{When to separate the phases instead}
 
+Chunking shares one machine between two workloads with opposite needs. At
+large scale it can be better to give them different machines: prefill on one
+pool of GPUs, decode on another, with the cache sent between them. DistServe
+defined the target as \emph{goodput} --- the request rate served within both a
+time-to-first-token and a time-per-output-token objective --- and reported
+7.4 times more requests or 12.6 times tighter objectives than colocated
+serving \cite{zhong2024distserve} (their measurement). Separation costs cache
+transfers and more complex deployment; \Chref{disaggregated-serving} weighs
+them.
+
 \LedgerSection
+
+Splitting long prompts into token-budgeted chunks that share steps with decodes:
+
+\begin{ConstraintLedger}
+Latency & buys & Bounded inter-token latency: the longest pause fell from 8.5~s to about 1~s on the M1. \\
+Latency & spends & Time to first token for the chunked prompt: up to 6\% more at 256-token chunks on the M1. \\
+Memory bandwidth & spends & One more read of the weights for every extra step the prompt takes. \\
+Compute & moves & Prefill spread across many steps, each shared with decodes, instead of one monopolizing step. \\
+\end{ConstraintLedger}
 
 \LabSection{chunking in the batching simulator}
 
-\HappenedSection{chunked prefill in production schedulers}
+\LabIntent{In \texttt{code/labs/ch18-chunked-prefill/}, the simulator of
+\Chref{continuous-batching} gains a per-step token budget and prompt chunking.
+Driven by a step-time table measured on the reader's machine, it replays a trace
+of long and short prompts and plots the distribution of inter-token gaps and
+time to first token for budgets from 64 to 8,192 tokens. An oracle run with an
+infinitely fast prefill checks the accounting. The reader predicts, before
+running it, the budget that meets a 100~ms inter-token target on their machine.}
 
-\FrontierSection{}
+\HappenedSection{chunked prefill becomes the default}
+
+Chunked prefill moved from a research result to a default in less than two
+years.
+Sarathi-Serve's stall-free scheduling appeared in 2024
+\cite{agrawal2024sarathi}. In vLLM's V1 engine, chunked prefill is enabled
+by default whenever possible and the scheduler batches every pending decode
+before scheduling prefill \cite{vllm2026optimization}; its V1 design treats a
+chunk, a decode and a speculative draft alike as a number of tokens contributed
+by a request to the next step \cite{vllm2025v1}. llama.cpp's server has
+the same structure --- decodes first, then prompt tokens up to the logical
+batch size --- and the opening measurement shows the latency consequence of
+its default budget of 2,048 tokens on a laptop.
+
+What production schedulers learned is that the budget must be chosen, not
+inherited. vLLM's documentation states the trade-off in the budget's terms ---
+lower for inter-token latency, higher for time to first token --- and
+recommends budgets above 8,192 tokens for throughput with small models on large
+GPUs \cite{vllm2026optimization}: a setting that would freeze a laptop's stream
+for half a minute.
+
+\FrontierSection{2026-09-24}
+
+Mixed prefill--decode steps are the default in vLLM and in llama.cpp's server
+\cite{vllm2026optimization}; the frontier has moved to kernels that execute a
+mixed step efficiently and to deciding, per deployment, whether to mix the
+phases at all or to disaggregate them \cite{zhong2024distserve}
+(\Chref{disaggregated-serving}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:chunk-step}, derive the
+chunk size that minimizes time to first token subject to an inter-token
+latency bound $\tau$. When is the constraint inactive?
+\item \emph{Prediction.} For the opening's 4,000-token prompt with 1,024-token
+chunks, predict the number and length of the pauses and the newcomer's time to
+first token.
+\item \emph{Implementation.} Add equal-size chunking to the lab and compare it
+with a policy that fills the remaining budget greedily.
+\item \emph{Falsification.} Find a hardware and model combination for which
+chunking a prompt makes its time to first token more than twice as long.
+\end{enumerate}

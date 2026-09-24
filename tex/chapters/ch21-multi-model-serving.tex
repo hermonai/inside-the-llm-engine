@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 21 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part3.md (lora, ollama_switch).
 \chapter{One Server, Many Models: LoRA, Adapters and Routing}\label{ch:multi-model-serving}
 
 \begin{ChapterIntent}
@@ -14,26 +15,200 @@ capacity.
 
 \OpeningSection{A thousand fine-tunes, one GPU}
 
+A rank-16 LoRA adapter on every projection of Llama~3.2~3B holds 24.3 million
+parameters: 48.6~MB in 16-bit floats, less than 1\% of the model's 3.2 billion
+parameters (derived). A thousand such fine-tunes fit in 49~GB of host memory;
+a thousand fully fine-tuned copies would need 6.4~TB in BF16. On paper, one
+server can hold them all.
+
+To see what serving them costs, we loaded three synthetic adapters into
+llama.cpp's server on the M1 --- two of rank 16, one of rank 64 --- and chose
+among them per request. Their $\mathbf{B}$ matrices were zero, so every output
+had to equal the base model's, and every output did, token for token, while the
+server still performed all the adapter arithmetic. One stream decoded at 41 to
+42~ms per token with no adapter, 45 to 51~ms with a rank-16 adapter and 49 to
+51~ms with rank 64 (measured, two runs each; record
+\texttt{2026-09-24-m1-part3}).
+
+Then two users arrived at once with two \emph{different} rank-16 adapters, and
+the server could not put them in the same step. One user's 128 tokens were
+complete after 6.7 seconds; the other's started only then and finished after
+13.1. With the \emph{same} adapter, the two shared every step and both finished
+after 11.8 seconds. The rule is in the server's source: two slots join the same
+batch only if their tasks are of the same type and their adapter settings are
+equal, and in each iteration the first decoding slot's settings decide
+(\texttt{can\_batch\_with} and \texttt{update\_slots} in
+\texttt{tools/server/server-context.cpp} at commit \texttt{d006858}). The
+server held three adapters and served one at a time. Holding a thousand
+fine-tunes is easy; this chapter is about serving them together.
+
 \NapkinSection{Napkin math: an adapter's bytes and FLOPs}
+
+A LoRA adapter replaces a weight matrix $\mathbf{W}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}$
+with $\mathbf{W} + \frac{\alpha}{r}\mathbf{B}\mathbf{A}$, where
+$\mathbf{A}\in\mathbb{R}^{r\times d_{\text{in}}}$ and
+$\mathbf{B}\in\mathbb{R}^{d_{\text{out}}\times r}$ \cite{hu2022lora}. Summed over
+the adapted matrices of $L$ layers it adds
+\begin{equation}
+P_{\text{LoRA}} = r \, L \sum_{\text{matrices}} (d_{\text{in}} + d_{\text{out}})
+\label{eq:lora-params}
+\end{equation}
+parameters, and $2P_{\text{LoRA}}$ FLOPs per token. For Llama~3.2~3B with all
+seven projections adapted, the sum over one layer is 54,272, so
+$P_{\text{LoRA}} = 1{,}519{,}616\,r$: 24.3 million at rank 16, 0.76\% of the
+model's FLOPs per token (derived).
+
+Bytes are a different story at decode. Each distinct adapter in a step must
+be read once, like the base weights, so a batch that mixes $k$ adapters reads
+the base model plus $k$ adapters. With the 2.01~GB quantized base of this book's
+M1 measurements, forty-one different rank-16 adapters in one batch would read
+as many adapter bytes as base-model bytes and roughly double the step time
+(derived). Multi-adapter batching is cheap in arithmetic and paid for in
+bandwidth, one adapter at a time.
+
+The opening's single-stream cost fits neither estimate. The arithmetic was
+under 1\% and the bytes 2.4\%, yet rank 16 added 2 to 10~ms per token. Each
+adapted matrix adds four small operations to llama.cpp's graph --- two thin
+matrix products, a scale and an addition (\texttt{build\_lora\_mm} in
+\texttt{src/llama-graph.cpp} at commit \texttt{d006858}) --- 784 per step for
+this model, and on this machine dispatching a small operation costs
+microseconds (\Chref{kernel-languages}). That is a hypothesis the lab can
+test; the measured cost is the number that matters.
 
 \section{Low-rank adapters}
 
+LoRA freezes the base model and trains only the low-rank factors. Its authors
+reported ten thousand times fewer trainable parameters and a third of the GPU
+memory of full fine-tuning for GPT-3 175B, with quality on par or better
+\cite{hu2022lora}. For serving, the decisive property is that an adapter can be
+merged into the base weights, $\mathbf{W}' = \mathbf{W} + \frac{\alpha}{r}\mathbf{B}\mathbf{A}$,
+so that one fine-tune served alone costs nothing extra. Merging is exactly what
+a shared server cannot do: a batch that mixes users of different adapters must
+keep $\mathbf{W}$ shared and apply each adapter separately.
+
 \section{Batching requests with different adapters}
+
+With the base weights shared, a layer's output for a batch whose token $i$
+uses adapter $a_i$ is
+\begin{equation}
+\mathbf{y}_i = \mathbf{W}\mathbf{x}_i + \tfrac{\alpha}{r}\,\mathbf{B}_{a_i}\left(\mathbf{A}_{a_i}\mathbf{x}_i\right).
+\label{eq:multi-lora}
+\end{equation}
+The first term is one batched product for everyone, the lever of
+\Chref{continuous-batching}. The second is a different small product for each
+group of tokens that share an adapter. A server that cannot compute the second
+term for mixed adapters in one step must split the batch by adapter, as the
+opening measured; one that can keeps the whole batch together and pays only for
+the small products.
 
 \section{Gather-and-multiply kernels}
 
+Punica's answer is a kernel that performs equation~\eqref{eq:multi-lora}'s
+second term for a whole batch at once: tokens are grouped into segments by
+adapter, and each segment gathers its adapter's factors and multiplies them,
+all in one launch \cite{chen2024punica}. Its authors called it segmented
+gather matrix--vector multiplication and reported twelve times the throughput
+of serving systems of the time for multi-LoRA workloads, at a cost of about
+2~ms of latency per token (their measurement). S-LoRA extended the kernels to
+batches mixing adapters of different ranks \cite{sheng2024slora}.
+
 \section{Adapter paging and caching}
+
+A thousand adapters need not all be in accelerator memory. S-LoRA stores them
+in host memory and fetches the ones the running requests use, and it manages
+adapter weights and KV cache in one paged pool so that adapters of different
+ranks and caches of different lengths share memory without fragmenting it;
+its authors reported up to four times the throughput of the systems they
+compared against and several orders of magnitude more adapters served
+\cite{sheng2024slora} (their measurement). vLLM exposes the same tiers as
+configuration: a number of adapters resident on the GPU, a maximum rank that
+sizes their memory, and a host-memory cache, with endpoints to load and unload
+adapters while the server runs \cite{vllm2026lora}.
 
 \section{Routing between models}
 
+Many models behind one endpoint raise a second question: which model should
+answer? A router can send easy requests to a small model and hard ones to a
+large one. RouteLLM trained such routers on human preference data and reported
+cutting cost by more than half in some cases without reducing response quality
+\cite{ong2024routellm} (their measurement). Routing interacts with every
+cache in this part of the book: a request routed to a replica that does not
+hold its adapter pays a load, and one routed away from its prefix pays a
+prefill (\Chref{prefix-caching}).
+
 \section{Multiplexing models and cold starts}
+
+When different base models share hardware, the cost of switching is loading
+weights. On the M1, Ollama answered an eight-token request in 0.28 seconds
+when the model was already loaded. Alternating between two 3-billion-parameter
+models, each request first had to load its model: 1.6 to 2.3 seconds of
+loading, and 2.2 to 3.0 seconds per request in all (measured; the files were
+likely in the operating system's cache, so this is close to the fastest a
+switch can be here). A switch cost about eight answers. ServerlessLLM attacked
+this cost with checkpoint formats and loaders
+built for the storage hierarchy of GPU servers, live migration and
+locality-aware placement, and reported 10 to 200 times lower latency than
+serverless baselines \cite{fu2024serverlessllm} (their measurement). Adapters
+are the extreme case of the same idea: make the part that differs between
+models small enough that switching costs almost nothing.
 
 \LedgerSection
 
+Serving many fine-tunes from one base model with batched low-rank adapters:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & One base model for all variants: 48.6~MB per rank-16 adapter of Llama~3.2~3B instead of a 6.4~GB copy. \\
+Compute & spends & $2P_{\text{LoRA}}$ FLOPs per token, 0.76\% at rank 16, plus a few small operations per adapted matrix. \\
+Memory bandwidth & spends & Every distinct adapter in a step is read in full: 48.6~MB each at rank 16. \\
+Latency & risks & Without multi-adapter kernels, users of different adapters take turns: 13.1~s instead of 11.8~s for the second of two users on the M1. \\
+\end{ConstraintLedger}
+
 \LabSection{a batched multi-adapter GEMM}
+
+\LabIntent{In \texttt{code/labs/ch21-multi-lora/}, a Rust implementation of
+equation~\eqref{eq:multi-lora} three ways: merged weights per adapter, a loop
+that splits the batch by adapter, and a segmented gather-and-multiply that
+serves the whole batch in one pass. A float64 oracle checks all three. The
+reader measures throughput as the number of distinct adapters in a 64-token
+batch grows from 1 to 64, and finds where the gathered adapter bytes overtake
+the base weights.}
 
 \HappenedSection{multi-adapter serving in production}
 
-\FrontierSection{}
+Multi-adapter serving went from two research systems to a standard engine
+feature. Punica and S-LoRA, both published in late 2023, showed that batching
+across adapters needs its own kernels and its own memory management
+\cite{chen2024punica,sheng2024slora}. vLLM now serves adapter requests in
+the same batches as base-model requests, up to a configured number of
+distinct adapters, and loads adapters at run time \cite{vllm2026lora}.
+llama.cpp's server, in the build measured here, applies adapters per request
+but batches only requests with identical adapter settings; the opening
+measured what that means when two users differ. Neither design is wrong for its
+setting: a laptop serving one user rarely mixes adapters, and a hosted
+fine-tuning service does little else.
+
+\FrontierSection{2026-09-24}
+
+Batched multi-adapter serving is standard in data-center engines
+\cite{vllm2026lora}, with adapters paged between host and GPU memory
+\cite{sheng2024slora}. The frontier is at the fleet level: routing among many
+models and adapters by cost and quality \cite{ong2024routellm}, and loading
+models fast enough that multiplexing hardware between them is practical
+\cite{fu2024serverlessllm}.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:lora-params}, compute the
+size of a rank-8 adapter on only the query and value projections of
+Qwen3-8B, and the number of distinct such adapters a decode step can read
+before adapter bytes equal the BF16 base weights.
+\item \emph{Prediction.} In the opening's two-user experiment, predict the
+completion times if the second user had asked for 512 tokens instead of 128.
+\item \emph{Implementation.} In the lab, add adapters of different ranks to one
+batch and compare padding every adapter to the largest rank with grouping by
+rank.
+\item \emph{Falsification.} Find a batch composition for which merging each
+adapter into its own copy of the weights and running the groups one after
+another is faster than a gather-and-multiply kernel.
+\end{enumerate}

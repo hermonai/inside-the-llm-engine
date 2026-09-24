@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 20 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part3.md (structured).
 \chapter{Structured Output at Engine Speed}\label{ch:structured-output}
 
 \begin{ChapterIntent}
@@ -15,30 +16,199 @@ the ways masking can distort a model's distribution.
 
 \OpeningSection{A schema check slower than the model}
 
+Ask Llama~3.2~3B, through llama.cpp's server on the M1, for a JSON record of a
+fictional book --- title, author, year, genres, rating --- twenty times at
+temperature 0.8. Unconstrained, 19 of the 20 answers parsed and matched the
+schema; the twentieth wrapped its JSON in a Markdown code fence. With the
+schema enforced by the server, all 20 were valid, and decoding cost 40.1~ms per
+token against 39.5 unconstrained: nothing measurable (measured; record
+\texttt{2026-09-24-m1-part3}).
+
+Then change one field. Make each genre one of 2,000 allowed strings,
+\texttt{genre-0000} to \texttt{genre-1999}. All 20 answers were still valid.
+But each token now cost \textbf{148~ms} at the median, 3.7 times as long: the
+grammar work added more than twice the time of the model's forward pass. And
+the answers showed a second cost. Forced to choose among labels it had no
+reason to prefer, the model wrote \texttt{genre-1351} three times in one
+record.
+
+Both results follow from how the server applies a grammar. It first samples a
+token without the grammar and checks only that token; only if it is invalid
+does it apply the grammar to the whole vocabulary --- 128,256 candidates ---
+and sample again (\texttt{common/sampling.cpp} at commit \texttt{d006858}).
+With the ordinary schema the model's own choices were almost always valid, so
+the expensive path rarely ran. Inside the enumeration its natural choices ---
+\emph{Drama}, \emph{Mystery} --- were invalid at many steps, and each time
+the whole vocabulary was checked against a grammar offering two thousand
+alternatives at that point.
+Constrained decoding is cheap when the model already agrees with the grammar,
+and its cost lands exactly where the grammar and the model disagree.
+
 \NapkinSection{Napkin math: a vocabulary per step}
+
+A mask decides, for each of $V$ tokens, whether appending it keeps the output
+inside the grammar. Checked naively, a step costs $V$ grammar evaluations per
+sequence:
+\begin{equation}
+t_{\text{mask}} \approx B\,V\,t_{\text{check}},
+\label{eq:mask-cost}
+\end{equation}
+for $B$ sequences and a check time $t_{\text{check}}$ per token. With
+$V = 128{,}256$ and a microsecond per check, one sequence costs 128~ms of CPU
+per step --- three decode steps of this laptop, and sixteen of a data-center
+GPU's 8~ms step (illustrative check time). A batch of 64 constrained sequences
+would need 8 CPU-seconds per step. The mask itself is small: $V$ bits, 16~KB
+per sequence (derived). The whole problem is computing it; every technique in
+this chapter reduces $V\,t_{\text{check}}$ or hides it behind the GPU.
 
 \section{Constrained decoding as masking}
 
+At each step the model produces logits over the vocabulary. Constrained
+decoding sets the logit of every token that would violate the grammar to
+$-\infty$, so sampling renormalizes over the valid tokens, and advances the
+grammar's state with the chosen token. The output is valid by construction:
+not \emph{likely} to parse, but guaranteed to, provided the mask is computed
+correctly and generation ends only where the grammar allows. The model's
+weights and forward pass are untouched; everything happens between the logits
+and the sampler (Appendix~\ref{app:sampling}).
+
 \section{From grammar to automaton}
+
+A grammar is compiled once into an automaton whose state summarizes the output
+so far. Regular constraints --- a date, an enumeration of strings --- compile
+to finite automata. JSON with nested objects and arrays needs a context-free
+grammar, whose automaton carries a stack of the structures still open. A JSON
+schema is translated into such a grammar: property names, value types,
+required fields and enumerations become productions. The compiled automaton is
+cached per schema, because applications reuse schemas heavily.
 
 \section{Tokens are not characters}
 
+The automaton reads characters; the model emits tokens, each a string of
+several characters that may straddle grammatical boundaries: one token can
+close a string, add a comma and open the next key. To decide whether a token is
+valid, the checker must run the token's whole character sequence through the
+automaton from the current state. And the same text can be tokenized in
+different ways, so a mask that admits only the grammar's preferred
+tokenization can push the model toward token sequences it rarely saw in
+training (\Appref{tokens}).
+
 \section{Precomputing masks}
+
+Most of the work in equation~\eqref{eq:mask-cost} repeats. For a finite
+automaton, the set of valid tokens depends only on the state, so it can be
+computed once per state and looked up at each step. With a stack, validity can
+depend on what is beneath the top, but for most tokens it does not. XGrammar
+splits the vocabulary accordingly: tokens whose validity is determined by the
+current state alone are prechecked when the grammar is compiled, and only the
+remaining, context-dependent tokens are checked at run time
+\cite{dong2025xgrammar}. Its authors reported up to 100 times the speed of
+earlier implementations (their measurement).
 
 \section{The persistent stack}
 
+The context-dependent checks need the stack, and decoding needs to try
+alternatives: speculative drafts that may be rejected
+(\Chref{speculative-decoding}), jump-forward runs, rollbacks. Copying a deep
+stack for every alternative would cost more than the checks. XGrammar keeps a
+persistent stack, a structure in which versions share their common parts, so
+that branching and rollback cost little \cite{dong2025xgrammar}.
+
 \section{Overlapping masks with the GPU}
+
+Even a fast mask is CPU work on the critical path: the sampler needs it at the
+end of every step. The fix is to compute the next step's mask on the CPU while
+the GPU runs the current step's forward pass. The mask for step $t+1$ depends
+on the token chosen at step $t$, so full overlap needs the grammar state after
+sampling; engines therefore overlap the mask computation with the part of the
+step that does not depend on it --- the forward pass --- and apply it at
+sampling time. XGrammar was designed with this co-scheduling in mind, and its
+authors reported near-zero overhead end to end in serving
+\cite{dong2025xgrammar}.
 
 \section{Jump-forward decoding}
 
+Sometimes the grammar allows exactly one continuation: after
+\texttt{\{"title":} only a quote can follow, and after a required key only its
+colon. Sampling such tokens one step at a time wastes whole forward passes.
+Jump-forward decoding appends the forced text directly and processes it in one
+prefill step, which the SGLang authors built on a compressed finite-state
+machine \cite{zheng2023sglang}. The subtlety is tokenization again: forced
+text must be tokenized the way the model would have tokenized it in context,
+or the model sees an unfamiliar split.
+
 \section{Correctness: when masking distorts the distribution}
+
+Masking guarantees validity, not faithfulness. Renormalizing over the valid
+tokens at each step is a greedy approximation: it does not sample from the
+model's distribution conditioned on the output being grammatical, because it
+cannot see that a locally likely token leads toward completions the grammar
+will later force into unlikely text. Park and colleagues formalized this
+distortion and proposed an adaptive sampler that converges to the conditioned
+distribution \cite{park2024gad}. The opening's repeated
+\texttt{genre-1351} is the everyday version: a constraint that forbids what
+the model wants to say produces valid output that says little. Constraints
+belong on format; content the model must reason about should stay in fields it
+can fill freely.
 
 \LedgerSection
 
+Masking invalid tokens against a compiled grammar at every step:
+
+\begin{ConstraintLedger}
+Correctness & buys & Valid output by construction: 20 of 20 answers against 19 of 20 unconstrained on the M1. \\
+Compute & spends & CPU work per step up to $B\,V\,t_{\text{check}}$ (equation~\eqref{eq:mask-cost}); precomputation and a persistent stack cut it to little. \\
+Latency & spends & Nothing measurable for an ordinary schema; 3.7 times the time per token when the grammar and the model disagreed. \\
+Correctness & risks & Masking distorts the distribution: valid output can be meaningless. \\
+\end{ConstraintLedger}
+
 \LabSection{a JSON mask over a real vocabulary}
+
+\LabIntent{In \texttt{code/labs/ch20-structured-output/}, a Rust JSON-schema
+recognizer and a mask builder over the Llama~3 vocabulary read from a GGUF
+file. The naive builder checks all 128,256 tokens at every state; the
+precomputed builder caches masks for context-independent tokens. A brute-force
+oracle decodes each token's bytes through the recognizer. The reader measures
+microseconds per mask for both builders along a real JSON output, then adds an
+enumeration of 2,000 strings and watches the naive builder's cost grow.}
 
 \HappenedSection{structured output in production engines}
 
-\FrontierSection{}
+Structured output moved in two years from libraries wrapped around generation
+to engine features with dedicated backends. XGrammar's authors built it to be
+integrated with inference engines \cite{dong2025xgrammar}; SGLang adopted it
+and its developers reported JSON decoding up to 10 times faster than other
+open-source solutions \cite{sglang2024v04}; vLLM supports XGrammar and
+guidance backends, among others, and picks one per request by default
+\cite{vllm2026structured}. llama.cpp's server took a different, cheaper-first
+path: speculative grammar checking, in which only the sampled token is checked
+and the full mask is computed on failure, with the llguidance library available
+as a build option (\texttt{common/sampling.cpp} at commit \texttt{d006858}).
+The opening measured both sides of that design: no cost when the model agrees
+with the grammar, and a forward pass's worth and more when it does not.
+
+\FrontierSection{2026-09-24}
+
+Mask computation is approaching zero overhead in engines that precompute and
+overlap it \cite{dong2025xgrammar,vllm2026structured}. The open problems are
+elsewhere: sampling faithfully from the model's distribution restricted to a
+grammar \cite{park2024gad}, and the interaction between constraints and
+reasoning --- a model that must think before it answers needs somewhere
+unconstrained to think (\Chref{reasoning-workloads}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using equation~\eqref{eq:mask-cost}, find the check
+time that keeps mask computation under 10\% of an 8~ms step for a batch of 64
+sequences with a 200,000-token vocabulary.
+\item \emph{Prediction.} Which tokens of the Llama~3 vocabulary are valid
+immediately after \texttt{\{"year":}? Estimate their number before counting
+them in the lab.
+\item \emph{Implementation.} Add jump-forward decoding to the lab and count the
+forward passes it saves on the opening's schema.
+\item \emph{Falsification.} Construct a grammar and prompt for which
+constrained decoding at temperature zero produces an output that the
+unconstrained model, at temperature zero, would assign lower probability than
+some other valid output.
+\end{enumerate}
