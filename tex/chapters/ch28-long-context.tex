@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 28 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part5.md (ollama_ctx, kvsizes).
 \chapter{Long Context: Windows, Sinks and Sparse Attention}\label{ch:long-context}
 
 \begin{ChapterIntent}
@@ -14,30 +15,286 @@ a long-context system still reads its context.
 
 \OpeningSection{A million tokens}
 
+Put one million tokens in front of Llama~3 70B. Its cache, at 320~KiB per
+token (\Chref{shrinking-kv}), is 320~GiB for that one sequence --- more than
+four H100s' worth of memory before a single weight is loaded. Prefill costs about
+$1.6\times10^{18}$ floating-point operations, nine-tenths of them in attention
+rather than in the weights, which is 27 minutes of a single H100 at its full
+BF16 peak (derived below). Decode then reads the whole cache at every step:
+at a million tokens each generated token moves more than twice as many bytes of
+history as of weights.
+
+The same pressure shows at laptop scale. Served by Ollama on the M1 with a
+16,384-token context, Llama~3.2~3B --- every layer attending to the whole
+context --- slowed from 28.6 tokens per second after a short prompt to 16.5
+after 11,700 tokens of document, and doubling its context from 8,192 to 16,384
+tokens grew its memory by 915~MB, within 3\% of what 8,192 more tokens of its
+112~KiB-per-token cache need. Gemma~4~E4B, which gives 35 of its 42 layers a
+512-token window and lets its last 18 layers reuse earlier layers' caches,
+slowed from 18.0 to 13.9 tokens per second over the same prompts, and the same
+doubling grew it by \textbf{42~MB} (measured; record
+\texttt{2026-09-24-m1-part5}). It lost about half as much of its speed and
+under a twentieth of the memory. Its file's metadata implies 134~MB for those
+8,192 tokens in 16-bit form; Ollama does not report how its engine stores the
+cache, so the remaining difference is unexplained here.
+
+DeepSeek-V4, released in 2026 with a one-million-token context, reports that
+at that length its larger model needs 27\% of the per-token FLOPs and 10\% of
+the KV cache of its predecessor V3.2 \cite{deepseek2026v4}. Nothing in this
+chapter makes long context free. Each technique buys memory or arithmetic by
+changing which tokens a query can see, and the price is paid in correctness,
+which is why the chapter ends with how to measure it.
+
 \NapkinSection{Napkin math: attention's cost at a million tokens}
+
+For a context of $S$ tokens, a model with $L$ layers and $H_q$ query heads of
+width $d_h$ spends in causal attention during prefill about
+\begin{equation}
+F_{\text{attn}} \approx 2\,L\,S^{2}\,H_q\,d_h
+\label{eq:attn-prefill-flops}
+\end{equation}
+FLOPs (scores and weighted values, each $S^2/2$ pairs of $H_q d_h$
+multiply--adds), against $2PS$ for everything else. For Llama~3 70B
+($L=80$, $H_q d_h = 8{,}192$) at $S = 2^{20}$ that is $1.44\times10^{18}$ for
+attention and $1.5\times10^{17}$ for the rest (derived). Attention overtakes
+the weights where $L\,S\,H_q\,d_h \approx P$: about 108,000 tokens for this
+model.
+
+Decode is the same story in bytes. A step reads the weights once and each
+sequence's cache once: $W + B\cdot S\cdot k$ bytes for $B$ sequences of $S$
+tokens and $k$ cache bytes per token. At a million tokens, Llama~3 70B's
+343~GB of cache per sequence is 2.4 times its 141~GB of BF16 weights (derived).
+
+Every technique in this chapter attacks one of the terms. A sliding window of
+$w$ tokens caps a layer's cache at $w$ tokens and its attention at $S\cdot w$
+pairs. Eviction caps the cache at a budget but keeps the full prefill. Sparse
+selection keeps the full cache and reads $k_{\text{sel}}$ entries per query.
+Compression divides the cache by the number of tokens folded into one entry.
+Context parallelism divides the prefill across devices without changing the
+total. Table~\ref{tab:ch28-long-context-costs} lists them.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}lll>{\raggedright\arraybackslash}p{5.2cm}@{}}
+\toprule
+Technique & Cache per sequence & Prefill attention & Risk \\
+\midrule
+Full attention & $S\,k$ & $\propto S^{2}$ & none; the baseline \\
+Sliding window $w$ & $w\,k$ & $\propto S\,w$ & anything older than $w$ is gone \\
+Eviction to budget $M$ & $M\,k$ & $\propto S^{2}$ & the evicted token is needed later \\
+Trained sparse, top $k_{\text{sel}}$ & $S\,k$ & $\propto S\,k_{\text{sel}}$ & selector misses a relevant token \\
+Compression by $m$ & $S\,k/m$ & $\propto S^{2}/m$ & detail lost inside a block \\
+Context parallel over $N$ & $S\,k/N$ each & $\propto S^{2}/N$ each & none; costs interconnect \\
+\bottomrule
+\end{tabular}
+\caption{What each long-context technique changes, per attention layer
+(derived, first-order). Real models mix them per layer: windowed and global
+layers, sparse selection over a compressed cache, a window beside both.}
+\label{tab:ch28-long-context-costs}
+\end{table}
 
 \section{Position beyond the training length}
 
+A model trained on sequences of 32K tokens has never seen rotary angles
+beyond them, and nothing in its training constrains how its attention behaves
+there (\Appref{rope}). Position scaling rescales the rotary frequencies so a longer
+sequence maps into angles the model knows; Figure~\ref{fig:ch09-scaling} in
+Appendix~A.8 compares the schemes. YaRN, the most used, scales different
+frequency bands differently and needs, in its authors' comparison, ten times
+fewer tokens and two and a half times fewer training steps than earlier
+methods to extend a context \cite{peng2024yarn}. It is how Qwen3-30B-A3B goes
+from 32,768 native tokens to 131,072 and gpt-oss's dense layers reach 131,072
+(model cards; \texttt{research/FRONTIER.md}).
+
+For the engine, position scaling is nearly free: a change in how the rotary
+tables are computed. Its cost is correctness at lengths the model was not
+trained on, measured by the benchmarks at the end of this chapter, not by
+perplexity on short text.
+
 \section{Sliding windows}
+
+A sliding-window layer attends only to the last $w$ tokens. Its cache stops
+growing at $w$ tokens, its attention costs $S\cdot w$ pairs instead of
+$S^{2}/2$, and it can see nothing older. No current model uses windows alone:
+information from far back must still flow, so windowed layers are interleaved
+with full ones. gpt-oss alternates banded layers with a 128-token window and
+dense layers, ``following GPT-3'' (model card, section 2.2,
+\cite{openai2025gptoss}). Gemma~4 uses windows of 512 or 1,024 tokens on most
+layers; in the E4B file measured here, 35 of 42 layers are windowed at 512 and
+the other 7, including the last, are global (GGUF metadata;
+\texttt{research/FRONTIER.md}).
+
+Engines implement the window either as a ring buffer of $w$ slots or as
+ordinary pages freed once they fall out of the window. vLLM chose the second,
+because a ring buffer cannot share prefixes: it allocates blocks per token
+position and frees those outside the window, and its hybrid cache manager
+intersects the prefix hits of windowed and full layers
+\cite{vllm2026hybridkv}. llama.cpp keeps a window-sized cache by default and
+offers \texttt{--swa-full} for a full-size one; because the windowed part
+cannot be rolled back to an arbitrary earlier position, its server saves
+checkpoints of it to reuse prompts (\Chref{hybrid-models}; \texttt{common/arg.cpp}
+and \texttt{tools/server/server-context.cpp} at commit \texttt{d006858}).
 
 \section{Attention sinks}
 
+Xiao and colleagues observed that language models put large attention weight
+on the first few tokens regardless of their content --- a place to put
+probability mass when nothing else deserves it --- and that a sliding window
+which evicts those tokens collapses \cite{xiao2024streamingllm}. Keeping the
+first few tokens beside the window, StreamingLLM generated stably over up to
+4 million tokens and ran up to 22.2 times faster than a window recomputed from
+scratch at each step (their measurement). A sink is a correctness fix for
+windows, not a way to remember: the model still cannot recall anything outside
+the window.
+
+Newer models build the sink in. gpt-oss gives each head a learned bias in the
+softmax denominator, which ``enables the attention mechanism to pay no
+attention to any tokens'' (model card, section 2.2, \cite{openai2025gptoss}),
+and gated attention's output gate mitigates the sink
+\cite{qiu2025gatedattention}. For an engine, a learned sink is one more term in
+the softmax that every attention kernel must implement.
+
 \section{Evicting cache entries}
+
+Eviction keeps a fixed budget of cache entries per sequence and discards the
+rest by an importance score. H2O keeps the ``heavy hitters'' that received the
+most attention so far plus recent tokens; keeping 20\% of the cache as heavy
+hitters, its authors report up to 29 times the throughput of DeepSpeed
+Zero-Inference and Hugging Face Accelerate and up to 3 times that of FlexGen
+\cite{zhang2023h2o}. SnapKV chooses, per head, the entries
+that an observation window at the end of the prompt attends to, and reports 3.6
+times faster generation and 8.2 times better memory efficiency at 16K tokens
+\cite{li2024snapkv}. Both are training-free and both are bets: an entry
+evicted because early queries ignored it cannot be recovered when a later
+question needs it. Multi-turn conversations, where the next question is not in
+the prompt that chose the evictions, are where the bet fails.
 
 \section{Trained sparse attention}
 
+If which tokens matter is the question, the model can be trained to answer it.
+Native Sparse Attention combines compressed coarse-grained tokens with
+fine-grained selected ones, is trained end to end, and reports substantial
+speedups over full attention at 64K tokens in decoding and in both training
+passes \cite{yuan2025nsa}. DeepSeek Sparse Attention, in DeepSeek-V3.2, adds a
+``lightning indexer'' --- a few heads, run in FP8 --- that scores every earlier
+token for each query; attention then reads only the top 2,048 entries, cutting
+the core attention cost from $O(L^{2})$ to $O(Lk)$ in the report's notation
+\cite{deepseek2025v32}. DSA runs in MLA's MQA mode (\Chref{shrinking-kv}), so
+one selected latent serves all heads.
+
+Sparse selection changes compute and bandwidth, not capacity: the full cache
+is still resident, because a later query may select any entry. It moves the
+engineering from the attention kernel to a gather --- read 2,048 scattered
+entries from a paged cache per query --- and keeps a quadratic pass of its own:
+the indexer still scores every earlier token for every query, made cheap by
+few heads and FP8 rather than by selection.
+
 \section{Compressing the cache along the sequence}
+
+DeepSeek-V4 compresses the sequence itself \cite{deepseek2026v4}. Its
+Compressed Sparse Attention folds the cache entries of every $m$ tokens into
+one, with learned weights and positional biases, and then selects the top
+entries per query, beside a small window of uncompressed recent tokens; its
+Heavily Compressed Attention folds every $m' \gg m$ tokens into one and attends
+to all of them densely. The two are interleaved across layers. The report defers the
+exact values of $m$, $m'$ and the selection size to its open-source
+implementation. At a million tokens, the combination brings V4-Pro to 27\% of
+V3.2's per-token FLOPs and 10\% of its cache (report abstract).
+
+Compression is the first technique here that shrinks the cache of every
+layer without a window's blindness: every token still contributes to some
+entry. What it gives up is detail inside a block, and as with every other
+technique, the only way to know how much was lost is to measure retrieval.
 
 \section{Context parallelism for prefill}
 
+A million-token prefill does not fit in one device's time budget however the
+attention is arranged. Context parallelism splits the sequence across devices.
+Ring attention passes blocks of keys and values around a ring of devices,
+overlapping each transfer with the attention computation on the previous
+block, so the context scales with the number of devices without approximation
+\cite{liu2023ringattention}. Meta's implementation for inference, with
+variants that pass keys and values or pass queries, reported a one-million-token
+prefill of Llama~3 405B in 77 seconds on 128 H100s across 16 nodes, at 93\%
+parallelization efficiency and 63\% FLOPS utilization (their measurement,
+\cite{yang2024contextparallel}). For decode, the cache itself is sharded along
+the sequence: vLLM's decode context parallelism exists because the key/value
+heads of GQA and MLA models run out before the tensor-parallel ranks do
+(\Chref{shrinking-kv}; \Chref{model-parallelism}).
+
 \section{Does the model still read its context?}
+
+The cost of every technique above is paid in one currency: whether the answer
+still depends on the right tokens. Needle-in-a-haystack tests --- find one
+planted sentence --- probe only retrieval, which RULER's authors call a
+superficial form of long-context understanding. RULER varies the number and
+kind of needles and adds multi-hop tracing and aggregation at configurable
+lengths, and found that of the models it tested that claimed
+contexts of 32K tokens or more, only half remained satisfactory at 32K
+\cite{hsieh2024ruler}. A long-context serving change --- a window, an eviction
+policy, a compressed cache, a quantized one --- is a change to the model, and
+deserves the same differential testing as any other (\Chref{fast-wrong-answers}).
 
 \LedgerSection
 
+Serving contexts far beyond a few thousand tokens:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & Windows cap a layer at $w$ tokens; eviction at a budget; compression divides by $m$ (DeepSeek-V4: 10\% of V3.2's cache at 1M tokens). \\
+Compute & buys & Windows and sparse selection turn $S^{2}$ into $S\cdot w$ or $S\cdot k_{\text{sel}}$; context parallelism divides the prefill across devices. \\
+Memory bandwidth & moves & From reading the whole cache to gathering selected or compressed entries; indexers add a pass of their own. \\
+Correctness & risks & Everything not attended is invisible; measure retrieval at the served length, not perplexity. \\
+\end{ConstraintLedger}
+
 \LabSection{a sliding window, a sink and a sparse selector against full attention}
+
+\LabIntent{In \texttt{code/labs/ch28-long-context/}, a synthetic retrieval
+task --- key--value pairs scattered through a long sequence, one queried at the
+end --- run through one attention layer with full attention (the oracle), a
+sliding window, a window with sink tokens, H2O-style eviction and a top-$k$
+selector. The lab reports accuracy against context length and budget, and
+counts cache bytes and attention pairs for each. Break it by asking about a key
+the eviction policy discarded before the question arrived.}
 
 \HappenedSection{compressed attention in a shipped model}
 
-\FrontierSection{}
+In 2026 DeepSeek shipped V4 with a context of one million tokens and an
+attention design no earlier model family had used at that scale: layers that
+compress the sequence before attending, some selecting sparsely over the
+compressed entries and some attending densely to a much coarser summary
+\cite{deepseek2026v4}. Engines had to follow. vLLM's attention-backend
+documentation lists sparse DeepSeek-V4 variants beside its MLA backends
+\cite{vllm2026attentionbackends}, because none of the existing kernels, cache
+layouts or prefix-caching rules fitted a cache whose entries each summarize
+many tokens. The lesson for engine builders repeats the one MLA taught
+(\Chref{shrinking-kv}): a model's attention design is now part of the serving
+stack's interface, and the stack that can absorb a new cache layout quickly
+serves the new model first.
+
+\FrontierSection{2026-09-24}
+
+Long context is converging on mixtures of mechanisms per layer: windows and
+global layers (Gemma~4, gpt-oss), recurrent layers beside a minority of
+attention layers (\Chref{hybrid-models}), trained selection over compressed
+caches (DeepSeek-V3.2 and V4). Native contexts of 256K to 1M tokens are now
+common among open models (Qwen3.5: 262,144 native, extensible to about one
+million; Kimi~K3: 1,048,576; \texttt{research/FRONTIER.md}). What lags is
+evaluation: the benchmarks that show whether a million-token context is read,
+rather than accepted, remain the limiting factor for trusting any of these
+techniques in production.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Derive Equation~\ref{eq:attn-prefill-flops} and the
+  context length at which attention FLOPs equal the weights' FLOPs, for Qwen3-8B
+  and for Llama~3 405B.
+\item \emph{Prediction.} For gpt-oss-120b at 131,072 tokens, compute the cache
+  per sequence with and without its 128-token windows.
+\item \emph{Implementation.} Add attention sinks to the lab's sliding window
+  and measure the accuracy recovered, then show a query that sinks cannot
+  answer.
+\item \emph{Falsification.} Find a question for which H2O's heavy-hitter
+  policy evicts the needed entry before the question is asked.
+\end{enumerate}

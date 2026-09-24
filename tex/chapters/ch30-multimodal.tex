@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 30 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part5.md (vision).
 \chapter{Multimodal Inference}\label{ch:multimodal}
 
 \begin{ChapterIntent}
@@ -14,28 +15,213 @@ language model.
 
 \OpeningSection{One photograph, a thousand tokens}
 
+Show Gemma~4~E4B a page of this book as a picture and ask it to describe the
+image in one sentence. On the M1, through Ollama, the question alone is 23
+prompt tokens. With the page attached at 544 by 768 pixels the prompt became
+201 tokens; at 1,087 by 1,536 pixels, \textbf{761} --- the image about 740 of
+them, one for every 48-by-48-pixel square, as the model's patch size and pooling
+predict (measured; record \texttt{2026-09-24-m1-part5}). Prefilling the larger
+request took 7.9 seconds, where the text alone took 0.3. Sent a second time,
+the same request took 0.06 seconds: Ollama recognized the identical prompt,
+image included, and reused its cache. The smallest version of the page, 182 by
+256 pixels, still cost 82 tokens, four times what its area implies, so a floor
+applies somewhere between pixels and tokens (llama.cpp sets one explicitly: 252
+tokens for Gemma~4).
+
+A multimodal request is, to the engine, a long prompt that arrives with an
+extra stage in front of it: an encoder that turns pixels into vectors and a
+token count set by resolution rather than by what the user typed. This chapter
+counts those tokens, prices the encoder, and follows the caching, scheduling
+and disaggregation that serving them has produced.
+
 \NapkinSection{Napkin math: tokens and FLOPs per image}
+
+A vision transformer cuts an image into square patches of $p$ pixels, embeds
+each, and runs a transformer over them; a projector then maps the results into
+the language model's embedding space, often merging $s \times s$ neighbouring
+patches into one token on the way. An image of $h \times w$ pixels becomes
+\begin{equation}
+n_{\text{img}} \approx \frac{h\,w}{(p\,s)^{2}}
+\label{eq:image-tokens}
+\end{equation}
+tokens. Gemma~4's smaller models use $p = 16$ and merge $3 \times 3$ patches
+(GGUF keys \texttt{vision.patch\_size} and \texttt{projector.scale\_factor}; the
+same values in llama.cpp's \texttt{tools/mtmd/clip.cpp} at commit
+\texttt{d006858}), so each token covers $48 \times 48$ pixels. The model card's
+budgets of 70, 140, 280, 560 and 1,120 tokens per image therefore correspond to
+images of about 0.16 to 2.6 megapixels (derived): a budget is a resolution.
+
+The encoder's arithmetic is about twice its parameters per patch, plus
+attention over the patches. Gemma~4~E4B's vision tower has 16 layers of width
+768 and about 150 million parameters (\texttt{research/FRONTIER.md}); at 280
+tokens, 2,520 patches cost it about 1 TFLOP (derived). The language model then
+prefills those 280 tokens like any others: at about 4 billion parameters in its
+layers, 2.2 TFLOPs (derived). The encoder is a separate stage, but it is not
+the largest one; the image's tokens are, and they stay in the cache for the
+rest of the conversation at the model's cost per token.
 
 \section{Encoders in front of the decoder}
 
+Most multimodal models are three pieces: an encoder per modality, a projector,
+and the language model. The encoder is small next to the decoder --- about 150
+million parameters for Gemma~4's E2B and E4B, about 550 million for its 26B and
+31B models (model card) --- but it runs on every new image, over hundreds or
+thousands of patches at once, so it is compute-bound like a prefill. Its output
+replaces placeholder tokens in the prompt: the engine tokenizes the text with a
+run of image placeholders, runs the encoder, and writes the encoder's vectors
+where the placeholders' embeddings would have gone before the decoder's
+prefill. From that point the image is ordinary context.
+
+Gemma~4's 12B model drops the encoders. According to its model card, it
+projects raw image patches and audio waveforms into the language model's
+embedding space with lightweight linear layers \cite{google2026gemma4}. That
+moves the encoder's work into the decoder's prefill, where it is batched and
+cached with everything else.
+
 \section{How an image becomes tokens}
+
+Equation~\eqref{eq:image-tokens} hides the decisions that make it true for a
+given image: how the image is resized to fit a budget, whether its aspect ratio
+is kept, whether it is tiled into crops or processed whole. Gemma~4 supports
+``variable image resolution through a configurable visual token budget'', and
+recommends lower budgets for classification, captioning and video, higher ones
+for OCR and small text (model card, \cite{google2026gemma4}). Other families
+differ: vLLM's own benchmark describes 640-by-640 images as about 400 visual
+tokens each for Qwen3-VL-4B \cite{vllm2025epd}. llama.cpp bounds each Gemma~4
+image to between 252 and 280 tokens and resizes bilinearly
+(\texttt{tools/mtmd/clip.cpp} at \texttt{d006858}); another engine, or another
+request with a different budget, would give the same photograph a different
+number of tokens.
 
 \section{Encoder compute and caching}
 
+The same image is often sent many times: a document asked several questions,
+a product photo in every request of a shopping assistant, a screenshot
+re-sent with each step of an agent. Engines cache at several levels. The
+preprocessed image can be cached so a repeat skips decoding and resizing: vLLM
+caches its multimodal processor's outputs up to 4~GB by default
+(\texttt{mm\_processor\_cache\_gb}, \cite{vllm2026optimization}). The
+encoder's output can be cached by the image's content hash so a repeat skips the
+encoder; with encoder disaggregation that cache is shared across requests
+\cite{vllm2025epd}. And the decoder's cache over the image's tokens
+can be reused by prefix caching, provided the block hashes include the image:
+vLLM adds the image's hash to the hash of every block containing its
+placeholder tokens, since the placeholders alone are identical for every image
+(\texttt{docs/design/prefix\_caching.md} at commit \texttt{bcdacfc}). Without
+that, two different images behind the same text would share a cached prefix and
+one of them would be answered about the other.
+
 \section{Scheduling encoder work}
+
+The encoder adds a stage with its own cost to a scheduler built for text.
+vLLM gives the encoder its own per-step budget of input tokens and a separate
+encoder-output cache, both set to the step's token budget and not yet
+configurable (\texttt{max\_num\_encoder\_input\_tokens} and
+\texttt{encoder\_cache\_size} in \texttt{vllm/config/scheduler.py} at
+\texttt{bcdacfc}), so an image-heavy request cannot monopolize a step. The encoder can also run with data
+parallelism across tensor-parallel ranks, replicating its weights, which vLLM
+reports improves throughput and time to first token by about 10\%
+(\texttt{mm\_encoder\_tp\_mode="data"}, \cite{vllm2026optimization}). Images
+arrive with the prompt, so encoder work falls on time to first token; a
+scheduler that treats it as free prefill underestimates exactly the latency
+users of multimodal models notice.
 
 \section{Audio and video}
 
+Audio and video multiply the token flood. Gemma~4 accepts audio of up to 30
+seconds on its E2B, E4B and 12B models, and video of up to 60 seconds processed
+at one frame per second (model card, \cite{google2026gemma4}). At its budgets
+of 70 to 280 tokens per frame, a minute of video is 4,200 to 16,800 tokens
+before the question is asked (derived). Video is where token budgets, frame
+sampling and encoder caching across overlapping clips decide whether a request
+fits at all.
+
 \section{Separating the encoder}
+
+Because the encoder's work is compute-bound, arrives in bursts and has its own
+memory needs, it can run on separate devices, as prefill and decode can
+(\Chref{disaggregated-serving}). Singh and colleagues proposed
+encode--prefill--decode disaggregation and report, against systems that run
+encoding with prefill, up to 15 times lower peak memory, batch sizes up to 22
+times larger, 10 times more images per request, and up to 71\% lower time to
+first token (their measurement, \cite{singh2025epd}). vLLM added native encoder
+disaggregation in release 0.11.1: encoder workers write image embeddings to an
+encoder cache that prefill and decode workers read, which also makes the cache
+shared across requests \cite{vllm2025epd}.
 
 \section{Preprocessing is part of the model}
 
+An image reaches the encoder after decoding, resizing, cropping, normalizing
+and patch ordering, and each step was fixed when the model was trained. The
+reference implementation is usually a Python image processor; engines that
+cannot run Python re-implement it. llama.cpp re-implements each supported
+model's preprocessing in C++, with a resize algorithm chosen per model family
+(\texttt{tools/mtmd/clip.cpp} at \texttt{d006858}). A mismatch --- a different
+interpolation, a different rounding of the target size --- changes the pixels,
+the tokens and possibly the answer, without any error. Multimodal correctness
+testing therefore starts before the model: the preprocessed tensor is
+compared with the reference processor's on the same image
+(\Chref{fast-wrong-answers}).
+
 \LedgerSection
+
+Serving images, audio and video beside text:
+
+\begin{ConstraintLedger}
+Compute & spends & An encoder pass per new image (about 1 TFLOP at 280 tokens for Gemma~4~E4B), plus the decoder's prefill of the image tokens. \\
+Memory capacity & spends & Image tokens stay in the cache: 70 to 1,120 per image for Gemma~4, more for video. \\
+Latency & spends & Encoding and image prefill fall on time to first token. \\
+Correctness & risks & Preprocessing mismatches, and prefix caches that do not hash image content. \\
+\end{ConstraintLedger}
 
 \LabSection{count and cache image tokens}
 
+\LabIntent{In \texttt{code/labs/ch30-multimodal/}, a harness that sends the
+same question with images of several sizes to a local multimodal model,
+records prompt tokens and prefill time per image, and fits
+Equation~\ref{eq:image-tokens}; a second part implements an encoder-output
+cache keyed by content hash in front of a stub encoder, with an oracle that
+recomputes, and shows why block hashes must include the image. Break it by
+hashing only the placeholder tokens and asking about two different images
+behind the same prompt.}
+
 \HappenedSection{encoder disaggregation}
 
-\FrontierSection{}
+vLLM merged native encode--prefill--decode disaggregation in November 2025
+and measured it on Qwen3-VL-4B-Instruct with four A100 GPUs, 640-by-640 images
+(about 400 visual tokens each) and short or long text inputs
+\cite{vllm2025epd}. With one image per request it barely helped: 23 to 24
+requests per second. With four images per request, goodput doubled from 6 to
+12 requests per second, with P99 times to first token and per output token often
+20 to 50\% lower, and with 2,000-token texts goodput stayed 2 to 2.5 times
+higher (the developers' measurement). The report's own caveat is the chapter's
+napkin math: ``with longer inputs, image-encoding costs become a small
+fraction of total work.'' Separating the encoder pays when images dominate the
+prefill, and not otherwise.
+
+\FrontierSection{2026-09-24}
+
+Two directions pull against each other. Some models drop the encoder and
+project raw patches straight into the decoder (Gemma~4~12B), making images
+ordinary prefill; serving systems meanwhile split multimodal pipelines into
+more stages, with vLLM-Omni decomposing any-to-any models into a graph of
+stages and reporting up to 91.4\% lower job completion time than baselines
+\cite{yin2026vllmomni}. Token budgets per image are becoming a request
+parameter, which makes image cost something the caller chooses and the
+scheduler must price.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using Equation~\ref{eq:image-tokens}, compute the
+  largest square image each of Gemma~4's budgets can represent without
+  downscaling, and the encoder FLOPs for each.
+\item \emph{Prediction.} For a conversation that sends the same 1,120-token
+  image in each of ten turns, compute the prefill tokens with and without
+  prefix caching that hashes image content.
+\item \emph{Implementation.} Add encoder batching across requests to the lab
+  and measure the throughput gain for 1, 4 and 16 images per step.
+\item \emph{Falsification.} Resize one image with two different
+  interpolation algorithms, feed both to a local model, and find a question
+  whose answer changes.
+\end{enumerate}

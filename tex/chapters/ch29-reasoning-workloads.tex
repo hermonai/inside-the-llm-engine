@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 29 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part5.md (reasoning, kvsizes, depth).
 \chapter{Reasoning Models and Test-Time Compute}\label{ch:reasoning-workloads}
 
 \begin{ChapterIntent}
@@ -14,28 +15,229 @@ speculation, caching, scheduling and pricing.
 
 \OpeningSection{Thousands of tokens before the first word}
 
+Ask DeepSeek-R1-0528-Qwen3-8B --- Qwen3-8B post-trained on reasoning
+distilled from DeepSeek-R1 \cite{deepseek2025r1qwen3,deepseek2025r1} --- how
+many minutes a train takes to go from 3:15~pm to 5:40~pm. On the M1, through
+llama.cpp's server, it thought for 2,047 tokens, reached the request's limit of
+2,048, and never answered. Across eight such problems --- a multiplication, a
+percentage, the divisors of 36 --- it spent on average \textbf{1,237 hidden
+tokens} and 166 visible ones per answer, 144 seconds each at about ten tokens
+per second, and gave the right number seven times out of eight, six of them in
+the requested format (measured, greedy decoding; record
+\texttt{2026-09-24-m1-part5}).
+
+Then the same problems with a thinking budget. At 256 tokens, the server forces
+the end-of-thinking tag once the budget is spent: 637 tokens and 62 seconds per
+answer on average, and all eight numbers right (seven in the requested format).
+At a budget of zero, thinking ends before it begins --- and the model reasoned
+in its visible answer instead: 1,148 visible tokens per answer, 109 seconds,
+seven right and one cut off at the limit in the middle of a calculation. A
+budget moved the reasoning more than it removed it. Eight easy problems are an
+anecdote about accuracy, but a measurement of cost: every one of those tokens
+was a decode step, a cache entry of 144~KiB, and, on a commercial API, a billed
+output token.
+
 \NapkinSection{Napkin math: cost per answer}
+
+A request with a prompt of $P$ tokens, $R$ reasoning tokens and $A$ answer
+tokens costs one prefill of $P$ tokens and $R + A$ decode steps. On hardware
+where decode is bandwidth-bound (\Chref{roofline}), each step of one sequence
+reads the weights $W$ and a cache that grows by $k$ bytes per token, so the
+decode bytes of the whole answer are about
+\begin{equation}
+(R + A)\,W + k\,\frac{(P + R + A)^{2} - P^{2}}{2},
+\label{eq:answer-bytes}
+\end{equation}
+the second term being the cache reads of every step, which grow with the
+square of the output. The time per answer is roughly $(R+A)$ divided by the
+decode rate, and the price is $R + A$ output tokens: providers bill hidden
+reasoning tokens as output tokens (OpenAI's reasoning guide; Anthropic's
+extended-thinking documentation \cite{openai2026reasoning,anthropic2026thinking}).
+
+Put numbers in, with an illustrative 4,000 reasoning tokens, about three
+times the opening's average. Qwen3-8B caches 144~KiB per token
+(\Chref{shrinking-kv}); a 100-token question answered after 4,000 reasoning
+tokens holds 577~MiB of cache
+at the end, where the same question answered directly in 40 tokens would hold
+20~MiB (derived). On the M1, where this model decodes at 10.5 tokens per second with
+an empty context and 8.7 at 4,096 tokens (measured, record
+\texttt{2026-09-24-m1-part5}), the 4,000 hidden tokens alone take about seven
+minutes. The prompt's prefill, which dominates most chat requests, is a rounding
+error here.
 
 \section{Hidden tokens are real tokens}
 
+To the engine, a reasoning token is an output token like any other: sampled,
+appended to the cache, counted against the context and the output limit. The
+differences are in the protocol around it. OpenAI's API does not return the
+reasoning text, but the tokens ``occupy space in the model's context window
+and are billed as output tokens'', and the guide recommends reserving at least
+25,000 tokens for reasoning and output when starting out
+\cite{openai2026reasoning}. Anthropic's manual extended thinking takes a
+\texttt{budget\_tokens} of at least 1,024, less than \texttt{max\_tokens},
+because thinking counts toward the output limit, and describes the budget as
+``a target rather than a strict cap'' \cite{anthropic2026thinking}.
+
+The protocol also decides what happens to reasoning after the answer. Older
+Claude models stripped earlier turns' thinking from the context; Claude
+Opus~4.5 and models numbered 4.6 and later keep it and bill it as input
+\cite{anthropic2026thinking}. OpenAI returns reasoning in encrypted form, to be
+passed back between turns or kept server-side with
+\texttt{previous\_response\_id} \cite{openai2026reasoning}. Each choice lands on
+the engine: kept reasoning is prefix the next turn can reuse from cache
+(\Chref{prefix-caching}); stripped reasoning is cache that must be discarded
+and a prefix that no longer matches what was computed.
+
 \section{Decode-dominated workloads}
+
+A chat request with a 2,000-token prompt and a 300-token answer spends most of
+its tokens in prefill; a reasoning request with a 100-token question and 4,000
+tokens of thought spends 98\% of them in decode (derived). Everything Part~III
+built around prefill changes weight. Chunked prefill (\Chref{chunked-prefill})
+matters less when prompts are short; continuous batching
+(\Chref{continuous-batching}) matters more, because long outputs finish at
+widely different times; and in a disaggregated deployment
+(\Chref{disaggregated-serving}) the decode pool must grow relative to the
+prefill pool. The throughput that matters is decode throughput at the batch
+the cache allows.
 
 \section{Outputs that grow the cache}
 
+A chat server can size a request's cache from its prompt. A reasoning request
+admitted with a 100-token prompt may grow to 30,000 tokens, and nobody knows
+which one it will be when it is admitted. That breaks two assumptions of the
+schedulers in \Chref{scheduling}. Admission by current usage overcommits: a
+batch that fits at admission runs out of blocks later, when every request has
+grown, and must preempt. And preemption itself costs more: evicting a request
+with 20,000 tokens of reasoning means recomputing them or swapping out
+gigabytes. The remedies are an output limit per request, admission that
+leaves headroom for growth, and a deliberate choice of whom to preempt
+(\Chref{scheduling}); and a cache that holds more tokens per byte
+(\Chref{shrinking-kv}, \Chref{kv-quantization}, \Chref{hybrid-models}) matters
+most for exactly these workloads.
+
 \section{Parallel sampling and shared prefixes}
+
+Test-time compute also scales across samples. Self-consistency samples several
+reasoning paths and takes the most common answer; its authors report gains of
+17.9 points on GSM8K, 11.0 on SVAMP and 12.2 on AQuA over greedy
+chain-of-thought (their measurement, \cite{wang2023selfconsistency}). For the
+engine, $n$ samples of one prompt are $n$ sequences that share their prefix:
+paged caches store the prompt's blocks once and share them with copy-on-write
+(\Chref{paged-kv}, \cite{kwon2023pagedattention}), and prefix caching does the
+same across separate requests (\Chref{prefix-caching}). What cannot be shared
+is the reasoning itself --- each sample's thousands of tokens are its own --- so
+$n$ samples cost almost exactly $n$ times the decode of one.
 
 \section{Search and verification loops}
 
+Sampling and voting is the simplest search. Snell and colleagues compared it
+with searching against process-based verifiers and with revising answers
+sequentially, and found that allocating test-time compute per prompt by its
+difficulty was more than four times as efficient as best-of-$N$ sampling; in a
+FLOPs-matched comparison, a smaller model with such a strategy outperformed one
+14 times larger on problems where the small model had some success
+\cite{snell2024testtime}. For serving, a search loop is a workflow of many
+short generations and scoring passes, scheduled like an agent: prefix reuse
+across branches, a verifier model beside the generator, and a latency budget
+set by the whole loop rather than by one generation.
+
 \section{Budgets and early stopping}
+
+A reasoning budget bounds $R$. s1 made the mechanism explicit as ``budget
+forcing'': end the thinking by force when the budget runs out, or extend it by
+appending ``Wait'' when the model tries to stop early; with it, a
+32-billion-parameter model fine-tuned on 1,000 examples improved from 50\% to 57\% on
+AIME24 by thinking longer \cite{muennighoff2025s1}. Qwen3 introduced a
+thinking-budget mechanism for its models \cite{yang2025qwen3}, and the commercial APIs
+expose budgets (Anthropic's \texttt{budget\_tokens}) or effort levels
+(OpenAI's \texttt{none} through \texttt{max}).
+
+In an engine the budget is a sampler. llama.cpp's server implements it as one
+at commit \texttt{d006858}: from the start of the thinking block it counts
+tokens, and when the budget is spent it forces the end-of-thinking tag by
+setting every other token's logit to $-\infty$, waiting first for a complete
+UTF-8 character (\texttt{common/reasoning-budget.cpp}); the budget comes from
+\texttt{--reasoning-budget} or a request's \texttt{thinking\_budget\_tokens}.
+The opening's measurements show what that does on one model: a budget of 256
+cut the tokens per answer by 55\% without losing an answer, and a budget of
+zero cut them by only 18\%, because the model, denied its thinking block,
+thought in the open. A budget bounds the hidden tokens; only the model decides
+how many visible ones it needs, which is why the output limit remains the hard
+bound on cost.
 
 \section{Speculation for reasoning}
 
+Reasoning is the workload speculation should love --- long outputs at small
+batch, decode-bound --- and the one where cheap drafters struggle. On the M1,
+prompt lookup proposed no drafts at all for a reasoning model's thoughts, even
+when the task was to quote its prompt, and an unmatched small drafter was
+accepted less than half the time and made decoding twice as slow
+(\Chref{when-speculation-loses}). The candidates are drafters trained on the
+target's own distribution --- EAGLE-style heads and multi-token-prediction
+modules (\Chref{modern-speculation}); whether they pay on a given reasoning
+model is an acceptance rate to measure, not assume.
+
 \LedgerSection
+
+Answering with hidden reasoning, or with many sampled candidates:
+
+\begin{ConstraintLedger}
+Correctness & buys & Accuracy on hard problems grows with reasoning length and samples, with diminishing returns per token. \\
+Latency & spends & Time to the answer is $(R + A)$ decode steps; thousands of steps where a chat answer takes hundreds. \\
+Memory capacity & spends & The cache grows with the output; batch size falls as reasoning lengthens, and admission must reserve for growth. \\
+Memory bandwidth & moves & Load shifts from prefill to decode, whose bytes grow with the square of the output (Equation~\ref{eq:answer-bytes}). \\
+\end{ConstraintLedger}
 
 \LabSection{measure a reasoning trace}
 
+\LabIntent{In \texttt{code/labs/ch29-reasoning-workloads/}, a harness that
+runs a reasoning model through an OpenAI-compatible server on a set of problems
+with checkable answers, at several thinking budgets and with $n$ parallel
+samples, and records per answer: reasoning and answer tokens, time to first
+visible token, total time, cache size at the end and correctness. It plots
+accuracy against tokens spent and fits the cost model of
+Equation~\ref{eq:answer-bytes}. Break it by setting the budget to zero and
+checking which answers survive.}
+
 \HappenedSection{serving reasoning models}
 
-\FrontierSection{}
+In March 2025 DeepSeek published statistics for 24 hours of its V3 and R1
+service: 608
+billion input tokens, 56.3\% of them served from its on-disk KV cache, and 168
+billion output tokens in 24 hours, at an average output speed of 20 to 22
+tokens per second per user (the operator's own report,
+\cite{deepseek2025inference}). At that speed a reasoning answer of 4,000
+tokens takes three minutes. The providers' interfaces show how the industry
+responded: budgets and effort levels that let users trade answer quality for
+time and price \cite{openai2026reasoning,anthropic2026thinking}, and changing
+rules for whether reasoning stays in the context --- Anthropic's newer models
+keep earlier thinking, where older ones stripped it
+\cite{anthropic2026thinking} --- each of which decides whether the next turn's
+prefix is already in cache.
+
+\FrontierSection{2026-09-24}
+
+Reasoning is moving from a fixed mode to a controlled resource: effort levels
+and adaptive thinking that decide per request how much to think, budgets
+trained into models (Qwen3), and search strategies chosen by estimated
+difficulty \cite{snell2024testtime}. For engines, the consequences compound:
+decode-dominated batches, caches that grow during generation, and prefix
+reuse across turns and branches. The architectures of \Chref{hybrid-models},
+whose state does not grow with the output, are attractive for exactly this
+reason.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Derive Equation~\ref{eq:answer-bytes} and find the
+  output length at which the cache term exceeds the weights term for Qwen3-8B
+  at 4.5 bits per weight.
+\item \emph{Prediction.} A server holds 40~GB of free cache memory for a model
+  with 144~KiB per token. How many concurrent reasoning requests of 16,000
+  tokens fit, and how many chat requests of 2,000?
+\item \emph{Implementation.} Add parallel sampling with majority voting to the
+  lab, and measure accuracy and cost per answer for $n = 1, 3, 5$.
+\item \emph{Falsification.} Find a problem on which a zero thinking budget
+  gives the correct answer and a small positive budget gives a wrong one.
+\end{enumerate}

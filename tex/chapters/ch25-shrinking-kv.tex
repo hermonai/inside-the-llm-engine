@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 25 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part5.md (kvsizes, depth).
 \chapter{Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention}\label{ch:shrinking-kv}
 
 \begin{ChapterIntent}
@@ -15,30 +16,360 @@ of the attention kernel.
 
 \OpeningSection{Five megabytes or seventy kilobytes per token}
 
+Two quantized three-billion-parameter models on the M1 decode at the same
+speed when their context is empty: 24.2 tokens per second for Llama~3.2~3B and
+24.4 for Qwen2.5-Coder 3B, whose weights take 1.87 and 1.79~GiB. Give each
+16,384 tokens of context and they part ways. Llama slows to \textbf{10.5} tokens
+per second; Qwen2.5-Coder only to \textbf{17.8} (measured with
+\texttt{llama-bench}, two runs each; record \texttt{2026-09-24-m1-part5}). The
+server's allocations say why. For a 16,384-token context, llama.cpp reserved
+1,792~MiB of key/value cache for Llama and 576~MiB for Qwen2.5-Coder: 112 and
+36~KiB per token. Llama's 24 query heads share 8 key/value heads; Qwen2.5-Coder's
+16 share 2. At 16K tokens Llama reads almost as many bytes of its own history at
+every step as it reads weights, and Qwen2.5-Coder a third as many.
+
+The same design choice, pushed further, separates the largest models.
+DeepSeek-V3 caches 68.6~KiB per token across its 61 layers. Had it used
+ordinary multi-head attention with the same 128 heads, it would need about
+4.8~MiB per token, 71 times as much (derived from its configuration): five
+megabytes or seventy kilobytes. Neither factor comes from quantization or
+eviction. Both come from the shape of the attention layer, fixed before
+training. This chapter derives each shape, prices it in bytes and FLOPs, and
+follows what it demands of the kernels and the parallelism that serve it.
+
 \NapkinSection{Napkin math: cache bytes per token, design by design}
+
+A decoder with $L$ layers, $H_{kv}$ key/value heads of width $d_h$ and cache
+elements of $b_{kv}$ bytes stores, for every token of every sequence,
+\begin{equation}
+\text{KV bytes per token} = 2\,L\,H_{kv}\,d_h\,b_{kv},
+\label{eq:kv-bytes-per-token}
+\end{equation}
+the factor 2 counting keys and values (\Chref{kv-cache}). Multi-head attention
+(MHA) sets $H_{kv}=H_q$; multi-query attention (MQA) sets $H_{kv}=1$;
+grouped-query attention (GQA) sits between, with $g = H_q/H_{kv}$ query heads per
+group. Multi-head latent attention (MLA) does not fit the formula: it caches one
+latent vector of width $d_c$ and one shared rotary key of width $d_h^R$ per
+layer, so
+\begin{equation}
+\text{MLA bytes per token} = L\,(d_c + d_h^R)\,b_{kv}.
+\label{eq:mla-bytes-per-token}
+\end{equation}
+
+Table~\ref{tab:ch25-kv-per-token} applies both to published configurations,
+with 16-bit caches (derived; configurations in \texttt{research/FRONTIER.md}).
+Llama~3 70B's 64 query heads share 8 key/value heads, so its 320~KiB per token
+would be 2.5~MiB under MHA. DeepSeek-V3 caches 576 elements per layer across 61
+layers, 68.6~KiB per token; the same 128 heads with ordinary keys of width 192
+and values of width 128 would need about 4.8~MiB, 71 times more. At a context
+of 128K tokens that is the difference between 8.6~GiB and 610~GiB for a single
+sequence (derived).
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Model & Layers with a cache & Heads (q : kv) & Width & KiB per token \\
+\midrule
+Llama 3.2 3B & 28 & 24 : 8 & 128 & 112 \\
+Qwen2.5-Coder 3B & 36 & 16 : 2 & 128 & 36 \\
+Qwen3 8B & 36 & 32 : 8 & 128 & 144 \\
+Llama 3 70B & 80 & 64 : 8 & 128 & 320 \\
+Qwen3-30B-A3B & 48 & 32 : 4 & 128 & 96 \\
+DeepSeek-V3 (MLA) & 61 & 128 : latent & $512+64$ & 68.6 \\
+DeepSeek-V3 as MHA & 61 & 128 : 128 & $192/128$ & $\approx 4{,}880$ \\
+\bottomrule
+\end{tabular}
+\caption{Key/value cache bytes per token with 16-bit elements (derived from
+each model's published configuration or GGUF metadata). The first two rows
+are the models measured in this chapter's opening; their products agree with
+the allocations llama.cpp reported, to the byte. Models with sliding-window or
+recurrent layers, which cap or replace part of the cache, are treated in
+\Chref{hybrid-models} and \Chref{long-context}.}
+\label{tab:ch25-kv-per-token}
+\end{table}
+
+The cache matters for decode because every step reads it. With weights of
+$W$ bytes and a context of $S$ tokens, one decode step of one sequence reads
+about $W + S \cdot k$ bytes, where $k$ is the cache bytes per token; the cache
+overtakes the weights at $S^{*} = W/k$. For the quantized Llama~3.2~3B,
+$S^{*} = 2.01\,\text{GB} / 112\,\text{KiB} \approx 17{,}500$ tokens; for the
+quantized Qwen2.5-Coder 3B, $1.92\,\text{GB} / 36\,\text{KiB} \approx
+52{,}000$ (derived). Beyond $S^{*}$ a model spends most of each step reading its
+own history, and the sharing factor, not the parameter count, decides its
+speed. The same arithmetic sets capacity: a server's batch is its free memory
+divided by $S \cdot k$ (\Chref{kv-cache}).
+
+Scaling the empty-context speed by $W/(W + S\cdot k)$ predicts the opening's
+measurements closely (Figure~\ref{fig:ch25-depth-decode}): 19.7 and 22.6 tokens
+per second at 4,096 tokens against 19.4 and 22.5 measured, and 18.5 for
+Qwen2.5-Coder at 16,384 against 17.8 (derived). For Llama at 16,384 it
+predicts 12.5 against 10.5 measured: bytes account for about 70\% of the
+time each token gained, and the rest is time the bandwidth model does not
+count, which a kernel profile would have to locate (\Chref{decode-attention}).
+
+\EngineFigure{ch25-depth-decode}{Decode speed against context length for two
+3B models on the M1: points measured, dashed lines the bandwidth model
+$v(S) = v(0)\,W/(W + S\cdot k)$ (derived). The models start equal; the one that
+caches 112~KiB per token loses more than half its speed by 16K tokens, the one
+that caches 36~KiB loses a quarter. The model ignores attention's arithmetic and
+kernel overheads, which is where Llama's measured point at 16K falls below its
+line.}{fig:ch25-depth-decode}
 
 \section{Multi-query attention}
 
+Shazeer's 2019 proposal was to keep many query heads but give them one shared
+key head and one shared value head \cite{shazeer2019mqa}. His motivation was
+the bandwidth of incremental decoding --- the loads of the cache at every step
+--- and the result was a model much faster to decode with only minor quality
+loss, in his experiments. The cache shrinks by the factor $H_q$; so does the
+bandwidth of attention during decode.
+
+The saving has a second, less visible effect. In MHA decode, each cached key
+element is loaded once and used by one query head: two floating-point
+operations (a multiply and an add) per two bytes, an arithmetic intensity of
+about 1 FLOP per byte, far below any machine's ridge (\Chref{roofline}). In MQA
+the same loaded element is used by all $H_q$ heads, and the intensity rises to
+about $H_q$ FLOP per byte. Attention during decode stops being a pure memory
+stream and becomes a small matrix product --- which is what the kernels of
+\Chref{decode-attention} are good at.
+
 \section{Grouped-query attention}
+
+MQA's one head was too little for large models: quality suffered, and one
+head cannot be split across tensor-parallel devices (\Chref{model-parallelism}).
+Grouped-query attention generalizes it to $H_{kv}$ key/value heads, each
+shared by a group of $g$ query heads, and Ainslie and colleagues showed that
+an existing MHA checkpoint can be converted by averaging its key and value
+heads within each group and continuing training for about 5\% of the original
+pre-training compute \cite{ainslie2023gqa}. GQA became the default: every
+dense model in Table~\ref{tab:ch25-kv-per-token} uses it, with groups of 3 to 8
+query heads, and Qwen3.5's full-attention layers use 16 (32 query heads on 2
+key/value heads of width 256; \texttt{config.json},
+\cite{qwen2026qwen35config}).
+
+For the kernel, a group is a small matrix. The $g$ query heads of a group read
+the same keys and values, so a decode kernel loads each key/value head once
+and multiplies it by a $g$-row block of queries. Intensity grows to about $g$
+FLOP per byte --- 8 for a group of 8 --- still below the ridge of every
+accelerator in \Chref{roofline}, so GQA decode remains bandwidth-bound and its
+speed tracks the bytes of Equation~\eqref{eq:kv-bytes-per-token}.
 
 \section{Multi-head latent attention}
 
+DeepSeek-V2 took a different route \cite{deepseek2024v2}. Instead of fewer
+heads, MLA keeps 128 full heads and compresses what they share. Each token's
+hidden state $\mathbf{h}_t \in \mathbb{R}^{d}$ is projected down to a latent
+$\mathbf{c}_t = \mathbf{W}^{DKV}\mathbf{h}_t \in \mathbb{R}^{d_c}$, and the
+keys and values of every head are projected back up from it:
+$\mathbf{k}_{t,i} = \mathbf{W}^{UK}_i\mathbf{c}_t$ and
+$\mathbf{v}_{t,i} = \mathbf{W}^{UV}_i\mathbf{c}_t$ for head $i$. Only
+$\mathbf{c}_t$ is cached. DeepSeek-V2 and V3 use $d_c = 512 = 4\,d_h$ for
+$d_h = 128$; with the rotary component described below, the cache is
+$4.5\,d_h$ elements per layer --- in DeepSeek-V2's own comparison, the size of
+GQA with 2.25 groups, while its quality was better than MHA's in their ablations
+\cite{deepseek2024v2}.
+
+MLA is therefore a low-rank factorization of the key and value projections,
+learned during pre-training. It differs from compressing a trained model's
+cache after the fact (\Chref{kv-quantization}): the model never sees anything
+but the latent.
+
 \section{Absorbing the projections}
+
+If the kernel reconstructed every head's keys and values from the latents at
+every decode step, MLA would save capacity and spend it all back in
+arithmetic: reconstructing one cached token's 128 keys and values costs about
+16.8 million multiply--adds in DeepSeek-V3 (derived: $512 \times 128 \times
+(128+128)$). The trick that makes MLA fast is that the up-projections are
+linear and can be moved. The attention score of query head $i$ against cached
+token $s$ is
+\begin{equation}
+\mathbf{q}_{t,i}^{\top}\mathbf{k}_{s,i}
+= \mathbf{q}_{t,i}^{\top}\mathbf{W}^{UK}_i\mathbf{c}_s
+= \bigl(\mathbf{W}^{UK\top}_i\mathbf{q}_{t,i}\bigr)^{\top}\mathbf{c}_s ,
+\end{equation}
+so the query can be mapped into latent space once per step, and the score
+computed directly against the cached latent. The value side works the same
+way: the attention-weighted sum of latents is computed first and
+$\mathbf{W}^{UV}_i$ applied once to the result, where it merges with the output
+projection. DeepSeek-V2's paper states both absorptions \cite{deepseek2024v2}.
+
+After absorption, decode attention is multi-query attention with one very wide
+head: every query head attends over the same cached vectors of width
+$d_c + d_h^R = 576$, and the values are the first 512 of those elements. vLLM's
+MLA layer implements exactly this ``data-movement friendly'' path for decode
+and keeps a ``compute friendly'' path for prefill that reconstructs the keys and
+values explicitly and runs ordinary attention with head widths 192 and 128
+(\texttt{vllm/model\_executor/layers/attention/mla\_attention.py} at commit
+\texttt{bcdacfc}).
+
+The choice between them is napkin math. Per pair of query and cached token,
+the absorbed path costs $128 \times (576 + 512) \approx 139{,}000$
+multiply--adds and the explicit path $128 \times (192 + 128) \approx 41{,}000$,
+but the explicit path first pays the 16.8 million per cached token, shared by
+all the queries that attend to it. The explicit path wins when a step carries
+more than about $16.8\,\text{M} / 98\,\text{K} \approx 170$ queries per
+sequence (derived) --- a prefill chunk --- and the absorbed path wins below
+it: decode, short chunks, and speculative verification.
 
 \section{Decoupled rotary dimensions}
 
+Rotary position embeddings (\Appref{rope}) break the absorption. RoPE rotates each key by an angle that depends on its
+position, so the matrix between $\mathbf{c}_s$ and the score would contain a
+position-dependent rotation, and no fixed matrix could be folded into the
+query. DeepSeek's fix is to carry position separately
+\cite{deepseek2024v2}: each head gets an extra rotary query of width $d_h^R =
+64$, all heads share one rotary key of width 64 per token, and the score is the
+sum of a position-free part through the latent and a rotary part through these
+small vectors. The rotary key is cached beside the latent, which is where the
+576 comes from: 512 latent elements and 64 rotary ones.
+
+The design separates two things standard attention mixes: what a token says,
+which is compressed, and where it is, which is kept exact in a small vector.
+
 \section{Kernels for latent attention}
+
+Absorption changes the kernel's economics. Per cached token and layer, a
+DeepSeek-V3 decode step now does about $2 \times 139{,}000 \approx 279{,}000$
+floating-point operations and reads $576 \times 2 = 1{,}152$ bytes: about 240
+FLOP per byte (derived), against about 8 for GQA with groups of 8 and 1 for MHA.
+An H100's BF16 ridge is about 295 FLOP per byte (\Chref{roofline}), so MLA
+decode attention sits close to the ridge instead of far below it, and crosses
+it as soon as a step carries two query tokens per sequence, as multi-token
+prediction does (\Chref{modern-speculation}). DeepSeek's FlashMLA kernels
+report both regimes on the H800 --- up to 3,000~GB/s when memory-bound and
+660~TFLOP/s when compute-bound (vendor numbers, \cite{deepseek2025flashmla}) ---
+and vLLM ships several MLA-specific backends beside its ordinary attention
+kernels, because the head widths, the shared latent and the split between
+prefill and decode paths fit none of them \cite{vllm2026attentionbackends}.
+
+MLA also changes how a model splits across devices. GQA's key/value heads can
+be divided among tensor-parallel ranks; MLA has, in vLLM's words, one key/value
+head, so every rank of a tensor-parallel group holds the whole latent cache,
+and ``the typical single-node deployment with \texttt{-tp 8} causes 8x KV cache
+duplication'' for DeepSeek-R1 (\texttt{docs/serving/context\_parallel\_deployment.md}
+at commit \texttt{bcdacfc}). The remedies change the parallelism instead of the
+model: shard the cache along the sequence (decode context parallelism,
+\Chref{long-context}), or run attention data-parallel, each device serving
+different sequences, while the experts are split across devices, which is how
+DeepSeek serves V3 and R1 (\Chref{mixture-of-experts},
+\Chref{expert-parallelism}).
 
 \section{Gates and other recent variants}
 
+The cache keeps shrinking along axes other than heads. Cross-layer attention
+shares keys and values between adjacent layers, and its authors report a
+further halving of the cache beyond MQA at nearly the same accuracy
+\cite{brandon2024cla}. Gemma~4 applies layer sharing at scale in its smaller
+models: in the E4B file measured in \Chref{long-context}, the last 18 of 42
+layers compute no keys or values of their own and read those of the last
+earlier layer of the same kind (GGUF key \texttt{shared\_kv\_layers}; llama.cpp
+\texttt{src/llama-model.cpp} at commit \texttt{d006858}). Combined with
+sliding windows on five layers of every six, that leaves 16~KiB per token of
+unbounded cache, against 98~KiB with neither (derived from the file's
+metadata).
+
+Gates are the other trend. Gated attention multiplies each head's output by a
+learned, query-dependent sigmoid gate; its authors, training
+15-billion-parameter MoE and 1.7-billion-parameter dense models, found that the gate
+adds useful non-linearity, makes attention sparser and suppresses the
+attention sink (\Chref{long-context}) \cite{qiu2025gatedattention}. Qwen3.5's
+full-attention layers are gated this way (its model card's ``Gated Attention''),
+and Kimi~K3 pairs 24 gated MLA layers with 69 linear-attention layers
+\cite{moonshot2026kimik3}. A gate costs an extra projection per layer and
+nothing in the cache.
+
 \section{What the shrink costs}
+
+Every row of Table~\ref{tab:ch25-kv-per-token} is a decision made before
+training. An engine cannot choose MQA for a model trained with MHA; it can at
+most convert and retrain, as GQA's uptraining does. The costs that remain are
+the engine's:
+
+\begin{itemize}
+\item \emph{Quality.} Fewer heads or a narrower latent hold less. MQA lost
+  quality in Shazeer's experiments, GQA recovers most of it with a few groups,
+  and MLA's authors report none at 2.25-group size; each claim is the authors'
+  measurement on their models and tasks.
+\item \emph{Arithmetic.} Absorbed MLA does about 30 times the arithmetic of
+  8-group GQA per cached byte. That is the point --- it trades idle compute
+  for bandwidth --- until a batch or multi-token step pushes attention past the
+  ridge.
+\item \emph{Kernels.} Every new layout needs its own attention kernels,
+  cache layout, paging and quantization, in every engine.
+\item \emph{Parallelism.} Fewer key/value heads than devices means a
+  replicated cache, and different parallelism for attention than for the rest
+  of the model.
+\end{itemize}
 
 \LedgerSection
 
+Sharing or compressing the key/value heads, for a fixed model size:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & Cache bytes per token divided by the group size ($3\times$ to $16\times$ in shipped GQA models), or about $71\times$ for DeepSeek-V3's MLA against MHA. \\
+Memory bandwidth & buys & The same factor on the cache part of every decode step; past $S^{*}=W/k$ tokens that part dominates. \\
+Compute & spends & Intensity of decode attention rises from about 1 FLOP per byte (MHA) to $g$ (GQA) and about 240 (absorbed MLA). \\
+Correctness & risks & Model quality, fixed at training time; measured by the model's authors, not by the engine. \\
+\end{ConstraintLedger}
+
 \LabSection{MHA, GQA and MLA side by side}
+
+\LabIntent{In \texttt{code/labs/ch25-shrinking-kv/}, one attention layer
+implemented four ways over the same random inputs: MHA, GQA with a chosen
+group size, MLA with explicit keys and values, and MLA with absorbed
+projections and decoupled rotary keys. A float64 oracle checks that the two MLA
+paths agree to rounding; the lab then counts cache bytes and FLOPs per step,
+times decode and prefill for each, and finds the query count at which the
+absorbed path stops winning. Break it by applying RoPE to the latent keys and
+watch the absorption fail.}
 
 \HappenedSection{MLA in a shipped model}
 
-\FrontierSection{}
+DeepSeek introduced MLA in DeepSeek-V2 in May 2024 and reported a KV cache
+93.3\% smaller than DeepSeek~67B's and 5.76 times its maximum generation
+throughput (their measurement, on their serving stack) \cite{deepseek2024v2}.
+The architecture carried into DeepSeek-V3 and R1 unchanged in its essentials,
+and with it came engineering that no engine had needed before. DeepSeek
+released FlashMLA as open source in February 2025 \cite{deepseek2025flashmla};
+vLLM and SGLang added MLA-specific backends and the two computation paths
+described above; and DeepSeek's own service splits every model replica into
+data-parallel attention and expert-parallel MoE layers --- ``Routed Expert
+EP32, MLA/Shared Expert DP32'' for prefill on 4 nodes and EP144/DP144 for
+decode on 18 \cite{deepseek2025inference} --- so that no device holds a latent
+cache it does not use. The design then spread: Kimi~K3 uses gated MLA, Kimi
+Linear pairs MLA with linear attention \cite{kimi2025linear}, and DeepSeek-V3.2's
+sparse attention selects, for each query, which of MLA's shared latents to
+read (\Chref{long-context}). A cache format chosen for one model family
+became infrastructure every serious engine carries.
+
+\FrontierSection{2026-09-24}
+
+The cache is being attacked on every axis at once: heads (GQA groups of 16 in
+Qwen3.5), rank (MLA), layers (Gemma~4's shared layers, cross-layer attention),
+sequence (sliding windows, and DeepSeek-V4's compression of many tokens into one
+entry, \Chref{long-context}), precision (\Chref{kv-quantization}), and existence
+(linear-attention layers with no cache, \Chref{hybrid-models}). Recent flagship
+models combine three or four of these, which is why engines now manage caches
+with different layouts per layer (\Chref{paged-kv}). The open question for engine
+builders is less which scheme wins than how to serve a model that uses all of
+them at once.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Show that absorbed MLA decode attention does
+  $2H_q(2d_c + d_h^R)$ FLOPs per cached token per layer, and compute its
+  arithmetic intensity with an 8-bit latent cache.
+\item \emph{Prediction.} Using $S^{*} = W/k$, predict the context length at
+  which Qwen3-8B's decode speed on your machine halves, then measure it with
+  \texttt{llama-bench -d}.
+\item \emph{Implementation.} Extend the lab to choose between the absorbed and
+  explicit MLA paths per step from the number of query tokens, and find your
+  machine's crossover.
+\item \emph{Falsification.} Find a context length and batch size at which an
+  8-group GQA model is \emph{not} faster to decode than a 3-group model of the
+  same size. What resource binds there instead?
+\end{enumerate}

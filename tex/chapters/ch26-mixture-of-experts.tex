@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 26 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part5.md (moe: llama.cpp
+% MUL_MAT_ID at Qwen3-30B-A3B's expert shape).
 \chapter{Mixture of Experts}\label{ch:mixture-of-experts}
 
 \begin{ChapterIntent}
@@ -15,28 +17,304 @@ efficiently.
 
 \OpeningSection{Thirty billion parameters, three billion per token}
 
+On the M1's GPU, llama.cpp multiplies one token by one of Qwen3-30B-A3B's
+expert projections --- the 8 experts the token selects out of its layer's 128,
+each a 2,048-by-768 matrix in 4-bit K-quant form --- in 0.10 milliseconds.
+Eight tokens take 0.92 milliseconds: each pays as if it were alone. Thirty-two
+tokens take 6.2 milliseconds, more per token than one token alone. Then the
+curve turns: 64 tokens take 7.1 milliseconds and 256 take 7.3, \textbf{0.029
+milliseconds per token}, less than a third of the single-token cost (measured
+with the engine's own kernel benchmark at commit \texttt{d006858}, three runs;
+record \texttt{2026-09-24-m1-part5}; Figure~\ref{fig:ch26-expert-batch}).
+
+Two things produce that shape. A batch's tokens together select almost every
+expert --- 8 for one token, about 112 of the 128 for 32 tokens under uniform
+routing (derived below) --- so the weights a batch must read grow quickly and
+then stop growing. And the engine changes method at 32 tokens: below that it
+multiplies each token by each of its experts separately, above it sorts the
+batch by expert and multiplies each expert's group of tokens at once. The
+first is the arithmetic of mixture of experts; the second is the engineering.
+
+The model these matrices come from holds 30.5 billion parameters and uses 3.3
+billion per token. At batch 1 it decodes like a small model; at batch 64 it
+reads nearly all of its experts every step; and it needs every one of them
+resident, which is why this chapter measures one layer's kernel instead of a
+model that does not fit on the laptop.
+
+\EngineFigure{ch26-expert-batch}{Time per token of llama.cpp's grouped expert
+matrix product on the M1 at Qwen3-30B-A3B's expert shape (128 experts of
+2,048~$\times$~768, 8 per token, uniformly random routing): measured for 16-bit
+and 4-bit experts, with the time the expected expert union would take if its
+weights were read once at the single-token bandwidth (derived). Below 32 tokens
+the engine multiplies each token's experts separately and batching buys
+nothing; at 32 it switches to grouped matrix--matrix kernels and pays a step;
+beyond, the union saturates and extra tokens are nearly free. The 4-bit kernel
+stays several times above its bandwidth line: it is limited by dequantization,
+not by bytes.}{fig:ch26-expert-batch}
+
 \NapkinSection{Napkin math: the expert union as batch grows}
+
+Take a layer with $E$ experts of which each token selects $k$. If routing
+were uniform and independent across tokens, an expert escapes one token's
+selection with probability $1-k/E$, and a batch of $B$ tokens activates on
+average
+\begin{equation}
+\mathbb{E}[U(B)] = E\left(1-\Bigl(1-\frac{k}{E}\Bigr)^{B}\right)
+\label{eq:expert-union}
+\end{equation}
+distinct experts. For Qwen3-30B-A3B ($E=128$, $k=8$) the union is 8 experts
+for one token, 29 for 4, 52 for 8, 82 for 16, 112 for 32 and 126 for 64
+(derived). A decode step reads the weights of every expert in the union, so the
+bytes of expert weights read \emph{per token} fall from 8 experts' worth at
+batch 1 to about 2 at batch 64 and 1 at batch 128 --- the same amortization a
+dense model gets from batching (\Chref{roofline}), arriving later.
+
+The arithmetic does not amortize: every token still does its own $k$ experts'
+work. Once the union covers every expert, a step reads all $P$ parameters and
+computes with $P_{\mathrm{act}}$ per token, so its intensity is about
+$2BP_{\mathrm{act}}/(P\,b_w)$ FLOP per byte, and it reaches a machine's ridge
+$I^{*}$ at
+\begin{equation}
+B^{*} \approx \frac{I^{*}\,b_w}{2}\cdot\frac{P}{P_{\mathrm{act}}} .
+\label{eq:moe-ridge-batch}
+\end{equation}
+The first factor is the dense model's answer; the second is the sparsity.
+With 8-bit weights on an H100 ($I^{*}\approx 590$ FLOP per byte in FP8), a
+dense model becomes compute-bound near 300 tokens per step, and Qwen3-30B-A3B
+($P/P_{\mathrm{act}} = 30.5/3.3 \approx 9$) near 2,700 (derived). An MoE model
+is cheap per token only for a server that can gather thousands of tokens per
+step --- which is why the largest MoE deployments spread one model over
+hundreds of GPUs (\Chref{expert-parallelism}).
+
+Routing is not uniform in practice, and skew helps the union: if a few experts
+take most tokens, fewer distinct experts are read per step. It hurts
+elsewhere, as the load-balance section shows.
 
 \section{Routing and the sparse FFN}
 
+An MoE layer replaces the transformer's feed-forward network
+(\Chref{forward-pass}) with $E$ smaller ones and a router. The router is a
+linear map from the hidden state to $E$ scores; the layer keeps the $k$ highest,
+turns them into gate weights, runs the token through those $k$ experts and sums
+their outputs weighted by the gates. Shazeer and colleagues introduced the
+sparsely gated layer in 2017, with up to 137 billion parameters and ``greater
+than 1000x improvements in model capacity'' for minor losses in efficiency
+\cite{shazeer2017moe}. GShard scaled it to a 600-billion-parameter translation
+model trained on 2,048 TPU v3 accelerators in four days \cite{lepikhin2021gshard},
+and Switch Transformers simplified routing to one expert per token and trained
+models of up to a trillion parameters, with pre-training up to 7 times faster
+than dense models of the same compute \cite{fedus2022switch}.
+
+Current models vary the details. Mixtral routes each token to 2 of 8 experts,
+47 billion parameters with 13 billion active \cite{jiang2024mixtral};
+DeepSeek-V3 computes a sigmoid affinity for each of 256 routed experts, keeps
+8, normalizes the selected scores into gate values and adds one shared expert
+that every token uses (report section 2.1.2, \cite{deepseek2024v3});
+gpt-oss-120b selects 4 of 128; Qwen3.5-397B 10 of 512 plus a shared expert; and
+Kimi~K3 16 of 896 (configurations in \texttt{research/FRONTIER.md}). The
+router's own cost is negligible: a $d \times E$ matrix, 0.26 million parameters
+per layer for Qwen3-30B-A3B.
+
 \section{Active and total parameters}
+
+Qwen3-30B-A3B's name states the split. Each of its 48 layers holds 128
+experts of three $2{,}048 \times 768$ matrices, 4.7 million parameters each and
+604 million per layer, 29.0 billion in all; a token uses 8 per layer, 1.8
+billion. Attention, embeddings and routers add about 1.5 billion used by every
+token, giving the model card's ``30.5B in total and 3.3B activated'' (derived;
+\texttt{config.json} and model card, \texttt{research/FRONTIER.md}).
+
+The two numbers bind different resources. Memory capacity pays for $P$:
+every expert must be somewhere a step can reach it. Compute pays for
+$P_{\mathrm{act}}$. Bandwidth pays for something in between that depends on the
+batch --- $P_{\mathrm{act}}$ at batch 1, approaching $P$ as the union grows
+(Equation~\ref{eq:expert-union}). A dense model has one number for all three
+resources; an MoE model's ledger has three.
 
 \section{Batching activates the union}
 
+The union is the MoE engine's central quantity. At batch 1 an MoE model decodes
+like a model of its active size: in 4-bit form, the experts one token of
+Qwen3-30B-A3B touches come to 1.02~GiB --- 48 layers of 8 experts of 2.5 to
+2.9~MiB each --- out of 16.35~GiB for all of them (Hermon
+\texttt{docs/KERNEL\_DESIGN.md}, section K6.1, from the packed checkpoint). At
+batch 64 the same step reads 98\% of its expert
+weights (derived), and the model decodes like a dense 30-billion-parameter model
+that happens to compute less --- bandwidth-bound on $P$, not $P_{\mathrm{act}}$.
+
+This makes MoE capacity planning different from dense. A dense model's
+decode cost per token falls steadily with batch; an MoE model's falls slowly
+while the union grows, then like a dense model's once the union saturates. The
+batch at which the union covers most experts is small --- at $B = 2E/k$, 32
+tokens for Qwen3-30B-A3B, it covers 87\% of them --- and the batch that
+saturates compute is large (Equation~\ref{eq:moe-ridge-batch}). Between them an MoE server is
+bandwidth-bound on its total size, and the only ways to go faster are more
+bandwidth (more devices, \Chref{expert-parallelism}) or larger batches.
+
 \section{Load balance and capacity}
+
+A router trained without constraint tends to collapse onto a few experts.
+Training therefore adds pressure toward balance: an auxiliary loss that
+penalizes uneven load in Switch and GShard \cite{fedus2022switch}, or
+DeepSeek-V3's per-expert bias, added to the affinity scores only when choosing
+the top $k$, raised when an expert is underloaded and lowered when it is
+overloaded \cite{wang2024lossfree,deepseek2024v3}. The gate values still come
+from the unbiased scores, so balance is bought without an extra loss term.
+
+Inference inherits whatever balance training achieved, and imbalance costs
+differently there. Switch Transformers gave every expert a fixed capacity,
+$(\text{tokens per batch}/\text{number of experts}) \times$ a capacity factor,
+and passed the overflow tokens to the next layer unprocessed through the
+residual connection (section 2.2, \cite{fedus2022switch}). An engine that
+dropped tokens that way would make a request's output depend on what else was
+in its batch. The systems examined here are dropless: DeepSeek-V3 drops no tokens in
+training or inference (section 2.1.2, \cite{deepseek2024v3}); MegaBlocks
+reformulated the computation with block-sparse kernels precisely so that no
+token is dropped and no expert padded to a fixed capacity \cite{gale2023megablocks};
+and llama.cpp's expert kernel computes every selected expert for every token.
+Without dropping, imbalance becomes time: on one device, an overloaded expert's
+matrix product is the long pole of the step; across devices, the device holding
+it becomes every step's straggler. DeepSeek's answer at scale is to duplicate
+the hot experts, chosen from live load statistics every ten minutes or so ---
+32 redundant experts in their prefill deployment (section 3.4.1,
+\cite{deepseek2024v3}).
 
 \section{Grouped GEMM}
 
+Executing a batch through its experts is a gather, many small matrix products
+and a scatter. The naive loop --- for each token, for each of its experts,
+multiply --- turns a batch into $Bk$ matrix--vector products and throws away
+everything batching was for. Engines instead sort the batch's (token, expert)
+pairs by expert, so each expert multiplies one contiguous block of its tokens,
+and run all experts' blocks in one kernel launch: a grouped GEMM.
+vLLM's fused MoE path sorts the token indices by assigned expert and pads each
+expert's block to a multiple of the kernel's tile size
+(\texttt{moe\_align\_block\_size} at commit \texttt{bcdacfc});
+DeepGEMM groups along the token dimension only, with a contiguous layout for
+prefill and a masked layout for decode under CUDA graphs, where the CPU does not
+know how many tokens each expert received \cite{deepseek2025deepgemm}.
+llama.cpp's Metal backend at \texttt{d006858} switches between the two regimes
+by batch: below 32 rows it runs a matrix--vector kernel per selected expert,
+and from 32 it first maps tokens to experts and then runs its matrix--matrix
+kernel over each expert's group (\texttt{ggml/src/ggml-metal/ggml-metal-ops.cpp}).
+
+Grouping has its own waste. At decode, $Bk$ pairs spread over the union give
+each expert $Bk/U(B)$ tokens --- 4 each for Qwen3-30B-A3B at batch 64 --- so
+tiles sized for 64 or 128 rows run mostly empty. That is why MoE decode stays
+bandwidth-bound far past the batch at which a dense model's GEMM fills its
+tiles.
+
+The opening's measurement shows both regimes, and a third. On the
+matrix--vector path, below 32 tokens, time grew in proportion to the batch:
+each (token, expert) pair read its expert's weights again, at 61 to 69~GB/s,
+at or near the M1's bandwidth (the benchmark repeats one call over the same
+weights, so on-chip caches may flatter the highest figure). On the grouped path the 16-bit experts ran at the
+union's bandwidth, about 50~GB/s. The 4-bit experts did not: their grouped
+kernel moved the union's bytes at about 16~GB/s, a third of the rate, and at
+512 tokens it took longer than the 16-bit one (10.7 against 9.9 milliseconds).
+Dequantizing inside a matrix--matrix kernel costs arithmetic, and once the
+union saturates it is arithmetic, not bytes, that the 4-bit experts run out of
+(measured; the derived union lines are in Figure~\ref{fig:ch26-expert-batch}).
+
 \section{Shared and fine-grained experts}
+
+DeepSeekMoE changed the shape of experts rather than their number
+\cite{dai2024deepseekmoe}. It split each expert into $m$ smaller ones and
+activated $m$ times as many, so that combinations could specialize more
+finely, and it isolated a few shared experts that every token uses, to hold
+common knowledge the routed experts would otherwise all duplicate. Its authors
+report that a 16-billion-parameter DeepSeekMoE matched LLaMA2~7B with about 40\%
+of the computation (their measurement). Fine-grained experts are now the norm
+--- 128 to 896 per layer, 4 to 16 active --- and shared experts are common
+(DeepSeek-V3, Qwen3.5, Gemma~4's 26B~A4B).
+
+For the engine, both are good news and bad. Finer experts mean smaller
+matrices, which are harder to run efficiently, and more of them to schedule;
+the fraction of the model a batch touches depends on $k/E$, which fine-graining
+leaves unchanged (Equation~\ref{eq:expert-union}). A shared expert is a small dense FFN inside every MoE layer: always
+resident, always read, batched like a dense layer, and a natural thing to keep
+on every device when the routed experts are spread across many.
 
 \section{All experts resident}
 
+The capacity cost is absolute. Qwen3-30B-A3B at 4.5 bits per weight is about
+17~GB; it does not fit on the 16~GB M1 beside anything else, which is why this
+chapter's opening measures one layer's kernel instead of the model. DeepSeek-V3's
+671 billion parameters are 671~GB even in FP8, more than eight 80~GB
+accelerators hold. An
+MoE model's promise --- the compute of a small model with the knowledge of a
+large one --- is paid in memory, and the three ways to pay are more devices
+(\Chref{expert-parallelism}), fewer bits (\Chref{low-precision-float}; gpt-oss and
+Kimi~K3 store experts in MXFP4), or slower tiers of memory for the experts that
+are not needed this step (\Chref{offloading}, \Chref{expert-streaming}).
+
 \LedgerSection
+
+Replacing a dense FFN with $E$ experts of which $k$ are active:
+
+\begin{ConstraintLedger}
+Compute & buys & FLOPs per token scale with $P_{\mathrm{act}}$, not $P$: $3.3/30.5$ for Qwen3-30B-A3B. \\
+Memory bandwidth & buys & At batch 1, bytes per token scale with $P_{\mathrm{act}}$; the saving shrinks as the union grows and is mostly gone by $B \approx 2E/k$. \\
+Memory capacity & spends & All $P$ parameters resident, or paged from a slower tier. \\
+Latency & risks & Load imbalance turns into stragglers; a batch's slowest expert sets the step time. \\
+\end{ConstraintLedger}
 
 \LabSection{simulate the expert union with skewed routing}
 
+\LabIntent{In \texttt{code/labs/ch26-mixture-of-experts/}, a router that draws
+experts per token from a uniform or a power-law distribution, and a counter of
+the union per batch, checked against Equation~\ref{eq:expert-union} for the
+uniform case. A second part implements one MoE layer three ways --- a per-token
+loop (the oracle), a sort-and-group implementation, and a padded grouped GEMM ---
+checks them against each other, and counts the rows of padding the grouped
+version wastes at each batch size. Break it by adding a capacity factor and
+watch a request's output change with its batch-mates.}
+
 \HappenedSection{routing skew decides the hit rate}
 
-\FrontierSection{}
+Hermon's developers built an expert pager --- a cache of experts in memory,
+misses read from an NVMe drive --- and measured it on Qwen3-30B-A3B in 4-bit
+form, replaying routing traces against a 16.35~GiB container of its experts on
+a Linux machine with an RTX~5060~Ti and a consumer NVMe drive (Hermon
+\texttt{docs/KERNEL\_DESIGN.md}, section K6.1; the developers' measurement). With
+uniform routing, an 8.75~GiB cache hit 44\% of expert reads; with routing drawn
+from a power law over the experts --- a synthetic stand-in for the concentration
+real routers show, generated by the benchmark itself
+(\texttt{crates/hermon-kernels/csrc/bench\_experts.c}) --- the same cache hit
+71.3\%. Because every miss was a read at the drive's sustained 2.4~GB/s, the
+ceiling on generation speed followed the hit rate alone: 3.84 tokens per
+second with uniform routing and 7.50 with skewed. The cache was never the
+bottleneck; the bytes were, and the router decided how many there were. The
+pager is a library that no request path in Hermon reaches yet at commit
+\texttt{2a3fd52} (LIBRARY); \Chref{expert-streaming} follows the whole
+investigation, including a hypothesis the measurements falsified.
+
+\FrontierSection{2026-09-24}
+
+Expert counts keep rising and the active fraction keeps falling: 8 of 128 in
+Qwen3-30B-A3B, 10 of 512 plus a shared expert in Qwen3.5-397B, 16 of 896 in
+Kimi~K3, which also stores its experts in MXFP4 \cite{moonshot2026kimik3}. Each
+step down in active fraction raises the batch at which MoE decode becomes
+compute-bound (Equation~\ref{eq:moe-ridge-batch}) and moves more of the
+engineering into the network --- redundant and dynamically placed experts
+\cite{deepseek2024v3}, communication kernels \cite{deepseek2025deepep} --- and
+into memory hierarchies that keep only the hot experts close
+(\Chref{offloading}, \Chref{expert-streaming}).
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Derive Equation~\ref{eq:expert-union}, and the
+  batch at which the expected union reaches 90\% of the experts, for $E=256$,
+  $k=8$ and for $E=896$, $k=16$.
+\item \emph{Prediction.} Using Equation~\ref{eq:moe-ridge-batch}, estimate the
+  batch per step at which DeepSeek-V3 decode becomes compute-bound on one
+  8-GPU H100 node in FP8. Is that batch reachable within its memory?
+\item \emph{Implementation.} Add token dropping with a capacity factor to the
+  lab's grouped layer, and measure how often a fixed request's output changes
+  as its batch-mates vary.
+\item \emph{Falsification.} The napkin math assumes independent routing.
+  Generate routing where consecutive tokens of one sequence tend to reuse
+  experts, and find whether the union grows more slowly than
+  Equation~\ref{eq:expert-union} predicts.
+\end{enumerate}

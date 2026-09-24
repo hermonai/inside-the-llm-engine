@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 27 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part5.md (kvsizes, depth,
+% hybrid_prefix).
 \chapter{Hybrid Models: State Spaces and Linear Attention}\label{ch:hybrid-models}
 
 \begin{ChapterIntent}
@@ -15,28 +17,293 @@ KV: prefix caching, branching and copying state.
 
 \OpeningSection{A fixed state per conversation, whatever its length}
 
+Two models of about eight billion parameters, both in 4-bit K-quant form
+(about 5 bits per weight on average), on the M1. Qwen3-8B is attention in all 36 of its layers;
+Qwen3.5-9B's architecture has 24 Gated DeltaNet layers and 8 attention layers.
+With an empty context, the attention model decodes faster: 10.5 tokens per
+second against 7.8. At 4,096 tokens of context, 8.7 against 7.2. At 16,384,
+\textbf{5.6 against 7.8} (measured with \texttt{llama-bench}, two runs each;
+record \texttt{2026-09-24-m1-part5}). The attention model lost almost half its
+speed; the hybrid, within the run-to-run noise, none of it. For a 16,384-token
+context llama.cpp allocated 2,304~MiB of key/value cache for Qwen3-8B and, for
+the hybrid, 512~MiB for its 8 attention layers plus 50.25~MiB of recurrent state
+for the other 24 --- a state of the same size at 16 tokens or 16 million.
+
+The fixed state has a cost the allocation does not show. Send each model,
+through the same server, a 5,300-token document followed by a question, then
+the same document with a sentence inserted a third of the way in. Llama~3.2~3B
+reused everything before the insertion and processed the remaining 3,750
+tokens in 16 seconds. The hybrid processed all 5,350 tokens again, in
+\textbf{55 seconds}: it held the state after the previous prompt's last token
+and two snapshots near its end, and nothing from before the insertion
+(measured; same record).
+
+This chapter derives the recurrence behind that fixed state, prices it against
+a growing cache, and follows what it breaks in engines built on the assumption
+that the past is kept, token by token, in pages.
+
 \NapkinSection{Napkin math: fixed state against growing cache}
+
+A recurrent layer with $H_v$ value heads keeps, per sequence, a state matrix of
+$d_k \times d_v$ elements per head, plus a short convolution buffer. In
+Qwen3.5-9B's Gated DeltaNet layers, $H_v = 32$ and $d_k = d_v = 128$, stored in
+FP32: $32 \times 128 \times 128 \times 4$ bytes, 2~MiB per layer, and three
+steps of an 8,192-channel convolution, 96~KiB more. Over 24 such layers that is
+48~MiB of state and 2.25~MiB of convolution buffer --- exactly what llama.cpp
+allocated (derived and measured). The model's 8 attention layers add
+$8 \times 4 \times 256 \times 2 \times 2$ bytes, 32~KiB, per token. So one
+sequence of $S$ tokens holds
+\begin{equation}
+M_{\text{hybrid}}(S) = 50.25\,\text{MiB} + 32\,\text{KiB} \cdot S
+\qquad\text{against}\qquad
+M_{\text{Qwen3-8B}}(S) = 144\,\text{KiB} \cdot S .
+\label{eq:hybrid-memory}
+\end{equation}
+The lines cross at about 460 tokens. Below that, the hybrid holds more memory
+per sequence than a model that caches everything; at 16,384 tokens it holds a
+quarter as much (562 against 2,304~MiB); at Qwen3.5's native context of 262,144
+tokens, 8.05~GiB against the 36~GiB the attention model would need (derived).
+
+\EngineFigure{ch27-hybrid-depth}{Decode speed against context length on the
+M1 for an all-attention model (Qwen3-8B architecture) and a hybrid with three
+Gated DeltaNet layers per attention layer (Qwen3.5-9B architecture): points
+measured, dashed lines the bandwidth model of \Chref{shrinking-kv} (derived).
+The hybrid starts slower --- more weights, and recurrent kernels whose cost the
+bandwidth model does not see --- and stays flat, because only its 8 attention
+layers grow a cache. The attention model falls below its line at long
+context, as the 3B models of \Chref{shrinking-kv} did.}{fig:ch27-hybrid-depth}
+
+The same arithmetic prices bandwidth. Every decode step reads and rewrites the
+whole state --- about 50~MiB for this model, the cache of some 350 tokens of
+Qwen3-8B --- whatever the context length. A hybrid is therefore a bet on long
+contexts: at a hundred tokens it moves more bytes per step than attention
+would, at a hundred thousand far fewer. The flagship hybrids scale the state
+with the model: Qwen3.5-397B's 45 linear layers have 64 value heads of
+128 $\times$ 128 FP32 each, 180~MiB of state per sequence, beside 30~KiB per
+token for its 15 attention layers (derived from \texttt{config.json},
+\cite{qwen2026qwen35config}).
 
 \section{Linear attention as a recurrence}
 
+Softmax attention compares each query with every earlier key, which is why its
+state is the whole cache. Katharopoulos and colleagues replaced the softmax
+similarity with a kernel feature map $\phi$, so that
+$\mathrm{sim}(\mathbf{q},\mathbf{k}) = \phi(\mathbf{q})^{\top}\phi(\mathbf{k})$,
+and observed that the output at step $t$ then factors through a running sum
+\cite{katharopoulos2020lineartransformers}:
+\begin{equation}
+\mathbf{S}_t = \mathbf{S}_{t-1} + \mathbf{v}_t\,\phi(\mathbf{k}_t)^{\top},
+\qquad
+\mathbf{o}_t = \mathbf{S}_t\,\phi(\mathbf{q}_t),
+\label{eq:linear-attention}
+\end{equation}
+with $\mathbf{S}_t \in \mathbb{R}^{d_v \times d_k}$ (normalization omitted).
+Attention becomes a recurrent network whose state is a fixed-size matrix, with
+cost linear in sequence length; the authors reported autoregressive prediction
+up to 4,000 times faster on very long sequences. What it gives up is exact
+recall: a $d_v \times d_k$ matrix is a lossy summary of an unbounded history,
+and new writes blur old ones.
+
 \section{Selective state spaces}
+
+State-space models reached the same form from control theory. Mamba made the
+recurrence's parameters functions of the input --- a \emph{selective} state
+space --- so the model can decide per token what to keep and what to forget,
+and reported five times the generation throughput of transformers of similar
+size, with a 3-billion-parameter Mamba matching transformers twice its size in
+its authors' evaluations \cite{gu2023mamba}. Mamba-2 showed that a restricted
+form of these models is equivalent to a structured, masked form of linear
+attention (``state space duality''), which let its core layer run on matrix
+multiplications and 2 to 8 times faster than Mamba's selective scan
+\cite{dao2024mamba2}. For an engine, the families look alike: a per-sequence
+state of fixed size, updated in place at every token, and a short causal
+convolution in front.
 
 \section{Delta rules and gates}
 
+Equation~\eqref{eq:linear-attention} only adds to the state. The delta rule
+edits it: before writing $\mathbf{v}_t$ under key $\mathbf{k}_t$, it removes
+what the state currently returns for that key, which lets the model overwrite
+a stale association instead of piling a new one on top. Gated DeltaNet adds a
+data-dependent decay $\alpha_t \in (0,1)$ that can forget the whole state
+quickly, combining the two:
+\begin{equation}
+\mathbf{S}_t = \mathbf{S}_{t-1}\,\bigl(\alpha_t(\mathbf{I} - \beta_t\,\mathbf{k}_t\mathbf{k}_t^{\top})\bigr) + \beta_t\,\mathbf{v}_t\mathbf{k}_t^{\top},
+\label{eq:gated-delta}
+\end{equation}
+with $\beta_t \in (0,1)$ the writing strength (Yang, Kautz and Hatamizadeh,
+equation 10, \cite{yang2025gateddeltanet}). Kimi Delta Attention extends it
+with finer-grained gating and a specialized chunkwise algorithm, and Moonshot's
+Kimi Linear, a 48-billion-parameter model with 3
+billion active, hybridizes it with MLA and reports up to 75\% less KV cache and
+up to 6 times the decoding throughput at a million tokens
+\cite{kimi2025linear}.
+
 \section{Hybrid layouts}
+
+Recurrent layers compress; attention layers remember exactly. The 2026
+flagships use both, in a fixed ratio. Qwen3.5-9B's model card gives its layout
+as 8 $\times$ (3 $\times$ (Gated DeltaNet $\rightarrow$ FFN) $\rightarrow$ 1
+$\times$ (Gated Attention $\rightarrow$ FFN)), and the
+397B model repeats the same unit 15 times with MoE layers in place of FFNs
+\cite{qwen2026qwen35config}. Kimi~K3 has 69 Kimi Delta Attention layers and 24
+gated MLA layers \cite{moonshot2026kimik3}. Roughly three recurrent layers to
+one attention layer is the common ratio, which puts about a quarter of the
+layers --- and their growing cache --- back into the model: the hybrid's cache
+per token is a quarter of an all-attention model's with the same attention
+layers, not zero.
 
 \section{Prefill with chunked scans}
 
+Equation~\eqref{eq:gated-delta} is sequential in $t$, which is fine for decode
+and hopeless for a prefill of thousands of tokens on hardware built for matrix
+products. The fix, shared by all these families, is chunking: split the
+sequence into chunks of $C$ tokens, compute each chunk's contribution with
+attention-like $C \times C$ matrix products, and carry the state between
+chunks with one update per chunk. Gated DeltaNet's training algorithm does this
+with a WY representation of the accumulated updates \cite{yang2025gateddeltanet};
+Mamba-2's duality is the same idea for state spaces \cite{dao2024mamba2}.
+llama.cpp at \texttt{d006858} carries three versions: a graph of ordinary
+operators over chunks of 64 tokens (16 for Kimi Delta Attention), a
+token-by-token graph for decode, and a fused \texttt{GATED\_DELTA\_NET} operator
+used when the backend supports it, which the M1's Metal backend did for both
+prefill and decode (\texttt{src/models/delta-net-base.cpp}; server log in the
+record).
+
 \section{Caching and branching recurrent state}
+
+A key/value cache is append-only, which is what makes paging, sharing and
+rollback easy (\Chref{paged-kv}). A recurrent state is overwritten at every
+token. Three things that were free become copies:
+
+\begin{itemize}
+\item \emph{Rollback.} Speculative decoding (\Chref{speculative-decoding}) must
+  undo rejected drafts. An attention cache truncates; a recurrent state must be
+  restored from a snapshot taken before the drafts, or recomputed.
+\item \emph{Branching.} Parallel samples of one prompt share an attention
+  cache's prefix blocks by reference. Each branch of a recurrent model needs
+  its own copy of the state --- 50~MiB per branch for Qwen3.5-9B.
+\item \emph{Prefix reuse.} A prefix cache stores the cache of every prefix
+  block for free, because the blocks exist anyway. A recurrent state exists
+  only for the last position processed; the state after token 1,000 of an
+  earlier prompt is gone once token 1,001 is written.
+\end{itemize}
+
+llama.cpp keeps one recurrent cell per sequence (``1 cells'' in the allocation
+log), and its server answers the third problem with snapshots of the parts of
+memory that cannot be rolled back, described next. vLLM's cache configuration
+adds retained checkpoints for prefix reuse
+(\texttt{prefix\_cache\_retention\_interval}) and a state-recovery path for
+speculative decoding on Kimi~K3's delta-attention layers
+(\texttt{use\_kda\_recoverssm}; \texttt{vllm/config/cache.py} at commit
+\texttt{bcdacfc}).
 
 \section{Prefix caching without a cache}
 
+To reuse prefixes, an engine must decide in advance where to keep snapshots of
+the state, and a later request can resume only from one of them. llama.cpp's
+server calls them context checkpoints: at commit \texttt{d006858} it keeps up
+to 32 per slot, one every 8,192 tokens during a long prefill, and two near the
+end of every prompt --- about 516 and 4 tokens before it, so that a
+conversation can resume and its last user message can be edited
+(\texttt{tools/server/server-context.cpp}; \texttt{common/common.h}). When no
+checkpoint precedes the point where a new prompt diverges, it logs ``forcing
+full prompt re-processing'' and starts over. vLLM's hybrid models snapshot the
+state on the cache's block grid: \texttt{mamba\_cache\_mode} ``all'' keeps the
+state at every block boundary, and the default with prefix caching, ``align'',
+only at block boundaries the scheduler happens to reach
+(\texttt{vllm/config/cache.py} at commit \texttt{bcdacfc}).
+
+The opening's measurement shows both behaviours in llama.cpp's server. With
+its defaults the hybrid kept two 50.25~MiB snapshots per prompt, 516 and 4
+tokens before the prompt's end. A new question after the same 5,300-token
+document restored the first and processed 516 tokens in 5.4 seconds, against 53
+for the cold prompt; Llama~3.2~3B, whose cache can be cut anywhere, processed
+15. The insertion at about token 1,570 found no snapshot before it, and the
+hybrid processed the whole prompt again. Asking for a snapshot every 512 tokens
+did not change that: the server makes at most one per logical batch, 2,048
+tokens by default, so the new snapshots fell at tokens 2,048 and 4,096 ---
+both after the insertion --- and the prompt's saved state grew from 318 to
+419~MiB. With a 512-token logical batch the snapshots did fall every 512
+tokens --- eleven of them, 553~MiB for one prompt --- and the insertion restored
+the one at token 1,536 and processed 3,814 tokens in 37.5 seconds, within 64
+tokens of what Llama reused. In both models the host-memory prompt cache of
+\Chref{prefix-caching} rescued the last request: returning to the unedited
+document restored its saved state, snapshots included, and processed 1 token
+for Llama and 4 for the hybrid (measured; record
+\texttt{2026-09-24-m1-part5}).
+
+Snapshots are the recurrent model's price for reuse: memory proportional to
+how many positions it wants to resume from, paid in 50~MiB units here, where
+an attention model gets every position for free with the cache it already
+holds.
+
 \LedgerSection
+
+Replacing most attention layers with recurrent ones:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & Cache per token falls to the attention layers' share (32 against 144~KiB here); a fixed state of 50~MiB per sequence is added. \\
+Memory bandwidth & buys & Past a few hundred tokens, fewer bytes per decode step; below that, more. \\
+Compute & moves & Prefill needs chunked-scan kernels to stay on matrix units; decode updates a state instead of reading a cache. \\
+Latency & risks & Prefix reuse only from snapshots; a prompt that diverges between snapshots is recomputed. \\
+Correctness & risks & Exact recall rests on the minority of attention layers. \\
+\end{ConstraintLedger}
 
 \LabSection{a linear-attention layer as a scan and as a recurrence}
 
+\LabIntent{In \texttt{code/labs/ch27-hybrid-models/}, a gated delta-rule
+layer implemented three ways --- token by token (Equation~\ref{eq:gated-delta}),
+as a chunked scan, and as a quadratic masked form --- checked against a float64
+oracle. The lab counts state bytes against an attention cache over sequence
+length, then adds snapshots at a configurable interval and measures how many
+tokens a prefix hit must recompute as the interval changes. Break it by
+branching two samples from one state without copying it.}
+
 \HappenedSection{hybrids arriving in engines built for paged KV}
 
-\FrontierSection{}
+llama.cpp's server was built around an append-only cache that any prompt
+could reuse up to its first differing token. Sliding-window and recurrent
+models broke that assumption, and for a time the server re-processed whole
+prompts for them. In August 2025 a pull request titled ``server : add SWA
+checkpoints'' began saving snapshots of the parts of memory that cannot be
+rolled back; in March 2026 another, ``server : make 2 checkpoints near the end
+of the prompt'', added the pair of snapshots that lets a conversation resume
+without re-processing its last message
+(\texttt{ggml-org/llama.cpp} pull requests 15293 and 20288). vLLM's design
+documentation for its hybrid cache manager still called prefix caching for
+Mamba layers ``work in progress'' at commit \texttt{bcdacfc}, while its code at
+the same commit already implemented the block-aligned snapshots above
+\cite{vllm2026hybridkv}. The measurements in this chapter show where these
+engines have arrived: reuse at the end of a conversation works, and reuse of
+a document edited in the middle depends on where the snapshots happened to fall.
+
+\FrontierSection{2026-09-24}
+
+Hybrids are now the architecture of the largest open models --- Qwen3.5 and
+Kimi~K3 among them --- and the engine work has moved from supporting them to
+serving them well: snapshot policies for prefix caching, state rollback for
+speculative decoding, kernels that avoid writing the whole state at every step
+(vLLM's ReplaySSM option replays recent inputs and writes the state back only
+at a flush, \texttt{vllm/config/cache.py} at \texttt{bcdacfc}), and schedulers
+that price a fixed state per sequence beside a growing cache. The open question
+is how much exact recall a hybrid gives up at long context, and it is answered
+by the retrieval benchmarks of \Chref{long-context}, not by the architecture.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using Equation~\ref{eq:hybrid-memory}, find the
+  context length at which Qwen3.5-397B's state equals its attention cache, and
+  the per-sequence memory at 262,144 tokens.
+\item \emph{Prediction.} Predict the decode speed of a hybrid and an
+  all-attention model of similar size at 100 and at 100,000 tokens of context
+  from bytes per step alone, then check the prediction against the measured
+  points in this chapter.
+\item \emph{Implementation.} Add rollback to the lab's recurrent layer by
+  snapshotting the state before a block of drafts, and measure the memory the
+  snapshots cost at draft lengths 4 and 16.
+\item \emph{Falsification.} Construct a retrieval task that a hybrid with
+  three recurrent layers per attention layer solves, and one it fails, at the
+  same context length.
+\end{enumerate}

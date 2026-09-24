@@ -1,0 +1,31 @@
+% Decode speed against context depth on the Apple M1 with llama.cpp Metal
+% (llama-bench -fa 1 -p 0 -n 64 -d 0,4096,16384 -r 2, Q4_K_M): DeepSeek-R1-0528-Qwen3-8B
+% (Qwen3-8B architecture: 36 attention layers, 144 KiB of cache per token) and a
+% Qwen3.5-9B fine-tune (24 Gated DeltaNet + 8 attention layers: 32 KiB per token plus
+% 50.25 MiB of recurrent state per sequence). Points: measured. Lines: derived,
+% v(S) = v(0) W / (W + S k).
+% Data: research/measurements/2026-09-24-m1-part5.md (depth).
+\begin{tikzpicture}
+\begin{axis}[
+  width=13cm, height=6.4cm,
+  xmin=0, xmax=17000, ymin=0, ymax=12,
+  xlabel={Tokens already in the context, $S$},
+  ylabel={Decode speed (tokens/s)},
+  xtick={0,4096,8192,12288,16384},
+  scaled x ticks=false,
+  xticklabels={0,{4,096},{8,192},{12,288},{16,384}},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.02,0.04)}, anchor=south west, draw=black!30},
+  legend cell align=left,
+]
+\addplot[red!70!black, dashed, thick, domain=0:17000, samples=60] {10.47/(1+x/35396.4)};
+\addlegendentry{Qwen3-8B, bandwidth model (derived)}
+\addplot[red!70!black, mark=square*, mark size=2.4pt, only marks] coordinates {(0,10.47) (4096,8.67) (16384,5.56)};
+\addlegendentry{Qwen3-8B, all attention (measured)}
+\addplot[BookBlue, dashed, thick, domain=0:17000, samples=60] {7.83/(1+x/171452)};
+\addlegendentry{Qwen3.5-9B, bandwidth model (derived)}
+\addplot[BookBlue, mark=*, mark size=2.4pt, only marks] coordinates {(0,7.83) (4096,7.22) (16384,7.83)};
+\addlegendentry{Qwen3.5-9B, 3:1 hybrid (measured)}
+\end{axis}
+\end{tikzpicture}
