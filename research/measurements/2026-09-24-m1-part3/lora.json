@@ -1,0 +1,310 @@
+{
+ "single": [
+  {
+   "tag": "none",
+   "how": "done",
+   "itl": {
+    "n": 127,
+    "median_ms": 40.62866698950529,
+    "p90_ms": 49.636665964499116,
+    "max_ms": 56.65354209486395,
+    "mean_ms": 42.69801181150732
+   },
+   "text": ". The engine is matrix multiplication.\n\n\\section{The Basics}\\label{section-6-basics}\nMatrix multiplication is a fundamental operation in linear algebra. It is\ndefined as the dot product of two vectors, but for matrices. The\nresult is a matrix, and the operation is associative, meaning that the\norder in which you multiply matrices does not matter.\n\n\\begin{figure}[h]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{./images/MatrixMultiplication.png}\n\\caption{Matrix Multiplication}\n\\label{fig:MatrixMultiplication}\n\\end{figure}\n\n\\",
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 101,
+    "prompt_ms": 440.436,
+    "prompt_per_token_ms": 4.360752475247525,
+    "prompt_per_second": 229.31822103551937,
+    "predicted_n": 128,
+    "predicted_ms": 5424.598,
+    "predicted_per_token_ms": 42.379671875,
+    "predicted_per_second": 23.596218558499636
+   },
+   "same_text_as_base": true
+  },
+  {
+   "tag": "rank16",
+   "how": "done",
+   "itl": {
+    "n": 127,
+    "median_ms": 44.19366701040417,
+    "p90_ms": 49.31379191111773,
+    "max_ms": 57.02349997591227,
+    "mean_ms": 45.16111679584169
+   },
+   "text": ". The engine is matrix multiplication.\n\n\\section{The Basics}\\label{section-6-basics}\nMatrix multiplication is a fundamental operation in linear algebra. It is\ndefined as the dot product of two vectors, but for matrices. The\nresult is a matrix, and the operation is associative, meaning that the\norder in which you multiply matrices does not matter.\n\n\\begin{figure}[h]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{./images/MatrixMultiplication.png}\n\\caption{Matrix Multiplication}\n\\label{fig:MatrixMultiplication}\n\\end{figure}\n\n\\",
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 101,
+    "prompt_ms": 648.176,
+    "prompt_per_token_ms": 6.417584158415842,
+    "prompt_per_second": 155.8218755399768,
+    "predicted_n": 128,
+    "predicted_ms": 5737.534,
+    "predicted_per_token_ms": 44.824484375,
+    "predicted_per_second": 22.309235988841202
+   },
+   "same_text_as_base": true
+  },
+  {
+   "tag": "rank64",
+   "how": "done",
+   "itl": {
+    "n": 127,
+    "median_ms": 48.677333048544824,
+    "p90_ms": 52.790333051234484,
+    "max_ms": 66.07512501068413,
+    "mean_ms": 49.70636548782428
+   },
+   "text": ". The engine is matrix multiplication.\n\n\\section{The Basics}\\label{section-6-basics}\nMatrix multiplication is a fundamental operation in linear algebra. It is\ndefined as the dot product of two vectors, but for matrices. The\nresult is a matrix, and the operation is associative, meaning that the\norder in which you multiply matrices does not matter.\n\n\\begin{figure}[h]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{./images/MatrixMultiplication.png}\n\\caption{Matrix Multiplication}\n\\label{fig:MatrixMultiplication}\n\\end{figure}\n\n\\",
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 101,
+    "prompt_ms": 595.793,
+    "prompt_per_token_ms": 5.898940594059406,
+    "prompt_per_second": 169.5219648434943,
+    "predicted_n": 128,
+    "predicted_ms": 6314.71,
+    "predicted_per_token_ms": 49.333671875,
+    "predicted_per_second": 20.270131169919125
+   },
+   "same_text_as_base": true
+  },
+  {
+   "tag": "none-repeat",
+   "how": "done",
+   "itl": {
+    "n": 127,
+    "median_ms": 40.08575004991144,
+    "p90_ms": 47.15108301024884,
+    "max_ms": 53.44833398703486,
+    "mean_ms": 41.5472073469487
+   },
+   "text": ". The engine is matrix multiplication.\n\n\\section{The Basics}\\label{section-6-basics}\nMatrix multiplication is a fundamental operation in linear algebra. It is\ndefined as the dot product of two vectors, but for matrices. The\nresult is a matrix, and the operation is associative, meaning that the\norder in which you multiply matrices does not matter.\n\n\\begin{figure}[h]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{./images/MatrixMultiplication.png}\n\\caption{Matrix Multiplication}\n\\label{fig:MatrixMultiplication}\n\\end{figure}\n\n\\",
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 101,
+    "prompt_ms": 490.76,
+    "prompt_per_token_ms": 4.859009900990099,
+    "prompt_per_second": 205.80324394816205,
+    "predicted_n": 128,
+    "predicted_ms": 5277.567,
+    "predicted_per_token_ms": 41.2309921875,
+    "predicted_per_second": 24.253600191148685
+   },
+   "same_text_as_base": true
+  },
+  {
+   "tag": "rank16-repeat",
+   "how": "done",
+   "itl": {
+    "n": 127,
+    "median_ms": 49.07795798499137,
+    "p90_ms": 59.93979098275304,
+    "max_ms": 104.01095892302692,
+    "mean_ms": 51.21795505497927
+   },
+   "text": ". The engine is matrix multiplication.\n\n\\section{The Basics}\\label{section-6-basics}\nMatrix multiplication is a fundamental operation in linear algebra. It is\ndefined as the dot product of two vectors, but for matrices. The\nresult is a matrix, and the operation is associative, meaning that the\norder in which you multiply matrices does not matter.\n\n\\begin{figure}[h]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{./images/MatrixMultiplication.png}\n\\caption{Matrix Multiplication}\n\\label{fig:MatrixMultiplication}\n\\end{figure}\n\n\\",
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 101,
+    "prompt_ms": 612.096,
+    "prompt_per_token_ms": 6.060356435643564,
+    "prompt_per_second": 165.0067963195316,
+    "predicted_n": 128,
+    "predicted_ms": 6507.121,
+    "predicted_per_token_ms": 50.8368828125,
+    "predicted_per_second": 19.67075762076654
+   },
+   "same_text_as_base": true
+  },
+  {
+   "tag": "rank64-repeat",
+   "how": "done",
+   "itl": {
+    "n": 127,
+    "median_ms": 49.270582967437804,
+    "p90_ms": 59.2700419947505,
+    "max_ms": 72.90879206266254,
+    "mean_ms": 51.59119259122407
+   },
+   "text": ". The engine is matrix multiplication.\n\n\\section{The Basics}\\label{section-6-basics}\nMatrix multiplication is a fundamental operation in linear algebra. It is\ndefined as the dot product of two vectors, but for matrices. The\nresult is a matrix, and the operation is associative, meaning that the\norder in which you multiply matrices does not matter.\n\n\\begin{figure}[h]\n\\centering\n\\includegraphics[width=0.5\\textwidth]{./images/MatrixMultiplication.png}\n\\caption{Matrix Multiplication}\n\\label{fig:MatrixMultiplication}\n\\end{figure}\n\n\\",
+   "timings": {
+    "cache_n": 0,
+    "prompt_n": 101,
+    "prompt_ms": 538.113,
+    "prompt_per_token_ms": 5.327851485148515,
+    "prompt_per_second": 187.69291951690442,
+    "predicted_n": 128,
+    "predicted_ms": 6552.759,
+    "predicted_per_token_ms": 51.1934296875,
+    "predicted_per_second": 19.533756696988245
+   },
+   "same_text_as_base": true
+  }
+ ],
+ "pairs": [
+  {
+   "tag": "same adapter",
+   "x": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 11817.596957902424,
+    "itl": {
+     "n": 127,
+     "median_ms": 79.84766701702029,
+     "p90_ms": 85.84987500216812,
+     "max_ms": 362.1638329932466,
+     "mean_ms": 82.76279592945234
+    },
+    "same_text_as_base": true
+   },
+   "y": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 11763.733875006437,
+    "itl": {
+     "n": 127,
+     "median_ms": 79.89312498830259,
+     "p90_ms": 85.94787504989654,
+     "max_ms": 613.9517080737278,
+     "mean_ms": 87.16852624449645
+    },
+    "same_text_as_base": true
+   },
+   "aggregate_tok_s": 21.66261050465195
+  },
+  {
+   "tag": "different adapters",
+   "x": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 13125.892666983418,
+    "itl": {
+     "n": 127,
+     "median_ms": 44.26566604524851,
+     "p90_ms": 47.766333096660674,
+     "max_ms": 55.84420799277723,
+     "mean_ms": 44.86318405508614
+    },
+    "same_text_as_base": true
+   },
+   "y": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 6792.805916978978,
+    "itl": {
+     "n": 127,
+     "median_ms": 45.806000009179115,
+     "p90_ms": 57.1009999839589,
+     "max_ms": 65.80562505405396,
+     "mean_ms": 48.3669534098269
+    },
+    "same_text_as_base": true
+   },
+   "aggregate_tok_s": 19.50343542301978
+  },
+  {
+   "tag": "no adapter",
+   "x": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 10849.747375003062,
+    "itl": {
+     "n": 127,
+     "median_ms": 76.79204200394452,
+     "p90_ms": 86.25499997287989,
+     "max_ms": 107.16558306012303,
+     "mean_ms": 78.84501016563112
+    },
+    "same_text_as_base": true
+   },
+   "y": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 10847.349792020395,
+    "itl": {
+     "n": 127,
+     "median_ms": 76.8448329763487,
+     "p90_ms": 86.29399992059916,
+     "max_ms": 107.25700005423278,
+     "mean_ms": 78.80361876395479
+    },
+    "same_text_as_base": true
+   },
+   "aggregate_tok_s": 23.595019418590635
+  },
+  {
+   "tag": "same adapter (repeat)",
+   "x": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 11802.747709094547,
+    "itl": {
+     "n": 127,
+     "median_ms": 82.9488339368254,
+     "p90_ms": 89.97941599227488,
+     "max_ms": 114.52495807316154,
+     "mean_ms": 84.35199278733128
+    },
+    "same_text_as_base": true
+   },
+   "y": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 11801.720709074289,
+    "itl": {
+     "n": 127,
+     "median_ms": 82.56100001744926,
+     "p90_ms": 89.91983300074935,
+     "max_ms": 112.49116691760719,
+     "mean_ms": 84.34206167763965
+    },
+    "same_text_as_base": true
+   },
+   "aggregate_tok_s": 21.689864623874026
+  },
+  {
+   "tag": "different adapters (repeat)",
+   "x": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 13177.964000031352,
+    "itl": {
+     "n": 127,
+     "median_ms": 45.44037498999387,
+     "p90_ms": 52.96883301343769,
+     "max_ms": 69.27341700065881,
+     "mean_ms": 46.90385039338446
+    },
+    "same_text_as_base": true
+   },
+   "y": {
+    "how": "done",
+    "tokens": 128,
+    "done_ms": 6578.438583062962,
+    "itl": {
+     "n": 127,
+     "median_ms": 45.53420899901539,
+     "p90_ms": 51.44266597926617,
+     "max_ms": 59.67891600448638,
+     "mean_ms": 46.464906173105554
+    },
+    "same_text_as_base": true
+   },
+   "aggregate_tok_s": 19.426369657664186
+  }
+ ],
+ "_meta": {
+  "experiment": "lora",
+  "started_utc": "2026-09-24T02:15:17Z",
+  "seconds": 110.2,
+  "loadavg_end": [
+   4.93408203125,
+   5.63037109375,
+   5.85205078125
+  ]
+ }
+}

@@ -1,0 +1,138 @@
+{
+ "loaded_before": [],
+ "runs": [
+  {
+   "phase": "switch",
+   "model": "llama3.2:3b",
+   "keep_alive": 0,
+   "wall_s": 2.181,
+   "load_s": 1.61879925,
+   "prompt_eval_s": 0.312827,
+   "eval_s": 0.236345,
+   "eval_count": 7,
+   "total_s": 2.174872625,
+   "response": "Hello from the digital world."
+  },
+  {
+   "phase": "switch",
+   "model": "qwen2.5-coder:3b",
+   "keep_alive": 0,
+   "wall_s": 2.96,
+   "load_s": 2.328877417,
+   "prompt_eval_s": 0.347798,
+   "eval_s": 0.276972,
+   "eval_count": 8,
+   "total_s": 2.957328875,
+   "response": "Hello, how can I assist you today"
+  },
+  {
+   "phase": "switch",
+   "model": "llama3.2:3b",
+   "keep_alive": 0,
+   "wall_s": 2.715,
+   "load_s": 2.323401333,
+   "prompt_eval_s": 0.143419,
+   "eval_s": 0.24182,
+   "eval_count": 7,
+   "total_s": 2.713389917,
+   "response": "Hello from the digital world."
+  },
+  {
+   "phase": "switch",
+   "model": "qwen2.5-coder:3b",
+   "keep_alive": 0,
+   "wall_s": 2.61,
+   "load_s": 2.071269,
+   "prompt_eval_s": 0.246233,
+   "eval_s": 0.285865,
+   "eval_count": 8,
+   "total_s": 2.607552458,
+   "response": "Hello, how can I assist you today"
+  },
+  {
+   "phase": "switch",
+   "model": "llama3.2:3b",
+   "keep_alive": 0,
+   "wall_s": 2.931,
+   "load_s": 2.337491166,
+   "prompt_eval_s": 0.161592,
+   "eval_s": 0.413253,
+   "eval_count": 7,
+   "total_s": 2.929524333,
+   "response": "Hello from the digital world."
+  },
+  {
+   "phase": "switch",
+   "model": "qwen2.5-coder:3b",
+   "keep_alive": 0,
+   "wall_s": 2.872,
+   "load_s": 2.333057667,
+   "prompt_eval_s": 0.241091,
+   "eval_s": 0.287154,
+   "eval_count": 8,
+   "total_s": 2.864251083,
+   "response": "Hello, how can I assist you today"
+  },
+  {
+   "phase": "warm-first",
+   "model": "llama3.2:3b",
+   "keep_alive": "5m",
+   "wall_s": 2.463,
+   "load_s": 2.074759,
+   "prompt_eval_s": 0.141571,
+   "eval_s": 0.239412,
+   "eval_count": 7,
+   "total_s": 2.460565041,
+   "response": "Hello from the digital world."
+  },
+  {
+   "phase": "warm",
+   "model": "llama3.2:3b",
+   "keep_alive": "5m",
+   "wall_s": 0.276,
+   "load_s": 0.003621166,
+   "prompt_eval_s": 0.040222,
+   "eval_s": 0.228947,
+   "eval_count": 7,
+   "total_s": 0.274540791,
+   "response": "Hello from the digital world."
+  },
+  {
+   "phase": "warm",
+   "model": "llama3.2:3b",
+   "keep_alive": "5m",
+   "wall_s": 0.276,
+   "load_s": 0.003701708,
+   "prompt_eval_s": 0.037956,
+   "eval_s": 0.231339,
+   "eval_count": 7,
+   "total_s": 0.274348291,
+   "response": "Hello from the digital world."
+  },
+  {
+   "phase": "warm",
+   "model": "llama3.2:3b",
+   "keep_alive": "5m",
+   "wall_s": 0.273,
+   "load_s": 0.001871333,
+   "prompt_eval_s": 0.039707,
+   "eval_s": 0.228294,
+   "eval_count": 7,
+   "total_s": 0.271333208,
+   "response": "Hello from the digital world."
+  },
+  {
+   "phase": "unload",
+   "model": "llama3.2:3b",
+   "keep_alive": 0,
+   "wall_s": 0.272,
+   "load_s": 0.001914667,
+   "prompt_eval_s": 0.037962,
+   "eval_s": 0.228709,
+   "eval_count": 7,
+   "total_s": 0.270173834,
+   "response": "Hello from the digital world."
+  }
+ ],
+ "loaded_after": []
+}

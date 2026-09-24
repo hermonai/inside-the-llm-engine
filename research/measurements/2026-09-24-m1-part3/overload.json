@@ -1,0 +1,80 @@
+{
+ "cells_4096": [
+  {
+   "how": "error",
+   "tokens": 824,
+   "last_ms": 73541.45633301232,
+   "error": {
+    "code": 500,
+    "message": "Context size has been exceeded.",
+    "type": "server_error"
+   }
+  },
+  {
+   "how": "error",
+   "tokens": 824,
+   "last_ms": 73540.91004095972,
+   "error": {
+    "code": 500,
+    "message": "Context size has been exceeded.",
+    "type": "server_error"
+   }
+  },
+  {
+   "how": "error",
+   "tokens": 824,
+   "last_ms": 73541.0979159642,
+   "error": {
+    "code": 500,
+    "message": "Context size has been exceeded.",
+    "type": "server_error"
+   }
+  },
+  {
+   "how": "error",
+   "tokens": 824,
+   "last_ms": 73540.30554101337,
+   "error": {
+    "code": 500,
+    "message": "Context size has been exceeded.",
+    "type": "server_error"
+   }
+  }
+ ],
+ "cells_8192": [
+  {
+   "how": "done",
+   "tokens": 1200,
+   "last_ms": 112808.28679201659,
+   "error": null
+  },
+  {
+   "how": "done",
+   "tokens": 1200,
+   "last_ms": 112807.89012496825,
+   "error": null
+  },
+  {
+   "how": "done",
+   "tokens": 1200,
+   "last_ms": 112911.99116699863,
+   "error": null
+  },
+  {
+   "how": "done",
+   "tokens": 1200,
+   "last_ms": 112911.28408396617,
+   "error": null
+  }
+ ],
+ "_meta": {
+  "experiment": "overload",
+  "started_utc": "2026-09-24T02:07:25Z",
+  "seconds": 192.3,
+  "loadavg_end": [
+   5.23193359375,
+   5.716796875,
+   5.8623046875
+  ]
+ }
+}

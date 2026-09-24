@@ -1,0 +1,54 @@
+{
+ "per_slot": {
+  "slot_n_ctx": [
+   2048,
+   2048,
+   2048,
+   2048
+  ],
+  "prompt_tokens": 3001,
+  "http_status": 400,
+  "elapsed_ms": 1.3357499847188592,
+  "error": {
+   "code": 400,
+   "message": "request (3001 tokens) exceeds the available context size (2048 tokens), try increasing it",
+   "type": "exceed_context_size_error",
+   "n_prompt_tokens": 3001,
+   "n_ctx": 2048
+  },
+  "timings": null
+ },
+ "unified": {
+  "slot_n_ctx": [
+   8192,
+   8192,
+   8192,
+   8192
+  ],
+  "prompt_tokens": 3001,
+  "http_status": 200,
+  "elapsed_ms": 12235.554000013508,
+  "error": null,
+  "timings": {
+   "cache_n": 0,
+   "prompt_n": 3001,
+   "prompt_ms": 11391.416,
+   "prompt_per_token_ms": 3.7958733755414857,
+   "prompt_per_second": 263.4439827322609,
+   "predicted_n": 16,
+   "predicted_ms": 838.191,
+   "predicted_per_token_ms": 52.3869375,
+   "predicted_per_second": 19.088727986819233
+  }
+ },
+ "_meta": {
+  "experiment": "kvlayout",
+  "started_utc": "2026-09-24T01:57:30Z",
+  "seconds": 14.9,
+  "loadavg_end": [
+   4.38134765625,
+   5.41064453125,
+   5.58447265625
+  ]
+ }
+}

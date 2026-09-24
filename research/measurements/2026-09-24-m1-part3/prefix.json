@@ -1,0 +1,86 @@
+{
+ "runs": [
+  {
+   "label": "cold: document + question 0",
+   "prompt_tokens": 3016,
+   "how": "done",
+   "ttft_ms": 11534.719291958027,
+   "prompt_n": 3016,
+   "prompt_ms": 11530.977,
+   "cache_n": 0
+  },
+  {
+   "label": "warm: same document + question 1",
+   "prompt_tokens": 3016,
+   "how": "done",
+   "ttft_ms": 159.62258295621723,
+   "prompt_n": 12,
+   "prompt_ms": 156.004,
+   "cache_n": 3004
+  },
+  {
+   "label": "warm again: same document + question 2",
+   "prompt_tokens": 3016,
+   "how": "done",
+   "ttft_ms": 160.75020795688033,
+   "prompt_n": 12,
+   "prompt_ms": 158.05,
+   "cache_n": 3004
+  },
+  {
+   "label": "caching off: document + question 3",
+   "prompt_tokens": 3016,
+   "how": "done",
+   "ttft_ms": 11647.003125050105,
+   "prompt_n": 3016,
+   "prompt_ms": 11641.681,
+   "cache_n": 0
+  },
+  {
+   "label": "date line 2026-09-24 + document + question 4",
+   "prompt_tokens": 3026,
+   "how": "done",
+   "ttft_ms": 11852.564625092782,
+   "prompt_n": 3025,
+   "prompt_ms": 11700.457,
+   "cache_n": 1
+  },
+  {
+   "label": "date line 2026-09-25 + document + question 4",
+   "prompt_tokens": 3026,
+   "how": "done",
+   "ttft_ms": 12154.792082961649,
+   "prompt_n": 3017,
+   "prompt_ms": 11964.94,
+   "cache_n": 9
+  },
+  {
+   "label": "different document (evicts the first to host memory)",
+   "prompt_tokens": 3016,
+   "how": "done",
+   "ttft_ms": 11828.901540953666,
+   "prompt_n": 3015,
+   "prompt_ms": 11677.612,
+   "cache_n": 1
+  },
+  {
+   "label": "first document again (restored from host memory?)",
+   "prompt_tokens": 3016,
+   "how": "done",
+   "ttft_ms": 356.08845902606845,
+   "prompt_n": 12,
+   "prompt_ms": 159.273,
+   "cache_n": 3004
+  }
+ ],
+ "_meta": {
+  "experiment": "prefix",
+  "started_utc": "2026-09-24T01:57:45Z",
+  "seconds": 64.0,
+  "loadavg_end": [
+   5.36279296875,
+   5.6689453125,
+   5.6787109375
+  ]
+ }
+}

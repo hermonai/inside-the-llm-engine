@@ -1,0 +1,12 @@
+switch llama3.2:3b wall 2.18 load 1.62 prompt 0.31 eval 0.24
+switch qwen2.5-coder:3b wall 2.96 load 2.33 prompt 0.35 eval 0.28
+switch llama3.2:3b wall 2.71 load 2.32 prompt 0.14 eval 0.24
+switch qwen2.5-coder:3b wall 2.61 load 2.07 prompt 0.25 eval 0.29
+switch llama3.2:3b wall 2.93 load 2.34 prompt 0.16 eval 0.41
+switch qwen2.5-coder:3b wall 2.87 load 2.33 prompt 0.24 eval 0.29
+warm-first llama3.2:3b wall 2.46 load 2.07 prompt 0.14 eval 0.24
+warm llama3.2:3b wall 0.28 load 0.00 prompt 0.04 eval 0.23
+warm llama3.2:3b wall 0.28 load 0.00 prompt 0.04 eval 0.23
+warm llama3.2:3b wall 0.27 load 0.00 prompt 0.04 eval 0.23
+unload llama3.2:3b wall 0.27 load 0.00 prompt 0.04 eval 0.23
+loaded before [] after []

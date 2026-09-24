@@ -1,0 +1,24 @@
+{
+ "/completion": {
+  "events": 65,
+  "median_bytes": 122.0,
+  "max_bytes": 134,
+  "final_event_bytes": 2035,
+  "example": [
+   118,
+   119,
+   122
+  ]
+ },
+ "/v1/chat/completions": {
+  "events": 63,
+  "median_bytes": 306.0,
+  "max_bytes": 556,
+  "final_event_bytes": 14,
+  "example": [
+   322,
+   302,
+   306
+  ]
+ }
+}

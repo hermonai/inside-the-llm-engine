@@ -1,0 +1,618 @@
+{
+ "unconstrained": [
+  {
+   "seed": 1,
+   "status": 200,
+   "valid": false,
+   "text": "```\n{\"title\": \"The Lost City\", \"author\": \"Evelyn Wells\", \"year\": 2015, \"genres\": [\"Mystery\", \"Thriller\", \"Adventure\"], \"rating\": 4}\n```",
+   "predicted_n": 48,
+   "predicted_ms": 1874.814,
+   "prompt_ms": 339.694,
+   "elapsed_ms": 2226.704041007906
+  },
+  {
+   "seed": 2,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"Fahrenheit 451\", \"author\": \"Ray Bradbury\", \"year\": 1953, \"genres\": [\"Dystopian\", \"Science Fiction\"], \"rating\": 4}",
+   "predicted_n": 43,
+   "predicted_ms": 1684.973,
+   "prompt_ms": 40.348,
+   "elapsed_ms": 1735.4795830324292
+  },
+  {
+   "seed": 3,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1663.746,
+   "prompt_ms": 39.844,
+   "elapsed_ms": 1715.8289169892669
+  },
+  {
+   "seed": 4,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Memory\", \"author\": \"Ava Morales\", \"year\": 2022, \"genres\": [\"Science Fiction\", \"Dystopian\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1633.498,
+   "prompt_ms": 38.923,
+   "elapsed_ms": 1682.373792049475
+  },
+  {
+   "seed": 5,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Emily J. Miller\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4.5}",
+   "predicted_n": 43,
+   "predicted_ms": 1724.515,
+   "prompt_ms": 40.289,
+   "elapsed_ms": 1777.9757919488475
+  },
+  {
+   "seed": 6,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J.K. Rowling\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 41,
+   "predicted_ms": 1792.789,
+   "prompt_ms": 50.347,
+   "elapsed_ms": 1859.1274169739336
+  },
+  {
+   "seed": 7,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Time Traveler\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Science Fiction\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 40,
+   "predicted_ms": 1697.565,
+   "prompt_ms": 43.371,
+   "elapsed_ms": 1747.4792500725016
+  },
+  {
+   "seed": 8,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1535.31,
+   "prompt_ms": 39.87,
+   "elapsed_ms": 1584.8088749917224
+  },
+  {
+   "seed": 9,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. Alexander\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 40,
+   "predicted_ms": 1590.432,
+   "prompt_ms": 39.295,
+   "elapsed_ms": 1639.6323329536244
+  },
+  {
+   "seed": 10,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1501.528,
+   "prompt_ms": 39.802,
+   "elapsed_ms": 1551.977000082843
+  },
+  {
+   "seed": 11,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Alexandra Brown\", \"year\": 2020, \"genres\": [\"Science Fiction\", \"Adventure\", \"Mystery\"], \"rating\": 4}",
+   "predicted_n": 44,
+   "predicted_ms": 1835.21,
+   "prompt_ms": 39.299,
+   "elapsed_ms": 1885.4498750297353
+  },
+  {
+   "seed": 12,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1675.347,
+   "prompt_ms": 49.37,
+   "elapsed_ms": 1739.4358749734238
+  },
+  {
+   "seed": 13,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Time Traveler\", \"author\": \"J.K. Rowling\", \"year\": 2022, \"genres\": [\"Science Fiction\", \"Fantasy\"], \"rating\": 4.0}",
+   "predicted_n": 45,
+   "predicted_ms": 1757.012,
+   "prompt_ms": 42.985,
+   "elapsed_ms": 1811.6871250094846
+  },
+  {
+   "seed": 14,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1762.717,
+   "prompt_ms": 38.952,
+   "elapsed_ms": 1812.9492499865592
+  },
+  {
+   "seed": 15,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Smith\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1596.337,
+   "prompt_ms": 42.975,
+   "elapsed_ms": 1647.1812499221414
+  },
+  {
+   "seed": 16,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2009, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1652.228,
+   "prompt_ms": 41.951,
+   "elapsed_ms": 1702.7410420123488
+  },
+  {
+   "seed": 17,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Bookstore\", \"author\": \"J. Emily Wilson\", \"year\": 2018, \"genres\": [\"Mystery\", \"Thriller\"], \"rating\": 4}",
+   "predicted_n": 43,
+   "predicted_ms": 1732.585,
+   "prompt_ms": 39.041,
+   "elapsed_ms": 1782.6509999576956
+  },
+  {
+   "seed": 18,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Alexander Grey\", \"year\": 2010, \"genres\": [\"Adventure\", \"Mystery\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1520.015,
+   "prompt_ms": 38.996,
+   "elapsed_ms": 1570.7318329950795
+  },
+  {
+   "seed": 19,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Starlight\", \"author\": \"Ava Morales\", \"year\": 2015, \"genres\": [\"Fantasy\", \"Adventure\", \"Science Fiction\"], \"rating\": 4}",
+   "predicted_n": 45,
+   "predicted_ms": 1753.955,
+   "prompt_ms": 38.69,
+   "elapsed_ms": 1803.3236250048503
+  },
+  {
+   "seed": 20,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"Fahrenheit 451\", \"author\": \"Ray Bradbury\", \"year\": 1953, \"genres\": [\"Dystopian\", \"Science Fiction\"], \"rating\": 4}",
+   "predicted_n": 43,
+   "predicted_ms": 1696.156,
+   "prompt_ms": 39.853,
+   "elapsed_ms": 1746.781750000082
+  }
+ ],
+ "schema": [
+  {
+   "seed": 1,
+   "status": 200,
+   "valid": true,
+   "text": "{\n  \"title\": \"A Tale of Two Cities\",\n  \"author\": \"Charles Dickens\",\n  \"year\": 1859,\n  \"genres\": [\"Drama\", \"History\", \"Romance\"],\n  \"rating\": 4.5\n}\n",
+   "predicted_n": 59,
+   "predicted_ms": 2460.021,
+   "prompt_ms": 41.583,
+   "elapsed_ms": 2518.055042019114
+  },
+  {
+   "seed": 2,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"Fahrenheit 451\", \"author\": \"Ray Bradbury\", \"year\": 1953, \"genres\": [\"Dystopian\", \"Science Fiction\"], \"rating\": 4}",
+   "predicted_n": 43,
+   "predicted_ms": 1697.082,
+   "prompt_ms": 40.048,
+   "elapsed_ms": 1751.0215829825029
+  },
+  {
+   "seed": 3,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1813.123,
+   "prompt_ms": 39.381,
+   "elapsed_ms": 1872.4025839474052
+  },
+  {
+   "seed": 4,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Memory\", \"author\": \"Ava Morales\", \"year\": 2022, \"genres\": [\"Science Fiction\", \"Dystopian\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1752.618,
+   "prompt_ms": 42.302,
+   "elapsed_ms": 1803.0758330132812
+  },
+  {
+   "seed": 5,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Emily J. Miller\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4.5}",
+   "predicted_n": 43,
+   "predicted_ms": 1701.305,
+   "prompt_ms": 47.273,
+   "elapsed_ms": 1760.8547920826823
+  },
+  {
+   "seed": 6,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J.K. Rowling\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 41,
+   "predicted_ms": 1648.212,
+   "prompt_ms": 51.327,
+   "elapsed_ms": 1706.3640840351582
+  },
+  {
+   "seed": 7,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Time Traveler\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Science Fiction\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 40,
+   "predicted_ms": 1625.897,
+   "prompt_ms": 40.317,
+   "elapsed_ms": 1677.2705829935148
+  },
+  {
+   "seed": 8,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1804.027,
+   "prompt_ms": 48.142,
+   "elapsed_ms": 1863.1172080058604
+  },
+  {
+   "seed": 9,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. Alexander\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 40,
+   "predicted_ms": 1668.283,
+   "prompt_ms": 40.253,
+   "elapsed_ms": 1717.4192080274224
+  },
+  {
+   "seed": 10,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1528.692,
+   "prompt_ms": 40.166,
+   "elapsed_ms": 1577.7993329102173
+  },
+  {
+   "seed": 11,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Alexandra Brown\", \"year\": 2020, \"genres\": [\"Science Fiction\", \"Adventure\", \"Mystery\"], \"rating\": 4}",
+   "predicted_n": 44,
+   "predicted_ms": 1790.058,
+   "prompt_ms": 40.023,
+   "elapsed_ms": 1845.256333006546
+  },
+  {
+   "seed": 12,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1558.551,
+   "prompt_ms": 39.51,
+   "elapsed_ms": 1608.6883750976995
+  },
+  {
+   "seed": 13,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Time Traveler\", \"author\": \"J.K. Rowling\", \"year\": 2022, \"genres\": [\"Science Fiction\", \"Fantasy\"], \"rating\": 4.0}",
+   "predicted_n": 45,
+   "predicted_ms": 1770.056,
+   "prompt_ms": 38.505,
+   "elapsed_ms": 1821.2970000458881
+  },
+  {
+   "seed": 14,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1656.436,
+   "prompt_ms": 40.08,
+   "elapsed_ms": 1709.616040927358
+  },
+  {
+   "seed": 15,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Smith\", \"year\": 2010, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1534.168,
+   "prompt_ms": 38.419,
+   "elapsed_ms": 1586.356958025135
+  },
+  {
+   "seed": 16,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2009, \"genres\": [\"Fantasy\", \"Adventure\"], \"rating\": 4}",
+   "predicted_n": 42,
+   "predicted_ms": 1631.579,
+   "prompt_ms": 41.086,
+   "elapsed_ms": 1688.2750410586596
+  },
+  {
+   "seed": 17,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Bookstore\", \"author\": \"J. Emily Wilson\", \"year\": 2018, \"genres\": [\"Mystery\", \"Thriller\"], \"rating\": 4}",
+   "predicted_n": 43,
+   "predicted_ms": 1664.941,
+   "prompt_ms": 39.846,
+   "elapsed_ms": 1714.5744169829413
+  },
+  {
+   "seed": 18,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Alexander Grey\", \"year\": 2010, \"genres\": [\"Adventure\", \"Mystery\"], \"rating\": 4}",
+   "predicted_n": 39,
+   "predicted_ms": 1512.771,
+   "prompt_ms": 39.182,
+   "elapsed_ms": 1562.5942500773817
+  },
+  {
+   "seed": 19,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Starlight\", \"author\": \"Ava Morales\", \"year\": 2015, \"genres\": [\"Fantasy\", \"Adventure\", \"Science Fiction\"], \"rating\": 4}",
+   "predicted_n": 45,
+   "predicted_ms": 1865.454,
+   "prompt_ms": 41.204,
+   "elapsed_ms": 1920.2627500053495
+  },
+  {
+   "seed": 20,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"Fahrenheit 451\", \"author\": \"Ray Bradbury\", \"year\": 1953, \"genres\": [\"Dystopian\", \"Science Fiction\"], \"rating\": 4}",
+   "predicted_n": 43,
+   "predicted_ms": 1844.906,
+   "prompt_ms": 48.764,
+   "elapsed_ms": 1900.0239169690758
+  }
+ ],
+ "schema_enum2000": [
+  {
+   "seed": 1,
+   "status": 200,
+   "valid": true,
+   "text": "{\n  \"title\": \"A Tale of Two Cities\",\n  \"author\": \"Charles Dickens\",\n  \"year\": 1859,\n  \"genres\": [\"genre-1351\", \"genre-1351\", \"genre-1351\"],\n  \"rating\": 4\n}\n",
+   "predicted_n": 64,
+   "predicted_ms": 7726.246,
+   "prompt_ms": 40.893,
+   "elapsed_ms": 7796.850083977915
+  },
+  {
+   "seed": 2,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"Fahrenheit 451\", \"author\": \"Ray Bradbury\", \"year\": 1953, \"genres\": [\"genre-0377\", \"genre-0378\"], \"rating\": 4}",
+   "predicted_n": 46,
+   "predicted_ms": 8221.792,
+   "prompt_ms": 39.42,
+   "elapsed_ms": 8292.333416058682
+  },
+  {
+   "seed": 3,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2010, \"genres\": [\"genre-0766\", \"genre-1956\"], \"rating\": 4}",
+   "predicted_n": 47,
+   "predicted_ms": 5630.637,
+   "prompt_ms": 51.342,
+   "elapsed_ms": 5714.1181249171495
+  },
+  {
+   "seed": 4,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Memory\", \"author\": \"Ava Morales\", \"year\": 2022, \"genres\": [\"genre-1667\", \"genre-1667\"], \"rating\": 4}",
+   "predicted_n": 45,
+   "predicted_ms": 6713.43,
+   "prompt_ms": 39.134,
+   "elapsed_ms": 6782.166374963708
+  },
+  {
+   "seed": 5,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Emily J. Miller\", \"year\": 2010, \"genres\": [\"genre-1448\", \"genre-1449\"], \"rating\": 4}",
+   "predicted_n": 46,
+   "predicted_ms": 7068.473,
+   "prompt_ms": 40.419,
+   "elapsed_ms": 7135.394374956377
+  },
+  {
+   "seed": 6,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J.K. Rowling\", \"year\": 2010, \"genres\": [\"genre-0643\", \"genre-1629\", \"genre-1631\"], \"rating\": 4}",
+   "predicted_n": 52,
+   "predicted_ms": 6615.074,
+   "prompt_ms": 38.649,
+   "elapsed_ms": 6684.808999998495
+  },
+  {
+   "seed": 7,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Time Traveler\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"genre-1445\", \"genre-1445\", \"genre-1445\"], \"rating\": 4}",
+   "predicted_n": 51,
+   "predicted_ms": 8095.793,
+   "prompt_ms": 38.601,
+   "elapsed_ms": 8164.100249996409
+  },
+  {
+   "seed": 8,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"genre-0639\", \"genre-1639\"], \"rating\": 4}",
+   "predicted_n": 44,
+   "predicted_ms": 5452.298,
+   "prompt_ms": 39.9,
+   "elapsed_ms": 5517.689540982246
+  },
+  {
+   "seed": 9,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. Alexander\", \"year\": 2010, \"genres\": [\"genre-0578\",\"genre-0578\"], \"rating\": 4.5}",
+   "predicted_n": 46,
+   "predicted_ms": 7036.306,
+   "prompt_ms": 38.68,
+   "elapsed_ms": 7103.829082916491
+  },
+  {
+   "seed": 10,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"genre-1667\", \"genre-1667\", \"genre-1667\"], \"rating\": 4.0}",
+   "predicted_n": 52,
+   "predicted_ms": 5932.727,
+   "prompt_ms": 38.435,
+   "elapsed_ms": 6005.604375037365
+  },
+  {
+   "seed": 11,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Alexandra Brown\", \"year\": 2020, \"genres\": [\"genre-1123\", \"genre-1456\", \"genre-1789\"], \"rating\": 4}",
+   "predicted_n": 51,
+   "predicted_ms": 9676.39,
+   "prompt_ms": 46.007,
+   "elapsed_ms": 9744.832291966304
+  },
+  {
+   "seed": 12,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Doe\", \"year\": 2010, \"genres\": [\"genre-1123\", \"genre-1221\", \"genre-1200\"], \"rating\": 4}",
+   "predicted_n": 50,
+   "predicted_ms": 7392.028,
+   "prompt_ms": 40.791,
+   "elapsed_ms": 7462.604583008215
+  },
+  {
+   "seed": 13,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Time Traveler\", \"author\": \"J.K. Rowling\", \"year\": 2022, \"genres\": [\"genre-0228\", \"genre-0227\", \"genre-0226\"], \"rating\": 4.0}",
+   "predicted_n": 55,
+   "predicted_ms": 6321.384,
+   "prompt_ms": 40.582,
+   "elapsed_ms": 6397.4766249302775
+  },
+  {
+   "seed": 14,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2010, \"genres\": [\"genre-0839\", \"genre-1178\", \"genre-1397\"], \"rating\": 4.5}",
+   "predicted_n": 55,
+   "predicted_ms": 6682.039,
+   "prompt_ms": 49.898,
+   "elapsed_ms": 6762.178124976344
+  },
+  {
+   "seed": 15,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"John Smith\", \"year\": 2010, \"genres\": [\"genre-1234\", \"genre-1111\", \"genre-1234\"], \"rating\": 4}",
+   "predicted_n": 50,
+   "predicted_ms": 7561.742,
+   "prompt_ms": 48.077,
+   "elapsed_ms": 7637.824792065658
+  },
+  {
+   "seed": 16,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"J. K. Rowling\", \"year\": 2009, \"genres\": [\"genre-0781\", \"genre-0782\"], \"rating\": 4}",
+   "predicted_n": 47,
+   "predicted_ms": 5533.841,
+   "prompt_ms": 44.128,
+   "elapsed_ms": 5619.179041008465
+  },
+  {
+   "seed": 17,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Bookstore\", \"author\": \"J. Emily Wilson\", \"year\": 2018, \"genres\": [\"genre-1235\", \"genre-1234\", \"genre-1233\"], \"rating\": 4.2}",
+   "predicted_n": 55,
+   "predicted_ms": 9180.722,
+   "prompt_ms": 39.383,
+   "elapsed_ms": 9252.059540944174
+  },
+  {
+   "seed": 18,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Lost City\", \"author\": \"Alexander Grey\", \"year\": 2010, \"genres\": [\"genre-1566\", \"genre-1817\", \"genre-1512\"], \"rating\": 4.7}",
+   "predicted_n": 52,
+   "predicted_ms": 7062.291,
+   "prompt_ms": 41.672,
+   "elapsed_ms": 7126.489749993198
+  },
+  {
+   "seed": 19,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"The Last Starlight\", \"author\": \"Ava Morales\", \"year\": 2015, \"genres\": [\"genre-0758\", \"genre-0658\", \"genre-0858\"], \"rating\": 3}",
+   "predicted_n": 52,
+   "predicted_ms": 8023.512,
+   "prompt_ms": 38.865,
+   "elapsed_ms": 8094.848791952245
+  },
+  {
+   "seed": 20,
+   "status": 200,
+   "valid": true,
+   "text": "{\"title\": \"Fahrenheit 451\", \"author\": \"Ray Bradbury\", \"year\": 1953, \"genres\": [\"genre-0039\", \"genre-0043\", \"genre-0046\"], \"rating\": 4}",
+   "predicted_n": 52,
+   "predicted_ms": 8098.338,
+   "prompt_ms": 44.116,
+   "elapsed_ms": 8169.086916954257
+  }
+ ],
+ "_meta": {
+  "experiment": "structured",
+  "started_utc": "2026-09-24T02:11:07Z",
+  "seconds": 219.2,
+  "loadavg_end": [
+   5.0087890625,
+   6.04736328125,
+   6.0234375
+  ]
+ }
+}

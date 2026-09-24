@@ -1,0 +1,175 @@
+{
+ "stream_runs": [
+  {
+   "rep": 1,
+   "how": "done",
+   "ttft_ms": 741.2394169950858,
+   "events": 128,
+   "itl": {
+    "n": 127,
+    "median_ms": 39.894457906484604,
+    "p90_ms": 51.29108298569918,
+    "max_ms": 73.57912498991936,
+    "mean_ms": 43.11117092899128
+   },
+   "total_ms": 6218.835832900368,
+   "server_timings": {
+    "cache_n": 0,
+    "prompt_n": 201,
+    "prompt_ms": 739.677,
+    "prompt_per_token_ms": 3.679985074626866,
+    "prompt_per_second": 271.74023256096916,
+    "predicted_n": 128,
+    "predicted_ms": 5475.593,
+    "predicted_per_token_ms": 42.7780703125,
+    "predicted_per_second": 23.376463517284794
+   }
+  },
+  {
+   "rep": 2,
+   "how": "done",
+   "ttft_ms": 746.2481249822304,
+   "events": 128,
+   "itl": {
+    "n": 127,
+    "median_ms": 40.33495800103992,
+    "p90_ms": 46.01783293765038,
+    "max_ms": 53.15387505106628,
+    "mean_ms": 41.649542322683
+   },
+   "total_ms": 6036.852207966149,
+   "server_timings": {
+    "cache_n": 0,
+    "prompt_n": 201,
+    "prompt_ms": 744.425,
+    "prompt_per_token_ms": 3.7036069651741292,
+    "prompt_per_second": 270.0070524230111,
+    "predicted_n": 128,
+    "predicted_ms": 5287.509,
+    "predicted_per_token_ms": 41.3086640625,
+    "predicted_per_second": 24.20799661995847
+   }
+  },
+  {
+   "rep": 3,
+   "how": "done",
+   "ttft_ms": 740.9450419945642,
+   "events": 128,
+   "itl": {
+    "n": 127,
+    "median_ms": 39.14233390241861,
+    "p90_ms": 43.14062499906868,
+    "max_ms": 53.10370808001608,
+    "mean_ms": 40.10586351097569
+   },
+   "total_ms": 5834.516666946001,
+   "server_timings": {
+    "cache_n": 0,
+    "prompt_n": 201,
+    "prompt_ms": 738.232,
+    "prompt_per_token_ms": 3.672796019900497,
+    "prompt_per_second": 272.2721312541315,
+    "predicted_n": 128,
+    "predicted_ms": 5094.535,
+    "predicted_per_token_ms": 39.8010546875,
+    "predicted_per_second": 25.12496233709259
+   }
+  },
+  {
+   "rep": 4,
+   "how": "done",
+   "ttft_ms": 762.2268330305815,
+   "events": 128,
+   "itl": {
+    "n": 127,
+    "median_ms": 40.52045801654458,
+    "p90_ms": 48.49687498062849,
+    "max_ms": 83.1059580668807,
+    "mean_ms": 42.46790255933237
+   },
+   "total_ms": 6156.298125046305,
+   "server_timings": {
+    "cache_n": 0,
+    "prompt_n": 201,
+    "prompt_ms": 756.885,
+    "prompt_per_token_ms": 3.765597014925373,
+    "prompt_per_second": 265.56213955884976,
+    "predicted_n": 128,
+    "predicted_ms": 5397.629,
+    "predicted_per_token_ms": 42.1689765625,
+    "predicted_per_second": 23.7141159572101
+   }
+  },
+  {
+   "rep": 5,
+   "how": "done",
+   "ttft_ms": 743.5105829499662,
+   "events": 128,
+   "itl": {
+    "n": 127,
+    "median_ms": 39.72150001209229,
+    "p90_ms": 47.34045802615583,
+    "max_ms": 57.33337497804314,
+    "mean_ms": 41.4217903542765
+   },
+   "total_ms": 6007.889540982433,
+   "server_timings": {
+    "cache_n": 0,
+    "prompt_n": 201,
+    "prompt_ms": 738.53,
+    "prompt_per_token_ms": 3.674278606965174,
+    "prompt_per_second": 272.16226828971065,
+    "predicted_n": 128,
+    "predicted_ms": 5261.249,
+    "predicted_per_token_ms": 41.1035078125,
+    "predicted_per_second": 24.32882382111168
+   }
+  }
+ ],
+ "warmup_run": {
+  "rep": 0,
+  "how": "done",
+  "ttft_ms": 743.7316250288859,
+  "events": 128,
+  "itl": {
+   "n": 127,
+   "median_ms": 38.96366700064391,
+   "p90_ms": 41.19695909321308,
+   "max_ms": 46.01337492931634,
+   "mean_ms": 39.42833989803628
+  },
+  "total_ms": 5751.345208031125,
+  "server_timings": {
+   "cache_n": 0,
+   "prompt_n": 201,
+   "prompt_ms": 742.326,
+   "prompt_per_token_ms": 3.693164179104478,
+   "prompt_per_second": 270.7705240015842,
+   "predicted_n": 128,
+   "predicted_ms": 5007.773,
+   "predicted_per_token_ms": 39.1232265625,
+   "predicted_per_second": 25.560264013564513
+  }
+ },
+ "cancel_stream": {
+  "how": "closed",
+  "events_before_close": 20,
+  "release_after_close_ms": 70.91791706625372,
+  "n_decoded_at_release": 21
+ },
+ "cancel_nonstream": {
+  "n_decoded_at_close": 55,
+  "release_after_close_ms": null,
+  "n_decoded_at_release": null
+ },
+ "_meta": {
+  "experiment": "lifecycle",
+  "started_utc": "2026-09-24T01:53:23Z",
+  "seconds": 64.5,
+  "loadavg_end": [
+   6.26611328125,
+   6.521484375,
+   5.94970703125
+  ]
+ }
+}
