@@ -1,0 +1,73 @@
+{
+ "runs": [
+  {
+   "order": 0,
+   "hogs": 0,
+   "gpu_GBps": 55.07,
+   "hog_GBps_each": [],
+   "hog_GBps_total": 0
+  },
+  {
+   "order": 1,
+   "hogs": 1,
+   "gpu_GBps": 35.56,
+   "hog_GBps_each": [
+    29.7
+   ],
+   "hog_GBps_total": 29.7
+  },
+  {
+   "order": 2,
+   "hogs": 0,
+   "gpu_GBps": 55.84,
+   "hog_GBps_each": [],
+   "hog_GBps_total": 0
+  },
+  {
+   "order": 3,
+   "hogs": 2,
+   "gpu_GBps": 36.48,
+   "hog_GBps_each": [
+    11.28,
+    11.33
+   ],
+   "hog_GBps_total": 22.61
+  },
+  {
+   "order": 4,
+   "hogs": 0,
+   "gpu_GBps": 49.59,
+   "hog_GBps_each": [],
+   "hog_GBps_total": 0
+  },
+  {
+   "order": 5,
+   "hogs": 4,
+   "gpu_GBps": 36.11,
+   "hog_GBps_each": [
+    4.63,
+    4.58,
+    4.83,
+    4.67
+   ],
+   "hog_GBps_total": 18.71
+  },
+  {
+   "order": 6,
+   "hogs": 0,
+   "gpu_GBps": 49.44,
+   "hog_GBps_each": [],
+   "hog_GBps_total": 0
+  }
+ ],
+ "_meta": {
+  "experiment": "gpucopy",
+  "started_utc": "2026-09-24T19:04:03Z",
+  "seconds": 50.1,
+  "loadavg_end": [
+   5.2353515625,
+   12.12548828125,
+   17.18310546875
+  ]
+ }
+}

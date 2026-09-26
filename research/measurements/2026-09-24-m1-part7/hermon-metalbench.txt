@@ -1,0 +1,18 @@
+2a3fd52
+       0
+hermon-kernels 0.2 | clang 17.0.0 (clang-1700.6.4.2) | isa=neon
+device: Apple M1
+
+-- decode, 1 query token (the latency-bound case) --
+  32:8  hd=128 ctx=  128 F16 | cpu    0.132 ms  metal    0.623 ms   0.21x cpu | diff 2.42e-08
+  32:8  hd=128 ctx=  512 F16 | cpu    0.484 ms  metal    1.105 ms   0.44x cpu | diff 1.04e-08
+  32:8  hd=128 ctx= 2048 F16 | cpu    1.518 ms  metal    1.914 ms   0.79x cpu | diff 5.31e-09
+  32:8  hd=128 ctx= 8192 F16 | cpu    6.640 ms  metal    4.245 ms   1.56x GPU | diff 2.65e-09
+  32:8  hd=128 ctx=32768 F16 | cpu   28.619 ms  metal   15.986 ms   1.79x GPU | diff 1.49e-09
+
+-- wider head count --
+  64:8  hd=128 ctx=  128 F16 | cpu    0.470 ms  metal    0.604 ms   0.78x cpu | diff 2.28e-08
+  64:8  hd=128 ctx=  512 F16 | cpu    1.466 ms  metal    1.347 ms   1.09x GPU | diff 9.08e-09
+  64:8  hd=128 ctx= 2048 F16 | cpu    5.317 ms  metal    2.678 ms   1.99x GPU | diff 5.41e-09
+  64:8  hd=128 ctx= 8192 F16 | cpu   22.024 ms  metal    8.119 ms   2.71x GPU | diff 2.91e-09
+  64:8  hd=128 ctx=32768 F16 | cpu   87.652 ms  metal   32.292 ms   2.71x GPU | diff 1.70e-09

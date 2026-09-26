@@ -1,0 +1,34 @@
+K6.1 replication (be0288a trace and single-pass cache, 64 tokens, cold):
+  uniform   0.35 GiB   122 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)  duplicate ids 4
+  uniform   0.87 GiB   307 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)  duplicate ids 4
+  uniform   1.75 GiB   614 blocks  hit   6.3%  read  61.3 GiB (x max record:  65.6)  duplicate ids 4
+  uniform   4.38 GiB  1536 blocks  hit  22.0%  read  51.0 GiB (x max record:  54.7)  duplicate ids 4
+  uniform   8.75 GiB  3072 blocks  hit  44.0%  read  36.6 GiB (x max record:  39.2)  duplicate ids 4
+  skewed    0.35 GiB   122 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)  duplicate ids 9
+  skewed    0.87 GiB   307 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)  duplicate ids 9
+  skewed    1.75 GiB   614 blocks  hit  20.4%  read  52.0 GiB (x max record:  55.7)  duplicate ids 9
+  skewed    4.38 GiB  1536 blocks  hit  49.9%  read  32.8 GiB (x max record:  35.1)  duplicate ids 9
+  skewed    8.75 GiB  3072 blocks  hit  71.3%  read  18.8 GiB (x max record:  20.1)  duplicate ids 9
+replication (64 tokens, cold):
+  uniform   0.35 GiB   122 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)
+  uniform   0.87 GiB   307 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)
+  uniform   1.75 GiB   614 blocks  hit   6.3%  read  61.3 GiB (x max record:  65.6)
+  uniform   4.38 GiB  1536 blocks  hit  22.0%  read  51.0 GiB (x max record:  54.7)
+  uniform   8.75 GiB  3072 blocks  hit  44.0%  read  36.6 GiB (x max record:  39.2)
+  skewed    0.35 GiB   122 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)
+  skewed    0.87 GiB   307 blocks  hit   0.0%  read  65.4 GiB (x max record:  70.0)
+  skewed    1.75 GiB   614 blocks  hit  20.4%  read  52.0 GiB (x max record:  55.7)
+  skewed    4.38 GiB  1536 blocks  hit  49.9%  read  32.8 GiB (x max record:  35.1)
+  skewed    8.75 GiB  3072 blocks  hit  71.3%  read  18.8 GiB (x max record:  20.1)
+steady state (tokens 1024-2047 of 2048):
+  uniform  0.02  LRU   0.0%  static-top   2.4%  learned   2.0%  Belady  15.5%
+  uniform  0.05  LRU   0.0%  static-top   5.9%  learned   5.0%  Belady  26.8%
+  uniform  0.10  LRU   6.2%  static-top  11.5%  learned  10.0%  Belady  38.7%
+  uniform  0.25  LRU  22.7%  static-top  27.8%  learned  25.1%  Belady  60.2%
+  uniform  0.50  LRU  47.6%  static-top  53.5%  learned  50.0%  Belady  80.5%
+  skewed   0.02  LRU   0.0%  static-top  18.0%  learned  18.0%  Belady  25.1%
+  skewed   0.05  LRU   0.0%  static-top  33.0%  learned  32.9%  Belady  43.0%
+  skewed   0.10  LRU  20.9%  static-top  47.1%  learned  46.9%  Belady  58.0%
+  skewed   0.25  LRU  52.2%  static-top  68.2%  learned  67.8%  Belady  77.9%
+  skewed   0.50  LRU  77.2%  static-top  84.7%  learned  84.2%  Belady  91.3%
+seconds 20.4

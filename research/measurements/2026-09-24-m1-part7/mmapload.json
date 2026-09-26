@@ -1,0 +1,82 @@
+{
+ "runs": [
+  {
+   "order": 0,
+   "mode": "mmap",
+   "seconds_to_ready": 10.15,
+   "first_completion_s": 0.992,
+   "content": " a city in the north of France.",
+   "rss_kib_after": 625696,
+   "log": [
+    "load_tensors: loading model tensors, this can take a while... (mmap = true, direct_io = false)",
+    "load_tensors:   CPU_Mapped model buffer size =   333.84 MiB",
+    "load_tensors:  MTL0_Mapped model buffer size =  4977.62 MiB",
+    "llama_context:        CPU  output buffer size =     0.58 MiB",
+    "llama_kv_cache:       MTL0 KV buffer size =   576.00 MiB",
+    "sched_reserve:       MTL0 compute buffer size =   304.75 MiB",
+    "sched_reserve:        CPU compute buffer size =    24.01 MiB"
+   ]
+  },
+  {
+   "order": 1,
+   "mode": "nommap",
+   "seconds_to_ready": 5.11,
+   "first_completion_s": 0.986,
+   "content": " a city in the north of France.",
+   "rss_kib_after": 5376944,
+   "log": [
+    "load_tensors: loading model tensors, this can take a while... (mmap = false, direct_io = false)",
+    "load_tensors:          CPU model buffer size =   333.84 MiB",
+    "load_tensors:         MTL0 model buffer size =  4643.78 MiB",
+    "llama_context:        CPU  output buffer size =     0.58 MiB",
+    "llama_kv_cache:       MTL0 KV buffer size =   576.00 MiB",
+    "sched_reserve:       MTL0 compute buffer size =   304.75 MiB",
+    "sched_reserve:        CPU compute buffer size =    24.01 MiB"
+   ]
+  },
+  {
+   "order": 2,
+   "mode": "mmap",
+   "seconds_to_ready": 4.58,
+   "first_completion_s": 0.973,
+   "content": " a city in the north of France.",
+   "rss_kib_after": 5721264,
+   "log": [
+    "load_tensors: loading model tensors, this can take a while... (mmap = true, direct_io = false)",
+    "load_tensors:   CPU_Mapped model buffer size =   333.84 MiB",
+    "load_tensors:  MTL0_Mapped model buffer size =  4977.62 MiB",
+    "llama_context:        CPU  output buffer size =     0.58 MiB",
+    "llama_kv_cache:       MTL0 KV buffer size =   576.00 MiB",
+    "sched_reserve:       MTL0 compute buffer size =   304.75 MiB",
+    "sched_reserve:        CPU compute buffer size =    24.01 MiB"
+   ]
+  },
+  {
+   "order": 3,
+   "mode": "nommap",
+   "seconds_to_ready": 4.59,
+   "first_completion_s": 0.997,
+   "content": " a city in the north of France.",
+   "rss_kib_after": 5389200,
+   "log": [
+    "load_tensors: loading model tensors, this can take a while... (mmap = false, direct_io = false)",
+    "load_tensors:          CPU model buffer size =   333.84 MiB",
+    "load_tensors:         MTL0 model buffer size =  4643.78 MiB",
+    "llama_context:        CPU  output buffer size =     0.58 MiB",
+    "llama_kv_cache:       MTL0 KV buffer size =   576.00 MiB",
+    "sched_reserve:       MTL0 compute buffer size =   304.75 MiB",
+    "sched_reserve:        CPU compute buffer size =    24.01 MiB"
+   ]
+  }
+ ],
+ "_meta": {
+  "experiment": "mmapload",
+  "started_utc": "2026-09-24T19:04:53Z",
+  "seconds": 30.0,
+  "loadavg_end": [
+   5.2431640625,
+   11.47412109375,
+   16.7705078125
+  ]
+ }
+}

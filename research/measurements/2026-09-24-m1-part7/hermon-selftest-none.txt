@@ -1,0 +1,29 @@
+==> building self-test with none using cc
+==> running
+hermon-kernels self-test
+hermon-kernels 0.2 | clang 17.0.0 (clang-1700.6.4.2) | isa=neon
+
+
+ISA differential (neon+fp16+dotprod detected, neon active)
+  neon vs scalar, F32 KV: max abs diff 9.34233e-09
+  neon vs scalar, F16 KV: max abs diff 7.66886e-09
+  neon vs scalar: Q4_K 4.785e-07, Q6_K 4.675e-07 (of output scale)
+
+Metal
+  device: Apple M1
+  metal vs cpu, F32 KV, ctx   31: max abs diff 4.84288e-08 (repeat run identical)
+  metal vs cpu, F32 KV, ctx  300: max abs diff 1.25729e-08 (repeat run identical)
+  metal vs cpu, F32 KV, ctx 1024: max abs diff 6.0536e-09 (repeat run identical)
+  metal vs cpu, F16 KV, ctx   31: max abs diff 4.84288e-08 (repeat run identical)
+  metal vs cpu, F16 KV, ctx  300: max abs diff 1.39116e-08 (repeat run identical)
+  metal vs cpu, F16 KV, ctx 1024: max abs diff 8.14907e-09 (repeat run identical)
+
+MoE expert streaming (K6)
+  expert cache: 4 hits, 6 misses, 2 evictions
+  Q4_K  matvec 35.2357 vs reference 35.2357
+  Q6_K  matvec 2.5216 vs reference 2.5216
+
+CUDA
+  (no CUDA device on this host: none)
+
+121165 checks, 0 failures

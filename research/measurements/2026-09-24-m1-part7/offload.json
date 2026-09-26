@@ -1,0 +1,972 @@
+{
+ "passes": [
+  [
+   {
+    "tag": "p0-layers",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 99,27,18,9,0 -p 512 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 371.3,
+    "load1_start": 8.2998046875,
+    "rows": [
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 119.856381,
+      "stddev_ts": 1.023461,
+      "samples_ts": [
+       120.58,
+       119.133
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 10.674102,
+      "stddev_ts": 0.260694,
+      "samples_ts": [
+       10.8584,
+       10.4898
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 27,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 55.813792,
+      "stddev_ts": 0.868757,
+      "samples_ts": [
+       56.4281,
+       55.1995
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 27,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 9.776136,
+      "stddev_ts": 0.36803,
+      "samples_ts": [
+       10.0364,
+       9.5159
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 18,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 35.239483,
+      "stddev_ts": 1.850779,
+      "samples_ts": [
+       36.5482,
+       33.9308
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 18,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 7.849971,
+      "stddev_ts": 1.575375,
+      "samples_ts": [
+       8.96393,
+       6.73601
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 9,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 20.522944,
+      "stddev_ts": 1.424835,
+      "samples_ts": [
+       19.5154,
+       21.5305
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 9,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 2.397549,
+      "stddev_ts": 0.340767,
+      "samples_ts": [
+       2.63851,
+       2.15659
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 24.687684,
+      "stddev_ts": 0.750624,
+      "samples_ts": [
+       24.1569,
+       25.2185
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 8.024338,
+      "stddev_ts": 0.911147,
+      "samples_ts": [
+       8.66862,
+       7.38006
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p0-cpu-noopoffload",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 0 -nopo 1 -p 512 -n 0 -r 2",
+    "rc": 0,
+    "seconds": 83.8,
+    "load1_start": 7.2626953125,
+    "rows": [
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 1,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 25.795982,
+      "stddev_ts": 0.409198,
+      "samples_ts": [
+       26.0853,
+       25.5066
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p0-ffn-on-cpu",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 99 -ot ffn_.*=CPU -nopo 0,1 -p 512 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 579.8,
+    "load1_start": 9.80078125,
+    "rows": [
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 21.645188,
+      "stddev_ts": 0.242673,
+      "samples_ts": [
+       21.4736,
+       21.8168
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 1.47291,
+      "stddev_ts": 1.301037,
+      "samples_ts": [
+       0.552938,
+       2.39288
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 1,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 17.98497,
+      "stddev_ts": 0.865976,
+      "samples_ts": [
+       17.3726,
+       18.5973
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 1,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 0.502251,
+      "stddev_ts": 0.130713,
+      "samples_ts": [
+       0.409823,
+       0.594679
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p0-kv-on-cpu",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 99 -nkvo 0,1 -d 0,4096 -p 512 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 193.6,
+    "load1_start": 13.96337890625,
+    "rows": [
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 106.01159,
+      "stddev_ts": 0.895921,
+      "samples_ts": [
+       105.378,
+       106.645
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 8.944387,
+      "stddev_ts": 0.075185,
+      "samples_ts": [
+       8.89122,
+       8.99755
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 4096,
+      "avg_ts": 84.723581,
+      "stddev_ts": 4.053777,
+      "samples_ts": [
+       81.8571,
+       87.59
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 4096,
+      "avg_ts": 8.531344,
+      "stddev_ts": 0.065507,
+      "samples_ts": [
+       8.57766,
+       8.48502
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 100.96589,
+      "stddev_ts": 2.147642,
+      "samples_ts": [
+       99.4473,
+       102.485
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 7.53281,
+      "stddev_ts": 0.171831,
+      "samples_ts": [
+       7.41131,
+       7.65431
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 4096,
+      "avg_ts": 82.450232,
+      "stddev_ts": 3.086117,
+      "samples_ts": [
+       80.268,
+       84.6324
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 4096,
+      "avg_ts": 4.69201,
+      "stddev_ts": 0.020595,
+      "samples_ts": [
+       4.70657,
+       4.67745
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p0-cpu-8threads",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 0 -t 8 -p 0 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 133.6,
+    "load1_start": 131.8408203125,
+    "rows": [
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 8,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 1.365053,
+      "stddev_ts": 0.666533,
+      "samples_ts": [
+       1.83636,
+       0.893743
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "tag": "p1-cpu-8threads",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 0 -t 8 -p 0 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 56.6,
+    "load1_start": 41.21435546875,
+    "rows": [
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 8,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 4.45666,
+      "stddev_ts": 0.586012,
+      "samples_ts": [
+       4.87103,
+       4.04229
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p1-kv-on-cpu",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 99 -nkvo 0,1 -d 0,4096 -p 512 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 181.6,
+    "load1_start": 5.84375,
+    "rows": [
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 118.177529,
+      "stddev_ts": 0.560478,
+      "samples_ts": [
+       118.574,
+       117.781
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 10.933614,
+      "stddev_ts": 0.094128,
+      "samples_ts": [
+       11.0002,
+       10.8671
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 4096,
+      "avg_ts": 91.136178,
+      "stddev_ts": 0.0799,
+      "samples_ts": [
+       91.1927,
+       91.0797
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 4096,
+      "avg_ts": 8.865608,
+      "stddev_ts": 0.045604,
+      "samples_ts": [
+       8.83336,
+       8.89785
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 110.054013,
+      "stddev_ts": 0.128499,
+      "samples_ts": [
+       110.145,
+       109.963
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 8.07802,
+      "stddev_ts": 0.540225,
+      "samples_ts": [
+       7.69602,
+       8.46002
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 4096,
+      "avg_ts": 84.011785,
+      "stddev_ts": 1.988829,
+      "samples_ts": [
+       82.6055,
+       85.4181
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": true,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 4096,
+      "avg_ts": 4.676957,
+      "stddev_ts": 0.034047,
+      "samples_ts": [
+       4.70103,
+       4.65288
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p1-ffn-on-cpu",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 99 -ot ffn_.*=CPU -nopo 0,1 -p 512 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 369.0,
+    "load1_start": 14.72998046875,
+    "rows": [
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 19.173887,
+      "stddev_ts": 0.98209,
+      "samples_ts": [
+       19.8683,
+       18.4794
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 1.542502,
+      "stddev_ts": 0.561001,
+      "samples_ts": [
+       1.14581,
+       1.93919
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 1,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 17.816914,
+      "stddev_ts": 0.169798,
+      "samples_ts": [
+       17.6968,
+       17.937
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 1,
+      "tensor_buft_overrides": "ffn_.*=CPU",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 1.253164,
+      "stddev_ts": 0.60375,
+      "samples_ts": [
+       0.826249,
+       1.68008
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p1-cpu-noopoffload",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 0 -nopo 1 -p 512 -n 0 -r 2",
+    "rc": 0,
+    "seconds": 79.8,
+    "load1_start": 6.48486328125,
+    "rows": [
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 1,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 26.727357,
+      "stddev_ts": 0.05351,
+      "samples_ts": [
+       26.6895,
+       26.7652
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   },
+   {
+    "tag": "p1-layers",
+    "cmd": "-m <qwen3-8b.gguf> -fa 1 -o json -ngl 99,27,18,9,0 -p 512 -n 64 -r 2",
+    "rc": 0,
+    "seconds": 513.8,
+    "load1_start": 35.890625,
+    "rows": [
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 112.947054,
+      "stddev_ts": 0.460481,
+      "samples_ts": [
+       113.273,
+       112.621
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 99,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 10.098974,
+      "stddev_ts": 0.168807,
+      "samples_ts": [
+       9.97961,
+       10.2183
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 27,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 58.289151,
+      "stddev_ts": 1.220148,
+      "samples_ts": [
+       59.1519,
+       57.4264
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 27,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 8.460735,
+      "stddev_ts": 0.259508,
+      "samples_ts": [
+       8.27724,
+       8.64424
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 18,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 36.451116,
+      "stddev_ts": 2.365005,
+      "samples_ts": [
+       38.1234,
+       34.7788
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 18,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 1.734623,
+      "stddev_ts": 0.422012,
+      "samples_ts": [
+       1.43622,
+       2.03303
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 9,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 19.589399,
+      "stddev_ts": 0.43338,
+      "samples_ts": [
+       19.8958,
+       19.283
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 9,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 1.401069,
+      "stddev_ts": 1.229969,
+      "samples_ts": [
+       2.27079,
+       0.531349
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 512,
+      "n_gen": 0,
+      "n_depth": 0,
+      "avg_ts": 26.266032,
+      "stddev_ts": 0.573421,
+      "samples_ts": [
+       26.6715,
+       25.8606
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     },
+     {
+      "n_gpu_layers": 0,
+      "n_threads": 4,
+      "no_kv_offload": false,
+      "no_op_offload": 0,
+      "tensor_buft_overrides": "none",
+      "n_prompt": 0,
+      "n_gen": 64,
+      "n_depth": 0,
+      "avg_ts": 7.641365,
+      "stddev_ts": 1.239559,
+      "samples_ts": [
+       6.76486,
+       8.51787
+      ],
+      "model_size": 5219418112,
+      "model_n_params": 8190735360
+     }
+    ]
+   }
+  ]
+ ],
+ "_meta": {
+  "experiment": "offload",
+  "started_utc": "2026-09-24T18:01:29Z",
+  "seconds": 3283.2,
+  "loadavg_end": [
+   35.890625,
+   39.4345703125,
+   26.52783203125
+  ]
+ }
+}

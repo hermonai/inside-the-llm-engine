@@ -1,0 +1,18 @@
+2026-09-24T18:01:29Z start offload load={ 3.93 3.99 5.52 } swap=14695.31M
+offload ok {'experiment': 'offload', 'started_utc': '2026-09-24T18:01:29Z', 'seconds': 3283.2, 'loadavg_end': (35.890625, 39.4345703125, 26.52783203125)}
+2026-09-24T18:56:13Z end offload rc=0
+2026-09-24T18:58:58Z start contention load={ 5.45 24.15 22.45 } swap=17904.69M
+contention ok {'experiment': 'contention', 'started_utc': '2026-09-24T18:58:58Z', 'seconds': 198.8, 'loadavg_end': (14.99658203125, 17.5703125, 19.806640625)}
+2026-09-24T19:02:17Z end contention rc=0
+2026-09-24T19:04:02Z start gpucopy load={ 5.26 13.39 17.91 } swap=17133.81M
+gpucopy ok {'experiment': 'gpucopy', 'started_utc': '2026-09-24T19:04:03Z', 'seconds': 50.1, 'loadavg_end': (5.2353515625, 12.12548828125, 17.18310546875)}
+2026-09-24T19:04:53Z end gpucopy rc=0
+2026-09-24T19:04:53Z start mmapload load={ 5.24 12.13 17.18 } swap=17061.81M
+mmapload ok {'experiment': 'mmapload', 'started_utc': '2026-09-24T19:04:53Z', 'seconds': 30.0, 'loadavg_end': (5.2431640625, 11.47412109375, 16.7705078125)}
+2026-09-24T19:05:23Z end mmapload rc=0
+2026-09-24T19:05:23Z start hermon-selftest load={ 5.24 11.47 16.77 } swap=19614.25M
+2026-09-24T19:05:35Z all done
+2026-09-26T08:02:52Z start repack2 load={ 4.27 4.24 4.01 } swap=15157.44M
+2026-09-26T08:18:55Z end repack2
+2026-09-26T08:19:15Z start metalbench load={ 5.87 9.22 8.68 }
+2026-09-26T08:19:58Z end metalbench rc=0

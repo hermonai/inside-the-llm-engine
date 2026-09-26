@@ -1,0 +1,179 @@
+{
+ "runs": [
+  {
+   "round": 1,
+   "ngl": 9,
+   "repack": false,
+   "rc": 0,
+   "waited_s": 0,
+   "load1_start": 4.27,
+   "seconds": 23.5,
+   "max_rss_bytes": 3846668288,
+   "peak_footprint_bytes": 699462976,
+   "table": [
+    "|   128 |     32 |    1 |    160 |    5.214 |    24.55 |    5.605 |     5.71 |   10.818 |    14.79 |"
+   ],
+   "vm_delta_pages": {
+    "pageouts": 157,
+    "swapins": 16244,
+    "swapouts": 266780,
+    "pageins": 665127,
+    "compressions": 979448,
+    "decompressions": 875579
+   },
+   "splits": [
+    "sched_reserve: graph splits = 281 (with bs=512), 2 (with bs=1)"
+   ],
+   "buffers": [
+    "load_tensors:   CPU_Mapped model buffer size =  3542.25 MiB",
+    "load_tensors:  MTL0_Mapped model buffer size =  4977.62 MiB"
+   ]
+  },
+  {
+   "round": 1,
+   "ngl": 9,
+   "repack": true,
+   "rc": 0,
+   "waited_s": 80,
+   "load1_start": 5.84,
+   "seconds": 96.9,
+   "max_rss_bytes": 7323762688,
+   "peak_footprint_bytes": 3570682560,
+   "table": [
+    "|   128 |     32 |    1 |    160 |    5.440 |    23.53 |   76.386 |     0.42 |   81.826 |     1.96 |"
+   ],
+   "vm_delta_pages": {
+    "pageouts": 477,
+    "swapins": 1298863,
+    "swapouts": 1487656,
+    "pageins": 670646,
+    "compressions": 10535747,
+    "decompressions": 9885525
+   },
+   "splits": [
+    "sched_reserve: graph splits = 58 (with bs=512), 2 (with bs=1)"
+   ],
+   "buffers": [
+    "load_tensors:   CPU_Mapped model buffer size =  3515.25 MiB",
+    "load_tensors:   CPU_REPACK model buffer size =  2983.50 MiB",
+    "load_tensors:  MTL0_Mapped model buffer size =  4977.62 MiB"
+   ]
+  },
+  {
+   "round": 1,
+   "ngl": "ffn",
+   "repack": false,
+   "rc": 0,
+   "waited_s": 70,
+   "load1_start": 5.92,
+   "seconds": 16.3,
+   "max_rss_bytes": 5534433280,
+   "peak_footprint_bytes": 597046400,
+   "table": [
+    "|   128 |     32 |    1 |    160 |    5.365 |    23.86 |    4.685 |     6.83 |   10.050 |    15.92 |"
+   ],
+   "vm_delta_pages": {
+    "pageouts": 78,
+    "swapins": 17403,
+    "swapouts": 75324,
+    "pageins": 366721,
+    "compressions": 935513,
+    "decompressions": 511275
+   },
+   "splits": [
+    "sched_reserve: graph splits = 182 (with bs=512), 74 (with bs=1)"
+   ],
+   "buffers": [
+    "load_tensors:   CPU_Mapped model buffer size =  4490.75 MiB",
+    "load_tensors:  MTL0_Mapped model buffer size =  4884.23 MiB"
+   ]
+  },
+  {
+   "round": 1,
+   "ngl": "ffn",
+   "repack": true,
+   "rc": 0,
+   "waited_s": 10,
+   "load1_start": 5.55,
+   "seconds": 353.0,
+   "max_rss_bytes": 8489320448,
+   "peak_footprint_bytes": 3689155264,
+   "table": [
+    "|   128 |     32 |    1 |    160 |    6.089 |    21.02 |  338.328 |     0.09 |  344.417 |     0.46 |"
+   ],
+   "vm_delta_pages": {
+    "pageouts": 3477,
+    "swapins": 8313095,
+    "swapouts": 8503450,
+    "pageins": 1010122,
+    "compressions": 26008883,
+    "decompressions": 25431262
+   },
+   "splits": [
+    "sched_reserve: graph splits = 74"
+   ],
+   "buffers": [
+    "load_tensors:   CPU_Mapped model buffer size =  4463.75 MiB",
+    "load_tensors:   CPU_REPACK model buffer size =  3138.75 MiB",
+    "load_tensors:  MTL0_Mapped model buffer size =  4884.23 MiB"
+   ]
+  },
+  {
+   "round": 1,
+   "ngl": 0,
+   "repack": true,
+   "rc": 0,
+   "waited_s": 230,
+   "load1_start": 5.56,
+   "seconds": 35.2,
+   "max_rss_bytes": 6008389632,
+   "peak_footprint_bytes": 5006250240,
+   "table": [
+    "|   128 |     32 |    1 |    160 |    4.344 |    29.47 |    4.428 |     7.23 |    8.771 |    18.24 |"
+   ],
+   "vm_delta_pages": {
+    "pageouts": 1163,
+    "swapins": 8783,
+    "swapouts": 143208,
+    "pageins": 633216,
+    "compressions": 1246709,
+    "decompressions": 969679
+   },
+   "splits": [
+    "sched_reserve: graph splits = 73 (with bs=512), 1 (with bs=1)"
+   ],
+   "buffers": [
+    "load_tensors:   CPU_Mapped model buffer size =  4463.77 MiB",
+    "load_tensors:   CPU_REPACK model buffer size =  4354.61 MiB"
+   ]
+  },
+  {
+   "round": 1,
+   "ngl": 0,
+   "repack": false,
+   "rc": 0,
+   "waited_s": 30,
+   "load1_start": 5.81,
+   "seconds": 17.4,
+   "max_rss_bytes": 5226119168,
+   "peak_footprint_bytes": 698397888,
+   "table": [
+    "|   128 |     32 |    1 |    160 |    8.238 |    15.54 |    3.999 |     8.00 |   12.237 |    13.07 |"
+   ],
+   "vm_delta_pages": {
+    "pageouts": 71,
+    "swapins": 16731,
+    "swapouts": 0,
+    "pageins": 373376,
+    "compressions": 360225,
+    "decompressions": 179987
+   },
+   "splits": [
+    "sched_reserve: graph splits = 362 (with bs=512), 1 (with bs=1)"
+   ],
+   "buffers": [
+    "load_tensors:   CPU_Mapped model buffer size =  4977.62 MiB"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,569 @@
+{
+ "shape": {
+  "layers": 48,
+  "experts": 128,
+  "routed": 8,
+  "record_bytes_q6k_down": 3059712,
+  "record_bytes_q4k_down": 2654208,
+  "q6k_down_layers": 24,
+  "bytes_per_token_all_miss": 1097072640,
+  "container_bytes": 17553162240
+ },
+ "replication_64_tokens": [
+  {
+   "hits": 0,
+   "misses": 24576,
+   "evictions": 24454,
+   "hit_pct": 0.0,
+   "warm_hit_pct": 0.0,
+   "bytes_read": 70212648960,
+   "bytes_if_max_record": 75195482112,
+   "routing": "uniform",
+   "cache_frac": 0.02,
+   "blocks": 122,
+   "cache_GiB": 0.34764862060546875,
+   "read_GiB": 65.390625,
+   "read_GiB_if_max_record": 70.03125
+  },
+  {
+   "hits": 0,
+   "misses": 24576,
+   "evictions": 24269,
+   "hit_pct": 0.0,
+   "warm_hit_pct": 0.0,
+   "bytes_read": 70212648960,
+   "bytes_if_max_record": 75195482112,
+   "routing": "uniform",
+   "cache_frac": 0.05,
+   "blocks": 307,
+   "cache_GiB": 0.8748207092285156,
+   "read_GiB": 65.390625,
+   "read_GiB_if_max_record": 70.03125
+  },
+  {
+   "hits": 1546,
+   "misses": 23030,
+   "evictions": 22416,
+   "hit_pct": 6.290690104166667,
+   "warm_hit_pct": 6.290690104166667,
+   "bytes_read": 65794166784,
+   "bytes_if_max_record": 70465167360,
+   "routing": "uniform",
+   "cache_frac": 0.1,
+   "blocks": 614,
+   "cache_GiB": 1.7496414184570312,
+   "read_GiB": 61.27559280395508,
+   "read_GiB_if_max_record": 65.62580108642578
+  },
+  {
+   "hits": 5395,
+   "misses": 19181,
+   "evictions": 17645,
+   "hit_pct": 21.952311197916668,
+   "warm_hit_pct": 21.952311197916668,
+   "bytes_read": 54807257088,
+   "bytes_if_max_record": 58688335872,
+   "routing": "uniform",
+   "cache_frac": 0.25,
+   "blocks": 1536,
+   "cache_GiB": 4.376953125,
+   "read_GiB": 51.043235778808594,
+   "read_GiB_if_max_record": 54.657772064208984
+  },
+  {
+   "hits": 10804,
+   "misses": 13772,
+   "evictions": 10700,
+   "hit_pct": 43.961588541666664,
+   "warm_hit_pct": 43.961588541666664,
+   "bytes_read": 39349702656,
+   "bytes_if_max_record": 42138353664,
+   "routing": "uniform",
+   "cache_frac": 0.5,
+   "blocks": 3072,
+   "cache_GiB": 8.75390625,
+   "read_GiB": 36.64726638793945,
+   "read_GiB_if_max_record": 39.24440002441406
+  },
+  {
+   "hits": 0,
+   "misses": 24576,
+   "evictions": 24454,
+   "hit_pct": 0.0,
+   "warm_hit_pct": 0.0,
+   "bytes_read": 70212648960,
+   "bytes_if_max_record": 75195482112,
+   "routing": "skewed",
+   "cache_frac": 0.02,
+   "blocks": 122,
+   "cache_GiB": 0.34764862060546875,
+   "read_GiB": 65.390625,
+   "read_GiB_if_max_record": 70.03125
+  },
+  {
+   "hits": 0,
+   "misses": 24576,
+   "evictions": 24269,
+   "hit_pct": 0.0,
+   "warm_hit_pct": 0.0,
+   "bytes_read": 70212648960,
+   "bytes_if_max_record": 75195482112,
+   "routing": "skewed",
+   "cache_frac": 0.05,
+   "blocks": 307,
+   "cache_GiB": 0.8748207092285156,
+   "read_GiB": 65.390625,
+   "read_GiB_if_max_record": 70.03125
+  },
+  {
+   "hits": 5018,
+   "misses": 19558,
+   "evictions": 18944,
+   "hit_pct": 20.418294270833332,
+   "warm_hit_pct": 20.418294270833332,
+   "bytes_read": 55883317248,
+   "bytes_if_max_record": 59841847296,
+   "routing": "skewed",
+   "cache_frac": 0.1,
+   "blocks": 614,
+   "cache_GiB": 1.7496414184570312,
+   "read_GiB": 52.04539489746094,
+   "read_GiB_if_max_record": 55.73206329345703
+  },
+  {
+   "hits": 12255,
+   "misses": 12321,
+   "evictions": 10785,
+   "hit_pct": 49.86572265625,
+   "warm_hit_pct": 49.86572265625,
+   "bytes_read": 35219460096,
+   "bytes_if_max_record": 37698711552,
+   "routing": "skewed",
+   "cache_frac": 0.25,
+   "blocks": 1536,
+   "cache_GiB": 4.376953125,
+   "read_GiB": 32.80067825317383,
+   "read_GiB_if_max_record": 35.10966110229492
+  },
+  {
+   "hits": 17521,
+   "misses": 7055,
+   "evictions": 3983,
+   "hit_pct": 71.29313151041667,
+   "warm_hit_pct": 71.29313151041667,
+   "bytes_read": 20152406016,
+   "bytes_if_max_record": 21586268160,
+   "routing": "skewed",
+   "cache_frac": 0.5,
+   "blocks": 3072,
+   "cache_GiB": 8.75390625,
+   "read_GiB": 18.768390655517578,
+   "read_GiB_if_max_record": 20.103778839111328
+  }
+ ],
+ "replication_k61_be0288a": [
+  {
+   "hits": 4,
+   "misses": 24572,
+   "evictions": 24450,
+   "hit_pct": 0.016276041666666668,
+   "bytes_read": 70202032128,
+   "bytes_if_max_record": 75183243264,
+   "duplicate_ids": 4,
+   "routing": "uniform",
+   "cache_frac": 0.02,
+   "blocks": 122,
+   "cache_GiB": 0.34764862060546875,
+   "read_GiB": 65.3807373046875,
+   "read_GiB_if_max_record": 70.01985168457031
+  },
+  {
+   "hits": 4,
+   "misses": 24572,
+   "evictions": 24265,
+   "hit_pct": 0.016276041666666668,
+   "bytes_read": 70202032128,
+   "bytes_if_max_record": 75183243264,
+   "duplicate_ids": 4,
+   "routing": "uniform",
+   "cache_frac": 0.05,
+   "blocks": 307,
+   "cache_GiB": 0.8748207092285156,
+   "read_GiB": 65.3807373046875,
+   "read_GiB_if_max_record": 70.01985168457031
+  },
+  {
+   "hits": 1549,
+   "misses": 23027,
+   "evictions": 22413,
+   "hit_pct": 6.302897135416667,
+   "bytes_read": 65786204160,
+   "bytes_if_max_record": 70455988224,
+   "duplicate_ids": 4,
+   "routing": "uniform",
+   "cache_frac": 0.1,
+   "blocks": 614,
+   "cache_GiB": 1.7496414184570312,
+   "read_GiB": 61.2681770324707,
+   "read_GiB_if_max_record": 65.61725234985352
+  },
+  {
+   "hits": 5397,
+   "misses": 19179,
+   "evictions": 17643,
+   "hit_pct": 21.96044921875,
+   "bytes_read": 54801948672,
+   "bytes_if_max_record": 58682216448,
+   "duplicate_ids": 4,
+   "routing": "uniform",
+   "cache_frac": 0.25,
+   "blocks": 1536,
+   "cache_GiB": 4.376953125,
+   "read_GiB": 51.038291931152344,
+   "read_GiB_if_max_record": 54.65207290649414
+  },
+  {
+   "hits": 10805,
+   "misses": 13771,
+   "evictions": 10699,
+   "hit_pct": 43.965657552083336,
+   "bytes_read": 39347048448,
+   "bytes_if_max_record": 42135293952,
+   "duplicate_ids": 4,
+   "routing": "uniform",
+   "cache_frac": 0.5,
+   "blocks": 3072,
+   "cache_GiB": 8.75390625,
+   "read_GiB": 36.64479446411133,
+   "read_GiB_if_max_record": 39.24155044555664
+  },
+  {
+   "hits": 9,
+   "misses": 24567,
+   "evictions": 24445,
+   "hit_pct": 0.03662109375,
+   "bytes_read": 70186733568,
+   "bytes_if_max_record": 75167944704,
+   "duplicate_ids": 9,
+   "routing": "skewed",
+   "cache_frac": 0.02,
+   "blocks": 122,
+   "cache_GiB": 0.34764862060546875,
+   "read_GiB": 65.36648941040039,
+   "read_GiB_if_max_record": 70.0056037902832
+  },
+  {
+   "hits": 9,
+   "misses": 24567,
+   "evictions": 24260,
+   "hit_pct": 0.03662109375,
+   "bytes_read": 70186733568,
+   "bytes_if_max_record": 75167944704,
+   "duplicate_ids": 9,
+   "routing": "skewed",
+   "cache_frac": 0.05,
+   "blocks": 307,
+   "cache_GiB": 0.8748207092285156,
+   "read_GiB": 65.36648941040039,
+   "read_GiB_if_max_record": 70.0056037902832
+  },
+  {
+   "hits": 5022,
+   "misses": 19554,
+   "evictions": 18940,
+   "hit_pct": 20.4345703125,
+   "bytes_read": 55871483904,
+   "bytes_if_max_record": 59829608448,
+   "duplicate_ids": 9,
+   "routing": "skewed",
+   "cache_frac": 0.1,
+   "blocks": 614,
+   "cache_GiB": 1.7496414184570312,
+   "read_GiB": 52.03437423706055,
+   "read_GiB_if_max_record": 55.720664978027344
+  },
+  {
+   "hits": 12261,
+   "misses": 12315,
+   "evictions": 10779,
+   "hit_pct": 49.89013671875,
+   "bytes_read": 35201912832,
+   "bytes_if_max_record": 37680353280,
+   "duplicate_ids": 9,
+   "routing": "skewed",
+   "cache_frac": 0.25,
+   "blocks": 1536,
+   "cache_GiB": 4.376953125,
+   "read_GiB": 32.78433609008789,
+   "read_GiB_if_max_record": 35.09256362915039
+  },
+  {
+   "hits": 17528,
+   "misses": 7048,
+   "evictions": 3976,
+   "hit_pct": 71.32161458333333,
+   "bytes_read": 20133015552,
+   "bytes_if_max_record": 21564850176,
+   "duplicate_ids": 9,
+   "routing": "skewed",
+   "cache_frac": 0.5,
+   "blocks": 3072,
+   "cache_GiB": 8.75390625,
+   "read_GiB": 18.75033187866211,
+   "read_GiB_if_max_record": 20.083831787109375
+  }
+ ],
+ "long_2048_tokens": [
+  {
+   "routing": "uniform",
+   "cache_frac": 0.02,
+   "blocks": 122,
+   "lru": {
+    "hits": 0,
+    "misses": 786432,
+    "evictions": 786310,
+    "hit_pct": 0.0,
+    "warm_hit_pct": 0.0,
+    "bytes_read": 2246804766720,
+    "bytes_if_max_record": 2406255427584
+   },
+   "belady": {
+    "hit_pct": 15.550104777018229,
+    "warm_hit_pct": 15.545908610026041
+   },
+   "static_top": {
+    "hit_pct": 2.4126688639322915,
+    "warm_hit_pct": 2.3984273274739585
+   },
+   "static_learned": {
+    "warm_hit_pct": 1.9991556803385417
+   }
+  },
+  {
+   "routing": "uniform",
+   "cache_frac": 0.05,
+   "blocks": 307,
+   "lru": {
+    "hits": 0,
+    "misses": 786432,
+    "evictions": 786125,
+    "hit_pct": 0.0,
+    "warm_hit_pct": 0.0,
+    "bytes_read": 2246804766720,
+    "bytes_if_max_record": 2406255427584
+   },
+   "belady": {
+    "hit_pct": 26.788711547851562,
+    "warm_hit_pct": 26.8157958984375
+   },
+   "static_top": {
+    "hit_pct": 5.903371175130208,
+    "warm_hit_pct": 5.877939860026042
+   },
+   "static_learned": {
+    "warm_hit_pct": 5.029805501302083
+   }
+  },
+  {
+   "routing": "uniform",
+   "cache_frac": 0.1,
+   "blocks": 614,
+   "lru": {
+    "hits": 48942,
+    "misses": 737490,
+    "evictions": 736876,
+    "hit_pct": 6.223297119140625,
+    "warm_hit_pct": 6.192270914713542,
+    "bytes_read": 2106961588224,
+    "bytes_if_max_record": 2256507002880
+   },
+   "belady": {
+    "hit_pct": 38.6358896891276,
+    "warm_hit_pct": 38.69603474934896
+   },
+   "static_top": {
+    "hit_pct": 11.530049641927084,
+    "warm_hit_pct": 11.5142822265625
+   },
+   "static_learned": {
+    "warm_hit_pct": 10.046132405598959
+   }
+  },
+  {
+   "routing": "uniform",
+   "cache_frac": 0.25,
+   "blocks": 1536,
+   "lru": {
+    "hits": 178531,
+    "misses": 607901,
+    "evictions": 606365,
+    "hit_pct": 22.701390584309895,
+    "warm_hit_pct": 22.72186279296875,
+    "bytes_read": 1736742150144,
+    "bytes_if_max_record": 1860001984512
+   },
+   "belady": {
+    "hit_pct": 59.94453430175781,
+    "warm_hit_pct": 60.15192667643229
+   },
+   "static_top": {
+    "hit_pct": 27.76947021484375,
+    "warm_hit_pct": 27.784983317057293
+   },
+   "static_learned": {
+    "warm_hit_pct": 25.062815348307293
+   }
+  },
+  {
+   "routing": "uniform",
+   "cache_frac": 0.5,
+   "blocks": 3072,
+   "lru": {
+    "hits": 373293,
+    "misses": 413139,
+    "evictions": 410067,
+    "hit_pct": 47.46665954589844,
+    "warm_hit_pct": 47.566731770833336,
+    "bytes_read": 1180382625792,
+    "bytes_if_max_record": 1264086355968
+   },
+   "belady": {
+    "hit_pct": 80.14513651529948,
+    "warm_hit_pct": 80.54300944010417
+   },
+   "static_top": {
+    "hit_pct": 53.43666076660156,
+    "warm_hit_pct": 53.458150227864586
+   },
+   "static_learned": {
+    "warm_hit_pct": 50.041961669921875
+   }
+  },
+  {
+   "routing": "skewed",
+   "cache_frac": 0.02,
+   "blocks": 122,
+   "lru": {
+    "hits": 0,
+    "misses": 786432,
+    "evictions": 786310,
+    "hit_pct": 0.0,
+    "warm_hit_pct": 0.0,
+    "bytes_read": 2246804766720,
+    "bytes_if_max_record": 2406255427584
+   },
+   "belady": {
+    "hit_pct": 25.060272216796875,
+    "warm_hit_pct": 25.06866455078125
+   },
+   "static_top": {
+    "hit_pct": 17.995707194010418,
+    "warm_hit_pct": 18.014780680338543
+   },
+   "static_learned": {
+    "warm_hit_pct": 17.957560221354168
+   }
+  },
+  {
+   "routing": "skewed",
+   "cache_frac": 0.05,
+   "blocks": 307,
+   "lru": {
+    "hits": 0,
+    "misses": 786432,
+    "evictions": 786125,
+    "hit_pct": 0.0,
+    "warm_hit_pct": 0.0,
+    "bytes_read": 2246804766720,
+    "bytes_if_max_record": 2406255427584
+   },
+   "belady": {
+    "hit_pct": 42.92310078938802,
+    "warm_hit_pct": 43.001556396484375
+   },
+   "static_top": {
+    "hit_pct": 32.939656575520836,
+    "warm_hit_pct": 32.985432942708336
+   },
+   "static_learned": {
+    "warm_hit_pct": 32.949320475260414
+   }
+  },
+  {
+   "routing": "skewed",
+   "cache_frac": 0.1,
+   "blocks": 614,
+   "lru": {
+    "hits": 164164,
+    "misses": 622268,
+    "evictions": 621654,
+    "hit_pct": 20.874532063802082,
+    "warm_hit_pct": 20.892333984375,
+    "bytes_read": 1777873453056,
+    "bytes_if_max_record": 1903960866816
+   },
+   "belady": {
+    "hit_pct": 57.898457845052086,
+    "warm_hit_pct": 58.006795247395836
+   },
+   "static_top": {
+    "hit_pct": 47.04144795735677,
+    "warm_hit_pct": 47.05327351888021
+   },
+   "static_learned": {
+    "warm_hit_pct": 46.942901611328125
+   }
+  },
+  {
+   "routing": "skewed",
+   "cache_frac": 0.25,
+   "blocks": 1536,
+   "lru": {
+    "hits": 409213,
+    "misses": 377219,
+    "evictions": 375683,
+    "hit_pct": 52.03412373860677,
+    "warm_hit_pct": 52.167765299479164,
+    "bytes_read": 1077804417024,
+    "bytes_if_max_record": 1154181500928
+   },
+   "belady": {
+    "hit_pct": 77.73996988932292,
+    "warm_hit_pct": 77.94164021809895
+   },
+   "static_top": {
+    "hit_pct": 68.15160115559895,
+    "warm_hit_pct": 68.16685994466145
+   },
+   "static_learned": {
+    "warm_hit_pct": 67.8118387858073
+   }
+  },
+  {
+   "routing": "skewed",
+   "cache_frac": 0.5,
+   "blocks": 3072,
+   "lru": {
+    "hits": 605838,
+    "misses": 180594,
+    "evictions": 177522,
+    "hit_pct": 77.03628540039062,
+    "warm_hit_pct": 77.21913655598958,
+    "bytes_read": 515928342528,
+    "bytes_if_max_record": 552565628928
+   },
+   "belady": {
+    "hit_pct": 90.88414510091145,
+    "warm_hit_pct": 91.29257202148438
+   },
+   "static_top": {
+    "hit_pct": 84.70827738444011,
+    "warm_hit_pct": 84.72340901692708
+   },
+   "static_learned": {
+    "warm_hit_pct": 84.20054117838542
+   }
+  }
+ ],
+ "seconds": 20.4
+}
