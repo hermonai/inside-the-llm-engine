@@ -1,0 +1,95 @@
+{
+ "prompt": "For these tested shapes, \\texttt{ikj} had the lower median. The widening ratio is consistent with its contiguous inner walks; it is not a portable law or a substitute for hardware-counter evidence. \\section{What the benchmark does---and does not---measure}\\label{what-the-benchmark-doesand-does-notmeasure} The \\Appref{matmul} harness uses \\texttt{\\seqsplit{std::time::Instant}} in a Cargo release build. Inputs are deterministically generated before timing. Every candidate is executed once for correctness before samples are accepted. Timed output is consumed through a checksum and",
+ "n_predict": 128,
+ "llamacpp": [
+  {
+   "wall_s": 5.566,
+   "prompt_tokens": 129,
+   "prompt_ms": 526.015,
+   "decode_tok_s": 25.415645076870412,
+   "tokens": 128,
+   "text": " not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text"
+  },
+  {
+   "wall_s": 5.536,
+   "prompt_tokens": 129,
+   "prompt_ms": 526.535,
+   "decode_tok_s": 25.615384599990755,
+   "tokens": 128,
+   "text": " not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text"
+  },
+  {
+   "wall_s": 6.867,
+   "prompt_tokens": 129,
+   "prompt_ms": 525.131,
+   "decode_tok_s": 20.220437522876345,
+   "tokens": 128,
+   "text": " not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text"
+  }
+ ],
+ "ollama": [
+  {
+   "wall_s": 5.472,
+   "prompt_tokens": 129,
+   "prompt_ms": 40.846,
+   "decode_tok_s": 23.672854467243337,
+   "tokens": 128,
+   "load_ms": 9.694042,
+   "text": " not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text"
+  },
+  {
+   "wall_s": 5.403,
+   "prompt_tokens": 129,
+   "prompt_ms": 43.293,
+   "decode_tok_s": 23.989786348462143,
+   "tokens": 128,
+   "load_ms": 8.222167,
+   "text": " not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text"
+  },
+  {
+   "wall_s": 5.428,
+   "prompt_tokens": 129,
+   "prompt_ms": 44.09,
+   "decode_tok_s": 23.887001048602023,
+   "tokens": 128,
+   "load_ms": 8.130666,
+   "text": " not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text"
+  }
+ ],
+ "hermon": [
+  {
+   "wall_s": 6.72,
+   "rc": 0,
+   "reported": "[5.78s wall | 129 tokens in / 128 out @ 22.1 tok/s",
+   "prompt_tokens": 129,
+   "tokens": 128,
+   "decode_tok_s": 22.1,
+   "text": "not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text",
+   "stderr_tail": "hermon-engine: linked | loading <ollama-blobs>/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff\u2026\nggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices\n...........................................................................\nllama_context: n_ctx_seq (512) < n_ctx_train (131072) -- the full capacity of the model will not be utilized\nloaded in 0.52s: n_vocab=128256, n_embd=3072, n_ctx=512\n[5.78s wall | 129 tokens in / 128 out @ 22.1 tok/s | 569 chars]\n"
+  },
+  {
+   "wall_s": 6.137,
+   "rc": 0,
+   "reported": "[5.48s wall | 129 tokens in / 128 out @ 23.4 tok/s",
+   "prompt_tokens": 129,
+   "tokens": 128,
+   "decode_tok_s": 23.4,
+   "text": "not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text",
+   "stderr_tail": "hermon-engine: linked | loading <ollama-blobs>/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff\u2026\nggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices\n...........................................................................\nllama_context: n_ctx_seq (512) < n_ctx_train (131072) -- the full capacity of the model will not be utilized\nloaded in 0.41s: n_vocab=128256, n_embd=3072, n_ctx=512\n[5.48s wall | 129 tokens in / 128 out @ 23.4 tok/s | 569 chars]\n"
+  },
+  {
+   "wall_s": 6.643,
+   "rc": 0,
+   "reported": "[5.83s wall | 129 tokens in / 128 out @ 21.9 tok/s",
+   "prompt_tokens": 129,
+   "tokens": 128,
+   "decode_tok_s": 21.9,
+   "text": "not directly read. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call. It does not measure the time it takes to execute a \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\texttt{\\seqsplit{matmul}} function call with a specific input size. The benchmark measures the time it takes to execute a single \\text",
+   "stderr_tail": "hermon-engine: linked | loading <ollama-blobs>/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff\u2026\nggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices\n...........................................................................\nllama_context: n_ctx_seq (512) < n_ctx_train (131072) -- the full capacity of the model will not be utilized\nloaded in 0.41s: n_vocab=128256, n_embd=3072, n_ctx=512\n[5.83s wall | 129 tokens in / 128 out @ 21.9 tok/s | 569 chars]\n"
+  }
+ ],
+ "_meta": {
+  "ollama_version": "ollama version is 0.34.4",
+  "utc": "2026-09-26T10:10:18Z"
+ }
+}

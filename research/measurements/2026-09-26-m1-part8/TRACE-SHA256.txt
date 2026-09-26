@@ -1,0 +1,1 @@
+route-granite.json  6d4e8a62e19e069366b83ac003fd5cc6647ca107747d6d10936fb0efe4dde0fc   2427582 bytes; regenerate with: probe8 route <granite gguf> route_prompts.txt 384 route-granite.json

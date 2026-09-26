@@ -1,0 +1,1 @@
+Explain, step by step, why decoding one token at a time leaves a GPU's arithmetic units mostly idle, and what an inference engine does about it.

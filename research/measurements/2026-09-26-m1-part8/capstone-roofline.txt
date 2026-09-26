@@ -1,0 +1,14 @@
+memory ceiling: 24.3 GB/s (one core, 256 MiB read, best of 5)
+compute ceiling: 11.8 GFLOP/s (matmul_rows 512x512 x 64 tokens, best of 20)
+model: 97.0 M parameters, 387 MB of f32 weights read per step, 16 KB of cache per token
+B= 1:    16.4 ms/step     61.1 tok/s  intensity   0.50 FLOP/byte    11.9 GFLOP/s  roofline   11.8  (100%)
+B= 2:    33.3 ms/step     60.1 tok/s  intensity   1.00 FLOP/byte    11.7 GFLOP/s  roofline   11.8  (99%)
+B= 4:    67.8 ms/step     59.0 tok/s  intensity   2.00 FLOP/byte    11.5 GFLOP/s  roofline   11.8  (97%)
+B= 8:   129.9 ms/step     61.6 tok/s  intensity   3.98 FLOP/byte    12.0 GFLOP/s  roofline   11.8  (101%)
+B=16:   258.2 ms/step     62.0 tok/s  intensity   7.89 FLOP/byte    12.0 GFLOP/s  roofline   11.8  (102%)
+B=32:   518.3 ms/step     61.7 tok/s  intensity  15.51 FLOP/byte    12.0 GFLOP/s  roofline   11.8  (101%)
+B=64:  1042.3 ms/step     61.4 tok/s  intensity  29.98 FLOP/byte    11.9 GFLOP/s  roofline   11.8  (101%)
+
+thread 'main' (42697897) panicked at crates/capstone/examples/capstone_roofline.rs:117:37:
+write results: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

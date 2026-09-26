@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<scratch>/loadgen.py", line 256, in <module>
+    r = {"stall": exp_stall, "sweep": exp_sweep, "sweep2": exp_sweep2}[name](out)
+  File "<scratch>/loadgen.py", line 221, in exp_sweep2
+    srv = sp.Server(out, "loadgen-sweep2", ["-np", "4", "-c", "8192", "--metrics"], port=PORT)
+  File "<scratch>/serve_probe.py", line 48, in __init__
+    raise RuntimeError("llama-server did not become healthy: " + " ".join(self.cmd))
+RuntimeError: llama-server did not become healthy: llama-server -m <ollama-blobs>/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff --port 18401 -ngl 99 -np 4 -c 8192 --metrics
+exit=1

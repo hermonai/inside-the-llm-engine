@@ -1,0 +1,3 @@
+   Compiling engine0 v0.1.0 (<home>/ClaudeProjects/inside-the-llm-engine/code/mini-engine/crates/engine0)
+   Compiling capstone v0.1.0 (<home>/ClaudeProjects/inside-the-llm-engine/code/mini-engine/crates/capstone)
+    Finished `release` profile [optimized] target(s) in 2.51s

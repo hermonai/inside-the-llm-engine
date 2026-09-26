@@ -1,0 +1,32 @@
+{
+  "threads": [1, 2, 4],
+  "bandwidth_gb_s": [61.372, 59.875, 58.099],
+  "kernel_simple_gflop_s": [20.498, 37.238, 63.974],
+  "kernel_tiled_gflop_s": [46.346, 70.222, 112.567],
+  "spawn_join_us": [13.959, 18.958, 33.584],
+  "tiled_by_tokens": [{"cols": 1024, "tokens": 4, "activation_kib": 16, "gflop_s": 45.507}, {"cols": 1024, "tokens": 8, "activation_kib": 32, "gflop_s": 45.965}, {"cols": 1024, "tokens": 16, "activation_kib": 64, "gflop_s": 46.378}, {"cols": 1024, "tokens": 32, "activation_kib": 128, "gflop_s": 35.324}, {"cols": 1024, "tokens": 64, "activation_kib": 256, "gflop_s": 31.479}, {"cols": 3072, "tokens": 4, "activation_kib": 48, "gflop_s": 46.289}, {"cols": 3072, "tokens": 8, "activation_kib": 96, "gflop_s": 46.467}, {"cols": 3072, "tokens": 16, "activation_kib": 192, "gflop_s": 31.617}, {"cols": 3072, "tokens": 32, "activation_kib": 384, "gflop_s": 31.678}, {"cols": 3072, "tokens": 64, "activation_kib": 768, "gflop_s": 31.851}],
+  "runs": [
+    {"threads": 1, "batch": 1, "step_ms": 9.430, "tokens_per_s": 106.05, "intensity": 0.5016, "gflop_s": 20.609, "roofline_gflop_s": 20.498, "tokens_generated": 17},
+    {"threads": 1, "batch": 2, "step_ms": 18.640, "tokens_per_s": 107.30, "intensity": 1.0021, "gflop_s": 20.851, "roofline_gflop_s": 20.498, "tokens_generated": 34},
+    {"threads": 1, "batch": 4, "step_ms": 20.411, "tokens_per_s": 195.98, "intensity": 1.9996, "gflop_s": 38.084, "roofline_gflop_s": 46.346, "tokens_generated": 68},
+    {"threads": 1, "batch": 8, "step_ms": 37.034, "tokens_per_s": 216.02, "intensity": 3.9815, "gflop_s": 41.979, "roofline_gflop_s": 46.346, "tokens_generated": 136},
+    {"threads": 1, "batch": 16, "step_ms": 87.254, "tokens_per_s": 183.37, "intensity": 7.8928, "gflop_s": 35.635, "roofline_gflop_s": 46.346, "tokens_generated": 272},
+    {"threads": 1, "batch": 32, "step_ms": 190.740, "tokens_per_s": 167.77, "intensity": 15.5120, "gflop_s": 32.602, "roofline_gflop_s": 46.346, "tokens_generated": 544},
+    {"threads": 1, "batch": 64, "step_ms": 414.447, "tokens_per_s": 154.42, "intensity": 29.9849, "gflop_s": 30.009, "roofline_gflop_s": 46.346, "tokens_generated": 1088},
+    {"threads": 2, "batch": 1, "step_ms": 9.741, "tokens_per_s": 102.66, "intensity": 0.5016, "gflop_s": 19.950, "roofline_gflop_s": 30.033, "tokens_generated": 17},
+    {"threads": 2, "batch": 2, "step_ms": 14.317, "tokens_per_s": 139.69, "intensity": 1.0021, "gflop_s": 27.146, "roofline_gflop_s": 37.238, "tokens_generated": 34},
+    {"threads": 2, "batch": 4, "step_ms": 15.427, "tokens_per_s": 259.28, "intensity": 1.9996, "gflop_s": 50.386, "roofline_gflop_s": 70.222, "tokens_generated": 68},
+    {"threads": 2, "batch": 8, "step_ms": 23.424, "tokens_per_s": 341.53, "intensity": 3.9815, "gflop_s": 66.370, "roofline_gflop_s": 70.222, "tokens_generated": 136},
+    {"threads": 2, "batch": 16, "step_ms": 65.433, "tokens_per_s": 244.52, "intensity": 7.8928, "gflop_s": 47.519, "roofline_gflop_s": 70.222, "tokens_generated": 272},
+    {"threads": 2, "batch": 32, "step_ms": 139.695, "tokens_per_s": 229.07, "intensity": 15.5120, "gflop_s": 44.515, "roofline_gflop_s": 70.222, "tokens_generated": 544},
+    {"threads": 2, "batch": 64, "step_ms": 340.498, "tokens_per_s": 187.96, "intensity": 29.9849, "gflop_s": 36.526, "roofline_gflop_s": 70.222, "tokens_generated": 1088},
+    {"threads": 4, "batch": 1, "step_ms": 10.834, "tokens_per_s": 92.30, "intensity": 0.5016, "gflop_s": 17.938, "roofline_gflop_s": 29.142, "tokens_generated": 17},
+    {"threads": 4, "batch": 2, "step_ms": 11.527, "tokens_per_s": 173.51, "intensity": 1.0021, "gflop_s": 33.718, "roofline_gflop_s": 58.218, "tokens_generated": 34},
+    {"threads": 4, "batch": 4, "step_ms": 12.587, "tokens_per_s": 317.78, "intensity": 1.9996, "gflop_s": 61.754, "roofline_gflop_s": 112.567, "tokens_generated": 68},
+    {"threads": 4, "batch": 8, "step_ms": 16.290, "tokens_per_s": 491.09, "intensity": 3.9815, "gflop_s": 95.435, "roofline_gflop_s": 112.567, "tokens_generated": 136},
+    {"threads": 4, "batch": 16, "step_ms": 32.994, "tokens_per_s": 484.93, "intensity": 7.8928, "gflop_s": 94.237, "roofline_gflop_s": 112.567, "tokens_generated": 272},
+    {"threads": 4, "batch": 32, "step_ms": 78.125, "tokens_per_s": 409.60, "intensity": 15.5120, "gflop_s": 79.598, "roofline_gflop_s": 112.567, "tokens_generated": 544},
+    {"threads": 4, "batch": 64, "step_ms": 189.709, "tokens_per_s": 337.36, "intensity": 29.9849, "gflop_s": 65.559, "roofline_gflop_s": 112.567, "tokens_generated": 1088}
+  ],
+  "sink": 3019899000
+}

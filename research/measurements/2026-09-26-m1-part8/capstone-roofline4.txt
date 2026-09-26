@@ -1,0 +1,124 @@
+== start 2026-09-26T13:36:12Z load: { 6.04 6.00 5.70 }
+6cde7d3
+ M crates/capstone/examples/capstone_roofline.rs
+ M crates/capstone/src/kernels.rs
+ M crates/capstone/src/model.rs
+ M crates/capstone/src/oracle.rs
+ M crates/capstone/tests/differential.rs
+   Compiling capstone v0.1.0 (<home>/ClaudeProjects/inside-the-llm-engine/code/mini-engine/crates/capstone)
+    Finished `release` profile [optimized] target(s) in 1.29s
+== run 1 load: { 6.04 6.00 5.70 }
+memory ceiling, 1 thread(s): 49.4 GB/s (256 MiB read, best of 5)
+memory ceiling, 2 thread(s): 52.5 GB/s (256 MiB read, best of 5)
+memory ceiling, 4 thread(s): 39.4 GB/s (256 MiB read, best of 5)
+compute ceiling, 1 thread(s): one token at a time 18.8 GFLOP/s, tiled 4 tokens 42.2 GFLOP/s (512x1024 x 16 tokens, best of 20)
+compute ceiling, 2 thread(s): one token at a time 34.3 GFLOP/s, tiled 4 tokens 66.4 GFLOP/s (512x1024 x 16 tokens, best of 20)
+compute ceiling, 4 thread(s): one token at a time 50.1 GFLOP/s, tiled 4 tokens 75.6 GFLOP/s (512x1024 x 16 tokens, best of 20)
+tiled kernel, 1 thread, 256 x 1024: n=4 (16 KiB) 43.0, n=8 (32 KiB) 42.3, n=16 (64 KiB) 41.8, n=32 (128 KiB) 33.0, n=64 (256 KiB) 29.4
+tiled kernel, 1 thread, 256 x 3072: n=4 (48 KiB) 40.3, n=8 (96 KiB) 42.4, n=16 (192 KiB) 30.5, n=32 (384 KiB) 31.7, n=64 (768 KiB) 31.8
+spawn and join 1 thread(s): 17.1 us (best of 200)
+spawn and join 2 thread(s): 20.8 us (best of 200)
+spawn and join 4 thread(s): 35.2 us (best of 200)
+model: 97.0 M parameters, 387 MB of f32 weights read per step, 16 KB of cache per token
+-- 1 thread(s): ridge points 0.38 (one token) and 0.85 (tiled) FLOP/byte
+B= 1:    10.8 ms/step     92.4 tok/s  intensity   0.50 FLOP/byte    18.0 GFLOP/s  roofline   18.8  (95%)
+B= 2:    19.0 ms/step    105.2 tok/s  intensity   1.00 FLOP/byte    20.4 GFLOP/s  roofline   18.8  (108%)
+B= 4:    21.0 ms/step    190.8 tok/s  intensity   2.00 FLOP/byte    37.1 GFLOP/s  roofline   42.2  (88%)
+B= 8:    37.1 ms/step    215.6 tok/s  intensity   3.98 FLOP/byte    41.9 GFLOP/s  roofline   42.2  (99%)
+B=16:    85.5 ms/step    187.2 tok/s  intensity   7.89 FLOP/byte    36.4 GFLOP/s  roofline   42.2  (86%)
+B=32:   190.0 ms/step    168.4 tok/s  intensity  15.51 FLOP/byte    32.7 GFLOP/s  roofline   42.2  (78%)
+B=64:   417.1 ms/step    153.5 tok/s  intensity  29.98 FLOP/byte    29.8 GFLOP/s  roofline   42.2  (71%)
+-- 2 thread(s): ridge points 0.65 (one token) and 1.27 (tiled) FLOP/byte
+B= 1:     9.6 ms/step    103.9 tok/s  intensity   0.50 FLOP/byte    20.2 GFLOP/s  roofline   26.3  (77%)
+B= 2:    13.0 ms/step    154.2 tok/s  intensity   1.00 FLOP/byte    30.0 GFLOP/s  roofline   34.3  (87%)
+B= 4:    25.0 ms/step    159.8 tok/s  intensity   2.00 FLOP/byte    31.1 GFLOP/s  roofline   66.4  (47%)
+B= 8:    24.6 ms/step    325.2 tok/s  intensity   3.98 FLOP/byte    63.2 GFLOP/s  roofline   66.4  (95%)
+B=16:    53.3 ms/step    300.3 tok/s  intensity   7.89 FLOP/byte    58.4 GFLOP/s  roofline   66.4  (88%)
+B=32:   137.0 ms/step    233.5 tok/s  intensity  15.51 FLOP/byte    45.4 GFLOP/s  roofline   66.4  (68%)
+B=64:   331.9 ms/step    192.8 tok/s  intensity  29.98 FLOP/byte    37.5 GFLOP/s  roofline   66.4  (56%)
+-- 4 thread(s): ridge points 1.27 (one token) and 1.92 (tiled) FLOP/byte
+B= 1:    10.1 ms/step     98.6 tok/s  intensity   0.50 FLOP/byte    19.2 GFLOP/s  roofline   19.8  (97%)
+B= 2:    10.9 ms/step    183.9 tok/s  intensity   1.00 FLOP/byte    35.7 GFLOP/s  roofline   39.5  (90%)
+B= 4:    12.4 ms/step    322.7 tok/s  intensity   2.00 FLOP/byte    62.7 GFLOP/s  roofline   75.6  (83%)
+B= 8:    16.0 ms/step    498.6 tok/s  intensity   3.98 FLOP/byte    96.9 GFLOP/s  roofline   75.6  (128%)
+B=16:    33.0 ms/step    485.3 tok/s  intensity   7.89 FLOP/byte    94.3 GFLOP/s  roofline   75.6  (125%)
+B=32:    75.3 ms/step    424.8 tok/s  intensity  15.51 FLOP/byte    82.6 GFLOP/s  roofline   75.6  (109%)
+B=64:   183.7 ms/step    348.4 tok/s  intensity  29.98 FLOP/byte    67.7 GFLOP/s  roofline   75.6  (90%)
+wrote <scratch>/out/capstone-roofline4-run1.json
+== run 2 load: { 4.28 5.50 5.53 }
+memory ceiling, 1 thread(s): 61.4 GB/s (256 MiB read, best of 5)
+memory ceiling, 2 thread(s): 59.9 GB/s (256 MiB read, best of 5)
+memory ceiling, 4 thread(s): 58.1 GB/s (256 MiB read, best of 5)
+compute ceiling, 1 thread(s): one token at a time 20.5 GFLOP/s, tiled 4 tokens 46.3 GFLOP/s (512x1024 x 16 tokens, best of 20)
+compute ceiling, 2 thread(s): one token at a time 37.2 GFLOP/s, tiled 4 tokens 70.2 GFLOP/s (512x1024 x 16 tokens, best of 20)
+compute ceiling, 4 thread(s): one token at a time 64.0 GFLOP/s, tiled 4 tokens 112.6 GFLOP/s (512x1024 x 16 tokens, best of 20)
+tiled kernel, 1 thread, 256 x 1024: n=4 (16 KiB) 45.5, n=8 (32 KiB) 46.0, n=16 (64 KiB) 46.4, n=32 (128 KiB) 35.3, n=64 (256 KiB) 31.5
+tiled kernel, 1 thread, 256 x 3072: n=4 (48 KiB) 46.3, n=8 (96 KiB) 46.5, n=16 (192 KiB) 31.6, n=32 (384 KiB) 31.7, n=64 (768 KiB) 31.9
+spawn and join 1 thread(s): 14.0 us (best of 200)
+spawn and join 2 thread(s): 19.0 us (best of 200)
+spawn and join 4 thread(s): 33.6 us (best of 200)
+model: 97.0 M parameters, 387 MB of f32 weights read per step, 16 KB of cache per token
+-- 1 thread(s): ridge points 0.33 (one token) and 0.76 (tiled) FLOP/byte
+B= 1:     9.4 ms/step    106.0 tok/s  intensity   0.50 FLOP/byte    20.6 GFLOP/s  roofline   20.5  (101%)
+B= 2:    18.6 ms/step    107.3 tok/s  intensity   1.00 FLOP/byte    20.9 GFLOP/s  roofline   20.5  (102%)
+B= 4:    20.4 ms/step    196.0 tok/s  intensity   2.00 FLOP/byte    38.1 GFLOP/s  roofline   46.3  (82%)
+B= 8:    37.0 ms/step    216.0 tok/s  intensity   3.98 FLOP/byte    42.0 GFLOP/s  roofline   46.3  (91%)
+B=16:    87.3 ms/step    183.4 tok/s  intensity   7.89 FLOP/byte    35.6 GFLOP/s  roofline   46.3  (77%)
+B=32:   190.7 ms/step    167.8 tok/s  intensity  15.51 FLOP/byte    32.6 GFLOP/s  roofline   46.3  (70%)
+B=64:   414.4 ms/step    154.4 tok/s  intensity  29.98 FLOP/byte    30.0 GFLOP/s  roofline   46.3  (65%)
+-- 2 thread(s): ridge points 0.62 (one token) and 1.17 (tiled) FLOP/byte
+B= 1:     9.7 ms/step    102.7 tok/s  intensity   0.50 FLOP/byte    19.9 GFLOP/s  roofline   30.0  (66%)
+B= 2:    14.3 ms/step    139.7 tok/s  intensity   1.00 FLOP/byte    27.1 GFLOP/s  roofline   37.2  (73%)
+B= 4:    15.4 ms/step    259.3 tok/s  intensity   2.00 FLOP/byte    50.4 GFLOP/s  roofline   70.2  (72%)
+B= 8:    23.4 ms/step    341.5 tok/s  intensity   3.98 FLOP/byte    66.4 GFLOP/s  roofline   70.2  (95%)
+B=16:    65.4 ms/step    244.5 tok/s  intensity   7.89 FLOP/byte    47.5 GFLOP/s  roofline   70.2  (68%)
+B=32:   139.7 ms/step    229.1 tok/s  intensity  15.51 FLOP/byte    44.5 GFLOP/s  roofline   70.2  (63%)
+B=64:   340.5 ms/step    188.0 tok/s  intensity  29.98 FLOP/byte    36.5 GFLOP/s  roofline   70.2  (52%)
+-- 4 thread(s): ridge points 1.10 (one token) and 1.94 (tiled) FLOP/byte
+B= 1:    10.8 ms/step     92.3 tok/s  intensity   0.50 FLOP/byte    17.9 GFLOP/s  roofline   29.1  (62%)
+B= 2:    11.5 ms/step    173.5 tok/s  intensity   1.00 FLOP/byte    33.7 GFLOP/s  roofline   58.2  (58%)
+B= 4:    12.6 ms/step    317.8 tok/s  intensity   2.00 FLOP/byte    61.8 GFLOP/s  roofline  112.6  (55%)
+B= 8:    16.3 ms/step    491.1 tok/s  intensity   3.98 FLOP/byte    95.4 GFLOP/s  roofline  112.6  (85%)
+B=16:    33.0 ms/step    484.9 tok/s  intensity   7.89 FLOP/byte    94.2 GFLOP/s  roofline  112.6  (84%)
+B=32:    78.1 ms/step    409.6 tok/s  intensity  15.51 FLOP/byte    79.6 GFLOP/s  roofline  112.6  (71%)
+B=64:   189.7 ms/step    337.4 tok/s  intensity  29.98 FLOP/byte    65.6 GFLOP/s  roofline  112.6  (58%)
+wrote <scratch>/out/capstone-roofline4-run2.json
+== run 3 load: { 4.80 5.39 5.48 }
+memory ceiling, 1 thread(s): 57.9 GB/s (256 MiB read, best of 5)
+memory ceiling, 2 thread(s): 53.0 GB/s (256 MiB read, best of 5)
+memory ceiling, 4 thread(s): 52.1 GB/s (256 MiB read, best of 5)
+compute ceiling, 1 thread(s): one token at a time 20.0 GFLOP/s, tiled 4 tokens 46.3 GFLOP/s (512x1024 x 16 tokens, best of 20)
+compute ceiling, 2 thread(s): one token at a time 37.3 GFLOP/s, tiled 4 tokens 77.0 GFLOP/s (512x1024 x 16 tokens, best of 20)
+compute ceiling, 4 thread(s): one token at a time 63.5 GFLOP/s, tiled 4 tokens 109.8 GFLOP/s (512x1024 x 16 tokens, best of 20)
+tiled kernel, 1 thread, 256 x 1024: n=4 (16 KiB) 45.5, n=8 (32 KiB) 46.0, n=16 (64 KiB) 46.4, n=32 (128 KiB) 35.4, n=64 (256 KiB) 31.5
+tiled kernel, 1 thread, 256 x 3072: n=4 (48 KiB) 43.9, n=8 (96 KiB) 46.2, n=16 (192 KiB) 31.6, n=32 (384 KiB) 31.6, n=64 (768 KiB) 31.8
+spawn and join 1 thread(s): 15.2 us (best of 200)
+spawn and join 2 thread(s): 18.0 us (best of 200)
+spawn and join 4 thread(s): 32.6 us (best of 200)
+model: 97.0 M parameters, 387 MB of f32 weights read per step, 16 KB of cache per token
+-- 1 thread(s): ridge points 0.35 (one token) and 0.80 (tiled) FLOP/byte
+B= 1:     9.4 ms/step    106.0 tok/s  intensity   0.50 FLOP/byte    20.6 GFLOP/s  roofline   20.0  (103%)
+B= 2:    18.9 ms/step    105.7 tok/s  intensity   1.00 FLOP/byte    20.5 GFLOP/s  roofline   20.0  (103%)
+B= 4:    20.7 ms/step    193.2 tok/s  intensity   2.00 FLOP/byte    37.5 GFLOP/s  roofline   46.3  (81%)
+B= 8:    37.9 ms/step    211.1 tok/s  intensity   3.98 FLOP/byte    41.0 GFLOP/s  roofline   46.3  (89%)
+B=16:    78.9 ms/step    202.7 tok/s  intensity   7.89 FLOP/byte    39.4 GFLOP/s  roofline   46.3  (85%)
+B=32:   191.3 ms/step    167.2 tok/s  intensity  15.51 FLOP/byte    32.5 GFLOP/s  roofline   46.3  (70%)
+B=64:   415.1 ms/step    154.2 tok/s  intensity  29.98 FLOP/byte    30.0 GFLOP/s  roofline   46.3  (65%)
+-- 2 thread(s): ridge points 0.70 (one token) and 1.45 (tiled) FLOP/byte
+B= 1:     9.7 ms/step    103.4 tok/s  intensity   0.50 FLOP/byte    20.1 GFLOP/s  roofline   26.6  (76%)
+B= 2:    13.1 ms/step    152.4 tok/s  intensity   1.00 FLOP/byte    29.6 GFLOP/s  roofline   37.3  (79%)
+B= 4:    14.7 ms/step    272.6 tok/s  intensity   2.00 FLOP/byte    53.0 GFLOP/s  roofline   77.0  (69%)
+B= 8:    24.1 ms/step    331.4 tok/s  intensity   3.98 FLOP/byte    64.4 GFLOP/s  roofline   77.0  (84%)
+B=16:    55.0 ms/step    290.8 tok/s  intensity   7.89 FLOP/byte    56.5 GFLOP/s  roofline   77.0  (73%)
+B=32:   142.8 ms/step    224.1 tok/s  intensity  15.51 FLOP/byte    43.5 GFLOP/s  roofline   77.0  (57%)
+B=64:   343.0 ms/step    186.6 tok/s  intensity  29.98 FLOP/byte    36.3 GFLOP/s  roofline   77.0  (47%)
+-- 4 thread(s): ridge points 1.22 (one token) and 2.11 (tiled) FLOP/byte
+B= 1:    10.1 ms/step     99.1 tok/s  intensity   0.50 FLOP/byte    19.3 GFLOP/s  roofline   26.2  (74%)
+B= 2:    11.2 ms/step    178.3 tok/s  intensity   1.00 FLOP/byte    34.6 GFLOP/s  roofline   52.2  (66%)
+B= 4:    12.5 ms/step    319.5 tok/s  intensity   2.00 FLOP/byte    62.1 GFLOP/s  roofline  104.3  (60%)
+B= 8:    16.3 ms/step    490.3 tok/s  intensity   3.98 FLOP/byte    95.3 GFLOP/s  roofline  109.8  (87%)
+B=16:    33.0 ms/step    485.4 tok/s  intensity   7.89 FLOP/byte    94.3 GFLOP/s  roofline  109.8  (86%)
+B=32:    79.2 ms/step    404.3 tok/s  intensity  15.51 FLOP/byte    78.6 GFLOP/s  roofline  109.8  (72%)
+B=64:   191.0 ms/step    335.1 tok/s  intensity  29.98 FLOP/byte    65.1 GFLOP/s  roofline  109.8  (59%)
+wrote <scratch>/out/capstone-roofline4-run3.json
+== end 2026-09-26T13:39:09Z load: { 5.04 5.33 5.45 }

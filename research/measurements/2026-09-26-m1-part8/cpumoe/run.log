@@ -1,0 +1,14 @@
+2026-09-26T14:27:56Z start load={ 3.05 4.18 5.29 } swap=18429.38M
+2026-09-26T14:27:56Z run gpu round 1 load={ 3.05 4.18 5.29 }
+2026-09-26T14:28:03Z end gpu round 1 rc=0 swapout_MiB=238
+2026-09-26T14:28:08Z run ncmoe16 round 1 load={ 3.04 4.14 5.26 }
+2026-09-26T14:28:16Z end ncmoe16 round 1 rc=0 swapout_MiB=0
+2026-09-26T14:28:21Z run cpumoe round 1 load={ 3.74 4.25 5.28 }
+2026-09-26T14:28:31Z end cpumoe round 1 rc=0 swapout_MiB=0
+2026-09-26T14:28:36Z run gpu round 2 load={ 4.50 4.40 5.32 }
+2026-09-26T14:28:42Z end gpu round 2 rc=0 swapout_MiB=0
+2026-09-26T14:28:47Z run ncmoe16 round 2 load={ 4.03 4.30 5.27 }
+2026-09-26T14:28:54Z end ncmoe16 round 2 rc=0 swapout_MiB=0
+2026-09-26T14:28:59Z run cpumoe round 2 load={ 3.71 4.22 5.23 }
+2026-09-26T14:29:08Z end cpumoe round 2 rc=0 swapout_MiB=0
+2026-09-26T14:29:13Z done
