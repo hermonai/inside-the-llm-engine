@@ -1,0 +1,65 @@
+\section{Worked problems: reading a roofline}
+
+\subsection{A 70-billion-parameter model on one H200}
+\textbf{Problem.} A 70-billion-parameter model with Llama~3's shape (width
+8,192, vocabulary 128,256, untied tables) is stored in FP8 on one H200. Predict
+its batch-one decode rate from equation~\eqref{eq:decode-ceiling}, and list the
+assumptions the prediction rests on.
+
+\textbf{Solution.} At one byte per weight the file is about 70.5~GB. A decode
+step reads every weight except the input table, which it gathers one row at a
+time: $128{,}256 \times 8{,}192 = 1.05$~billion weights, 1.05~GB, so a step
+reads about 69.5~GB. At the H200's 4.8~TB/s, $r_{\max} = 4.8/0.0695 = 69$
+tokens per second. The prediction assumes (1) that the kernels reach the
+datasheet bandwidth --- the measurements in this chapter suggest 70--90\% of it
+is realistic, which gives 48--62 tokens per second; (2) that the KV cache is
+small beside the weights, true for short conversations but not long ones (the
+third problem); (3) that the FP8 scales add negligible bytes; and (4) that
+nothing else --- kernel launches, sampling, synchronization --- adds time
+between steps. The compute side needs no assumption at all: 139~GFLOP per token
+at 69 tokens per second is 9.6~TFLOP/s, 0.5\% of the H200's dense FP8 peak.
+
+\subsection{Where dequantization happens}
+\textbf{Problem.} Weights are stored in four bits --- 4.5 bits with their
+block scales, as in \texttt{Q4\_K} --- and multiplied in BF16 on an H100
+(989~TFLOP/s, 3.35~TB/s). Derive $B^{*}$ from equation~\eqref{eq:batch-ridge}.
+Then derive it again for an implementation that first expands the weights to
+BF16 in a separate kernel, writes them to memory, and runs an ordinary BF16
+matrix product on the result.
+
+\textbf{Solution.} The ridge is $I^{*} = 989/3.35 = 295$~FLOP/byte. If the
+matrix kernel reads the 4.5-bit weights and expands them in registers, a step
+moves $b_w = 0.5625$ bytes per weight and does $2B$ FLOPs with it, so
+$B^{*} = 0.5625 \times 295 / 2 = 83$. If dequantization is a separate kernel,
+each weight costs 0.5625 bytes read, 2 bytes written in BF16 and 2 bytes read
+back by the product: $b_w = 4.5625$, and $B^{*} = 4.5625 \times 295/2 = 673$.
+Between 83 and 673 sequences the fused implementation is compute-bound and the
+separate one is still waiting for memory; at batch one the separate one moves
+eight times the bytes of the fused one and is eight times slower. The number of
+bits in the file is not the number of bytes a step moves: that depends on where
+the expansion happens, which is why every serious quantized kernel dequantizes
+inside the matrix product (\Chref{weight-quantization}).
+
+\subsection{Bytes that do not batch}
+\textbf{Problem.} Qwen3-8B in BF16 decodes on an H100 at batch 1, 25 and 64,
+with every sequence holding 512 or 4,096 tokens of 16-bit KV cache (144~KiB per
+token). For each case compute the bytes and FLOPs of one step, the time
+equation~\eqref{eq:step-bound} allows, the aggregate tokens per second, and which
+roof binds. At what batch do the cache reads equal the weight reads?
+
+\textbf{Solution.} A step reads 15.14~GB of weights once, whatever the batch,
+plus $B \times S \times 147{,}456$ bytes of cache; it does $B \times
+(15.14~\text{GFLOP} + 4 \times 36 \times 32 \times 128 \times S)$. At 512 tokens:
+$B = 1$ moves 15.2~GB in at least 4.5~ms (220 tokens/s); $B = 64$ moves 20.0~GB
+and does 0.99~TFLOP, 6.0~ms for memory against 1.0~ms for arithmetic, 10,700
+tokens/s at an intensity of 49~FLOP/byte. At 4,096 tokens: $B = 1$ takes
+4.7~ms (213 tokens/s); $B = 25$ moves 30.2~GB, 9.0~ms (2,770 tokens/s); $B = 64$
+moves 53.8~GB --- more than three times the weights --- and needs 16.1~ms for
+memory against 1.1~ms for arithmetic: 3,990 tokens/s at 21~FLOP/byte (all
+derived). Memory binds in every case. The cache equals the weights at
+$B = 15.14~\text{GB} / (S \times 147{,}456~\text{B})$: 25 sequences at 4,096
+tokens, 200 at 512. Batching shares the weights, not the cache, so at long
+context a large batch stays far down the bandwidth slope, and its throughput
+grows with the batch only until the cache dominates the step. That is the
+constraint \Chref{kv-cache} measures and Part~\ref{part:one-request}'s
+cache-shrinking techniques relax.

@@ -1,6 +1,8 @@
-% status: ZERO
+% status: FULL
 % Chapter 3 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md
+% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md (GPU decode, prefill,
+% batching, MPS bandwidth); research/measurements/2026-09-26-m1-pass3.md (the lab's CPU
+% roofline).
 \chapter{The Roofline: Why Decode Leaves Your GPU Idle}\label{ch:roofline}
 
 \begin{ChapterIntent}
@@ -8,12 +10,14 @@ A laptop generating text with a 3-billion-parameter model pulls nearly as many
 bytes per second from memory as its GPU can stream, while its arithmetic units
 do a twentieth of what they could. This chapter explains why with the roofline
 model: arithmetic intensity, the two ceilings of memory bandwidth and peak
-compute, and the ridge point where they meet. Decode, at a few FLOPs per byte,
-sits far down the bandwidth slope; prefill, at hundreds or thousands, sits
-under the compute roof. Batch size is the lever that moves decode along the
-slope, and the chapter measures it --- including where the lever sticks. It
-ends with what the roofline leaves out, because the best kernels in later
-chapters live in that gap.
+compute, and the ridge point where they meet. It measures both ceilings on the
+reader's own machine, works the intensity of every decode operator by hand,
+and places decode, batched decode and prefill on the chart. Decode, at a few
+FLOPs per byte, sits far down the bandwidth slope; prefill, at hundreds or
+thousands, sits under the compute roof. Batch size is the lever that moves
+decode along the slope, and the chapter measures it --- including where the
+lever sticks. It ends with what the roofline leaves out, because the best
+kernels in later chapters live in that gap.
 \end{ChapterIntent}
 
 \OpeningSection{Nearly all of the memory bus, a twentieth of the arithmetic}
@@ -33,28 +37,27 @@ of them once: this model ties its input and output embeddings, so even the
 every step. Twenty-one tokens per second times 2.01~GB per token is
 \textbf{42~GB/s} of weights streamed out of memory.
 
-How much could the memory deliver? The M1's memory is nominally about
-68~GB/s (derived from LPDDR4X-4266 on a 128-bit bus \todo{verify the memory
-type from a primary source}; consistent with Apple's statement that the M1
-Max's 400~GB/s is ``nearly 6x'' the M1's). No
-program gets the nominal figure; the useful ceiling is what a plain streaming
-kernel achieves on the same GPU at the same moment. We measured it: 46--50~GB/s
-for large reads and copies. Decode is running at \textbf{85--92\% of the
-bandwidth a streaming kernel can reach}.
+How much could the memory deliver? Apple does not publish the M1's memory
+bandwidth directly, but it pins it down twice: the M2's 100~GB/s is ``50
+percent more than M1'' \cite{apple2022m2}, and the M1~Max's 400~GB/s is nearly
+six times the M1's \cite{apple2021m1pro}. That puts the M1 at about 67--68~GB/s;
+this book uses 68. No program gets the nominal figure; the useful ceiling is
+what a plain streaming kernel achieves on the same GPU at the same moment. We
+measured it: 46--50~GB/s for large reads and copies. Decode is running at
+\textbf{85--92\% of the bandwidth a streaming kernel can reach}.
 
 Now count arithmetic. A forward pass costs about two floating-point operations
 per parameter per token --- one multiply and one add for every weight
 (\cite{kaplan2020scaling}, eq.~2.2) --- so each token costs about 6.4~GFLOP,
-and 21 tokens per second is 135~GFLOP/s. Apple quotes the M1 GPU at 2.6
-TFLOP/s. Decode is using \textbf{about 5\% of the arithmetic}.
+and 21 tokens per second is 135~GFLOP/s. Apple quotes the M1 GPU at ``2.6
+teraflops of throughput'' \cite{apple2020m1}. Decode is using \textbf{about 5\%
+of the arithmetic}.
 
 The fast part of the chip is waiting for the slow part. That is not a flaw in
 llama.cpp or a quirk of Apple silicon: the napkin math below shows the same
-imbalance, larger, on data-center GPUs, and a discrete consumer card shows it
-too \todo{measure: re-run on an RTX 5060 Ti (448 GB/s); a prior session
-reported 85.3 tok/s for a 4.7 GB Q4 7B model, about 89\% of nominal
-bandwidth}. It is a property of the workload. This chapter explains which property, and what
-changes it.
+imbalance, larger, on every data-center GPU in this book, and the lab at the
+end of the chapter shows it on the laptop's CPU cores as well. It is a property
+of the workload. This chapter explains which property, and what changes it.
 
 \NapkinSection{Napkin math: bytes per token, tokens per second}
 
@@ -65,7 +68,7 @@ r_{\max} = \frac{\beta}{W}\quad[\text{tokens/s}],
 \label{eq:decode-ceiling}
 \end{equation}
 for a single sequence, whatever its arithmetic units do. For the M1 run:
-$68.3/2.01 = 34$ tokens/s against the nominal bandwidth, $49/2.01 = 24$ against
+$68/2.01 = 34$ tokens/s against the nominal bandwidth, $49/2.01 = 24$ against
 the achieved one, and 21 measured. The model predicts the measurement to
 within 15\% from two numbers, before any code is read.
 
@@ -85,6 +88,61 @@ bandwidth question.
 The arithmetic tells the other half. One token of an 8-billion-parameter model
 is about 16~GFLOP. At 220 tokens/s that is 3.6~TFLOP/s --- \textbf{0.4\%} of
 the H100's dense BF16 peak.
+
+The two halves combine into the one inequality this chapter keeps using. A
+step that must perform $F$ FLOPs and move $Q$ bytes on a machine with peak
+compute $\pi$ and bandwidth $\beta$ takes at least
+\begin{equation}
+t_{\text{step}} \ge \max\!\left(\frac{Q}{\beta},\; \frac{F}{\pi}\right),
+\label{eq:step-bound}
+\end{equation}
+because neither the bytes nor the arithmetic can go faster than its own
+ceiling, and in the best case each hides entirely behind the other. For the
+M1 at batch one: $Q/\beta = 2.01~\text{GB} / 49~\text{GB/s} = 41$~ms and
+$F/\pi = 6.4~\text{GFLOP} / 2.6~\text{TFLOP/s} = 2.5$~ms. The step is a
+memory step by a factor of sixteen, and the measured 49.8~ms is 21\% above the
+bound (derived from the same record).
+
+\section{Measuring the two roofs}
+
+Every number above uses two ceilings, and it matters which. A datasheet gives
+the ceiling the hardware cannot exceed; a measurement gives the one a program
+can reach. The roofline is only useful with the second kind, so the first job
+is to measure it, and the chapter's lab does it on the reader's own CPU with
+nothing but the Rust standard library.
+
+The bandwidth roof is measured with the simplest kernel that moves bytes and
+does almost nothing else: sum a large array. ``Large'' means far larger than
+every cache --- the lab uses 256~MiB against the M1's 12~MiB shared
+second-level cache --- so that every byte comes from memory. ``Almost
+nothing'' has to be engineered: a loop that adds each element to one running
+sum waits for each addition to finish before starting the next, and on the M1
+that holds one core to 4.2--4.3~GB/s (measured). Sixteen independent running
+sums let the additions overlap, and then the loads are the limit. The lab
+contains both loops, and runs the second on each thread's share of the array:
+
+\CodeLines{../code/labs/ch03-roofline/src/main.rs}{39}{61}
+
+\noindent Run on the M1's performance cores, one thread reads 43--45~GB/s and
+two to four threads 52--61~GB/s (measured over five runs, record
+\texttt{2026-09-26-m1-pass3}): one core cannot keep enough requests in flight
+to fill the memory system, and two nearly can. The best of each run, 60--61~GB/s,
+is about 89\% of the nominal 68 --- a larger fraction than the GPU's streaming
+kernel reached through Apple's Metal Performance Shaders (46--50~GB/s), a
+reminder that ``the'' bandwidth of a machine depends on who is asking.
+
+The compute roof needs the opposite: arithmetic with no memory traffic at all.
+The lab keeps 64 independent running sums in registers and adds a product to
+each, over and over; on the M1's four performance cores that reaches
+374--377~GFLOP/s (measured), about 94 per core. That is what the arithmetic
+units can do. It is not what this book's code does. The capstone engine's
+matrix kernel, run on weights small enough to stay in cache, reaches about
+160~GFLOP/s when it multiplies four vectors at a time and 112--117 at sixteen
+or more (measured, with four threads) --- 30--43\% of the machine's
+arithmetic, because it also loads, adds up partial sums and moves data between
+cache levels. For predicting what \emph{this} kernel will do, the kernel's own
+rate is the roof that matters. Chapter~\ref{ch:matmul-hardware} is about
+closing the gap between the two.
 
 \section{Arithmetic intensity}
 
@@ -111,8 +169,39 @@ I_{\text{decode}} \approx \frac{2}{b_w}.
 BF16 weights give 1~FLOP/byte; the M1 run's weights average 0.63 bytes per
 parameter, giving 3.2~FLOP/byte. Either way the number is small, and it is a
 property of the product itself: a vector touches each weight once.
-\Appref{matmul} derives the same result for the scalar kernels of the
+Appendix~\ref{app:matmul} derives the same result for the scalar kernels of the
 book's teaching engine.
+
+It pays to work the intensity of every operator in one step by hand, because
+they do not all respond to batching. For Llama~3.2~3B in its \texttt{Q4\_K\_M}
+file, counting compulsory bytes as the weights plus 32-bit activations in and
+out, at batch one and at sixteen sequences:
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Operator (one layer unless noted) & FLOPs per token & Bytes at $B = 1$ & $I$ at $B = 1$ & $I$ at $B = 16$ \\
+\midrule
+$\mathbf{W}_Q$, $3{,}072 \times 3{,}072$, \texttt{Q4\_K} & 18.9 M & 5.33 M & 3.5 & 53 \\
+$\mathbf{W}_{\mathrm{down}}$, $8{,}192 \times 3{,}072$, \texttt{Q6\_K} & 50.3 M & 20.7 M & 2.4 & 38 \\
+Output projection (whole model), \texttt{Q6\_K} & 788 M & 324 M & 2.4 & 38 \\
+Attention over 4,096 cached tokens & 50.3 M & 16.8 M & 3.0 & 3.0 \\
+RMSNorm, 3,072 elements & 12 K & 37 K & 0.33 & 0.48 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent (Derived: FLOPs are $2 \times$ weights for the products, $4 \times$
+the head dimension per query head per cached token for attention, and about
+$4d$ for the norm.) Three kinds of operator appear. Matrix products start near
+3~FLOP/byte and scale almost linearly with the batch, because the weights are
+shared and the activations are small. Attention over the cache stays at
+3~FLOP/byte whatever the batch, because each sequence reads its own keys and
+values. Normalizations and other elementwise operators stay below 1, because
+they do a few operations per element they touch. Only the first kind can be
+rescued by batching; the other two must be rescued by other means --- fusion
+for the elementwise operators (\Chref{kernel-languages}), smaller caches and
+better kernels for attention (\Chref{decode-attention}, \Chref{shrinking-kv}).
 
 \section{Two roofs and a ridge}
 
@@ -141,22 +230,38 @@ tokens sits under the compute roof. Intensities use compulsory bytes (weights
 read once per step); the roofs are Apple's compute figure and our measured and
 nominal bandwidth. Measured on a busy desktop; one machine.}{fig:ch03-roofline-m1}
 
+Reading Figure~\ref{fig:ch03-roofline-m1} by hand is worth doing once. At
+3.2~FLOP/byte, the achieved bandwidth of 49~GB/s allows
+$49 \times 3.2 = 157$~GFLOP/s; the measured decode does 135, 86\% of the
+slope. The ridge sits at $2{,}600/68 = 38$~FLOP/byte against the nominal
+bandwidth, or 53 against the achieved one. A batch of sixteen raises the
+weights' intensity sixteenfold, to about 51~FLOP/byte --- just across the
+achieved ridge --- and sixteen sequences cost the GPU about three times one
+step (158 against 49.8~ms), not sixteen. And a
+512-token prompt, at about 1,600~FLOP/byte, is forty times past the ridge: the
+bandwidth roof is irrelevant to it.
+
 The ridge is the single most useful number about a machine for inference
 engineering. The table below computes it for the machines this book uses
 (derived from the specifications in \texttt{research/FRONTIER.md}; dense
-peaks).
+peaks; the CPU row is this chapter's lab).
 
 \begin{center}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
 Machine & $\beta$ & $\pi$ & Ridge $I^{*}$ \\
 \midrule
+Apple M1 CPU, 4 cores (measured) & 60 GB/s & 377 GFLOP/s & 6.2 FLOP/B \\
 Apple M1 GPU & 68 GB/s & 2.6 TFLOP/s & 38 FLOP/B \\
 NVIDIA H100 SXM, BF16 & 3.35 TB/s & 989 TFLOP/s & 295 FLOP/B \\
 NVIDIA H100 SXM, FP8 & 3.35 TB/s & 1,979 TFLOP/s & 591 FLOP/B \\
 NVIDIA H200, BF16 & 4.8 TB/s & 989 TFLOP/s & 206 FLOP/B \\
 NVIDIA B200, BF16 & 8 TB/s & 2.25 PFLOP/s & 281 FLOP/B \\
 NVIDIA B200, FP4 & 8 TB/s & 9 PFLOP/s & 1,125 FLOP/B \\
+AMD MI355X, BF16 & 8 TB/s & 2.52 PFLOP/s & 315 FLOP/B \\
+AMD MI355X, MXFP4 & 8 TB/s & 10.07 PFLOP/s & 1,259 FLOP/B \\
+NVIDIA Rubin, BF16 & 19.2 TB/s & 4 PFLOP/s & 208 FLOP/B \\
+NVIDIA Rubin, NVFP4 (training, dense) & 19.2 TB/s & 35 PFLOP/s & 1,823 FLOP/B \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -201,20 +306,42 @@ kernel would have delivered 32$\times$ the tokens for about twice the step
 time (derived: at $B=32$ a step needs 206~GFLOP, 79~ms at the M1's peak,
 against 41~ms to stream the weights once at 49~GB/s). The measurement follows
 the model in aggregate and departs from it in detail, and the detail is
-instructive.
+instructive. Equation~\eqref{eq:step-bound} gives the bound for each batch;
+dividing the measured step by it shows where the time went:
+
+\begin{center}\small
+\begin{tabular}{@{}rrrrl@{}}
+\toprule
+$B$ & Bound (ms) & Measured (ms) & Measured / bound & Kernel for K-quant weights \\
+\midrule
+1 & 41 & 49.8 & 1.2 & matrix--vector, one column per pass \\
+2 & 41 & 86.5 & 2.1 & matrix--vector: two passes \\
+3 & 41 & 137.0 & 3.3 & matrix--vector: three passes \\
+4 & 41 & 86.2 & 2.1 & small-batch, one pass of four \\
+5 & 41 & 99.8 & 2.4 & small-batch, one pass of five \\
+8 & 41 & 164.5 & 4.0 & small-batch, two passes of four \\
+16 & 41 & 158.2 & 3.9 & matrix--matrix, one tile of 32 columns \\
+32 & 79 & 182.0 & 2.3 & matrix--matrix, one tile of 32 columns \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \EngineFigure{ch03-batch-staircase}{Measured step time of batched decode on
 the M1 as the number of sequences grows. The roofline predicts a flat line
 until the ridge; the measurement is a staircase set by which kernel ggml
 selects for each batch size. Shaded regions are the kernel regimes read from
-ggml's source at llama.cpp commit \texttt{389ff61d}; the measured binary is
-build \texttt{d00685831}.}{fig:ch03-batch-staircase}
+ggml's Metal source; the selection is the same at commit \texttt{389ff61d} and
+in the measured build \texttt{d006858}.}{fig:ch03-batch-staircase}
 
 Two and three sequences cost almost as much as two and three separate steps.
 Four and five are cheaper than three. From twelve to thirty-two the step time
 is nearly flat, but at three times the batch-one time. None of this is in
-equation~\eqref{eq:roofline}. It is in the kernels, and it is where this
-chapter's lab and its case study go.
+equation~\eqref{eq:roofline}. It is in the kernels: each regime reads the
+weights a different number of times per step and reaches a different fraction
+of the arithmetic, and a roofline that knows only the machine cannot see
+either. The ``What actually happened'' section reads the selection in ggml's
+source; the lab shows that once each kernel's own rate is known, the same
+inequality predicts every step.
 
 \section{Prefill sits under the flat roof}
 
@@ -229,34 +356,48 @@ GPU's peak --- twelve times the per-token speed of decode on the same weights
 
 \section{Rooflines of real machines}
 
-Three trends show up as soon as the table above is drawn to scale.
+Three trends show up as soon as the table above is drawn to scale, as in
+Figure~\ref{fig:ch03-rooflines}.
 
-First, ridges are high and rising. Data-center GPUs need hundreds of FLOPs per
-byte before their tensor cores are the constraint, and each new precision
-doubles the compute roof without moving the bandwidth roof: the B200's FP4
-ridge is about 1,100~FLOP/byte. Low precision raises decode's intensity (fewer
-bytes per weight) but raises the ridge in step, so the gap stays.
+\EngineFigure{ch03-rooflines}{Rooflines of four machines with dense 16-bit
+peaks, and Qwen3-8B's batch-one decode placed on each machine's bandwidth
+slope, in BF16 and in the 4-bit file of \Chref{forward-pass} (derived from the
+vendors' specifications). At 3.1~FLOP/byte the M1 can use at most 0.2 of its
+2.6~TFLOP/s, the H100 10 of 989, the B200 25 of 2,250 and Rubin 60 of 4,000;
+every decode point sits two orders of magnitude left of its machine's
+ridge.}{fig:ch03-rooflines}
 
-Second, bandwidth grows more slowly than compute. From B200 to B300 NVIDIA's
+First, ridges are high. Data-center GPUs need hundreds of FLOPs per byte before
+their tensor cores are the constraint, and each new precision doubles the
+compute roof without moving the bandwidth roof: the B200's FP4 ridge is about
+1,100~FLOP/byte. Low precision raises decode's intensity (fewer bytes per
+weight) but raises the ridge in step, so the gap stays.
+
+Second, bandwidth and compute do not grow together. From B200 to B300 NVIDIA's
 listed dense FP4 throughput rises by half while per-GPU HBM bandwidth stays at
 8~TB/s (NVIDIA HGX and GB300 NVL72 specifications, logged in
-\texttt{research/FRONTIER.md}). The ridge moves right again.
+\texttt{research/FRONTIER.md}): the ridge moves right. Rubin then more than
+doubles the bandwidth, to 19.2~TB/s per GPU \cite{nvidia2026verarubin}, while
+its BF16 peak rises less than twofold, so its BF16 ridge falls to about 208 ---
+but its dense FP4 figure nearly quadruples, and the FP4 ridge rises to about
+1,800. Which way the gap moves depends on the precision an engine uses.
 
-Third, the practical roofs sit below the datasheet. On the M1 the streaming
-kernel reached 70\% of nominal bandwidth; the engine reached 85--92\% of that.
-\todo{measure: the same three numbers --- nominal, streaming-kernel and decode
-bandwidth --- on an RTX 5060 Ti and an H100}.
-
-\FigureIntent{Rooflines of the M1, RTX 5060 Ti, H100 and B200 on one set of
-log--log axes, with each machine's batch-one decode point for an 8B model in
-BF16 and in four bits: the gap between the decode points and the ridges is
-the chapter's argument in one picture.}
+Third, the practical roofs sit below the datasheet. On the M1 the GPU's
+streaming kernel reached about 70\% of nominal bandwidth, the CPU's about 89\%,
+and the engine 85--92\% of what the GPU's streaming kernel reached. On an
+H100, published measurements of batch-one decode on small models range from
+at most half of the datasheet bandwidth for general-purpose engines to 78\%
+for a hand-built ``megakernel'' that runs the whole forward pass as one kernel
+\cite{spector2025megakernel}, and 51--86\% for automatically generated
+megakernels across fourteen decode configurations of models from 0.6 to 13
+billion parameters \cite{li2026forgemegakernel}. A roofline drawn from the
+datasheet is an upper bound on an upper bound.
 
 \section{What the roofline leaves out}
 
 The roofline is a bound, not a prediction. The staircase in
-Figure~\ref{fig:ch03-batch-staircase} shows four things it does not model,
-each of which later chapters take up.
+Figure~\ref{fig:ch03-batch-staircase} and the lab below show five things it
+does not model, each of which later chapters take up.
 
 \emph{Tile quantization.} A matrix kernel works in fixed tiles; if its tile is
 32 batch columns wide, nine sequences pay for thirty-two. \Chref{matmul-hardware}.
@@ -274,6 +415,15 @@ every sequence reads its own cache every step, so at long context the
 attention part of decode stays on the bandwidth slope however large the batch.
 \Chref{kv-cache}.
 
+\emph{The rest of the memory hierarchy.} There is a bandwidth roof for every
+level of cache, not just for main memory. The lab's matrix kernel does about
+160~GFLOP/s when four activation vectors (64~KB) fit in a core's 128~KiB
+first-level data cache with room to spare, and 112--117 once sixteen or more
+(256~KB and up) must stream from the shared second-level cache for every
+weight row (measured; cache sizes read from the operating system). The kernel
+is compute-bound at both batches, but against two different roofs. Tiling for
+the cache hierarchy is \Chref{matmul-hardware}'s subject.
+
 \LedgerSection
 
 Batching is the first technique in the book, and the roofline lets us charge
@@ -289,41 +439,105 @@ Correctness & risks & Results can change with batch size unless kernels are batc
 
 \LabSection{draw your own roofline}
 
-\LabIntent{In \texttt{code/labs/ch03-roofline/}, a dependency-free Rust
-program that (1) measures streaming read and copy bandwidth with 1--$n$
-threads, (2) measures a blocked matrix product's FLOP/s for $B = 1, 2, 4,
-\dots, 512$ columns against a fixed weight matrix, and (3) writes both as CSV
-for a plotting script. The reader predicts $B^{*}$ from equation
-\eqref{eq:batch-ridge} before running it, then explains every point that falls
-below both roofs. An oracle compares every product with a naive
-implementation before anything is timed. Extension: run the same sweep with
-the scalar kernels of \Appref{matmul} and explain why they sit far below both
-roofs.}
+The lab in \texttt{code/labs/ch03-roofline/} measures the CPU's roofline in
+three parts and then tests it. Part one measures the bandwidth roof with the
+read and copy kernels above, for one to $n$ threads. Part two measures two
+compute roofs: the multiply--add loop (what the arithmetic units can do) and the
+capstone engine's matrix kernel on cache-resident weights at each batch size
+(what the book's code does). Part three is the experiment: decode steps that
+multiply 256~MiB of 32-bit weights by $B$ vectors, for $B$ from 1 to 256, each
+checked against two oracles --- a one-output-at-a-time kernel that must agree
+bit for bit and a 64-bit sum that must agree to $10^{-5}$ --- before it is
+timed. For every step the lab first prints its prediction,
+equation~\eqref{eq:step-bound} with the kernel's own in-cache rate at that batch
+as $\pi$:
+
+\CodeLines{../code/labs/ch03-roofline/src/main.rs}{316}{326}
+
+\noindent \emph{Predict} before running: with 32-bit weights the intensity is
+$2B/4 = B/2$ FLOP per byte, so the sweep should stop being free near
+$B^{*} = 2I^{*}$. Run it from \texttt{code/labs} with \texttt{cargo run
+--release -p ch03-roofline -- --threads 4}. On the M1, with four threads and
+the desktop in use (measured, record \texttt{2026-09-26-m1-pass3}, run~4):
+
+\begin{center}\small
+\begin{tabular}{@{}rrrrrl@{}}
+\toprule
+$B$ & FLOP/byte & Step (ms) & Predicted (ms) & GFLOP/s & Bound \\
+\midrule
+1 & 0.5 & 4.50 & 4.44 & 30 & memory \\
+2 & 1 & 4.48 & 4.44 & 60 & memory \\
+4 & 2 & 4.57 & 4.44 & 117 & memory \\
+8 & 4 & 8.62 & 8.59 & 125 & compute \\
+16 & 8 & 19.69 & 18.96 & 109 & compute \\
+64 & 32 & 77.37 & 75.88 & 111 & compute \\
+256 & 128 & 328.68 & 306.96 & 105 & compute \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\EngineFigure{ch03-lab-roofline}{The roofline the lab measured on the M1's CPU
+(four threads, run~4). Decode steps climb the read roof from one to four
+vectors and then run along the kernel's own compute roof, which is lower at
+large batches than at four because the activations no longer fit in the
+first-level cache. The multiply--add peak above both is what the arithmetic
+units could do with a better kernel.}{fig:ch03-lab-roofline}
+
+\emph{Explain} the table with Figure~\ref{fig:ch03-lab-roofline}. From one to
+four vectors the step takes the same 4.5~ms: every step reads 268~MB at
+60~GB/s and the extra arithmetic hides inside the wait. The two roofs predicted
+the knee at $B^{*} = 2 \times 159/60.4 = 5.3$, and it falls between four and
+eight. Every predicted step is within 4\% of the measured one up to $B = 128$
+and within 7\% at 256, because the prediction uses the kernel's own rate at that
+batch rather than the machine's peak. Getting there took two lessons that
+belong in every benchmark. The first two runs, without a warm-up, measured the
+first batch 20--25\% slow; repeating the small batches in one process showed
+that the first passes over freshly written weights are slower than later ones on
+this machine, so the lab now makes five untimed passes before it times anything.
+And one run of four had a single point 30\% slow for no reason the lab can see;
+the record keeps all of them, and it is why the lab takes the best of five
+steps and the book reports ranges (\Chref{benchmarking}).
+
+\emph{Break} it in two ways. Run with \texttt{--threads 1}: one core's kernel
+does 22~GFLOP/s at one vector, about what one core's 44~GB/s can feed, so
+arithmetic and memory tie at $B = 1$ and two vectors cost twice one --- but four
+cost less than two (11.75 against 12.61~ms), because the kernel switches to its
+four-vector path: a staircase of the same kind as the GPU's. Run with
+\texttt{--mib 8}: the weights now fit in the 12~MiB second-level cache, the
+lab's ``bandwidth roof'' becomes the cache's (67--81~GB/s instead of 52--61), and
+the steps shrink to a tenth of a millisecond at one vector. The prediction then
+misses by up to 70\% between two and sixty-four vectors and holds again only at
+128 and 256: short steps expose costs that neither roof contains. Exercise~4
+asks you to find them.
 
 \HappenedSection{a kernel below both roofs}
 
 The staircase is not noise; it is a design decision recorded in ggml's source.
-At llama.cpp commit \texttt{389ff61d} (2026-05-10), the Metal backend chooses
-among three matrix kernels for K-quant weights by the number of batch columns
-\todo{verify: confirm the same selection in the measured build
-\texttt{d00685831}}:
+In the Metal backend's operator code (\texttt{ggml/src/ggml-metal/ggml-metal-ops.cpp},
+read at commit \texttt{389ff61d} and again at the measured build's commit
+\texttt{d006858}, where the selection is unchanged), llama.cpp chooses among
+three matrix kernels for K-quant weights by the number of batch columns:
 \begin{itemize}
 \item one to three columns: a matrix--vector kernel that handles one column per
 pass over the weights --- so two sequences read the weights twice;
-\item four to eight: a small-batch kernel that handles three, four or five
-columns per pass, chosen by a table in the source;
-\item more than eight: a tiled matrix--matrix kernel whose tiles, on GPUs
-without Metal's newer tensor instructions, span 64 weight rows and 32 batch
-columns.
+\item four to eight: a small-batch kernel (\texttt{mul\_mv\_ext}) that handles
+three, four or five columns per pass, chosen by a \texttt{switch} on the
+column count --- four and five in one pass, six to eight in two;
+\item more than eight: a tiled matrix--matrix kernel dispatched in tiles of 64
+weight rows by 32 batch columns, so any batch from nine to thirty-two costs one
+column tile.
 \end{itemize}
 Each kernel is right for its regime and the thresholds are reasonable; the
-source comments that the parameters are not known to be optimal across
-hardware. The lesson is general. A roofline says batching is nearly free until
-the ridge. Whether it is free on your machine depends on whether the kernel
-you are actually running reuses each byte it loads --- and that is a property
-of code, not of the workload.
+source says of its parameters that it is ``not sure how optimal'' they are
+``across all different hardware''. The measured steps in the table above follow
+the selection exactly: the matrix--vector regime costs about one weight pass per
+column, the small-batch regime 68--100~ms per pass, the matrix--matrix regime
+150--180~ms whatever the batch. The lesson is general. A roofline says batching
+is nearly free until the ridge. Whether it is free on your machine depends on
+whether the kernel you are actually running reuses each byte it loads --- and
+that is a property of code, not of the workload.
 
-\FrontierSection{2026-09-23}
+\FrontierSection{2026-09-27}
 
 \emph{Asymmetric scaling.} The FlashAttention-4 authors describe Blackwell as a
 machine on which ``tensor core throughput doubles while other functional units
@@ -332,13 +546,18 @@ scale \cite{zadouri2026flashattention4}. The roofline's single compute roof is
 becoming several: tensor-core math, other arithmetic, special functions,
 shared-memory bandwidth.
 
-\emph{The roof keeps rising faster than the slope.} B300-class parts add FP4
-throughput without adding HBM bandwidth per GPU. Unless model architectures
-cut bytes per token --- the subject of Parts~\ref{part:one-request}
-and~\ref{part:architectures} --- the gap between decode and the ridge grows.
-
-\todo{verify: announced next-generation (Rubin-class) HBM bandwidth and FP4
-throughput, from NVIDIA's own specifications, before stating a trend.}
+\emph{Bandwidth is catching up at 16 bits, not at 4.} NVIDIA's Vera Rubin
+NVL72 lists 288~GB of HBM4 at 19.2~TB/s per GPU, 4~PFLOP/s in BF16, and 35 dense
+and 50 ``sparse'' PFLOP/s in NVFP4 \cite{nvidia2026verarubin}; the company's
+January 2026 description of the platform had said ``up to 22~TB/s''
+\cite{nvidia2026rubinblog}, so the shipped figure should be checked again
+before it is relied on. Against the B200, the BF16 ridge falls from 281 to
+about 208~FLOP/byte and the dense FP4 ridge rises from 1,125 to about 1,800.
+AMD's MI355X sits between them, with 8~TB/s against 2.52~PFLOP/s in BF16 and
+10.07 in MXFP4 \cite{amd2025mi355x}. Unless model architectures cut bytes per
+token --- the subject of Parts~\ref{part:one-request}
+and~\ref{part:architectures} --- the gap between decode and the ridge stays two
+orders of magnitude wide on every one of them.
 
 \ExercisesSection
 
@@ -346,15 +565,23 @@ throughput, from NVIDIA's own specifications, before stating a trend.}
 \item \emph{Prediction.} A 70-billion-parameter model stored in FP8 runs on
 one H200. Predict its batch-one decode rate from
 equation~\eqref{eq:decode-ceiling}. Which parameters did you have to assume?
+(Worked below.)
 \item \emph{Derivation.} Derive $B^{*}$ in equation~\eqref{eq:batch-ridge}
 for weights stored in four bits but multiplied in BF16. Why does the answer
-depend on where dequantization happens?
+depend on where dequantization happens? (Worked below.)
 \item \emph{Implementation.} Run the chapter's lab and report your machine's
-streaming bandwidth, peak matrix FLOP/s and ridge. How far is your measured
-$B^{*}$ from the predicted one?
+streaming bandwidth, multiply--add peak, kernel roof and ridge. How far is your
+measured knee from the predicted $B^{*}$?
+\item \emph{Measurement.} Run the lab with \texttt{--mib 8} and find what its
+prediction leaves out for steps a tenth of a millisecond long: time an empty
+step (the same threads started and joined with no work) and add it to the
+prediction. Then add a read test over an array that fits in the second-level
+cache but not the first (for example 4~MiB), and plot the cache's bandwidth roof
+beside memory's.
 \item \emph{Falsification.} Find a configuration of llama.cpp (or any engine)
 where batch-one decode is more than twice as slow as
 equation~\eqref{eq:decode-ceiling} predicts. Identify the cause with a
 profiler before guessing.
 \end{enumerate}
-\todo{worked solutions for exercises 1 and 2 in \texttt{tex/worked/ch03-roofline.tex}}
+
+\input{worked/ch03-roofline.tex}

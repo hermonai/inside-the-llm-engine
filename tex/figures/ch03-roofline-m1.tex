@@ -1,6 +1,6 @@
 % Roofline of an Apple M1 GPU with measured llama.cpp points.
 % Data: research/measurements/2026-09-23-m1-llama32-3b.md
-% Roofs: compute 2.6 TFLOP/s (Apple); bandwidth 68.3 GB/s nominal (derived),
+% Roofs: compute 2.6 TFLOP/s (Apple); bandwidth about 68 GB/s nominal (from Apple's statements; 68.3 plotted),
 % 49 GB/s achieved by a streaming kernel (measured, median of copy tests).
 % Points: performance = aggregate tokens/s x 6.43 GFLOP/token; intensity =
 % FLOPs per step / 2.01 GB of weights read once per step (compulsory bytes).
@@ -20,7 +20,7 @@
 \addlegendentry{compute roof, 2.6 TFLOP/s (Apple)}
 % Nominal bandwidth slope (68.3 GB/s = 0.0683 TFLOP/s per FLOP/byte)
 \addplot[BookBlue, thick, dashed, domain=1:38.07, samples=2] {0.0683*x};
-\addlegendentry{nominal bandwidth, 68.3 GB/s (derived)}
+\addlegendentry{nominal bandwidth, about 68 GB/s (Apple)}
 % Achieved bandwidth slope (49 GB/s)
 \addplot[BookBlue, very thick, domain=1:53.06, samples=2] {0.049*x};
 \addlegendentry{achieved bandwidth, 49 GB/s (measured)}
