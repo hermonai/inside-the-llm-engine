@@ -46,6 +46,7 @@ def prose_words(text):
     """Approximate prose words: drop comments, commands and inline math."""
     text = re.sub(r"(?<!\\)%.*", "", text)
     text = re.sub(r"\\begin\{(verbatim|tikzpicture)\}.*?\\end\{\1\}", " ", text, flags=re.S)
+    text = text.replace("\\$", " ")  # an escaped dollar is prose, not a math delimiter
     text = re.sub(r"\$[^$]*\$", " ", text)
     text = re.sub(r"\\[A-Za-z@]+\*?(\[[^\]]*\])?", " ", text)
     return len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'\u2019-]*", text))
