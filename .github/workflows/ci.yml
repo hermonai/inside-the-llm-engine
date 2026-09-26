@@ -53,3 +53,6 @@ jobs:
           cargo fmt --all -- --check
           cargo test --workspace
           cargo clippy --workspace --all-targets -- -D warnings
+          for lab in */; do
+            if ls "$lab"test_*.py >/dev/null 2>&1; then python3 -m unittest discover -s "$lab"; fi
+          done

@@ -10,7 +10,7 @@ library; Python labs use only the standard library. From this directory:
 ```bash
 cargo test --workspace                       # every lab's oracle checks, small sizes
 cargo run --release -p ch01-fake-model       # a lab at full size
-python3 chNN-<slug>/lab.py                   # a Python lab
+python3 -m unittest discover -s chNN-<slug>  # a Python lab's checks
 ```
 
 Each lab's README follows the same four steps: **predict** (write the number
@@ -20,3 +20,4 @@ and **break** (a change that makes the mechanism fail or disappear).
 | Chapter | Lab | Language |
 | --- | --- | --- |
 | 1 | [`ch01-fake-model`](ch01-fake-model/) — a weight matrix the size of a small model, decoded at rising batch sizes | Rust |
+| 2 | [`ch02-count-a-model`](ch02-count-a-model/) — a GGUF header reader that prices one decode step, per operator, for any local model | Python |
