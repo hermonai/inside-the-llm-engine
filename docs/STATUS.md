@@ -6,13 +6,14 @@ edition's status ledger, with its dated milestone entries, is
 
 ## Where the book is
 
-**Pass 1 (skeleton) is complete; pass 2 (zero draft) has finished Parts I–VII.**
-Every chapter and appendix exists under the new numbering with its intent and
-section headings in the chapter anatomy. Chapters 1–37 are zero drafts built
-on measurements taken for them (Part VI's multi-device numbers are derived from
-specifications and operators' reports until a multi-GPU host is available;
-Part VII's discrete-GPU numbers are Hermon's records and derivations until the
-GPU host is back). The first edition's Chapters 2–9 are Appendix
+**Passes 1 (skeleton) and 2 (zero draft) are complete: all 42 chapters are
+zero drafts.** Every chapter and appendix exists under the new numbering with its
+intent and section headings in the chapter anatomy, and every chapter is built
+on measurements taken for it, derivations, or primary sources (Part VI's
+multi-device numbers are derived from specifications and operators' reports
+until a multi-GPU host is available; Part VII's discrete-GPU numbers are
+Hermon's records and derivations until the GPU host is back; Part IX reads vLLM
+and SGLang at pinned commits rather than running them). The first edition's Chapters 2–9 are Appendix
 A.1–A.8, and its Chapter 1 is now the mechanism of Chapter 14, with the
 anatomy built around it. The plan is [`STRUCTURE.md`](STRUCTURE.md); the
 policy is [`../AUTHORING.md`](../AUTHORING.md); superseded governance is in
@@ -64,14 +65,14 @@ if this table is stale. Words are approximate prose words.
 | 32 | Expert Parallelism at Scale | ZERO | 2,084 | 1 |
 | 33 | Disaggregated Serving | ZERO | 1,916 | 0 |
 | 34 | The KV Cache as a Distributed Storage Tier | ZERO | 2,202 | 1 |
-| 35 | Offloading Across VRAM, RAM and NVMe | ZERO | 3,267 | 3 |
-| 36 | Streaming Experts From Disk: A Measured Case Study | ZERO | 3,938 | 1 |
+| 35 | Offloading Across VRAM, RAM and NVMe | ZERO | 3,396 | 2 |
+| 36 | Streaming Experts From Disk: A Measured Case Study | ZERO | 4,141 | 0 |
 | 37 | Unified Inference Memory | ZERO | 3,018 | 0 |
-| 38 | Fast Wrong Answers: Oracles, Differential Testing and Determinism | SKELETON | 149 | 0 |
-| 39 | Benchmarking Without Lying to Yourself | SKELETON | 138 | 0 |
-| 40 | Operating Inference in Production | SKELETON | 137 | 0 |
-| 41 | Anatomy of Real Engines: vLLM, SGLang, llama.cpp and Hermon | SKELETON | 129 | 0 |
-| 42 | Capstone: Build a Mini Engine End to End | SKELETON | 134 | 0 |
+| 38 | Fast Wrong Answers: Oracles, Differential Testing and Determinism | ZERO | 2,854 | 0 |
+| 39 | Benchmarking Without Lying to Yourself | ZERO | 3,180 | 0 |
+| 40 | Operating Inference in Production | ZERO | 2,733 | 0 |
+| 41 | Anatomy of Real Engines: vLLM, SGLang, llama.cpp and Hermon | ZERO | 2,538 | 0 |
+| 42 | Capstone: Build a Mini Engine End to End | ZERO | 3,280 | 0 |
 
 | Appendix | File | Status | Words |
 | --- | --- | --- | ---: |
@@ -92,15 +93,15 @@ if this table is stale. Words are approximate prose words.
 | G | `tex/appendices/g-reproducing-measurements.tex` | SKELETON | 69 |
 <!-- chapter-status:end -->
 
-## Verified at the end of session 7 (2026-09-26 local; runs on 2026-09-24 and 2026-09-26 UTC)
+## Verified at the end of session 8 (2026-09-26; runs 09:10–14:29 UTC)
 
 | Check | Result |
 | --- | --- |
-| `make textbook-check` | pass: 42 chapters (5 SKELETON, 37 ZERO), 15 appendix files, 79 native figures (all used), 27 worked problems, CLI trace and worked calculations |
-| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; the pages of Figures 35.1, 36.1 and 37.1 inspected as images |
-| `cargo test --workspace` in `code/mini-engine` | 220 pass; `cargo check`, `cargo fmt --check` and `clippy -D warnings` clean |
-| All CI steps run locally | pass (all 13 script steps and the cargo steps), with the new files staged |
-| Secrets guard | `scripts/check-structure.sh` passes with the Part VII raw outputs staged (`git add -N`); paths redacted to `<scratch>`, `<ollama-blobs>`, `<home>`, `<tmp>` |
+| `make textbook-check` | pass: 42 chapters (42 ZERO), 15 appendix files, 90 native figures (all used), 27 worked problems, CLI trace and worked calculations |
+| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; the pages of all eleven new Part VIII–IX figures inspected as images, and their overlaps fixed |
+| `cargo test --workspace` in `code/mini-engine` | 235 pass (capstone 15: 7 unit, 8 differential); `cargo fmt --check` and `clippy --workspace --all-targets -D warnings` clean |
+| All CI script steps run locally | pass (13 steps), with the new files staged |
+| Secrets guard | `scripts/check-structure.sh` passes with the Part VIII–IX raw outputs staged; paths redacted to `<scratch>`, `<ollama-blobs>`, `<home>`, `<repo>`, `<tmp>`; the routing trace (2.3 MB) is identified by SHA-256, and long server logs keep head and tail |
 
 **Correction to session 3.** Session 3 ran the CI steps before committing its
 raw measurement outputs, so the secrets guard never saw them; once committed,
@@ -124,14 +125,20 @@ prefill and decode on two servers with the cache moved through a file) and
 KV cache moved between the M1's GPU and CPU, the memory cost of llama.cpp's
 repacked CPU weights, CPU memory traffic against GPU decode and a GPU copy,
 zero-copy model loading, Hermon's self-test and Metal benchmark re-run at
-`2a3fd52`, and a replay of Hermon's expert-pager trace). All
-were taken on the Apple M1 during an ordinary desktop session, Parts IV–VI
-under load from other work. Re-measure on a quiet machine before any chapter
+`2a3fd52`, and a replay of Hermon's expert-pager trace) and
+`2026-09-26-m1-part8.md` (Chapters 35–36 and 38–42: batch-dependent logits in
+llama.cpp for a dense and an MoE model, a recorded MoE routing trace and its
+cache replay, repeated benchmarks and a flash-attention A/B, closed and open
+load generators through a stall, a saturation sweep with server counters, cold
+starts, KL divergence of runtime choices, three engines on one file, the
+capstone on the roofline in four versions, and expert placement with
+`--cpu-moe`). All were taken on the Apple M1 during an ordinary desktop session,
+Parts IV–IX under load from other work. Re-measure on a quiet machine before any chapter
 is FULL.
 
 ## Open markers
 
-Twenty `\todo` markers remain, all visible in the PDF.
+Eighteen `\todo` markers remain, all visible in the PDF.
 
 **Part I (9).**
 
@@ -167,16 +174,21 @@ uncached NVMe reads and an 8B model's prefill rate (Chapter 34). Every other
 Part VI claim is measured, derived, or read from a primary source or pinned
 source code; the sources are in `research/FRONTIER.md`, "Part VI additions".
 
-**Part VII (4).** Chapter 35: host-to-device bandwidth with the PCIe
+**Part VII (2).** Chapter 35: host-to-device bandwidth with the PCIe
 generation and link width recorded, and the `-ngl` sweep, on the RTX 5060 Ti
-host (Hermon's 17.8 GB/s record does not state the link); `--cpu-moe` and
-`--n-cpu-moe` on Qwen3-30B-A3B, which needs an MoE model on a machine that can
-hold it. Chapter 36: a routing trace recorded from Qwen3-30B-A3B's router on
-real prompts, replayed against the pager's cache (the published hit rates use
-the benchmark's synthetic routing). Every other Part VII claim is measured on
-the M1, derived, read from Hermon's records at `2a3fd52` (labelled as the
-developers' measurements), or read from a primary source or pinned source; the
-sources are in `research/FRONTIER.md`, "Part VII additions".
+host (Hermon's 17.8 GB/s record does not state the link). Resolved in session
+8 with IBM's Granite 3.1 3B-A800M: expert placement with `--cpu-moe` and
+`--n-cpu-moe` (Chapter 35) and a recorded routing trace replayed against the
+cache policies (Chapter 36); Qwen3-30B-A3B itself does not fit this machine.
+Every other Part VII claim is measured on the M1, derived, read from Hermon's
+records at `2a3fd52` (labelled as the developers' measurements), or read from a
+primary source or pinned source; the sources are in `research/FRONTIER.md`,
+"Part VII additions".
+
+**Parts VIII–IX (0).** Every claim is measured on the M1, derived, or read from
+a primary source or pinned source (vLLM `bcdacfc`, SGLang `3ed56a3`, llama.cpp
+`d006858`, Hermon `2a3fd52`); the sources are in `research/FRONTIER.md`, "Part
+VIII–IX additions".
 
 **Part V (0).** Every Part V claim is measured, derived, or read from a
 primary source or pinned source code (llama.cpp `d006858`, vLLM `bcdacfc`,
@@ -199,19 +211,17 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
 
 ## Next
 
-1. Zero-draft Parts VIII–IX (Chapters 38–42: fast wrong answers and
-   determinism, benchmarking, production operation, anatomy of real engines,
-   the capstone). Chapter 38 can use Part VII's thread-count determinism bug
-   and replay; Chapter 41 needs SGLang read at a pinned commit (a lead in
-   `research/FRONTIER.md`).
+1. Pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building each
+   chapter's lab in `code/labs/`. The labs promised by Chapters 38–42 (a
+   batch-regime probe, the load generator, a prefix-aware router, a request
+   trace, the capstone's extensions) are specified in their `\LabIntent`s.
 2. Clear the Part II source markers; they need documentation, not hardware.
 3. When the GPU host is available, clear the single-GPU measurement markers
-   (Chapters 3, 34, 35) and repeat the Part II–VII probes on it; the
-   multi-GPU markers (Chapters 6, 31, 32) need a multi-GPU node.
-4. Decide on a mixture-of-experts download (see the decisions below): it
-   would let Chapters 26, 35 and 36 measure real routing.
-5. Then pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building
-   each chapter's lab in `code/labs/`.
+   (Chapters 3, 34, 35), repeat the Part II–IX probes on it, and run vLLM and
+   SGLang for Chapters 39–41; the multi-GPU markers (Chapters 6, 31, 32) need a
+   multi-GPU node.
+4. Re-measure the Part VIII–IX load tests on a quiet machine before any of
+   those chapters is FULL (the record gives their conditions).
 
 ## Decisions for the author
 
@@ -273,29 +283,45 @@ ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
   After that run no further repacking runs were made, to spare the SSD. It may
   be worth reporting upstream (a split could skip repacking under memory
   pressure); that is your call, like the other llama.cpp observations.
-- **Corrections for Hermon's documents, not applied.** The book's replay of
-  the expert-pager trace reproduces every published K6.1 hit rate and shows
-  that `docs/KERNEL_DESIGN.md` §K6.1 still prints the pre-fix byte count
-  (misses × the largest record, 7.0–7.1% high; the code was fixed in
-  `bc5b99b`), and that the `2a3fd52` summary divides GiB by GB/s (0.43 s where
-  1.10 GB at 2.4 GB/s is 0.46 s). The replay also finds that the pager's
-  global LRU scores zero hits below 376 records on these traces, while pinning
-  the most-used experts (learned from the first half of the trace) keeps
-  18–33%; a frequency-aware policy may be Hermon's next win. The Hermon
-  repository was not modified.
+- **Corrections for Hermon's documents, applied at your request (session 8).**
+  Hermon commits `811f88d` (adds `crates/hermon-kernels/replay_experts.py`,
+  which reproduces the K6.1 hit rates with `--check`) and `5459c84` (recounts
+  the K6.1 bytes, 7.0–7.1% lower; fixes the GiB/GB mix in the summaries; adds
+  "K6.3 — cache policy: LRU and the layer cycle" with the replay's finding).
+  They are local commits in the Hermon repository and have not been pushed. The
+  book's recorded Granite trace (Chapter 36) confirms the finding on a real
+  router; Hermon's documents do not mention it.
+- **A defect in Hermon's batched runtime (code reading, not measured).** At
+  `2a3fd52` the default runtime sends each piece with `blocking_send` into a
+  per-sequence channel of 32 from its single worker thread, so a client that
+  stops reading blocks every sequence of that model, contrary to the module's
+  own comment (Chapter 41). The fix is `try_send` with a policy for a full
+  channel. Chapter 41's exercise 4 describes the measurement that would
+  confirm it; neither the fix nor the measurement has been made.
+- **Hermon's public documents name a development host.** Two lines of Hermon's
+  `docs/STORAGE_ARCHITECTURE.md` name one of the development machines. The book
+  describes hardware by model only; the Hermon documents may want the same
+  treatment. Not changed.
 - **Two storage-tier caveats (Chapter 34).** A copy written with caching
   disabled still restored faster than the SSD's measured uncached reads, so
   the chapter treats the two file measurements as one tier; and llama.cpp's
   host-memory prompt cache took 67 seconds to return a 2.3 GiB cache while the
   machine was deep in swap. The chapter makes the second a point about tiers
   rather than a claim about llama.cpp.
-- **A mixture-of-experts model for Chapter 26.** Chapter 26's opening
-  measures llama.cpp's expert matrix product alone, with synthetic weights and
-  uniform routing, because no MoE model was on the machine and downloads need
-  your permission. IBM's Granite 3.1 MoE 3B through Ollama
-  (`granite3.1-moe:3b`, 2.0 GB from the Ollama registry) would allow an
-  end-to-end measurement with real routing on the M1; Qwen3-30B-A3B (about
-  18 GB in 4-bit form) does not fit this 16 GB laptop.
+- **A mixture-of-experts model.** `granite3.1-moe:3b` (2.0 GB) was downloaded
+  with your permission in session 8 and is used in Chapters 35, 36 and 38.
+  Chapter 26's opening still measures llama.cpp's expert product with synthetic
+  weights; its recorded routing (union of experts across a batch: 32.8, 51.9,
+  69.8% at 2, 4, 8 sequences, against 36, 59, 83% for uniform routing) is in the
+  Part VIII record for the FULL pass.
+- **The Llama 3.2 3B file was removed and restored.** It was removed from the
+  Ollama store at 13:07 UTC on 2026-09-26 and, with your permission, pulled
+  again at 14:02 UTC; the file's SHA-256 is unchanged, so every record still
+  refers to the same bytes. One load sweep failed in between and is kept.
+- **Chapter 40's opening.** The skeleton's opening was a cold start measured
+  in minutes; the chapter now opens on a measured saturation knee ("Past the
+  knee") and treats cold starts in its napkin math, because the M1 starts a 2 GB
+  model in about a second and the minutes are a data-center derivation.
 - **The Qwen3.5-9B file.** Chapters 25 and 27 measure the Qwen3.5-9B
   architecture with a community fine-tune found in the local Ollama store (its
   GGUF name contains "Uncensored"); only architecture-dependent numbers are
