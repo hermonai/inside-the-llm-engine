@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
+name = "capstone"
+version = "0.1.0"
+dependencies = [
+ "engine0",
+]
+
+[[package]]
 name = "engine0"
 version = "0.1.0"

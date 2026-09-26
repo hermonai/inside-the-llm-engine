@@ -1,0 +1,9 @@
+[package]
+name = "capstone"
+version = "0.1.0"
+edition = "2021"
+description = "Chapter 42 capstone: a small end-to-end inference engine with paged KV, continuous batching, streaming and an exact oracle"
+publish = false
+
+[dependencies]
+engine0 = { path = "../engine0" }
