@@ -1,0 +1,36 @@
+% Expert-cache hit rate against cache size (percent of Qwen3-30B-A3B's 6,144 expert
+% records), from the book's replay of Hermon's pager benchmark (bench_experts.c at
+% 2a3fd52: same generator, seed, de-duplication and pinned LRU). Cold LRU: the
+% 64-token trace from an empty cache, which reproduces the developers' published
+% hit rates exactly. Warm: second half of a 2,048-token replay; "learned frequency"
+% pins the records used most in the first half; Belady is the offline optimum.
+% Derived by simulation. Data: research/measurements/2026-09-24-m1-part7.md (replay).
+\begin{tikzpicture}
+\begin{axis}[
+  width=13cm, height=7.4cm,
+  xmode=log, log basis x=10,
+  xmin=1.7, xmax=60, ymin=-4, ymax=100,
+  xtick={2,5,10,25,50},
+  xticklabels={2\%,5\%,10\%,25\%,50\%},
+  ytick={0,20,40,60,80,100},
+  xlabel={Cache size, as a share of all expert records},
+  ylabel={Hit rate (\%)},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.5,-0.2)}, anchor=north, draw=black!30, legend columns=2},
+  legend cell align=left,
+]
+\addplot[black!80, mark=square*, mark size=2.2pt, thick] coordinates {(2,0.0) (5,0.0) (10,20.4) (25,49.9) (50,71.3)};
+\addlegendentry{skewed, cold LRU (replay = every published point)}
+\addplot[BookBlue, mark=*, mark size=2.2pt, thick] coordinates {(2,0.0) (5,0.0) (10,20.9) (25,52.2) (50,77.2)};
+\addlegendentry{skewed, warm LRU}
+\addplot[red!70!black, mark=triangle*, mark size=2.6pt, thick, dashed] coordinates {(2,18.0) (5,32.9) (10,46.9) (25,67.8) (50,84.2)};
+\addlegendentry{skewed, warm learned frequency}
+\addplot[black!50, mark=diamond*, mark size=2.6pt, thick, dotted] coordinates {(2,25.1) (5,43.0) (10,58.0) (25,77.9) (50,91.3)};
+\addlegendentry{skewed, warm Belady (offline optimum)}
+\addplot[black!45, mark=square, mark size=2.2pt, thin] coordinates {(2,0.0) (5,0.0) (10,6.3) (25,22.0) (50,44.0)};
+\addlegendentry{uniform, cold LRU (replay = every published point)}
+\addplot[BookBlue!60, mark=o, mark size=2.2pt, thin] coordinates {(2,0.0) (5,0.0) (10,6.2) (25,22.7) (50,47.6)};
+\addlegendentry{uniform, warm LRU}
+\end{axis}
+\end{tikzpicture}

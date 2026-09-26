@@ -1,0 +1,49 @@
+% Shared memory bandwidth on the Apple M1 (16 GB). Left: a PyTorch MPS bulk copy of
+% 256 MiB tensors on the GPU, alone and beside 1, 2 or 4 CPU processes each copying
+% a 256 MiB NumPy array in a loop; bars stack the GPU's and the CPU processes'
+% measured rates. Right: llama.cpp (build 8660) decoding Llama 3.2 3B Q4_K_M
+% (tg128, 3 repetitions) beside the same CPU processes; the GPU part is tokens per
+% second times the 2.02 GB model file (derived), the CPU part is measured. The
+% zero-process bars are means of the interleaved baseline runs (4 each).
+% Data: research/measurements/2026-09-24-m1-part7.md (gpucopy, contention).
+\begin{tikzpicture}
+\begin{axis}[
+  name=left,
+  width=7.2cm, height=6.4cm,
+  ybar stacked, bar width=14pt,
+  ymin=0, ymax=75,
+  symbolic x coords={0,1,2,4},
+  xtick=data,
+  xlabel={CPU copying processes},
+  ylabel={GB/s},
+  title={\small GPU bulk copy},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.5,-0.3)}, anchor=north, draw=black!30},
+  legend cell align=left,
+]
+\addplot[fill=BookBlue, draw=BookBlue] coordinates {(0,52.5) (1,35.6) (2,36.5) (4,36.1)};
+\addlegendentry{GPU (measured)}
+\addplot[fill=BookGold, draw=black!50] coordinates {(0,0) (1,29.7) (2,22.6) (4,18.7)};
+\addlegendentry{CPU processes (measured)}
+\end{axis}
+\begin{axis}[
+  at={(left.east)}, anchor=west, xshift=1.4cm,
+  width=7.2cm, height=6.4cm,
+  ybar stacked, bar width=14pt,
+  ymin=0, ymax=75,
+  symbolic x coords={0,1,2,4},
+  xtick=data,
+  xlabel={CPU copying processes},
+  title={\small Decode, Llama 3.2 3B},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.5,-0.3)}, anchor=north, draw=black!30},
+  legend cell align=left,
+]
+\addplot[fill=red!70!black, draw=red!70!black] coordinates {(0,51.2) (1,27.4) (2,26.3) (4,28.7)};
+\addlegendentry{decode's reads (derived)}
+\addplot[fill=BookGold, draw=black!50] coordinates {(0,0) (1,31.5) (2,32.0) (4,24.0)};
+\addlegendentry{CPU processes (measured)}
+\end{axis}
+\end{tikzpicture}

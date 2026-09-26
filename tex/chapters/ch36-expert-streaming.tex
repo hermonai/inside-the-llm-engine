@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 36 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part7.md (replay, selftest);
+% Hermon's own records at commit 2a3fd52 (the developers' measurements).
 \chapter{Streaming Experts From Disk: A Measured Case Study}\label{ch:expert-streaming}
 
 \begin{ChapterIntent}
@@ -15,30 +17,384 @@ integrated and what is not.
 
 \OpeningSection{Tokens per second from an SSD}
 
+The first time Hermon's expert pager ran against a real checkpoint, it
+reported 10.08 tokens per second, reading experts from a consumer NVMe drive at
+8,331~MiB/s. No single consumer drive sustains that rate. The container holding
+the experts of Qwen3-30B-A3B was 16.35~GiB and the machine had 30~GB of RAM, so
+the operating system's page cache had served most of the reads: the benchmark
+was timing memory and reporting storage (Hermon commit \texttt{be0288a},
+2026-08-25; the developers' measurement). Its direct-I/O switch could not have
+worked. \texttt{O\_DIRECT} constrains the alignment of the destination buffer as
+well as the file offset and length, and the cache's blocks were aligned to 64
+bytes. With page-aligned blocks, and the file switched to direct I/O only after
+its unaligned header had been read, the same benchmark reported 2.12 tokens per
+second with no cache hits and 7.50 with 71\% of expert reads hitting the cache
+--- ceilings set by the drive alone, because the benchmark moved the experts'
+bytes and computed nothing with them.
+
+Those two corrections set the pattern for the twelve days of development this
+chapter follows. Every step made a prediction, measured it, and more than once
+found the prediction or the measurement wrong. The pager is also a small
+enough system to check from the outside: this chapter's replay regenerates the
+benchmark's routing trace from its seed and reproduces every hit rate the
+developers published, to the printed digit (derived by simulation; record
+\texttt{2026-09-24-m1-part7}).
+
 \NapkinSection{Napkin math: hit rate, bytes per miss, tokens per second}
+
+An MoE layer routes each token to $k$ of its experts. If an expert's weights
+occupy $r_\ell$ bytes in layer $\ell$ and a fraction $h$ of expert reads hit the
+cache, a token reads $(1-h)\,k\sum_\ell r_\ell$ bytes from the drive. Its expert
+arithmetic is $F = 2\cdot 3\,d\,d_{\mathrm{ff}}\,k\,L$ FLOPs for $L$ MoE layers
+of three $d \times d_{\mathrm{ff}}$ matrices (gate, up, down). If reads and
+arithmetic do not overlap, the time per token for the expert layers is
+\begin{equation}
+t_{\mathrm{tok}} \approx \frac{(1-h)\,k\sum_{\ell} r_\ell}{\beta_{\mathrm{io}}}
+ + \frac{F}{\pi_{\mathrm{eff}}},
+\label{eq:expert-stream-time}
+\end{equation}
+with $\beta_{\mathrm{io}}$ the drive's sustained read bandwidth and
+$\pi_{\mathrm{eff}}$ the FLOP rate the expert kernels achieve; with perfect
+prefetching the sum becomes a maximum.
+
+Qwen3-30B-A3B has $L = 48$, $k = 8$ of 128 experts, $d = 2{,}048$ and an expert
+width $d_{\mathrm{ff}} = 768$ (its published configuration). In llama.cpp's
+Q4\_K\_M format the gate and up projections are Q4\_K and the down projection is
+Q6\_K in 24 layers and Q4\_K in the other 24, so an expert occupies 3,059,712 or
+2,654,208 bytes (2.92 or 2.53~MiB). A token that misses everything reads
+$8 \times 24 \times (3{,}059{,}712 + 2{,}654{,}208) = 1.10$~GB (1.02~GiB), and
+its expert arithmetic is 3.62~GFLOP (derived). At 2.3~GB/s the reads take
+0.48~s --- 2.1 tokens per second with no hits and 7.3 at a 71\% hit rate ---
+while the arithmetic takes 1.6~s at the 2.2~GFLOP/s of a scalar loop and
+0.095~s at the 38~GFLOP/s eight threads later reached. Which term dominates
+depends on the code, not on the model, and the rest of this chapter is the two
+terms trading places.
 
 \section{The problem: more experts than memory}
 
+A mixture-of-experts model computes like its active parameters and must be
+stored like its total parameters (\Chref{mixture-of-experts}). Qwen3-30B-A3B
+activates 3.3 of its 30.5 billion parameters per token; its experts alone come
+to 16.35~GiB in 4-bit form, more than a 16~GB laptop can hold beside everything
+else. At the frontier the gap is two orders of magnitude: Kimi~K3 has 2.8
+trillion parameters, 16 of its 896 experts active per token, and ships its
+experts in MXFP4 \cite{moonshot2026kimik3} --- well over a terabyte, beyond
+the memory of any laptop or desktop.
+
+Streaming is the answer two independent C implementations converged on, and
+Hermon's design followed them. WARP (formerly WASTE) keeps a 27.28~GB trunk
+resident, streams Kimi~K3's experts from a 982~GB container with one aligned
+read per expert into a bounded LRU cache, and reports 0.6 tokens per second on
+a 64~GB M5~Pro laptop \cite{sqliteai2026warp}. Kimi-K3-in-C runs the same model
+in 8.24~GB of RAM and reports that, at a fixed memory budget, keeping the dense
+trunk resident beat giving the memory to an expert cache by 1.69 times
+\cite{khan2026kimik3c}. Both are their authors' measurements. WARP adds a
+warning that shaped Hermon's cache: an expert cache larger than physical RAM was
+eight times slower, because its hits had become page faults.
+
 \section{An expert store}
+
+Hermon stores the experts in a container file with one aligned record per
+(layer, expert): gate, up and down concatenated, so that a miss is exactly one
+\texttt{pread} at an offset computed from the layer and expert index
+(\texttt{crates/hermon-kernels/csrc/experts.c} at \texttt{2a3fd52}). The layout is
+a clustered index in the database sense --- the same bytes as the GGUF file,
+physically reordered for one access pattern at the cost of a second copy. The
+real checkpoint broke the first version of it. Q4\_K\_M mixes formats, so records
+differ between layers; padding every record to the largest would have cost
+7.1\% of the container and 15\% more bytes per read in half the layers
+(3.06 against 2.65~MB, derived), in a design whose premise is that read
+bandwidth binds. The second version stores a stride per layer.
+
+The cache is not a new allocator. It is the same block pool Hermon's paged KV
+cache uses --- blocks with reference counts and a free list --- with an LRU list
+over resident experts. Two bugs in it are worth knowing because no status check
+would have caught either. A resident block must hold a reference owned by the
+store itself: without it, a block whose caller had finished returned to the
+free list while the residency map still pointed at it, and a later request for
+that expert silently received another expert's weights with a success code.
+And acquisition must be all-or-nothing: a partial failure that left some blocks
+pinned leaked them, until the cache could no longer allocate. The rule the
+reference count now encodes is short --- one reference means cached and
+evictable, more than one means in use --- and the blocks one layer is computing
+with are pinned against eviction by the next miss.
 
 \section{Hit rate is the lever}
 
+The developers replayed a 64-token routing trace against caches holding 2 to
+50\% of the 6,144 expert records, with two routing distributions generated by
+the benchmark: uniform, and a power law over a fixed random ordering of each
+layer's experts \cite[section~K6.1]{hermon2026kerneldesign}:
+
+\begin{center}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Routing & Cache (GiB) & Hit rate & Throughput (as published) & Tokens/s ceiling \\
+\midrule
+uniform & 0.35 & 0.0\% & 2,373 MiB/s & 2.12 \\
+uniform & 1.75 & 6.3\% & 2,422 MiB/s & 2.31 \\
+uniform & 4.38 & 22.0\% & 2,413 MiB/s & 2.76 \\
+uniform & 8.75 & 44.0\% & 2,411 MiB/s & 3.84 \\
+skewed & 1.75 & 20.4\% & 2,416 MiB/s & 2.71 \\
+skewed & 4.38 & 49.9\% & 2,370 MiB/s & 4.22 \\
+skewed & 8.75 & 71.3\% & 2,409 MiB/s & 7.50 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The flat column is the finding. The drive delivered the same rate whatever the
+cache size or routing, so the tokens-per-second ceiling was a function of the
+hit rate alone --- Equation~\ref{eq:expert-stream-time} with the compute term
+absent. The replay reproduces the hit-rate column exactly: its routing trace
+is regenerated from the benchmark's own generator and seed, and its cache
+follows the pager's pinning and eviction rules. It also recounts the bytes. The
+published reads were the number of misses times the largest record, which
+overstates them by 7.0 to 7.1\% because half the records are smaller; the
+developers found and fixed that accounting five days later
+\cite{hermon2026batchio}. Recounted, the drive delivered about 2.3~GB/s, not
+2.4 --- a correction that leaves every ceiling in the table unchanged, because
+those were timed per token rather than derived from bytes.
+
+Two cautions keep the table honest. The skewed trace is synthetic: a Zipf law
+of exponent one over a per-layer permutation, not a recording of Qwen3's
+router. Trained routers are pushed toward balanced long-run load
+(\Chref{mixture-of-experts}), but consecutive tokens do reuse experts:
+Eliseev and Mazur built an LRU expert cache for Mixtral-8x7B on that
+observation and ran it at 2.3 tokens per second on an RTX~3060 with 2-bit
+experts \cite{eliseev2023moeoffload}. How much locality Qwen3-30B-A3B's router
+has on real text is unmeasured here \todo{measure: record Qwen3-30B-A3B's
+routing on real prompts and replay it against the pager's cache}. And a 64-token
+trace that starts from an empty cache understates the steady state, because up
+to a quarter of its reads are first touches.
+
+The replay can run the same generators for 2,048 tokens and score only the
+second half, and there it found something the published table could not show
+(Figure~\ref{fig:ch36-hit-rate}). Warm, LRU hit 47.6\% of reads with uniform
+routing and 77.2\% with skewed routing at the 8.75~GiB cache, against 44.0 and
+71.3 cold. But at the two smallest caches, 2 and 5\% of the experts, LRU hit
+nothing even with skewed routing, while simply pinning the experts that the
+first half of the trace had used most hit 18.0 and 32.9\% of the second half's
+reads (derived by simulation). The access pattern is a loop: every token visits
+the 48 layers in order, so between two visits to a layer the other 47 read 376
+distinct records, and an LRU cache smaller than that has evicted the layer's
+experts before the next token comes back to them --- the textbook failure of LRU
+on cyclic scans. Frequency survives the loop. At
+8.75~GiB with skewed routing the learned frequency policy reached 84.2\% and an
+offline optimum (Belady's, which knows the future) 91.3\%; at 2.3~GB/s those
+are ceilings of 9.2 tokens per second for LRU, 13 for the frequency policy and
+24 for the optimum (derived). LRU was the right first policy --- simple, and
+correct under pinning --- and the replay says where the next gains are.
+
+\EngineFigure{ch36-hit-rate}{Expert-cache hit rate against cache size for the
+pager benchmark's traces (Qwen3-30B-A3B shape: 6,144 expert records, 8 of 128
+per layer). Cold LRU over 64 tokens is what the developers measured, which the
+replay reproduces exactly; the warm curves score the second half of a
+2,048-token replay. LRU hits nothing until the cache holds more than the 376
+records the other layers read between two visits to a layer, while with skewed
+routing a frequency policy learned from the first half keeps most of the
+optimum (Belady's) at every size. Both routings are the
+benchmark's synthetic distributions, not a recorded router; derived by
+simulation.}{fig:ch36-hit-rate}
+
 \section{Queue depth: a falsified hypothesis}
+
+With the pager bound by the drive, the next lever looked obvious. Every miss
+was a synchronous read at queue depth one; the design took a consumer NVMe
+drive to deliver 5 to 7~GB/s with 32 requests in flight against about 2.4 with
+one; and the eight misses of a layer are known at the same instant. It
+predicted two to three times the throughput from submitting them together. The
+pager was restructured to classify a layer's hits and misses first and submit
+the misses as one batch through \texttt{io\_uring}, with an environment variable
+to turn it off as the control. Measured against the sequential path in the same
+run, the mean over ten configurations was 1,108~MiB/s sequential and
+1,145~MiB/s batched --- indistinguishable \cite{hermon2026batchio}.
+
+The prediction had applied a specification to the wrong request size.
+Queue-depth figures describe small random reads, which are latency-bound: each
+waits for the device, so overlapping them fills idle time. A block-size sweep
+on the same drive located the change: 128~KiB reads reached 494~MB/s, 1~MiB
+reads 1.2~GB/s and 3~MiB reads 1.3~GB/s. A 2.5 to 2.9~MiB expert record already
+streams near the device's limit, leaving nothing for a second request to fill.
+The absolute numbers are lower than K6.1's because the machine was running
+another inference server and its disk was 98\% busy during these runs --- the
+comparison is matched, the absolute rates are not clean. The batching code was
+kept --- it costs nothing measurable and pays the moment records get smaller ---
+with its off switch as the standing control; the performance claim was
+withdrawn. The restructuring also produced two bugs, both caught
+by tests: a block claimed for a miss but not yet installed was orphaned when a
+later read failed, and a router that named the same expert twice in one layer
+claimed two blocks for one slot. The replay shows the benchmark's own trace had
+contained such repeats --- 4 in the uniform trace and 9 in the skewed one, from
+a de-duplication loop that skipped its first entry after a collision --- which
+the single-pass cache had absorbed as hits (derived); the same commit fixed the
+loop.
 
 \section{Computing on streamed experts}
 
+Until early September the pager moved bytes nobody used: its matrix--vector
+kernel knew F32, F16, BF16 and Q8\_0, and the checkpoint's experts were Q4\_K and
+Q6\_K. The developers implemented both super-block formats from the
+specification rather than borrowing llama.cpp's code, which made the bit
+packing the whole risk, and checked it three ways that catch different errors:
+a test that chooses logical values first and packs them, so that packer and
+kernel cannot share a mistake; an independent NumPy dequantizer run against
+real bytes from the container, agreeing to the last bit; and the distribution
+of the real weights (mean near zero, standard deviation about 0.023), which a
+misread layout would distort by orders of magnitude \cite{hermon2026kquant}.
+
+The composite an MoE layer needs per routed expert,
+$\mathbf{y} \mathrel{+}= w\,\mathbf{W}_{\mathrm{down}}(\mathrm{silu}(\mathbf{W}_{\mathrm{gate}}\mathbf{x}) \odot \mathbf{W}_{\mathrm{up}}\mathbf{x})$,
+then ran straight out of cached records. Its first result that mattered was
+not a speed: over the same trace and weights, the output checksum was
+identical at every cache size and under both routing distributions. Eviction
+changes when bytes arrive, never what is computed --- the property that makes a
+bounded cache safe to put on a request path.
+
 \section{The bottleneck moves}
+
+With real arithmetic the benchmark ran at 0.58 to 0.62 tokens per second
+against the pager's 2.1: the scalar K-quant loop reached about 2.2~GFLOP/s, and
+compute now cost three to four times the I/O \cite{hermon2026expertffn}. The
+obvious remedy was SIMD, which had given the attention and KV-write paths 8
+and 19 times. The first vectorized version was slower than scalar --- 0.62
+against 0.72 tokens per second --- because it expanded quantized values into
+16-element vectors and ended every short dot product with a horizontal
+reduction that cost more than the multiply-adds it summed. Folding each
+sub-block's scale into the expansion, so that a 256-element super-block is
+reduced once, gave 0.83 and 0.73 tokens per second against a scalar control of
+0.59 and 0.59 on the developers' Zen~3 desktop: about 1.3 times end to end and
+1.7 times on the arithmetic once the I/O in the trace is set aside
+\cite{hermon2026simd}. The developers recorded why it was not 8 times:
+their kernel still converts every quantized value to float, whereas llama.cpp
+multiplies in the integer domain and applies scales at the end.
+
+These runs used a two-token trace per configuration, so they are single
+measurements of a short workload, not rates to plan with. What they establish
+is the order of the terms: for a while, arithmetic, not storage, set the pace.
 
 \section{Parallel experts and a determinism bug}
 
+A layer's eight experts are independent, so the next step ran them across
+threads spawned by the benchmark (the library itself spawns none). With the
+cache warm, so that the measurement is arithmetic and not I/O, one expert
+layer took 8.43, 7.06, 3.82 and 1.97~ms on 1, 2, 4 and 8 threads --- 8.96 to
+38.25~GFLOP/s, 4.27 times at eight threads --- sublinear because each expert
+streams 2.9~MiB of weights through the caches on every call
+\cite{hermon2026parallel}.
+
+The first version was also wrong in a way no correctness test would see. Each
+worker kept a private accumulator and the accumulators were summed in worker
+order; with experts assigned by stride, worker order is not expert order, so
+the order of the floating-point additions depended on the thread count. One
+thread gave a checksum of $-11.581605$ and four gave $-11.581564$: both correct to
+tolerance, neither reproducible from the other, and Hermon's release gate is
+bit-for-bit equality. The fix was the one Hermon's attention combine step
+already used --- one slot per expert, summed by expert index --- after which the
+checksum was identical at 1, 2, 4 and 8 threads. Only a checksum compared
+across thread counts found the bug; \Chref{fast-wrong-answers} makes that kind
+of check a discipline.
+
+At eight threads the expert arithmetic of a token takes about 0.095~s, while its
+reads take 0.48~s with no hits and 0.14~s at a 71\% hit rate (derived with
+Equation~\ref{eq:expert-stream-time} from 1.10~GB per token at 2.3~GB/s; the
+developers' own summary divided GiB by GB/s and put these at 0.43 and 0.125~s).
+The arc closed where it began: storage-bound, then compute-bound, then
+storage-bound again, with the hit rate deciding everything and the next gain
+in reading fewer bytes rather than computing them faster.
+
 \section{What is and is not integrated}
+
+At commit \texttt{2a3fd52} the pager is a library (LIBRARY): the store, the
+cache, K-quant expert kernels and a safe Rust interface whose pin sets release
+their experts on every return path, exercised by the kernel crate's own tests and
+benchmark and by no request path. Hermon's roadmap says so directly: expert
+streaming is not yet an inference feature, and runtime routing and an
+end-to-end comparison of generated tokens remain
+\cite[phase K4--K7]{hermon2026roadmap}. The figures above are ceilings for the
+expert layers --- attention, the router and the rest of the trunk are not in
+them --- and the design's two headline targets are unmet (DESIGN): at least
+0.5 tokens per second end to end for a Kimi-K3-class checkpoint on a 64~GB
+machine, and a 20\% gain from letting one allocator trade KV-cache capacity
+against expert capacity (\Chref{unified-memory}). The library's self-test did
+reproduce on different hardware: on the Apple M1 used for this book's
+measurements it passed all 121,165 checks, plain and under the undefined-behaviour
+sanitizer, including the expert-cache and K-quant cases (measured; record
+\texttt{2026-09-24-m1-part7}).
 
 \LedgerSection
 
+Streaming the experts of a mixture-of-experts model from an SSD:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & A model whose experts exceed RAM runs at all; the cache holds only the experts in use. \\
+Memory bandwidth & spends & Every miss reads a 2.5--2.9~MiB record from a drive delivering about 2.3~GB/s, more than twenty times below the host's DRAM. \\
+Latency & spends & Tenths of a second per token of reads at realistic hit rates, before any arithmetic. \\
+Correctness & risks & A residency or eviction bug returns another expert's weights silently; summation order can depend on thread count. \\
+\end{ConstraintLedger}
+
 \LabSection{replay a routing trace against an expert cache}
+
+\LabIntent{In \texttt{code/labs/ch36-expert-streaming/}, a replay of the pager
+benchmark: it regenerates the routing trace from the benchmark's generator and
+seed, runs it through a pinned LRU cache, and must reproduce the published hit
+rates before anything else is trusted (the book's replay does, in
+\texttt{research/measurements/2026-09-24-m1-part7/}). Then it compares LRU with
+an offline optimum (Belady) and a static cache of the most-used experts, from a
+cold and a warm start; measures the reader's own SSD with caching disabled; and
+turns hit rates into tokens-per-second ceilings with
+Equation~\ref{eq:expert-stream-time}. Break it by removing the pin on the
+current layer's experts and watch a miss evict an expert still in use.}
 
 \HappenedSection{the whole chapter}
 
-\FrontierSection{}
+The case is the chapter; what generalizes is its record of being wrong. Four
+predictions were tested. The pager was predicted to be bound by the drive, and
+was. Queue depth was predicted to give two to three times, and gave nothing.
+SIMD was predicted to give a large multiple, and gave 1.3 times until the
+reason was understood. Threads gave 4.27 times at eight, less than linear, for
+a stated reason. Five numbers were wrong before they were right: a throughput
+that exceeded what any single drive can deliver (the page cache), a byte count
+7\% high (misses times the largest record), a relative-error tolerance that
+failed a correct kernel because one output had cancelled to near zero, a
+checksum that depended on the thread count, and a final summary that mixed
+GiB with GB. Each was caught by a check that compared the number with something
+independent of the code that produced it --- the device's physical limit, a
+recount, a scale-aware error measure, the same run at another thread count, a
+re-derivation. That is the discipline the rest of the book asks for, visible in
+one small system over twelve days.
+
+\FrontierSection{2026-09-24}
+
+Streaming has moved from research systems to hobbyist-scale engines that run
+trillion-parameter models on laptops at fractions of a token per second
+\cite{sqliteai2026warp,khan2026kimik3c}. The alternatives trade the same bytes
+differently: keep experts in host memory and compute them on the CPU
+(\Chref{offloading}), or predict the next layer's experts early enough to
+overlap their reads with computation --- by applying the next layer's gate to
+the current hidden state \cite{eliseev2023moeoffload}, or by training the
+model to route one layer ahead \cite{hwang2023pregated}. Each prediction scheme
+changes only timing if the real router still decides. The open measurement is
+the one this chapter could not make: how much locality real routers have on
+real text, which decides every hit rate above.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Rewrite Equation~\ref{eq:expert-stream-time} for a
+  pager that prefetches layer $\ell+1$'s experts during layer $\ell$'s
+  arithmetic with prediction recall $\rho$, and find the recall at which the
+  eight-thread configuration becomes compute-bound at a 71\% hit rate.
+\item \emph{Prediction.} A drive sustains 7~GB/s for 3~MiB reads. Predict the
+  hit rate Qwen3-30B-A3B's experts need for 10 tokens per second of expert
+  layers at eight threads, with and without overlap.
+\item \emph{Implementation.} Extend the lab with a cache that pins each layer's
+  $n$ most-used experts and runs LRU over the rest; find the split that
+  maximizes the warm hit rate on the skewed trace.
+\item \emph{Falsification.} The replay's LRU hit nothing with caches of 122
+  and 307 records. Show that an LRU cache of fewer than $(L-1)\,k$ records (376
+  here) scores zero on any trace that visits the layers in a fixed cycle, then
+  construct a trace --- bursty routing, where an expert stays hot
+  for a few tokens and then goes cold --- on which LRU beats the learned
+  frequency policy. What property of the trace decides between them?
+\end{enumerate}

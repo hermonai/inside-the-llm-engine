@@ -1,0 +1,32 @@
+% Decode tokens per second against the fraction of a model's weight bytes read
+% from a slower tier, from Equation eq:offload-time: t = (1-f) W/448 + f W/beta.
+% W = 4.88 GB per token (Qwen3-8B architecture, Q4_K_M, less the token-embedding
+% table). 448 and 17.8 GB/s are Hermon's recorded figures for an RTX 5060 Ti
+% desktop (card memory; pinned host-to-device copies), 2.3 GB/s the NVMe rate of
+% Chapter 36, 40 GB/s an illustrative CPU reading dual-channel DDR4. Derived.
+\begin{tikzpicture}
+\begin{axis}[
+  width=13cm, height=7.2cm,
+  ymode=log,
+  xmin=0, xmax=1, ymin=0.3, ymax=150,
+  xtick={0,0.25,0.5,0.75,1},
+  xticklabels={0,25\%,50\%,75\%,100\%},
+  ytick={1,10,100},
+  yticklabels={1,10,100},
+  xlabel={Fraction of weight bytes off the card},
+  ylabel={Decode tokens per second (derived)},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.5,-0.2)}, anchor=north, draw=black!30, legend columns=2},
+  legend cell align=left,
+]
+\addplot[BookBlue, very thick, domain=0:1, samples=201] {1/((1-x)*4.88/448 + x*4.88/40)};
+\addlegendentry{computed by the CPU from host memory, 40~GB/s}
+\addplot[red!70!black, very thick, dashed, domain=0:1, samples=201] {1/((1-x)*4.88/448 + x*4.88/17.8)};
+\addlegendentry{copied across PCIe each step, 17.8~GB/s}
+\addplot[black!60, very thick, dotted, domain=0:1, samples=201] {1/((1-x)*4.88/448 + x*4.88/2.3)};
+\addlegendentry{read from NVMe each step, 2.3~GB/s}
+\addplot[only marks, mark=*, mark size=2pt, black] coordinates {(0,91.8) (0.25,25.9) (0.25,13.0) (0.25,1.86)};
+\addlegendentry{values quoted in the text}
+\end{axis}
+\end{tikzpicture}

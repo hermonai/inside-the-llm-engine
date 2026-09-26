@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 37 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-24-m1-part7.md (contention, gpucopy,
+% mmapload, offload, repack, metalbench); Hermon's own records at commit 2a3fd52.
 \chapter{Unified Inference Memory}\label{ch:unified-memory}
 
 \begin{ChapterIntent}
@@ -13,26 +15,284 @@ than as three competing caches.
 
 \OpeningSection{One memory, two processors}
 
+On the M1, llama.cpp decoded Llama~3.2~3B at 24.8 to 25.6 tokens per second on
+the GPU. Then one ordinary CPU process began copying a 256~MiB array in a loop,
+and decoding fell to 13.5 tokens per second. With two such processes it ran at
+13.0; with four, at 14.2 (measured, interleaved with runs that had no copying
+processes; record \texttt{2026-09-24-m1-part7}). Nothing about the GPU's work
+had changed, and the copying processes used none of the GPU. They used the
+memory. A GPU copy measured the same way moved 49 to 56~GB/s alone; with one CPU
+process copying beside it, the GPU got 35.6~GB/s and the CPU 29.7 --- together
+65.3~GB/s, more than either drew alone. The limit was the memory, not either
+processor.
+
+\EngineFigure{ch37-shared-bandwidth}{Memory bandwidth shared between the M1's GPU
+and CPU. Left: a bulk copy on the GPU, alone and beside one, two or four CPU
+processes copying memory (measured). Right: llama.cpp decoding Llama~3.2~3B
+beside the same processes; decode's reads are its token rate times the 2.02~GB
+model (derived), the CPU processes' rates are measured. The GPU keeps about
+two thirds of its bulk-copy rate and decode about half its token rate however
+many processes compete: one CPU process is enough to take the rest. The
+zero-process bars average four interleaved baseline runs.}{fig:ch37-shared-bandwidth}
+On a machine with one memory, the tiers of \Chref{offloading} collapse. There
+is no link to cross and no copy to make: the GPU reads the model file's pages
+where the operating system put them. What remains is one pool of capacity and
+one pool of bandwidth, shared by every processor and every program on the
+machine --- and a design question the previous chapters could avoid: who
+decides what stays in it.
+
 \NapkinSection{Napkin math: one bandwidth shared three ways}
+
+Decode reads its weights once per step, so on a machine whose memory delivers
+$\beta$ in total, of which other processors take $\beta_{\mathrm{other}}$, a
+model that reads $W$ bytes per token decodes at most
+\begin{equation}
+r \le \frac{\beta - \beta_{\mathrm{other}}}{W}
+\label{eq:shared-bw}
+\end{equation}
+tokens per second. Llama~3.2~3B in Q4\_K\_M form is a 2.02~GB file, and because
+its output projection shares the embedding matrix a decode step reads nearly
+all of it. At 25.5 tokens per second the GPU drew about 51~GB/s, close to the
+49 to 56~GB/s of its bulk copy alone. With a CPU process copying beside it the
+bulk copy fell to 35.6~GB/s, which by Equation~\ref{eq:shared-bw} bounds decode
+at 17.6 tokens per second; decode measured 13.5 (derived from the measured
+rates). The bound held, and decode lost more than the bulk copy did --- 47\%
+against 35\% --- plausibly because a decode step is a chain of small dependent
+kernels, each exposed to the contention, where a bulk copy keeps many requests
+in flight.
+
+The same equation prices the machines built around unified memory. Apple does
+not publish the M1's bandwidth; it describes the M5's 153~GB/s as more than
+twice the M1's \cite{apple2025m5}. A 4-bit model of 70 billion parameters reads
+about 40~GB per token, so its decode ceiling is 3.8 tokens per second at
+153~GB/s, 6.8 on a 273~GB/s DGX~Spark \cite{nvidia2026dgxspark}, 15 on an M5~Max
+at 614~GB/s and 30 on an M5~Ultra at 1.2~TB/s \cite{apple2026m5ultra} --- before
+the cache, and before anything else on the machine takes its share
+(derived). The same model on a data-center GPU's 3.35~TB/s of HBM would reach
+84 \cite{nvidia2026h100}; unified memory buys capacity and pays in bandwidth.
 
 \section{One pool instead of tiers}
 
+\Chref{offloading} priced every byte by the tier it lived on and the link it
+crossed. With one memory, a byte's price depends only on which processor reads
+it and how fast that processor can read. On the M1, moving all of a Qwen3-8B-architecture
+model's layers from the GPU to the CPU moved no bytes: decoding went from 10.0
+to 10.7 tokens per second to 5.9 to 8.0, because the four CPU cores read the
+same memory at about two thirds of the GPU's rate (measured). The capacity
+is pooled too. The operating system, the user's applications, the model's
+weights, its cache and any expert cache all draw on the same 16~GB, and
+nothing but the pager arbitrates between them. \Chref{kv-storage-tier} found
+what that means for a cache that can be paged out; this chapter's measurements
+found it again for weights.
+
+Pooling also means that a second copy costs the same scarce memory as the
+first. When llama.cpp splits a model between the processors it keeps a
+repacked copy of the CPU's layers while the GPU maps the whole file
+(\Chref{offloading}). With 9 of 37 layers on the GPU that copy was 2.9~GiB,
+and on this machine it meant 6.0 to 22.7~GiB of swap-outs during one short run
+and decoding at 0.4 to 1.4 tokens per second, against 5.7 to 9.1 with the copy
+turned off (measured). Without repacking, a model run entirely on the CPU
+existed only as pages of the mapped file, as resident as the operating system
+chose to keep them. In one run on the overcommitted machine it evicted them:
+decoding ran at 0.10 tokens per second while 161~GiB were paged in from the SSD
+in five and a half minutes --- the model read from disk token by token. Two days
+later, with less pressure on memory, the same configuration kept its pages and
+decoded at 8.0 (measured). Capacity on one memory is not a
+number to fill; it is a budget the engine has to defend.
+
 \section{Apple silicon}
+
+Metal gives a program two ways to put data in front of the GPU. It can
+allocate a buffer and copy data into it, or it can wrap memory the program
+already has --- page-aligned, in shared storage mode --- with
+\texttt{newBufferWithBytesNoCopy}, so that the buffer's contents are the
+program's own pages. llama.cpp takes the second path for model weights: it maps
+the GGUF file into memory and wraps the mapping, splitting it into overlapping
+views when it exceeds the device's largest buffer
+(\texttt{ggml/src/ggml-metal/ggml-metal-device.m} at \texttt{d006858}; DEFAULT).
+The server's log shows the result: for the Qwen3-8B-architecture model a single
+4,977.62~MiB \texttt{MTL0\_Mapped} buffer covers all of the file's tensor data,
+while with \texttt{--no-mmap} it allocates a 4,643.78~MiB buffer and reads the
+weights into it (measured). Once the file was in the page cache, both started in
+4.6~seconds; the copy is not what a laptop waits for at startup.
+
+Wrapping is free; keeping the pages resident is not. On macOS~15 and later,
+llama.cpp adds every buffer to a Metal residency set and, from a background
+thread, requests residency again every half second until three minutes after
+the last use, which keeps the weights resident through short pauses between
+requests (same file; DEFAULT, disabled by
+\texttt{GGML\_METAL\_NO\_RESIDENCY}). The device also reports how much it
+recommends a program keep in use at once: on the 16~GB M1,
+\texttt{recommendedMaxWorkingSetSize} is 12,713~MB (measured, from the log).
+Newer chips raise both sides of Equation~\ref{eq:shared-bw}: the M5 Max
+supports 128~GB at up to 614~GB/s, and the M5 Ultra 512~GB at 1.2~TB/s, which
+Apple markets for running models with hundreds of billions of parameters on
+the device \cite{apple2026m5ultra}.
 
 \section{Coherent CPU--GPU superchips}
 
+Data-center designs reach a similar place from the other direction. NVIDIA's
+Grace Hopper keeps two memories --- LPDDR5X on the CPU and HBM on the GPU ---
+and joins them with NVLink-C2C at 900~GB/s, 450 in each direction, which NVIDIA
+compares to seven times PCIe Gen~5. The link is cache-coherent: CPU and GPU
+threads access each other's memory without page migration, through the CPU's
+address translation \cite{nvidia2022gracehopper,nvidia2026gh200}. The tiers of
+\Chref{offloading} are still there, but the link between them is fast enough
+that host memory becomes a place to keep cache and weights that are read less
+often, rather than a last resort. DGX~Spark's GB10 is closer to Apple's model:
+128~GB of coherent unified LPDDR5x memory at 273~GB/s, shared by a 20-core Arm
+CPU and a Blackwell GPU \cite{nvidia2026dgxspark}. AMD's Instinct MI300A goes
+furthest: 24 CPU cores and 228 GPU compute units share one 128~GB pool of HBM3,
+fully coherent, so the unified pool runs at HBM speed \cite{amd2026mi300a}.
+
+These designs put different points on one curve. Unified LPDDR memory gives
+large capacity at modest bandwidth; HBM gives the most bandwidth and the least
+capacity; a coherent link lets a system hold both and choose per byte. Which one a workload wants is Equation~\ref{eq:shared-bw} again, with
+capacity as the constraint that decides whether the model runs at all.
+
 \section{One allocator for weights, cache and experts}
+
+Every engine in this book manages its memory as separate budgets. Weights are
+loaded once and stay; the KV cache gets a fixed allocation, carved into blocks
+(\Chref{paged-kv}); an expert cache, where there is one, gets a fixed size of
+its own (\Chref{expert-streaming}); and the operating system's page cache sits
+under all three with a policy of its own. On one memory those budgets compete
+for the same bytes, and a static split is wrong for every workload but the one
+it was tuned on: a long-context request wants cache, an expert-heavy one wants
+experts, and neither can borrow from the other.
+
+Hermon's kernel library puts KV blocks and expert records in the same block
+pool, with the same reference counts and free list --- one arena, with the
+axis changing from tokens to experts --- so that the two could in principle be
+traded (LIBRARY at \texttt{2a3fd52}). The policy that would trade them does not
+exist. Hermon's own storage document is plain about it: its three tiers ---
+device memory, host memory, NVMe --- run three unrelated policies with no
+promotion or demotion between them; a KV block under pressure cannot spill to
+the drive, it fails; and the design's target of a 20\% gain from unified KV and
+expert budgeting on a mixed workload is unrun (DESIGN;
+\texttt{docs/STORAGE\_ARCHITECTURE.md} and \texttt{docs/KERNEL\_DESIGN.md} at
+\texttt{2a3fd52}).
 
 \section{A single residency policy}
 
+What a unified policy must decide is which bytes stay resident, and the
+previous chapters supply the value of each kind: the rate at which it is read
+per byte of memory it occupies. Dense weights are read by every step. The
+active cache of a running sequence is read by every step of that sequence. An
+expert is read with the probability its router gives it. The cache of a paused
+conversation is read by no step until its user returns, and a prefix by the
+requests that share it. Ranking bytes by reads per second per byte, and
+charging each tier's miss cost from Equation~\ref{eq:offload-time}, gives one
+ordering for all of them --- the same economics as a buffer pool in a database,
+with one difference that matters: an inference step's reads are known a layer
+ahead for weights and cache, so prefetching them can be exact, and experts can
+be predicted a layer ahead, imperfectly (\Chref{expert-streaming}).
+
+Two measured failures bound the design. WARP found that an expert cache larger
+than physical memory ran eight times slower, because the operating system paged
+it out and every hit became a page fault \cite{sqliteai2026warp}. And on the
+M1, llama.cpp's host-memory prompt cache took 67 seconds to return a cache that
+a file restored in 4 (\Chref{kv-storage-tier}). An engine on unified memory
+must hold its budget below what the operating system will leave it, or its
+residency policy is only a suggestion.
+
 \section{Contention for shared bandwidth}
+
+The opening's measurement is Equation~\ref{eq:shared-bw} in action. On one
+memory, bandwidth is the resource every processor shares, and nothing
+partitions it: the CPU copy that halved decoding was an ordinary process with
+no priority. On the M1 one copying process alone moved 55~GB/s, and two or four
+moved no more in total --- 57 and 53~GB/s --- because a single process can
+saturate the memory; with the GPU also copying, the pair reached 55 to 65~GB/s
+between them (measured). For an engine this has two consequences. A laptop's
+token rate depends on what else the laptop is doing --- this book's own
+measurements on the M1 moved by factors of two and more with the machine's
+load --- and
+work an engine moves to the CPU to relieve the GPU competes with the GPU for
+the one resource decode needs most.
 
 \LedgerSection
 
+Running inference on one memory shared by CPU and GPU:
+
+\begin{ConstraintLedger}
+Memory capacity & buys & One pool as large as the machine's memory, with no copies between CPU and GPU. \\
+Memory bandwidth & spends & One bandwidth, usually far below HBM's, shared by every processor and program; decode slows when anything else reads memory. \\
+Latency & risks & The operating system can page out weights or cache that the engine considers resident. \\
+Compute & moves & Work moved to the CPU competes with the GPU for bandwidth, not only for arithmetic. \\
+\end{ConstraintLedger}
+
 \LabSection{one allocator, three kinds of data}
+
+\LabIntent{In \texttt{code/labs/ch37-unified-memory/}, one block pool that
+holds weight pages, KV blocks and expert records under a single budget, with a
+residency policy that ranks blocks by reads per second per byte. It replays a
+mixed trace --- long-context requests, paused conversations and MoE routing ---
+and compares the unified policy with the same budget split statically three
+ways, reporting bytes read from the slower tier and a predicted token rate
+from Equation~\ref{eq:shared-bw}. Every read is checked against a content hash,
+so a policy bug cannot hide as a speed-up. Break it by giving the pool more
+than the machine will leave it and measure the page faults.}
 
 \HappenedSection{zero-copy on unified memory}
 
-\FrontierSection{}
+Hermon's Metal attention kernel was built on one measured fact: on the M1,
+\texttt{newBufferWithBytesNoCopy} wraps the KV arena's own pages, so a GPU
+kernel writing through the buffer changes the CPU's memory in place, and the
+cache is never staged. Without that, the developers computed, a decode step
+would copy the whole context every token --- 512~MiB for Llama~3 8B at 4,096
+positions. The library verifies the alias when it attaches a pool rather than
+assuming it (Hermon \texttt{docs/KERNEL\_DESIGN.md} section K4; the developers'
+measurement).
+
+Zero-copy removed the copy and did not make the GPU win. Against the CPU's
+vector kernel, the Metal kernel lost below about 4,000 tokens of context and
+won by less than two times above it, because each call paid a fixed cost of
+about 0.94~ms: a command-buffer round trip of 0.19~ms that could not be
+removed, plus launch and a grid too small to fill the GPU at decode. The layers
+could not share one command buffer, because the host computed everything
+between two attention calls, so a forward pass paid the round trip once per
+layer. An attempt to save bandwidth by fusing the query heads that share a
+key/value head was bit-identical and slower in every shape measured: the reads
+it saved had already been served from the GPU's cache, and it cost the one
+thing the kernel lacked, parallelism (section K4.1). The kernel shipped behind a
+gate that is a pure function of the problem's shape, so the same request always
+takes the same path. Re-run at the same commit on this book's M1, the benchmark
+reproduced the developers' crossover within a few percent: with 32 query and 8
+key/value heads, Metal took 0.21, 0.44 and 0.79 times the CPU thread's speed at
+128, 512 and 2,048 tokens of context and won by 1.56 and 1.79 times at 8,192 and
+32,768, against the developers' 0.19 to 1.81 (measured; record
+\texttt{2026-09-24-m1-part7}). Unified memory makes sharing free; it does not
+make crossing between processors free.
+
+\FrontierSection{2026-09-24}
+
+Unified memory has become a product category for local inference: Apple's
+desktops now reach 512~GB at 1.2~TB/s \cite{apple2026m5ultra}, NVIDIA sells a
+128~GB unified desktop system \cite{nvidia2026dgxspark}, and data-center parts
+join CPU and GPU memory coherently
+\cite{nvidia2022gracehopper,amd2026mi300a}. Engines have been slower to follow.
+Their allocators still divide memory into fixed budgets for weights, cache and
+experts, and leave the rest to the operating system. The open problem is the
+one this chapter's lab poses: a single residency policy that ranks weights,
+cache blocks and experts by their value per byte, owns its budget against the
+operating system, and prefetches using what the model's structure reveals
+about the next layer.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Extend Equation~\ref{eq:shared-bw} to a batch of $B$
+  sequences with $S$ tokens of cache each, and find the batch at which the
+  cache reads equal the weight reads for Qwen3-8B on a 273~GB/s machine.
+\item \emph{Prediction.} A 400-billion-parameter MoE model with 17 billion
+  active parameters is stored at 4 bits on a 512~GB, 1.2~TB/s machine. Predict
+  its decode ceiling at batch one, and the batch at which its reads of expert
+  weights stop growing (\Chref{mixture-of-experts}).
+\item \emph{Implementation.} Add a memory-copying background process to the
+  lab's measurement and verify Equation~\ref{eq:shared-bw} on your machine at
+  three levels of contention.
+\item \emph{Falsification.} Find a workload for which a static three-way split
+  of the pool beats the lab's unified policy. What does the unified policy fail
+  to know?
+\end{enumerate}
