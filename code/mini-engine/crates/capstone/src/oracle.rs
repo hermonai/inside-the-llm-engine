@@ -7,7 +7,7 @@
 //! sequence length per token, which is why no engine works this way and why it
 //! is the right thing to test one against.
 
-use crate::kernels::{argmax, dot, matmul_rows, rms_norm, rope, silu, softmax};
+use crate::kernels::{argmax, dot, matmul_rows_simple, rms_norm, rope, silu, softmax};
 use crate::model::Model;
 
 /// Logits for the last position of `tokens`, computed from nothing.
@@ -35,9 +35,9 @@ pub fn oracle_logits(model: &Model, tokens: &[u32]) -> Vec<f32> {
             );
         }
         let (mut q, mut k, mut v) = (vec![0.0; n * qw], vec![0.0; n * kvw], vec![0.0; n * kvw]);
-        matmul_rows(&lw.wq, qw, d, &h, n, &mut q);
-        matmul_rows(&lw.wk, kvw, d, &h, n, &mut k);
-        matmul_rows(&lw.wv, kvw, d, &h, n, &mut v);
+        matmul_rows_simple(&lw.wq, qw, d, &h, n, &mut q);
+        matmul_rows_simple(&lw.wk, kvw, d, &h, n, &mut k);
+        matmul_rows_simple(&lw.wv, kvw, d, &h, n, &mut v);
         for i in 0..n {
             q[i * qw..(i + 1) * qw]
                 .chunks_exact_mut(dh)
@@ -67,7 +67,7 @@ pub fn oracle_logits(model: &Model, tokens: &[u32]) -> Vec<f32> {
             }
         }
         let mut o = vec![0.0; n * d];
-        matmul_rows(&lw.wo, d, qw, &attn, n, &mut o);
+        matmul_rows_simple(&lw.wo, d, qw, &attn, n, &mut o);
         x.iter_mut().zip(&o).for_each(|(xi, oi)| *xi += oi);
         for i in 0..n {
             rms_norm(
@@ -78,12 +78,12 @@ pub fn oracle_logits(model: &Model, tokens: &[u32]) -> Vec<f32> {
             );
         }
         let (mut gate, mut up) = (vec![0.0; n * c.d_ff], vec![0.0; n * c.d_ff]);
-        matmul_rows(&lw.w_gate, c.d_ff, d, &h, n, &mut gate);
-        matmul_rows(&lw.w_up, c.d_ff, d, &h, n, &mut up);
+        matmul_rows_simple(&lw.w_gate, c.d_ff, d, &h, n, &mut gate);
+        matmul_rows_simple(&lw.w_up, c.d_ff, d, &h, n, &mut up);
         gate.iter_mut()
             .zip(&up)
             .for_each(|(g, u)| *g = silu(*g) * u);
-        matmul_rows(&lw.w_down, d, c.d_ff, &gate, n, &mut o);
+        matmul_rows_simple(&lw.w_down, d, c.d_ff, &gate, n, &mut o);
         x.iter_mut().zip(&o).for_each(|(xi, oi)| *xi += oi);
     }
     let mut normed = vec![0.0; d];
@@ -94,7 +94,7 @@ pub fn oracle_logits(model: &Model, tokens: &[u32]) -> Vec<f32> {
         &mut normed,
     );
     let mut logits = vec![0.0; c.vocab];
-    matmul_rows(&model.w.output, c.vocab, d, &normed, 1, &mut logits);
+    matmul_rows_simple(&model.w.output, c.vocab, d, &normed, 1, &mut logits);
     logits
 }
 

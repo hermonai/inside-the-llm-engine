@@ -3,7 +3,7 @@
 //! read from and written to the paged cache.
 
 use crate::config::ModelConfig;
-use crate::kernels::{dot, matmul_rows, rms_norm, rope, silu, softmax};
+use crate::kernels::{dot, matmul_rows_threads, rms_norm, rope, silu, softmax};
 use crate::kv::{BlockId, KvError, KvPool};
 use crate::weights::Weights;
 
@@ -23,13 +23,20 @@ pub struct SeqChunk<'a> {
 pub struct Model {
     pub cfg: ModelConfig,
     pub w: Weights,
+    /// Threads for the matrix products. Results do not depend on it, bit for bit.
+    pub threads: usize,
 }
 
 impl Model {
     pub fn new(cfg: ModelConfig, seed: u64) -> Self {
         cfg.validate().expect("invalid model configuration");
         let w = Weights::random(&cfg, seed);
-        Self { cfg, w }
+        Self { cfg, w, threads: 1 }
+    }
+
+    pub fn with_threads(mut self, threads: usize) -> Self {
+        self.threads = threads.max(1);
+        self
     }
 
     /// Runs one step. Returns, for each chunk, its last token's logits if it
@@ -74,9 +81,9 @@ impl Model {
                 );
             }
             // 2. project every token of the step at once; each weight row is read once
-            matmul_rows(&lw.wq, qw, d, &h, n, &mut q);
-            matmul_rows(&lw.wk, kvw, d, &h, n, &mut k);
-            matmul_rows(&lw.wv, kvw, d, &h, n, &mut v);
+            matmul_rows_threads(&lw.wq, qw, d, &h, n, &mut q, self.threads);
+            matmul_rows_threads(&lw.wk, kvw, d, &h, n, &mut k, self.threads);
+            matmul_rows_threads(&lw.wv, kvw, d, &h, n, &mut v, self.threads);
             // 3. rotate queries and keys by position, then append keys and values to the cache
             for i in 0..n {
                 for head in q[i * qw..(i + 1) * qw].chunks_exact_mut(dh) {
@@ -117,7 +124,7 @@ impl Model {
                 }
             }
             // 5. output projection and residual
-            matmul_rows(&lw.wo, d, qw, &attn, n, &mut o);
+            matmul_rows_threads(&lw.wo, d, qw, &attn, n, &mut o, self.threads);
             for (xi, oi) in x.iter_mut().zip(&o) {
                 *xi += oi;
             }
@@ -130,12 +137,12 @@ impl Model {
                     &mut h[i * d..(i + 1) * d],
                 );
             }
-            matmul_rows(&lw.w_gate, c.d_ff, d, &h, n, &mut gate);
-            matmul_rows(&lw.w_up, c.d_ff, d, &h, n, &mut up);
+            matmul_rows_threads(&lw.w_gate, c.d_ff, d, &h, n, &mut gate, self.threads);
+            matmul_rows_threads(&lw.w_up, c.d_ff, d, &h, n, &mut up, self.threads);
             for (g, u) in gate.iter_mut().zip(&up) {
                 *g = silu(*g) * u;
             }
-            matmul_rows(&lw.w_down, d, c.d_ff, &gate, n, &mut o);
+            matmul_rows_threads(&lw.w_down, d, c.d_ff, &gate, n, &mut o, self.threads);
             for (xi, oi) in x.iter_mut().zip(&o) {
                 *xi += oi;
             }
@@ -156,7 +163,15 @@ impl Model {
                     &mut normed,
                 );
                 let mut logits = vec![0.0; c.vocab];
-                matmul_rows(&self.w.output, c.vocab, d, &normed, 1, &mut logits);
+                matmul_rows_threads(
+                    &self.w.output,
+                    c.vocab,
+                    d,
+                    &normed,
+                    1,
+                    &mut logits,
+                    self.threads,
+                );
                 result.push(Some(logits));
             } else {
                 result.push(None);

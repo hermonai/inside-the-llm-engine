@@ -141,6 +141,39 @@ fn continuous_batching_reproduces_the_oracle_token_for_token() {
 }
 
 #[test]
+fn threaded_matrix_products_reproduce_the_oracle_token_for_token() {
+    // Splitting output rows among threads never splits a reduction, so the
+    // tokens (and every logit) must not depend on the thread count.
+    let requests: Vec<(Vec<u32>, usize)> =
+        vec![(prompt(6, 13), 8), (prompt(7, 4), 11), (prompt(8, 9), 6)];
+    let model = tiny_model();
+    let expected: Vec<Vec<u32>> = requests
+        .iter()
+        .map(|(p, n)| oracle_generate(&model, p, *n, None))
+        .collect();
+    let cfg = EngineConfig {
+        n_blocks: 32,
+        block_size: 4,
+        max_running: 3,
+        token_budget: 8,
+    };
+    for threads in [2, 3, 4] {
+        let mut engine = Engine::new(tiny_model().with_threads(threads), cfg);
+        let ids: Vec<u64> = requests
+            .iter()
+            .map(|(p, n)| engine.submit(greedy(p.clone(), *n)).unwrap())
+            .collect();
+        let got = tokens_by_request(&engine.run_to_completion().unwrap());
+        for (id, want) in ids.iter().zip(&expected) {
+            assert_eq!(
+                &got[id], want,
+                "threads={threads}: request {id} differs from the oracle"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_request_generates_the_same_tokens_alone_or_in_a_crowd() {
     let target = GenerationRequest {
         prompt: prompt(9, 7),
