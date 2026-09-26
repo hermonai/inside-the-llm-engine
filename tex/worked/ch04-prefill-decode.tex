@@ -1,0 +1,72 @@
+\section{Worked problems: pricing the two phases}
+
+\subsection{A 4,096-token prompt on the laptop}
+\textbf{Problem.} Predict the time to first token of a 4,096-token prompt for
+Llama~3.2~3B on the M1's GPU from equation~\eqref{eq:prefill-time} and the
+measured prefill plateau. Say which term the prediction neglects, estimate it,
+and compare both with the measurements of 18.2~s (flash attention off) and
+15.7~s (on).
+
+\textbf{Solution.} The plateau of Figure~\ref{fig:ch04-prefill-curve} is about
+295 prompt tokens per second, so equation~\eqref{eq:prefill-time}, which charges
+every token the same $2P$ FLOPs, predicts $4{,}096 / 295 = 13.9$~s. It neglects
+causal attention, whose cost per token grows with the prompt: about
+$2S^{2}H_qd_hL = 2 \times 4{,}096^{2} \times 3{,}072 \times 28 = 2.9$~TFLOP,
+against $2 \times 2.82 \times 10^{9} \times 4{,}096 = 23.1$~TFLOP for the layers'
+matrices, 12.5\% more work. If attention ran as efficiently as the matrices, the
+prompt would take $13.9 \times 1.125 = 15.6$~s --- the flash-attention
+measurement to within 1\%. The default path took 18.2~s: its attention ran at
+about 40\% of the matrices' rate. The prediction is wrong in the optimistic
+direction, and by more the longer the prompt, since attention's share grows
+linearly with $S$; by about 47,000 tokens for a model of Qwen3-8B's shape it
+would be half the work.
+
+\subsection{The same intensity, different costs}
+\textbf{Problem.} Show that prefill of $S$ tokens and batched decode of $B$
+sequences have the same arithmetic intensity in the linear layers when $S = B$.
+List what nevertheless makes them cost different amounts, with numbers for
+Llama~3.2~3B at $S = B = 32$ and 4,096 tokens of context per decoding sequence.
+
+\textbf{Solution.} In both cases every weight matrix is multiplied by a matrix
+of 32 activation rows: $2 \times 32$ FLOPs per weight read, $2 \times 32 / b_w$
+per byte, identical. The differences are elsewhere. (1) \emph{Attention bytes.}
+The 32 prompt tokens attend to each other, reading at most 32 tokens of keys
+and values; each of the 32 decoding sequences reads its own 4,096 tokens, 470~MB
+of cache per sequence and 15~GB per step --- seven and a half times the weights, all of it
+at 3~FLOP per byte. (2) \emph{Attention FLOPs.} The prompt's causal attention
+is about $2 \times 32^2 \times 3{,}072 \times 28 = 0.18$~GFLOP; the decode
+batch's is $32 \times 12{,}288 \times 4{,}096 \times 28 = 45$~GFLOP. (3)
+\emph{Output projection.} Prefill needs logits for one position, decode for
+32: $32 \times 788$~MFLOP $= 25$~GFLOP against 0.8. (4) \emph{Cache writes.}
+Both write 32 tokens' keys and values, 3.7~MB. (5) \emph{Latency.} The prefill
+step delivers one token, the first of one request; the decode step delivers one
+token to each of 32 requests. The linear layers are the same product; the step
+around them is not.
+
+\subsection{Choosing a chunk size in tiles}
+\textbf{Problem.} On the M1's GPU the tiled matrix kernel costs about 111~ms per
+32-column tile at large sizes, and the measured step times are 122~ms for up to
+32 rows, 233~ms for 64 and 325~ms for 66. Two sequences are decoding when a
+512-token prompt arrives. For prompt chunks of 30, 62, 64 and 126 tokens,
+each processed with the two decoding rows, compute the step time (the worst gap
+the decoders see) and the time from the start of the prefill to the prompt's
+first token. Compare with processing the prompt in one step.
+
+\textbf{Solution.} One step carries $512 + 2 = 514$ rows, 17 tiles, about
+$17 \times 111 = 1.89$~s. Chunks of 62 give steps of 64 rows, two tiles,
+0.233~s; eight such steps cover 496 tokens and a ninth carries the last 16
+(18 rows, one tile, 0.122~s): first token after $8 \times 0.233 + 0.122 =
+1.98$~s. Chunks of 64 give 66 rows, three tiles, 0.325~s per step: $8 \times
+0.325 = 2.60$~s. Chunks of 126 give 128 rows, four tiles, 0.432~s per step; four
+steps cover 504 tokens and a fifth carries 8 plus the two decode rows (10 rows,
+one tile): $4 \times 0.432 + 0.122 = 1.85$~s. Chunks of 30 give 32 rows, one
+tile, 0.122~s per step; seventeen steps cover 510 tokens and an eighteenth
+carries the last 2 plus two decode rows (4 rows, the small-batch kernel,
+71~ms): $17 \times 0.122 + 0.071 = 2.14$~s (all derived from the measured step
+times). Summarized as (worst gap, first token): one step (1.89, 1.89); 126
+(0.43, 1.85); 62 (0.23, 1.98); 64 (0.32, 2.60); 30 (0.12, 2.14). The 64-token
+chunk is dominated by the 62-token chunk on both axes. The general rule: pick
+the chunk so that chunk plus decode rows is a multiple of the kernel's tile,
+which on this machine means $32k - B_{\text{decode}}$; an engine that knows its
+kernel's tile can choose its token budget per step to fit
+(\Chref{chunked-prefill}).

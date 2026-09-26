@@ -34,7 +34,7 @@ if this table is stale. Words are approximate prose words.
 | 1 | Why Inference Is Its Own Discipline | FULL | 6,754 | 0 |
 | 2 | The Forward Pass, Compressed | FULL | 6,942 | 0 |
 | 3 | The Roofline: Why Decode Leaves Your GPU Idle | FULL | 5,117 | 0 |
-| 4 | Prefill and Decode: Two Workloads, One Model | ZERO | 2,057 | 1 |
+| 4 | Prefill and Decode: Two Workloads, One Model | FULL | 5,021 | 0 |
 | 5 | The KV Cache: Inference's Central Data Structure | ZERO | 2,110 | 0 |
 | 6 | Napkin Math: Latency, Throughput and Cost per Token | ZERO | 2,126 | 2 |
 | 7 | Matrix Multiplication on Real Hardware | ZERO | 2,086 | 2 |

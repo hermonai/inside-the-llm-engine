@@ -1,0 +1,59 @@
+% Two sequences (A, B) decode on the M1 GPU when a 512-token prompt (C) arrives. Step times
+% derived from measured llama.cpp rates for Llama 3.2 3B (records 2026-09-23-m1-llama32-3b
+% and 2026-09-26-m1-pass3, ch04-tile-edges): two decoding sequences 86.5 ms per step; three
+% 137 ms; a step with C's whole prompt and A's and B's tokens (514 rows, 17 tiles of 32
+% columns at 111 ms per tile) 1.89 s; a step with a 62-token chunk and the two decode rows
+% (64 rows, two tiles) 0.233 s, measured at 64 rows; the last chunk, 16 tokens plus two
+% rows, one tile, 0.122 s. Scale: 5 cm per second.
+\begin{tikzpicture}[
+  dec/.style={draw=BookBlue, fill=BookPale, minimum height=5mm, inner sep=0},
+  pre/.style={draw=BookGold!50!black, fill=BookGold!80},
+  tok/.style={fill=BookBlue, draw=none, circle, minimum size=1.9mm, inner sep=0},
+  ctok/.style={tok, fill=red!70!black},
+  lab/.style={font=\small\sffamily, anchor=east},
+  note/.style={font=\scriptsize\sffamily, text=black!75},
+]
+% time axis
+\draw[-{Stealth[length=1.6mm]}, black!60] (0,-5.6) -- (12.4,-5.6);
+\foreach \t in {0,0.5,1,1.5,2} {
+  \draw[black!60] (5*\t,-5.55) -- (5*\t,-5.65);
+  \node[font=\scriptsize\sffamily, anchor=north] at (5*\t,-5.65) {\t\,s};
+}
+% ---------- top: the whole prompt in one step ----------
+\node[font=\small\sffamily\bfseries, anchor=west] at (-1.6,0.55) {The whole prompt in one step};
+\node[lab] at (-0.1,0) {GPU steps};
+\foreach \a/\b in {0/0.0865, 0.0865/0.173, 0.173/0.2595} {\draw[dec] (5*\a,-0.25) rectangle (5*\b,0.25);}
+\draw[pre] (5*0.2595,-0.25) rectangle (5*2.1485,0.25);
+\node[font=\scriptsize\sffamily] at (5*1.2,0) {C's 512 prompt tokens with A's and B's next tokens: 1.89 s};
+\draw[dec] (5*2.1485,-0.25) rectangle (5*2.2855,0.25);
+\node[lab] at (-0.1,-0.75) {A, B};
+\foreach \t in {0.0865,0.173,0.2595,2.1485,2.2855} {\node[tok] at (5*\t,-0.75) {};}
+\node[lab] at (-0.1,-1.3) {C};
+\draw[black!50] (5*0.2595,-1.15) -- (5*0.2595,-1.45);
+\node[note, anchor=west] at (5*0.2595+0.05,-1.3) {arrives};
+\foreach \t in {2.1485,2.2855} {\node[ctok] at (5*\t,-1.3) {};}
+\draw[{Stealth[length=1.4mm]}-{Stealth[length=1.4mm]}, black!70] (5*0.2595,-0.95) -- (5*2.1485,-0.95);
+\node[note, fill=white, inner sep=1pt] at (5*1.2,-0.95) {A and B wait 1.89 s between two tokens};
+% ---------- bottom: chunks of 62 tokens ----------
+\node[font=\small\sffamily\bfseries, anchor=west] at (-1.6,-2.35) {The prompt in chunks of 62 tokens};
+\node[lab] at (-0.1,-2.9) {GPU steps};
+\foreach \a/\b in {0/0.0865, 0.0865/0.173, 0.173/0.2595} {\draw[dec] (5*\a,-3.15) rectangle (5*\b,-2.65);}
+\foreach \i in {0,...,7} {
+  \pgfmathsetmacro{\a}{0.2595+0.2328*\i}
+  \pgfmathsetmacro{\b}{0.2595+0.2328*(\i+1)}
+  \draw[pre] (5*\a,-3.15) rectangle (5*\b,-2.65);
+}
+\draw[pre] (5*2.1219,-3.15) rectangle (5*2.2439,-2.65);
+\draw[dec] (5*2.2439,-3.15) rectangle (5*2.3809,-2.65);
+\node[lab] at (-0.1,-3.65) {A, B};
+\foreach \t in {0.0865,0.173,0.2595} {\node[tok] at (5*\t,-3.65) {};}
+\foreach \i in {1,...,8} {\pgfmathsetmacro{\t}{0.2595+0.2328*\i}\node[tok] at (5*\t,-3.65) {};}
+\node[tok] at (5*2.2439,-3.65) {};
+\node[tok] at (5*2.3809,-3.65) {};
+\node[lab] at (-0.1,-4.2) {C};
+\draw[black!50] (5*0.2595,-4.05) -- (5*0.2595,-4.35);
+\node[note, anchor=west] at (5*0.2595+0.05,-4.2) {arrives};
+\foreach \t in {2.2439,2.3809} {\node[ctok] at (5*\t,-4.2) {};}
+\node[note, anchor=west] at (5*0.2595,-4.75) {each chunk step: 62 prompt tokens and A's and B's next tokens, 64 rows, two 32-column tiles: 0.23 s;};
+\node[note, anchor=west] at (5*0.2595,-5.05) {A and B never wait longer; C's first token comes 1.98 s after its prefill starts instead of 1.89 s};
+\end{tikzpicture}
