@@ -1,0 +1,9 @@
+[package]
+name = "ch05-kv-cache"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 5 lab: generation with a KV cache against recomputation from scratch, bit for bit"
+
+[dependencies]
+capstone = { path = "../../mini-engine/crates/capstone" }

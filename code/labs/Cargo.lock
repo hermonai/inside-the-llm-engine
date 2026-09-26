@@ -31,5 +31,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ch05-kv-cache"
+version = "0.1.0"
+dependencies = [
+ "capstone",
+]
+
+[[package]]
 name = "engine0"
 version = "0.1.0"

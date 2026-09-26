@@ -23,3 +23,4 @@ and **break** (a change that makes the mechanism fail or disappear).
 | 2 | [`ch02-count-a-model`](ch02-count-a-model/) — a GGUF header reader that prices one decode step, per operator, for any local model | Python |
 | 3 | [`ch03-roofline`](ch03-roofline/) — measures the CPU's bandwidth and compute roofs and predicts a decode sweep from them | Rust |
 | 4 | [`ch04-prefill-decode`](ch04-prefill-decode/) — the capstone model reads a prompt in one step and token by token, bit-identical, at very different costs | Rust |
+| 5 | [`ch05-kv-cache`](ch05-kv-cache/) — generation with a KV cache against recomputation from scratch, bit for bit, and what one erased entry does | Rust |
