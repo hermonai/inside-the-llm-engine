@@ -1,0 +1,59 @@
+\section{Worked problems: inference is paid per token}
+
+\subsection{When service overtakes training}
+\textbf{Problem.} A model with $N$ active parameters is trained on
+$D = 30$~trillion tokens. Using $6ND$ FLOPs for training and $2N$ per processed
+token in service, how many tokens must it process in service before inference
+has spent as much compute as training? Why does the answer not depend on $N$,
+and how does a prompt cache that serves a fraction $h$ of input tokens without
+computing them change it?
+
+\textbf{Solution.} Service matches training when $2N \cdot T = 6ND$, so
+$T = 3D = 90$~trillion processed tokens. $N$ cancels because both costs are
+proportional to it: every parameter is used twice per token in service and six
+times per token in training. A prompt cache does not change the break-even in
+\emph{computed} tokens, but it changes how many tokens users must send to reach
+it: if a fraction $h$ of input tokens is served from the cache, then
+$T_{\text{served}} = 3D / (1 - h \cdot f_{\text{in}})$, where $f_{\text{in}}$ is
+the input share of all tokens. With DeepSeek's reported day --- 608~billion
+input tokens, 56\% cached, and 168~billion output tokens ---
+$f_{\text{in}} = 608/776 = 0.78$ and $1 - 0.56 \times 0.78 = 0.56$: users must
+send about 1.8 times as many tokens before the service has repeated the
+training run's arithmetic.
+
+\subsection{What doubling the bandwidth would do}
+\textbf{Problem.} On the M1, Llama~3.2~3B decoded one conversation at
+20.08 tokens per second and thirty-two at 175.87 in total. Compute the step time
+in each case. Then predict both numbers on a machine with twice the memory
+bandwidth and the same arithmetic units, stating which assumption each
+prediction rests on.
+
+\textbf{Solution.} Step time is the batch divided by the aggregate rate:
+$1/20.08 = 49.8$~ms at $B = 1$ and $32/175.87 = 182$~ms at $B = 32$. At
+$B = 1$ the step is almost entirely the time to stream 2.01~GB of weights
+(\Chref{roofline}), so twice the bandwidth predicts about 25~ms and
+40~tokens per second --- assuming the kernel keeps its share of the machine's
+bandwidth and the fixed per-step overheads are small. At $B = 32$ the step
+already spends about 132~ms more than the weight stream, on arithmetic and on
+reading 32 caches. Doubling bandwidth shortens only the memory part: if those
+132~ms are mostly arithmetic, the step falls to about $182 - 25 = 157$~ms, or
+204 tokens per second in total --- 16\% more rather than twice. The faster memory helps the single user most and the busy server
+least, which is the roofline's prediction in miniature.
+
+\subsection{A ledger for a familiar cache}
+\textbf{Problem.} Write the constraint ledger for caching rendered web pages
+in a web server's memory, using the book's four resources and two outcomes.
+
+\textbf{Solution rubric.} A good ledger has one row per resource the cache
+touches and a size or condition for each. \emph{Compute} and \emph{latency}:
+buys --- a hit skips rendering; the saving is the render time multiplied by the
+hit rate. \emph{Memory capacity}: spends --- every cached page occupies
+memory, which bounds how many pages can be kept and competes with other uses.
+\emph{Memory bandwidth}: roughly neutral --- a hit still copies the page out.
+\emph{Correctness}: risks --- a stale page after the source changes, or one
+user's personalized page served to another; the ledger should name the
+invalidation rule. \emph{Cost}: buys, if the hit rate is high enough that the
+memory costs less than the rendering it avoids. Every item has an inference
+analogue: the prefix cache of \Chref{prefix-caching} buys compute and latency,
+spends capacity, and risks leaking one tenant's prompt to another
+(\Chref{production}).

@@ -1,0 +1,34 @@
+% One token through Llama 3.2 3B (Q4_K_M GGUF; 28 layers, width 3,072, 24 query and 8
+% key/value heads of 128, FFN 8,192, vocabulary 128,256, tied embeddings). Token IDs from
+% llama-tokenize; probabilities from llama-server's n_probs (measured, record
+% 2026-09-26-m1-pass3); shapes and bytes derived from the GGUF metadata.
+\begin{tikzpicture}[
+  st/.style={draw=BookBlue, fill=BookPale, rounded corners=2pt, align=center, font=\small\sffamily, minimum width=70mm, minimum height=8mm, inner sep=3pt},
+  hot/.style={st, fill=BookGold!55},
+  endbox/.style={st, fill=BookGreen},
+  note/.style={font=\scriptsize\sffamily, text=black!70, align=left, anchor=west},
+  arr/.style={-{Stealth[length=1.6mm]}, BookBlue, thick},
+]
+\node[endbox] (txt) at (0, 0) {\texttt{"The capital of France is"}};
+\node[st] (tok) at (0, -1.3) {tokenizer: \texttt{128000 791 6864 315 9822 374}};
+\node[st] (emb) at (0, -2.6) {embedding lookup: $\mathbf{X} \in \mathbb{R}^{6 \times 3072}$};
+\node[hot, minimum height=17mm] (lay) at (0, -4.35) {decoder layer, $\times 28$\\[1pt]
+  \scriptsize RMSNorm; project to $\mathbf{Q}\in\mathbb{R}^{6\times 3072}$ and $\mathbf{K},\mathbf{V}\in\mathbb{R}^{6\times 1024}$\\
+  \scriptsize attention; output projection\\
+  \scriptsize RMSNorm; FFN $3072 \rightarrow 8192 \rightarrow 3072$; residual adds};
+\node[st] (fin) at (0, -6.1) {final RMSNorm, last position only: $\mathbf{h} \in \mathbb{R}^{3072}$};
+\node[st] (logit) at (0, -7.4) {output matrix (the tied table): logits $\in \mathbb{R}^{128256}$};
+\node[hot] (soft) at (0, -8.7) {softmax: \texttt{" Paris"} 0.62, \texttt{" located"} 0.09, \ldots};
+\node[endbox] (bytes) at (0, -10.0) {token 12366 $\rightarrow$ bytes \texttt{20 50 61 72 69 73}};
+\draw[arr] (txt) -- (tok); \draw[arr] (tok) -- (emb); \draw[arr] (emb) -- (lay);
+\draw[arr] (lay) -- (fin); \draw[arr] (fin) -- (logit); \draw[arr] (logit) -- (soft); \draw[arr] (soft) -- (bytes);
+\node[note] at (4.55, 0) {24 bytes of UTF-8};
+\node[note] at (4.55, -1.3) {6 tokens, the first a special\\start-of-text token};
+\node[note] at (4.55, -2.6) {reads 6 rows, 15 KB, of a\\323 MB table (\texttt{Q6\_K})};
+\node[note] at (4.55, -4.35) {100.7 M weights per layer,\\2.82 G in all 28;\\writes $6 \times 112$ KiB of keys\\and values to the KV cache};
+\node[note] at (4.55, -6.1) {the other five positions\\were only needed for the cache};
+\node[note] at (4.55, -7.4) {394 M weights; 513 KB of\\32-bit logits};
+\node[note] at (4.55, -8.7) {one number per vocabulary\\entry, summing to 1};
+\node[note] at (4.55, -10.0) {\texttt{" Paris"}, streamed to the user};
+\draw[arr, dashed] (bytes.west) -- ++(-0.5,0) |- node[pos=0.25, left, font=\scriptsize\sffamily, text=BookBlue, align=right] {next step: one\\new token; every\\weight read again} (emb.west);
+\end{tikzpicture}
