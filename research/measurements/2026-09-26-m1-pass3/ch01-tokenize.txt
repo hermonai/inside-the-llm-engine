@@ -1,0 +1,6 @@
+128000 -> '<|begin_of_text|>'
+   791 -> 'The'
+  6864 -> ' capital'
+   315 -> ' of'
+  9822 -> ' France'
+   374 -> ' is'
