@@ -1,0 +1,56 @@
+# llama.cpp build 8660 (d006858): KV cache allocations reported at context creation
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 8192 -n 1 -p hi -ngl 99 --no-warmup    (2026-09-26T23:41Z)
+load_tensors:   CPU_Mapped model buffer size =   308.23 MiB
+load_tensors:  MTL0_Mapped model buffer size =  1918.35 MiB
+llama_kv_cache:       MTL0 KV buffer size =   896.00 MiB
+llama_kv_cache: size =  896.00 MiB (  8192 cells,  28 layers,  1/1 seqs), K (f16):  448.00 MiB, V (f16):  448.00 MiB
+llama_kv_cache: attn_rot_k = 0
+llama_kv_cache: attn_rot_v = 0
+sched_reserve:       MTL0 compute buffer size =   256.50 MiB
+sched_reserve:        CPU compute buffer size =    28.01 MiB
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 8192 -n 1 -p hi -ngl 99 --no-warmup -fa on -ctk q8_0 -ctv q8_0   (2026-09-26T23:41Z)
+load_tensors:   CPU_Mapped model buffer size =   308.23 MiB
+load_tensors:  MTL0_Mapped model buffer size =  1918.35 MiB
+llama_kv_cache:       MTL0 KV buffer size =   476.00 MiB
+llama_kv_cache: size =  476.00 MiB (  8192 cells,  28 layers,  1/1 seqs), K (q8_0):  238.00 MiB, V (q8_0):  238.00 MiB
+llama_kv_cache: attn_rot_k = 1
+llama_kv_cache: attn_rot_v = 1
+sched_reserve:       MTL0 compute buffer size =   262.50 MiB
+sched_reserve:        CPU compute buffer size =    28.09 MiB
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 8192 -n 1 -p hi -ngl 99 --no-warmup -fa on -ctk q4_0 -ctv q4_0   (2026-09-26T23:41Z)
+load_tensors:   CPU_Mapped model buffer size =   308.23 MiB
+load_tensors:  MTL0_Mapped model buffer size =  1918.35 MiB
+llama_kv_cache:       MTL0 KV buffer size =   252.00 MiB
+llama_kv_cache: size =  252.00 MiB (  8192 cells,  28 layers,  1/1 seqs), K (q4_0):  126.00 MiB, V (q4_0):  126.00 MiB
+llama_kv_cache: attn_rot_k = 1
+llama_kv_cache: attn_rot_v = 1
+sched_reserve:       MTL0 compute buffer size =   262.50 MiB
+sched_reserve:        CPU compute buffer size =    28.09 MiB
+
+## Ollama qwen2.5-coder:3b, blob sha256-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba; llama-completion -m <blob> -c 8192 -n 1 -p hi -ngl 99 --no-warmup    (2026-09-26T23:41Z)
+load_tensors:   CPU_Mapped model buffer size =   243.43 MiB
+load_tensors:  MTL0_Mapped model buffer size =  1834.82 MiB
+llama_kv_cache:       MTL0 KV buffer size =   288.00 MiB
+llama_kv_cache: size =  288.00 MiB (  8192 cells,  36 layers,  1/1 seqs), K (f16):  144.00 MiB, V (f16):  144.00 MiB
+llama_kv_cache: attn_rot_k = 0
+llama_kv_cache: attn_rot_v = 0
+sched_reserve:       MTL0 compute buffer size =   300.75 MiB
+sched_reserve:        CPU compute buffer size =    24.01 MiB
+
+## Ollama granite3.1-moe:3b, blob sha256-4cbc52994d8ce56d58f3ecadcd451a5dbb2a4f1142098c6b9f030d18ee5e052b; llama-completion -m <blob> -c 8192 -n 1 -p hi -ngl 99 --no-warmup    (2026-09-26T23:41Z)
+load_tensors:   CPU_Mapped model buffer size =    76.50 MiB
+load_tensors:  MTL0_Mapped model buffer size =  1939.23 MiB
+llama_kv_cache:       MTL0 KV buffer size =   512.00 MiB
+llama_kv_cache: size =  512.00 MiB (  8192 cells,  32 layers,  1/1 seqs), K (f16):  256.00 MiB, V (f16):  256.00 MiB
+llama_kv_cache: attn_rot_k = 0
+llama_kv_cache: attn_rot_v = 0
+sched_reserve:       MTL0 compute buffer size =    99.01 MiB
+sched_reserve:        CPU compute buffer size =    22.01 MiB
+
+
+## Device memory reported at load (llama3.2:3b, same command as the first run above)
+llama_model_load_from_file_impl: using device MTL0 (Apple M1) (unknown id) - 12123 MiB free
+llama_memory_breakdown_print: |   - MTL0 (Apple M1)    | 12124 = 9052 + (3070 =  1918 +     896 +     256) +           0 |

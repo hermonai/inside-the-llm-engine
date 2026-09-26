@@ -1,0 +1,14 @@
+# cargo run --release -p ch05-kv-cache -- --new 128 --evict 5 --csv ch05-lab-run1.csv   (2026-09-26T23:42Z; one-minute load 2.86)
+model: 4 layers, width 256, 3148032 parameters; prompt 32 tokens, 128 generated; KV cache 2048 bytes per token
+oracle: all 128 steps agree bit for bit (tokens and logits)
+token positions projected: 159 with the cache, 12224 without (77x)
+ position  cached ms/token recompute ms/token
+   prompt           11.631             10.618   (both process the 32-token prompt)
+       33            0.437             10.666
+       64            0.650             20.916
+       96            0.530             31.882
+      128            0.468             43.395
+      159            0.422             54.584
+total: 0.082 s with the cache, 4.092 s without (50x)
+wrote ch05-lab-run1.csv
+evicting prompt position 5: logits differ from step Some(1), largest gap 3.3732; first different token at step Some(10)

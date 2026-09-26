@@ -1,0 +1,4 @@
+# cargo run --release -p ch05-kv-cache -- --new 128 --evict 30   (2026-09-26T23:42Z)
+evicting prompt position 30: logits differ from step Some(1), largest gap 3.7244; first different token at step Some(2)
+# --evict 0
+evicting prompt position 0: logits differ from step Some(1), largest gap 3.3477; first different token at step Some(45)
