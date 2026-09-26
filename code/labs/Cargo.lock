@@ -24,5 +24,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ch04-prefill-decode"
+version = "0.1.0"
+dependencies = [
+ "capstone",
+]
+
+[[package]]
 name = "engine0"
 version = "0.1.0"

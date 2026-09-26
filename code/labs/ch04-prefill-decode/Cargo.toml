@@ -1,0 +1,9 @@
+[package]
+name = "ch04-prefill-decode"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 4 lab: one model reads a prompt in one step and writes it back one token at a time"
+
+[dependencies]
+capstone = { path = "../../mini-engine/crates/capstone" }
