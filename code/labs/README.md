@@ -1,0 +1,22 @@
+# Chapter labs
+
+One lab per chapter (AUTHORING.md §10): the smallest runnable program that
+shows the chapter's mechanism, with an oracle that checks every optimized path
+before anything is timed. Each runs on a laptop CPU in about a minute.
+
+Rust labs are crates in this workspace and may use `code/mini-engine` as a
+library; Python labs use only the standard library. From this directory:
+
+```bash
+cargo test --workspace                       # every lab's oracle checks, small sizes
+cargo run --release -p ch01-fake-model       # a lab at full size
+python3 chNN-<slug>/lab.py                   # a Python lab
+```
+
+Each lab's README follows the same four steps: **predict** (write the number
+down before running), **run**, **explain** (with the chapter's napkin math),
+and **break** (a change that makes the mechanism fail or disappear).
+
+| Chapter | Lab | Language |
+| --- | --- | --- |
+| 1 | [`ch01-fake-model`](ch01-fake-model/) — a weight matrix the size of a small model, decoded at rising batch sizes | Rust |

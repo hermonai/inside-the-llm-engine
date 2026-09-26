@@ -47,3 +47,9 @@ jobs:
           cargo check --workspace --all-targets
           cargo test --workspace
           cargo clippy --workspace --all-targets -- -D warnings
+      - name: Check and test the chapter labs
+        working-directory: code/labs
+        run: |
+          cargo fmt --all -- --check
+          cargo test --workspace
+          cargo clippy --workspace --all-targets -- -D warnings
