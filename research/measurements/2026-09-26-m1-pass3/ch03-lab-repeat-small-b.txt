@@ -1,0 +1,12 @@
+# The ch03-roofline lab with its sweep's batch list changed to 1, 2, 4, 1, 2, 4, 1 (a local copy; nothing else changed), --threads 4   (2026-09-26T23:04Z; one-minute load 3.21)
+# Purpose: the recorded runs' first point (B = 1) was 20-25% slower than predicted; this repeats the small batches in one process.
+3. the sweep: 256 MiB of weights times B vectors, 4 threads, best of 5
+   predicted step = the longer of (weight bytes / read roof) and (FLOPs / in-cache rate at B)
+      B  FLOP/byte   step ms  predicted   GFLOP/s      GB/s    bound
+      1        0.5      5.88       4.78      22.8      45.7   memory
+      2        1.0      5.41       4.78      49.6      49.6   memory
+      4        2.0      4.96       4.78     108.3      54.1   memory
+      1        0.5      4.51       4.78      29.8      59.5   memory
+      2        1.0      4.54       4.78      59.1      59.1   memory
+      4        2.0      4.59       4.78     117.0      58.5   memory
+      1        0.5      4.77       4.78      28.2      56.3   memory
