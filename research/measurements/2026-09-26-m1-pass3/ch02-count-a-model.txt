@@ -1,0 +1,88 @@
+# python3 code/labs/ch02-count-a-model/count_model.py <ollama-blobs>/sha256-<blob> --context 4096 --batch 16   (2026-09-26T19:05Z)
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
+Llama 3.2 3B Instruct: 3,212,749,888 parameters in 2,011,539,712 bytes of tensors (tied embeddings)
+oracle: all 28 layers match the metadata's shapes
+
+one decode step at batch 1, 4096 tokens of 16-bit cache:
+operator                      parameters       FLOPs   bytes read
+input embedding                 394.00 M           0      2.52 KB
+output projection (tied)               0    788.00 M    323.21 MB
+attention projections           704.64 M      1.41 G    407.72 MB
+feed-forward network              2.11 G      4.23 G      1.28 GB
+other tensors                   175.17 K           0    700.67 KB
+attention over the cache               0      1.41 G    469.76 MB
+one step                          3.21 G      7.83 G      2.48 GB
+
+weights read per token: 2.01 GB, 100.0% of the tensor bytes
+arithmetic intensity: 3.16 FLOP/byte
+KV cache: 112 KiB per token
+batch of 16: a step reads 9.53 GB for 16 tokens
+exit status: 0
+
+## Ollama qwen2.5-coder:3b, blob sha256-4a188102020e9c9530b687fd6400f775c45e90a0d7baafe65bd0a36963fbb7ba
+Qwen2.5 Coder 3B Instruct: 3,085,938,688 parameters in 1,923,946,496 bytes of tensors (tied embeddings)
+oracle: all 36 layers match the metadata's shapes
+
+one decode step at batch 1, 4096 tokens of 16-bit cache:
+operator                      parameters       FLOPs   bytes read
+input embedding                 311.16 M           0      1.68 KB
+output projection (tied)               0    622.33 M    255.25 MB
+attention projections           339.74 M    679.48 M    193.54 MB
+feed-forward network              2.43 G      4.87 G      1.47 GB
+other tensors                   241.66 K           0    966.66 KB
+attention over the cache               0      1.21 G    150.99 MB
+one step                          3.09 G      7.38 G      2.07 GB
+
+weights read per token: 1.92 GB, 100.0% of the tensor bytes
+arithmetic intensity: 3.56 FLOP/byte
+KV cache: 36 KiB per token
+batch of 16: a step reads 4.34 GB for 16 tokens
+exit status: 0
+
+## Ollama deepseek-r1:8b, blob sha256-e6a7edc1a4d7d9b2de136a221a57336b76316cfe53a252aeba814496c5ae439d
+DeepSeek R1 0528 Qwen3 8B: 8,190,735,360 parameters in 5,219,418,112 bytes of tensors
+oracle: all 36 layers match the metadata's shapes
+
+one decode step at batch 1, 4096 tokens of 16-bit cache:
+operator                      parameters       FLOPs   bytes read
+input embedding                 622.33 M           0      2.30 KB
+output projection               622.33 M      1.24 G    510.50 MB
+attention projections             1.51 G      3.02 G      1.07 GB
+feed-forward network              5.44 G     10.87 G      3.29 GB
+other tensors                   308.22 K           0      1.23 MB
+attention over the cache               0      2.42 G    603.98 MB
+one step                          8.19 G     17.55 G      5.47 GB
+
+weights read per token: 4.87 GB, 93.3% of the tensor bytes
+arithmetic intensity: 3.21 FLOP/byte
+KV cache: 144 KiB per token
+batch of 16: a step reads 14.53 GB for 16 tokens
+exit status: 0
+
+## Ollama granite3.1-moe:3b, blob sha256-4cbc52994d8ce56d58f3ecadcd451a5dbb2a4f1142098c6b9f030d18ee5e052b
+Granite 3.1 3b A800M Instruct: 3,298,793,472 parameters in 2,033,429,280 bytes of tensors (tied embeddings)
+mixture of experts: 8 of 40 experts per token, 0.88 B parameters active per token
+oracle: all 32 layers match the metadata's shapes
+
+one decode step at batch 1, 4096 tokens of 16-bit cache:
+operator                      parameters       FLOPs   bytes read
+input embedding                  75.50 M           0      1.63 KB
+output projection (tied)               0    151.00 M     80.22 MB
+attention projections           201.33 M    402.65 M    116.49 MB
+router                            1.97 M      3.93 M      7.86 MB
+routed experts                    3.02 G      1.21 G    365.69 MB
+other tensors                    99.84 K           0    399.36 KB
+attention over the cache               0    805.31 M    268.44 MB
+one step                          3.30 G      2.57 G    839.10 MB
+
+weights read per token: 570.67 MB, 28.1% of the tensor bytes
+arithmetic intensity: 3.06 FLOP/byte
+KV cache: 64 KiB per token
+batch of 16: uniform routing touches 97% of each layer's experts; a step reads 6.28 GB for 16 tokens
+exit status: 0
+
+## Ollama gemma4:latest, blob sha256-4c27e0f5b5adf02ac956c7322bd2ee7636fe3f45a8512c9aba5385242cb6e09a
+oracle failed at layer 0: the file holds 13,107,200 attention and 78,643,200 FFN parameters; the metadata's shape keys imply 26,214,400 and 78,643,200.
+The equations assume every layer has one shape; look for per-layer keys in the metadata (for example *_swa).
+exit status: 1

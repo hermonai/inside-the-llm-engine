@@ -1,0 +1,2 @@
+# python3 code/labs/ch02-count-a-model/count_model.py <ollama-blobs>/sha256-dde5aa3f...ccdff --dump rope_freqs.weight   (2026-09-26T19:05Z)
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1.235 1.651 2.277 3.292 5.172 9.667 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32
