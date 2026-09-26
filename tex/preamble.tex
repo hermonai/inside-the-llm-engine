@@ -62,6 +62,8 @@
 \newcommand{\Callout}[2]{\par\medskip\noindent\colorbox{BookPale}{\parbox{\dimexpr\linewidth-2\fboxsep\relax}{\raggedright\vspace{5pt}\textbf{\sffamily\color{BookBlue}#1}\par\smallskip #2\par\vspace{5pt}}}\par\medskip}
 \newcommand{\EngineFigure}[3]{\par\medskip\noindent\begin{minipage}{\linewidth}\centering\resizebox{\linewidth}{!}{\input{figures/#1.tex}}\captionof{figure}{#2}\label{#3}\end{minipage}\par\medskip}
 \newcommand{\Code}[1]{\VerbatimInput[breaklines,fontsize=\footnotesize,numbers=left,numbersep=5pt,frame=single]{#1}}
+% Lines #2 to #3 of a source file, numbered as in the file (paths are relative to tex/).
+\newcommand{\CodeLines}[3]{\VerbatimInput[breaklines,fontsize=\footnotesize,numbers=left,numbersep=5pt,frame=single,firstline=#2,lastline=#3,firstnumber=#2]{#1}}
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines,fontsize=\footnotesize}
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \newcounter{none}

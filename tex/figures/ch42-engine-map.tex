@@ -1,0 +1,55 @@
+% The capstone engine (code/mini-engine/crates/capstone): components and one step's data
+% flow, with shapes for a step of n tokens (d model width, h query heads, g key/value
+% heads, w head width, f FFN width, V vocabulary). Numbered as in Chapter 42's sections.
+\begin{tikzpicture}[
+  box/.style={draw=BookBlue, fill=BookPale, rounded corners=2pt, align=center, font=\small\sffamily, minimum height=9mm, inner sep=3pt},
+  hot/.style={box, fill=BookGold!60},
+  orc/.style={box, fill=BookGreen, dashed},
+  num/.style={circle, fill=BookBlue, text=white, inner sep=1pt, font=\scriptsize\bfseries, minimum size=4mm},
+  arr/.style={-{Stealth[length=1.8mm]}, BookBlue, thick},
+  shp/.style={font=\scriptsize\ttfamily, text=black!70},
+]
+% requests and scheduler (left column)
+\node[box, minimum width=30mm] (sub) at (0, 8.4) {submit(request)\\\scriptsize prompt tokens, max\_new,\\\scriptsize stop, sampling};
+\node[box, minimum width=30mm] (wait) at (0, 6.8) {waiting queue\\\scriptsize first come, first served};
+\node[hot, minimum width=30mm] (adm) at (0, 5.3) {admission\\\scriptsize reserve blocks for\\\scriptsize prompt + max\_new};
+\node[box, minimum width=30mm] (run) at (0, 3.7) {running set\\\scriptsize $\le$ max\_running};
+\node[hot, minimum width=30mm] (plan) at (0, 2.0) {plan one step\\\scriptsize decode tokens first,\\\scriptsize then prompt chunks,\\\scriptsize $\le$ token\_budget};
+\draw[arr] (sub) -- (wait); \draw[arr] (wait) -- (adm); \draw[arr] (adm) -- (run); \draw[arr] (run) -- (plan);
+\node[num] at (-1.85, 5.3) {1}; \node[num] at (-1.85, 2.0) {3};
+% the forward pass (middle column), a row lower than the requests so that the step's
+% tokens visibly come from the plan
+\node[box, minimum width=44mm] (emb) at (5.8, 7.6) {embed tokens};
+\node[box, minimum width=44mm] (norm) at (5.8, 6.3) {RMSNorm $\rightarrow$ Q, K, V projections};
+\node[box, minimum width=44mm] (rope) at (5.8, 5.0) {RoPE on Q and K};
+\node[hot, minimum width=44mm] (att) at (5.8, 3.6) {causal attention per token\\\scriptsize reads its own sequence's blocks};
+\node[box, minimum width=44mm] (ffn) at (5.8, 2.2) {output projection, SwiGLU FFN,\\residual adds};
+\node[box, minimum width=44mm] (log) at (5.8, 0.8) {final norm, output matrix};
+\draw[arr] (emb) -- (norm) node[midway, right, shp] {x [n, d]};
+\draw[arr] (norm) -- (rope) node[midway, right, shp] {q [n, h$\cdot$w], k, v [n, g$\cdot$w]};
+\draw[arr] (rope) -- (att);
+\draw[arr] (att) -- (ffn) node[midway, right, shp] {[n, h$\cdot$w] $\rightarrow$ [n, d]};
+\draw[arr] (ffn) -- (log) node[midway, right, shp] {$\times L$ layers};
+\node[shp] (lg) at (5.8, -0.05) {logits [chunks wanting them, V]};
+\node[num] at (3.0, 3.6) {2};
+\draw[arr] (plan.east) -- ++(1.1,0) |- (emb.west);
+\node[font=\scriptsize\sffamily, text=BookBlue, align=center, rotate=90] at (2.3, 4.8) {SeqChunk: tokens, start, block table};
+% KV pool (right column)
+\node[hot, minimum width=34mm, minimum height=20mm] (pool) at (11.6, 4.3) {KvPool\\\scriptsize blocks of block\_size positions\\\scriptsize $\times$ all layers, keys and values;\\\scriptsize free list; all-or-nothing alloc};
+\draw[arr] (rope.east) -- ++(1.55,0) node[midway, above, shp] {write k, v} |- ([yshift=4mm]pool.west);
+\draw[arr] ([yshift=-4mm]pool.west) -- ++(-0.3,0) |- (att.east);
+\node[shp, below] at (8.8, 3.6) {read k, v};
+% sampling and streaming (bottom right)
+\node[box, minimum width=34mm] (samp) at (11.6, 0.8) {sample\\\scriptsize greedy, or seeded per request};
+\node[box, minimum width=34mm] (utf) at (11.6, -0.8) {stream UTF-8 text\\\scriptsize Token, Text events};
+\node[box, minimum width=34mm] (fin) at (11.6, -2.3) {exactly one Finished\\\scriptsize completed, or cancelled;\\\scriptsize blocks returned};
+\draw[arr] (log) -- (samp); \draw[arr] (samp) -- (utf); \draw[arr] (utf) -- (fin);
+\node[num] at (8.9, 1.1) {4};
+\node[font=\scriptsize\sffamily, text=BookBlue, align=center] (nxt) at (11.6, 2.25) {each sampled token is its\\sequence's decode token\\in the next step (3)};
+\draw[arr, dashed] (samp.north) -- (nxt.south);
+% the oracle
+\node[orc, minimum width=44mm] (orc) at (5.8, -1.9) {oracle: recompute from scratch\\\scriptsize no cache, no blocks, no batching};
+\draw[{Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}, BookBlue, thick, dashed] (orc.north) -- (lg.south)
+  node[midway, right, font=\scriptsize\sffamily, text=BookBlue] {must match bit for bit};
+\node[num] at (3.0, -1.9) {5};
+\end{tikzpicture}

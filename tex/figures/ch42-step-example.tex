@@ -1,0 +1,38 @@
+% One scheduler step of the capstone engine, worked by hand. block_size 4, token budget 6.
+% Request A (prompt 7 tokens, 3 generated) processes its 3rd generated token at position 9; request B
+% (prompt 9 tokens) has 4 prompt tokens cached and receives a prefill chunk of 5.
+% Illustrative values, computed with the engine's rules.
+\begin{tikzpicture}[
+  cell/.style={draw=BookBlue, minimum width=6.2mm, minimum height=6.2mm, inner sep=0pt, font=\scriptsize\ttfamily},
+  cached/.style={cell, fill=BookPale},
+  new/.style={cell, fill=BookGold!70},
+  empty/.style={cell, fill=white, draw=black!25},
+  blk/.style={font=\scriptsize\sffamily, text=BookBlue},
+  lab/.style={font=\small\sffamily, anchor=west},
+  num/.style={circle, fill=BookBlue, text=white, inner sep=1pt, font=\scriptsize\bfseries, minimum size=4mm},
+]
+% ---- request A: positions 0..9, blocks 3, 0, 5 (block table [3, 0, 5])
+\node[lab] at (-0.3, 3.9) {\textbf{A}: prompt 7 tokens, 3 generated; table [3, 0, 5]};
+\foreach \p in {0,...,8} {\node[cached] at ({0.3 + 0.62*\p + 0.25*floor(\p/4)}, 3.2) {\p};}
+\node[new] at ({0.3 + 0.62*9 + 0.25*2}, 3.2) {9};
+\foreach \p in {10,11} {\node[empty] at ({0.3 + 0.62*\p + 0.25*2}, 3.2) {};}
+\node[blk] at (1.23, 2.7) {block 3}; \node[blk] at (3.96, 2.7) {block 0}; \node[blk] at (6.69, 2.7) {block 5};
+% ---- request B: positions 0..8 of prompt, blocks 1, 4, 2
+\node[lab] at (-0.3, 1.9) {\textbf{B}: prompt 9 tokens, 4 cached; table [1, 4, 2]};
+\foreach \p in {0,...,3} {\node[cached] at ({0.3 + 0.62*\p + 0.25*floor(\p/4)}, 1.2) {\p};}
+\foreach \p in {4,...,8} {\node[new] at ({0.3 + 0.62*\p + 0.25*floor(\p/4)}, 1.2) {\p};}
+\foreach \p in {9,10,11} {\node[empty] at ({0.3 + 0.62*\p + 0.25*2}, 1.2) {};}
+\node[blk] at (1.23, 0.7) {block 1}; \node[blk] at (3.96, 0.7) {block 4}; \node[blk] at (6.69, 0.7) {block 2};
+% ---- legend
+\node[cached, minimum width=4mm, minimum height=4mm] at (0.3, -0.35) {}; \node[lab, font=\scriptsize\sffamily] at (0.5, -0.35) {already in the cache};
+\node[new, minimum width=4mm, minimum height=4mm] at (3.7, -0.35) {}; \node[lab, font=\scriptsize\sffamily] at (3.9, -0.35) {computed this step};
+\node[empty, minimum width=4mm, minimum height=4mm] at (6.8, -0.35) {}; \node[lab, font=\scriptsize\sffamily] at (7.0, -0.35) {reserved at admission};
+% ---- the plan, step by step
+\begin{scope}[xshift=9.3cm]
+\node[lab] at (0, 3.9) {\textbf{Plan} (token budget 6)};
+\node[num] at (0.2, 3.25) {1}; \node[lab, font=\small\sffamily, align=left] at (0.5, 3.25) {decode first: A gets 1 token\\at position 9 \quad budget 6 $\to$ 5};
+\node[num] at (0.2, 2.25) {2}; \node[lab, font=\small\sffamily, align=left] at (0.5, 2.25) {then prompts: B gets its\\remaining 5 tokens \quad 5 $\to$ 0};
+\node[num] at (0.2, 1.25) {3}; \node[lab, font=\small\sffamily, align=left] at (0.5, 1.25) {one forward pass, $n = 6$ tokens;\\A's and B's last tokens want logits};
+\node[num] at (0.2, 0.25) {4}; \node[lab, font=\small\sffamily, align=left] at (0.5, 0.25) {A samples its 4th token;\\B samples its 1st: prefill done};
+\end{scope}
+\end{tikzpicture}

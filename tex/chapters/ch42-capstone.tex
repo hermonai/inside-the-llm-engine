@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 42 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Code: code/mini-engine/crates/capstone at bc8e4e2 (listings cite its line numbers).
+% Measurements: research/measurements/2026-09-26-m1-part8.md (capstone roofline, runs 1-4).
 \chapter{Capstone: Build a Mini Engine End to End}\label{ch:capstone}
 
 \begin{ChapterIntent}
@@ -13,30 +15,362 @@ what a production engine would add and which chapter explains each.
 
 \OpeningSection{Your engine, measured}
 
+The engine in \texttt{code/mini-engine/crates/capstone} is 1,529 lines of Rust
+with no dependencies beyond the book's first engine. It serves a
+97-million-parameter Llama-style model from a paged key--value cache, admits
+requests continuously, splits prompts into chunks under a per-step token
+budget, samples and streams text, and ends every request exactly once. Every
+token it produces, in any batch, on any number of threads, is identical to the
+token produced by an oracle that recomputes everything from scratch, and its
+tests check that bit for bit.
+
+Its first measurement was a surprise. Decoding on one core of the M1, it
+produced 59 to 62 tokens per second whether it decoded one sequence or
+sixty-four, at 11.5 to 12.0~GFLOP/s every time: batching, the technique this
+book spends a part on, did nothing at all. The engine was correct and its
+roofline was flat. Diagnosing that, and fixing it without changing a single
+bit of any output, took two kernel changes; afterwards one core produced 106
+tokens per second at batch 1 and 216 at batch 8, and four cores 491
+(Figure~\ref{fig:ch42-roofline}; medians of three runs; record
+\texttt{2026-09-26-m1-part8}). This chapter builds the engine piece by piece,
+then retraces that measurement.
+
 \NapkinSection{Napkin math: what your engine should achieve}
+
+The benchmark model has a vocabulary of 256, width 1,024, 8 layers, 16 query
+and 4 key--value heads of width 64, and a feed-forward width of 3,072. Its
+shapes fix every count the roofline needs, and the engine computes them from
+its configuration (Listing lines 119--143 below):
+\begin{itemize}
+\item parameters: $2 \cdot 256 \cdot 1024 + 8 \cdot 12{,}060{,}672 + 1024 =
+  97{,}010{,}688$;
+\item bytes of weights read per decode step, in 32-bit floats and excluding the
+  embedding rows that are only looked up: 387~MB;
+\item FLOPs per generated token: two per weight used, 193.5~million, plus
+  $4 \cdot 8 \cdot 16 \cdot 64 = 32{,}768$ per token of context for attention;
+\item cache per token: keys and values, 8 layers of width 256, 16~KiB.
+\end{itemize}
+A decode step of $B$ sequences performs $193.5B$~MFLOP over 387~MB of weights,
+an arithmetic intensity of about $B/2$ FLOP per byte. On a machine that reads
+58~GB/s, the weights alone take 6.7~ms, so no step can be faster; a kernel that
+computes at $P$~GFLOP/s needs $193.5B/P$~ms. Whichever is larger sets the step
+time (derived):
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.36\linewidth}*{4}{>{\raggedleft\arraybackslash}p{0.12\linewidth}}@{}}
+\toprule
+Case & Memory (ms) & Compute (ms) & Predicted (tok/s) & Measured (tok/s) \\
+\midrule
+1 thread, $B = 1$, one-token kernel at 20.0~GFLOP/s & 6.7 & 9.7 & 103 & 106 \\
+1 thread, $B = 8$, tiled kernel at 46.3~GFLOP/s & 6.7 & 33.4 & 239 & 216 \\
+4 threads, $B = 8$, tiled at 109.8, plus 2.2~ms of spawning & 7.4 & 14.1 & 491 & 491 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The ceilings in the table are the engine's own, measured on the same machine
+later in this chapter; the method is the one of \Chref{roofline} and
+\Chref{napkin-math}, and it predicts the engine to within 11\%.
 
 \section{Scope and contract}
 
+The engine promises a small contract and keeps all of it
+(Figure~\ref{fig:ch42-engine-map}). A client submits a request --- prompt
+tokens, a maximum number of new tokens, an optional stop token and a sampling
+rule --- and receives an identifier or an error saying why the request can never
+fit. Each call to \texttt{step} runs one scheduler iteration and returns events
+in order: a \texttt{Token} and a \texttt{Text} event for every token generated,
+and exactly one \texttt{Finished} event per request, completed or cancelled,
+after which nothing more is said about it (\Chref{request-lifecycle}). A
+request is admitted only when the cache can hold its prompt and its longest
+possible answer, so no admitted request is ever preempted.
+
+\EngineFigure{ch42-engine-map}{The capstone engine and one step's data flow,
+with the shapes of a step of $n$ tokens. Numbers mark the sections that follow:
+admission (1), the forward pass over the paged cache (2), the scheduler's plan
+(3), sampling and streaming (4) and the oracle (5). Everything in gold is where
+this book's mechanisms live; the oracle, dashed, shares only the arithmetic
+kernels with the engine.}{fig:ch42-engine-map}
+
+What it leaves out is as deliberate: real weights, quantized formats, GPU
+kernels, prefix sharing, preemption and speculation. Each is a chapter of this
+book, and the last section lists them. The engine exists to put the mechanisms
+that every engine shares into one program small enough to read in an afternoon,
+and to show that they can be made exactly correct.
+
 \section{Loading a model}
+
+The engine's model is a configuration and a seed. \texttt{Model::new} checks the
+shapes --- query heads must divide evenly among key--value heads, and rotary
+positions need an even head width --- and fills every matrix with deterministic
+pseudo-random values. A reader who wants real weights needs a loader for
+safetensors or GGUF (\Chref{weight-quantization}), not a different engine: the
+forward pass reads the same matrices either way, correctness is defined against
+an oracle that uses the same weights, and speed does not depend on their values.
+The configuration also computes the counts of the napkin section, so that every
+measurement is divided by numbers the code itself derived:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/config.rs}{119}{143}
 
 \section{The cache and its block pool}
 
+The key--value cache is one pool of fixed-size blocks, each holding
+\texttt{block\_size} consecutive positions of one sequence for every layer
+(\Chref{paged-kv}). Keys and values live in two flat arrays; a sequence owns a
+\emph{block table}, a list of block numbers, and position $p$ of the sequence is
+slot $p \bmod \texttt{block\_size}$ of block $\texttt{table}[p / \texttt{block\_size}]$.
+Blocks come from a free list, all or nothing:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/kv.rs}{79}{99}
+
+All-or-nothing allocation is what makes admission safe: a request either gets
+every block it could ever need or waits, so there is no state in which two
+half-admitted requests each hold part of what the other needs. Releasing a block
+twice is an error rather than silent corruption, and a test checks that every
+block returns to the pool after every request ends, however it ends.
+
 \section{The scheduler loop}
+
+Each step spends a token budget. It gives one token to every sequence that is
+decoding, so that running requests keep their pace, and then fills what remains
+with prompt chunks, oldest request first (\Chref{continuous-batching},
+\Chref{chunked-prefill}):
+
+\CodeLines{../code/mini-engine/crates/capstone/src/engine.rs}{235}{250}
+
+Figure~\ref{fig:ch42-step-example} works one step by hand, with blocks of four
+positions and a budget of six. Request A is decoding; its table maps its ten
+positions to blocks 3, 0 and 5, which are not adjacent and need not be. Request
+B has four of its nine prompt tokens in the cache. The plan gives A its one
+decode token at position 9, and B the five tokens that complete its prompt;
+one forward pass computes all six; A samples its fourth token and B its first.
+
+\EngineFigure{ch42-step-example}{One scheduler step of the capstone engine,
+worked by hand (illustrative values, computed with the engine's rules). Block
+tables map positions to blocks anywhere in the pool; reserved blocks at the
+right will hold tokens not yet generated.}{fig:ch42-step-example}
+
+Admission is first come, first served, and the head of the queue waits for
+memory rather than being overtaken, so a long request cannot starve behind a
+stream of short ones:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/engine.rs}{382}{394}
+
+Reserving blocks for the longest possible answer is the price of never
+preempting: memory sits idle for tokens that may never be generated. vLLM makes
+the opposite choice --- allocate as tokens arrive and preempt when the pool runs
+out --- and \Chref{scheduling} prices both.
+
+The forward pass is where the cache is used. Every token of a step, from
+whichever sequence, is embedded, normalized and projected together, so each
+weight row is read once for the whole step. Attention is the one place where
+tokens are not interchangeable: each reads its own sequence's keys and values,
+through its own block table, up to its own position:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/model.rs}{104}{125}
 
 \section{Sampling and streaming}
 
+When a chunk reaches the end of its prompt, or is a decode token, the forward
+pass returns its logits and the engine samples. Greedy sampling takes the
+largest logit. Temperature sampling draws from a generator seeded per request,
+so a request's random choices depend only on its seed, never on what else is
+running --- the property one test checks by running the same request alone and
+in a crowd (\Chref{fast-wrong-answers}). The token then becomes text:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/engine.rs}{297}{312}
+
+The model's vocabulary is bytes, so a character can take several tokens. The
+decoder holds bytes until they form complete UTF-8 and emits empty text until
+then; an invalid byte becomes the replacement character and the decoder starts
+again. The decoder, the seeded generator and the stop reasons are imported
+unchanged from the book's first engine.
+
 \section{The oracle and differential tests}
+
+The oracle is the engine without any of the engine: no cache survives between
+calls, keys and values sit in plain arrays, and every token is produced by
+recomputing the whole sequence from its first token:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/oracle.rs}{101}{120}
+
+It is quadratic in the sequence length per token, which is why no engine works
+this way, and why it is the right thing to test an engine against
+(\Chref{fast-wrong-answers}). The tests demand more than agreement within a
+tolerance. They demand identical bits, and that is possible because the only
+code the two share is the arithmetic, and every kernel fixes its order of
+summation: the same output element is computed by the same sequence of
+additions whether it belongs to a batch of one or of sixty-four, and whichever
+thread computes it. The central test runs five requests through a small pool, a
+small budget and small blocks, so that every mechanism is exercised at once:
+
+\CodeLines{../code/mini-engine/crates/capstone/tests/differential.rs}{103}{134}
+
+Seven more tests cover the rest of the contract: the forward pass matches the
+oracle's logits bit for bit through chunked prefill and scattered blocks;
+threads change no token; a seeded request produces the same tokens alone and in
+a crowd; every request ends exactly once and cancellation frees its blocks;
+admission rejects requests that could never fit; a stop token ends generation;
+and the configured sizes match the allocated weights. With seven unit tests of
+the kernels and the block pool, fifteen tests carry the correctness of the whole
+engine, because the oracle carries the definition of correct.
 
 \section{Measuring against the roofline}
 
+The example \texttt{capstone\_roofline} measures three things: a memory ceiling,
+the compute ceiling of each matrix kernel, and decode steps at batch sizes 1 to
+64 with their FLOPs and bytes counted from the configuration. Its first version
+measured the memory ceiling with the engine's own dot product, summing a
+256~MiB array with itself, and reported 24.3~GB/s; it measured the compute
+ceiling as 11.8~GFLOP/s. Every batch size then sat at the compute ceiling, and
+the roofline was flat.
+
+Both ceilings were the same limit. A dot product of an array with itself does
+two FLOPs per four-byte element, 0.5~FLOP per byte, and 0.5 times 11.8~GFLOP/s
+is 23.6~GB/s: the ``memory ceiling'' was the dot product's arithmetic
+(\Chref{benchmarking} tells the same story about other benchmarks). The
+compiled code showed why the arithmetic was slow: the dot product's eight running
+sums had become two-lane vector operations, each addition waiting for the
+previous one to the same register. The first attempt at a fix changed nothing. A
+kernel that shared each weight load among four tokens compiled to scalar code
+and ran at the same 12~GFLOP/s by a different limit, and a first rewrite of the
+memory probe, as one array of 32 running sums, compiled to scalar code with
+spilled registers and read 18~GB/s. Neither the kernels nor the probes used the
+M1's four-lane vector units as intended, and only the disassembly said so.
+
+Two changes fixed the arithmetic without changing any result. The first keeps
+sixteen running sums as four four-lane quads and combines them in an order the
+compiler can keep in whole vector registers:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/kernels.rs}{22}{54}
+
+The order of \texttt{combine} matters twice. It defines the result --- any other
+order gives slightly different bits --- and it decides the speed: the natural
+pairwise order, $(v_0 + v_1) + (v_2 + v_3)$, led the compiler to split each quad
+into two-lane halves and ran at 12.5~GFLOP/s, while $(v_0 + v_2) + (v_1 + v_3)$
+ran at 21.3 in the same experiment. The second change, \texttt{dot4}, computes
+four tokens' dot products with the same weight row at once, loading each weight
+once for all four; each of its four results goes through exactly the arithmetic
+of \texttt{dot}, which a test checks bit for bit. The memory probe became a sum of
+32-bit integers, which the compiler may reorder freely because integer addition
+is associative, and it read memory at 58~GB/s on one core. Threads came last:
+each matrix's output rows are split among scoped threads, so no reduction is
+ever divided and no bit depends on the thread count.
+
+With the new kernels the roofline has its textbook shape
+(Figure~\ref{fig:ch42-roofline}). At batch 1 the one-token kernel limits the
+step, at 20.6~GFLOP/s and 106 tokens per second. Batch 4 switches to the tiled
+kernel and nearly doubles the rate. On four threads, batch 8 reaches 87\% of the
+tiled kernel's 110~GFLOP/s, and batch 1 spends a fifth of each step starting
+threads.
+
+\EngineFigure{ch42-roofline}{The capstone engine on the roofline of the M1's
+CPU (measured; medians of three runs; the points of each series are batch sizes
+1, 2, 4, \ldots, 64 from left to right). The first version sat at 12~GFLOP/s at
+every batch size; with vector kernels, one core rises from 106 to 216 tokens per
+second as the batch grows to 8, and four cores to 491. Beyond 8 to 16 sequences
+both fall away from their ceilings, because the tiled kernel re-reads every
+token's activations for every weight row and those stop fitting in the core's
+L1 cache.}{fig:ch42-roofline}
+
+The figure has two departures from the roofline, and each has a measured cause.
+Large batches fall below the tiled ceiling because the tiled kernel re-reads
+every token's activations for every weight row: at width 1,024 it computed at
+46~GFLOP/s while $n$ tokens' activations fit in 64~KiB, 35 at 128~KiB and 31.5 at
+256~KiB, and at width 3,072 it fell from 46 to 32 between 96 and 192~KiB --- the
+M1 performance core's 128~KiB L1 data cache. The fix is to block the loop over
+weight rows as well as tokens, which is an exercise. And four threads barely
+help at batch 1: spawning and joining four threads cost 34~$\mu$s, and a step
+calls a matrix kernel 57 times, which adds 1.9~ms to a step whose weights take
+7.4~ms to read. A pool of waiting threads removes it; on a GPU, the same cost is
+kernel-launch overhead, and CUDA graphs remove it (\Chref{kernel-languages}).
+
 \section{From mini engine to production}
+
+Each thing the capstone leaves out is a chapter of this book:
+\begin{itemize}
+\item real weights, quantized: \Chref{weight-quantization},
+  \Chref{low-precision-float}, and the cache in fewer bits,
+  \Chref{kv-quantization};
+\item GPU kernels for attention and matrix products: \Chref{flashattention},
+  \Chref{decode-attention}, \Chref{matmul-hardware}, \Chref{kernel-languages};
+\item shared prefixes: \Chref{prefix-caching};
+\item preemption, priorities and admission by objectives: \Chref{scheduling};
+\item speculation: \Chref{speculative-decoding}, \Chref{modern-speculation};
+\item grammar-constrained output: \Chref{structured-output};
+\item many models and adapters: \Chref{multi-model-serving};
+\item more than one device: \Chref{model-parallelism},
+  \Chref{expert-parallelism}, \Chref{disaggregated-serving};
+\item a service around the engine: \Chref{production}.
+\end{itemize}
+None of them changes the contract. Each must still match the oracle, or match a
+new oracle within a tolerance derived from its numerics, and each must still end
+every request exactly once.
 
 \LedgerSection
 
+What the capstone's design buys and spends:
+
+\begin{ConstraintLedger}
+Correctness & buys & Bit-for-bit agreement with an independent oracle at every batch size and thread count; exactly one terminal event per request. \\
+Memory capacity & spends & Blocks reserved for each request's longest answer, so nothing is ever preempted. \\
+Compute & spends & Fixed summation orders forgo splitting reductions; the oracle recomputes quadratically in tests. \\
+Memory bandwidth & buys & Tiling across tokens reads each weight once per step for four tokens: batch 8 runs at twice the rate of batch 1 on one core. \\
+\end{ConstraintLedger}
+
 \LabSection{the capstone itself}
+
+\LabIntent{The lab is the crate: \texttt{cargo test -p capstone} runs the fifteen
+tests, and \texttt{cargo run --release -p capstone --example capstone\_roofline
+-- out.json 1 2 4} measures the reader's own machine and writes the numbers of
+Figure~\ref{fig:ch42-roofline}. Extend it in order: a thread pool; a kernel
+blocked over rows and tokens; prefix sharing through reference-counted blocks;
+preemption by recomputation; and a loader for a real GGUF file. Each extension
+must keep every existing test passing and add its own differential test.}
 
 \HappenedSection{what the first edition's engine taught}
 
-\FrontierSection{}
+The first edition planned its engine as eleven milestones, ENGINE-0 to
+ENGINE-10, each introduced by the chapters that needed it. In its ten days of
+development it reached ENGINE-2: a four-token vocabulary, checked tensor views
+with strides and typed errors, a linear-algebra layer, embedding lookup and
+RMSNorm, with 4,269 lines of source and 220 tests
+(\texttt{code/mini-engine/crates/engine0}). Every contract in it was exact, and
+it could not yet attend to a single token. The capstone took the other path:
+the whole engine first, small, with one oracle defining correctness, and
+depth added where a measurement showed it was needed --- which is the
+breadth-first rule this edition follows for the book itself. Not everything was
+replaced. The capstone imports the first engine's UTF-8 stream decoder, its
+seeded random generator and its stop reasons unchanged, because those contracts
+were right.
+
+\FrontierSection{2026-09-26}
+
+Small engines have become a genre: Nano-vLLM and Mini-SGLang reproduce much of
+their parents' performance in a few thousand lines, and are how many engineers
+now learn an engine's internals \cite{nanovllm2025,lmsys2025minisgl}. The
+frontier they point to is verification rather than speed. Engines are adding
+batch-invariant modes, and oracles that decide what ``correct'' means for a
+quantized, speculative, disaggregated system are still mostly written by hand
+(\Chref{fast-wrong-answers}). An engine small enough to check exactly is where
+such oracles can be designed first.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using the napkin table's method, predict the step time
+  and tokens per second at batch 64 on one thread, first with the tiled
+  kernel's cache-resident ceiling (46.3~GFLOP/s) and then with its measured rate
+  when activations exceed L1 (31.5); compare both with the measured 154 tokens per
+  second.
+\item \emph{Implementation.} Replace the per-call scoped threads with a pool of
+  waiting threads, and show on the reader's machine how much of the 1.9~ms per
+  step it recovers at batch 1. The oracle tests must still pass.
+\item \emph{Implementation.} Block the matrix kernel over weight rows as well as
+  tokens so that a tile's activations stay in L1, and plot the new batch-64 point
+  on the roofline.
+\item \emph{Falsification.} ``Bit-for-bit agreement with the oracle is too strict
+  to be useful.'' Change \texttt{combine} to the pairwise order in the engine
+  only, and report which tests fail, which pass, and what that says about what
+  each test protects.
+\end{enumerate}
