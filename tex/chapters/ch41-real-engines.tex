@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 41 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-26-m1-part8.md (engines3). Source reading at
+% vLLM bcdacfc, SGLang 3ed56a3, llama.cpp d006858, Hermon 2a3fd52.
 \chapter{Anatomy of Real Engines: vLLM, SGLang, llama.cpp and Hermon}\label{ch:real-engines}
 
 \begin{ChapterIntent}
@@ -13,28 +15,269 @@ documentation, not its marketing.
 
 \OpeningSection{Four engines, one prompt}
 
+Three of this chapter's engines run on the M1, and they were given the same
+job: the same Llama~3.2~3B file, the same raw 129-token prompt, greedy
+decoding for exactly 128 tokens, three timed runs after a warm-up. llama.cpp's
+own server (build 8660), Ollama 0.34.4 and Hermon's native command line (its
+vendored llama.cpp at \texttt{389ff61}) produced the same text, character for
+character. They decoded at 20.2--25.6, 23.7--24.0 and 21.9--23.4 tokens per
+second respectively. Their prompt times differed twelvefold: llama.cpp's server,
+told not to reuse its cache, spent 526~ms on the prompt, while Ollama reported
+41--44~ms because its warm-up had left the prompt in its cache (measured; record
+\texttt{2026-09-26-m1-part8}).
+
+The two engines this book cites most, vLLM and SGLang, are absent from that
+measurement: they are built for data-center GPUs, and this chapter's machine has
+none. They are read here at pinned commits, as the other two are, following one
+request from the moment it arrives to the moment its last token leaves.
+Figure~\ref{fig:ch41-request-paths} is the map.
+
+\EngineFigure{ch41-request-paths}{One request's path through four engines, read
+at vLLM \texttt{bcdacfc}, SGLang \texttt{3ed56a3}, llama.cpp \texttt{d006858}
+and Hermon \texttt{2a3fd52} (from source reading). Shaded regions are operating-
+system processes; dashed arrows between them are ZeroMQ messages. The gold box
+in each row is where the engine decides what runs next. vLLM and SGLang spend
+processes to keep Python's tokenizing and detokenizing off the path that feeds
+the GPU; llama.cpp and Hermon keep everything in one process and one decode
+thread.}{fig:ch41-request-paths}
+
 \NapkinSection{Napkin math: what each engine should achieve on the same machine}
+
+All three measured engines ran the same kernels: ggml's Metal backend, on the
+same 2.01~GB of weights. Decode reads every weight once per token, so each engine
+is bounded by the same number. The M1's GPU reads memory at 46--50~GB/s, and at
+53~GB/s at best (\Chref{roofline}), which bounds decode at $46/2.01 \approx 23$ to
+$53/2.01 \approx 26$ tokens per second (derived). All three engines are at that
+bound within the run-to-run spread of \Chref{benchmarking}; nothing an engine does
+outside its kernels can raise it. What an engine controls on this machine is overhead: a
+token takes about 40~ms, so each millisecond an engine spends per token on
+scheduling, sampling, detokenizing or HTTP costs 2.5\% of its speed. On a
+data-center GPU the same arithmetic is harsher. An 8-billion-parameter model in
+16 bits on a GPU reading 3.35~TB/s decodes a token in about 5~ms, and 1~ms of
+Python per step is 20\% (derived). That is why the engines built for such GPUs
+move everything that is not the forward pass into other processes or off the
+critical path.
 
 \section{How to read an engine}
 
+An engine's documentation describes its intent; its source describes what
+happens. Reading one request's path answers the questions this book cares
+about. Where is text turned into tokens, and on which thread? Where does the
+request wait, and who decides when it runs? What is the unit of scheduling ---
+a request, a sequence slot, a token budget? Where are the key--value blocks
+allocated and shared? Which work overlaps the GPU and which waits for it? And
+for every feature, is it on by default, behind a flag, or only in a library?
+This book labels such claims DEFAULT, PREVIEW, LIBRARY or DESIGN, and each
+answer below is tied to a file at a commit.
+
 \section{vLLM}
+
+vLLM splits a server into two processes that talk over ZeroMQ
+(\texttt{VLLM\_ENABLE\_V1\_MULTIPROCESSING} defaults to on). The front end runs
+the HTTP server and \texttt{AsyncLLM}, whose \texttt{InputProcessor} tokenizes
+and validates each request. The engine-core process runs a busy loop ---
+\texttt{run\_busy\_loop} in \texttt{vllm/v1/engine/core.py} --- that takes new
+requests from its input queue, asks the scheduler for a step and runs it.
+
+The scheduler (\texttt{vllm/v1/core/sched/scheduler.py}) has no separate
+prefill and decode phases. Each step has a budget of tokens,
+\texttt{max\_num\_scheduled\_tokens}, and each request is granted some number of
+them: one for a decoding request, a chunk for a prefilling one. That single
+mechanism gives continuous batching and chunked prefill together
+(\Chref{continuous-batching}). The \texttt{KVCacheManager} allocates the blocks
+those tokens need and finds already computed prefixes by hashing blocks of token
+ids; prefix caching is on by default (\texttt{enable\_prefix\_caching = True} in
+\texttt{vllm/config/cache.py}; DEFAULT) \cite{kwon2023pagedattention,vllm2025v1}.
+The model runner builds the step's inputs and runs the compiled model with CUDA
+graphs. At \texttt{bcdacfc} that is Model Runner V2, which prepares the next
+step's inputs on the GPU while the current one runs; it is the default unless
+\texttt{VLLM\_USE\_V2\_MODEL\_RUNNER=0}, the platform lacks Triton, or the
+configuration uses a feature it does not yet support (\texttt{vllm/config/vllm.py};
+DEFAULT with fallbacks) \cite{vllm2026mrv2}. Sampling happens on the GPU, and the
+sampled ids travel back to the front end, where the \texttt{OutputProcessor}
+detokenizes incrementally and streams text to the client.
+
+vLLM spends its complexity on generality at scale: dozens of model families,
+quantization formats, attention backends, parallelism schemes and hardware
+vendors, plus the process boundary that keeps Python's per-request work away
+from the GPU's feed.
 
 \section{SGLang}
 
+SGLang's server uses three kinds of process. The \texttt{TokenizerManager}
+runs in the main process with the HTTP server; each tensor- or pipeline-parallel
+rank gets a \texttt{Scheduler} process; and a \texttt{DetokenizerManager} runs in
+another, as the launcher's own comment says (\texttt{\_launch\_subprocesses} in
+\texttt{python/sglang/srt/entrypoints/engine.py} at \texttt{3ed56a3}).
+
+The scheduler's default loop is \texttt{event\_loop\_overlap}: it launches batch
+$N$ on the GPU, then processes batch $N - 1$'s results on the CPU while batch $N$
+runs, keeping one batch of results in a queue --- the ``zero-overhead'' scheduler
+of SGLang v0.4, on unless \texttt{--disable-overlap-schedule} is given
+(DEFAULT) \cite{sglang2024v04}. Prefixes live in a radix tree over token ids,
+the \texttt{RadixCache} of the original SGLang paper, with least-recently-used
+eviction by default \cite{zheng2023sglang}. A cache-aware ordering of the waiting
+queue is available --- \texttt{lpm}, longest prefix match first, which the
+paper introduced --- but at this commit the default policy is first come, first
+served, and \texttt{lpm} itself falls back to FCFS once more than 128 requests
+wait, because matching every waiting request against the tree becomes too
+expensive (\texttt{schedule\_policy.py} and \texttt{arg\_groups/fields/schedule.py};
+DEFAULT).
+
+SGLang spends its complexity on cache reuse and on hiding CPU work: the radix
+tree, the overlap loop, and a router that sends requests to the worker most
+likely to hold their prefix (\Chref{production}).
+
 \section{llama.cpp and ggml}
+
+llama.cpp's server is one process. A pool of HTTP threads --- by default the
+larger of the number of slots plus four and the number of cores minus one ---
+parses each request and tokenizes its prompt in the handler, then posts a task to
+a queue (\texttt{tools/server/server-context.cpp} and \texttt{server-http.cpp} at
+\texttt{d006858}). One server thread owns the model. Its \texttt{update\_slots}
+first adds the sampled token of every decoding sequence to the batch, then
+fills the rest of the batch with pending prompt tokens, up to \texttt{n\_batch},
+and calls \texttt{llama\_decode} once. A slot is a sequence in one shared,
+unified key--value cache; the number of slots, \texttt{-np}, fixes how many
+requests decode together, and a request that finds no free slot is deferred ---
+the \texttt{requests\_deferred} counter of \Chref{production}.
+
+Below \texttt{llama\_decode}, ggml builds a graph of the forward pass and a
+backend scheduler assigns each operation to Metal, CUDA, Vulkan or the CPU,
+copying tensors between them when a split requires it (\Chref{offloading}).
+llama.cpp spends its complexity on breadth of hardware and formats: dozens of
+quantization types, each with kernels for each backend, and the kernel-selection
+rules whose batch dependence \Chref{fast-wrong-answers} measured.
 
 \section{Hermon}
 
+Hermon is a Rust server over a vendored llama.cpp. Its axum handlers speak the
+OpenAI, Ollama and Anthropic protocols and hand each request to a dispatcher.
+The default runtime at \texttt{2a3fd52} is \texttt{BatchedRuntime}
+(\texttt{HERMON\_RUNTIME\_MODE} unset gives \texttt{Batched}; DEFAULT): one
+worker thread per model owns one llama.cpp context configured for $N$ sequences,
+and each iteration builds one batch holding a prompt for every newly admitted
+sequence and the last sampled token of every decoding one, decodes it, samples,
+and emits text (\texttt{crates/hermon-runtime/src/batched.rs}). Its paged
+key--value cache and custom attention kernels are a preview behind
+\texttt{HERMON\_PAGED\_GGUF=1}, and its expert streaming is a library
+(\Chref{expert-streaming}).
+
+Reading the output path found a defect the module's own comment denies. Each
+sequence has a Tokio channel of 32 items to its HTTP handler, and the worker
+sends with \texttt{blocking\_send}. The comment promises that a slow client
+``pauses'' only its own sequence ``while other seqs keep going''. But the
+worker is one thread: when a client stops reading and its channel fills, the
+thread blocks inside \texttt{emit\_piece}, and every sequence in the batch stops
+with it. Thirty-two unread pieces from one stalled connection are enough to
+freeze all of that model's users (from code reading; not measured). The repair is
+the standard one --- \texttt{try\_send}, and a policy for a full channel such as
+buffering, dropping the slow sequence, or cancelling it.
+
+Hermon spends its complexity on its surface --- three protocols, a desktop
+application, model management --- and on the Rust kernels and SSD streaming of
+\Chref{expert-streaming}, most of which are not yet on by default.
+
 \section{Other engines, briefly}
+
+Several engines matter for what they show about the field. Hugging Face's Text
+Generation Inference, an early production engine, entered maintenance mode, and
+its README now recommends vLLM, SGLang, llama.cpp and MLX
+\cite{huggingface2026tgi}. Two engines exist to be read: Nano-vLLM implements
+vLLM's core ideas in about 1,200 lines of Python and reports speed comparable to
+vLLM's on a laptop GPU \cite{nanovllm2025}, and Mini-SGLang distills SGLang ---
+by then nearly 300,000 lines of Python --- into about 5,000 lines with radix
+caching, chunked prefill, overlap scheduling and tensor parallelism, matching
+SGLang's serving performance in its authors' benchmark \cite{lmsys2025minisgl}.
+Both are developers' measurements. NVIDIA's TensorRT-LLM and the orchestration
+layers above engines --- NVIDIA Dynamo and llm-d --- appear in
+\Chref{production}. Ollama, the second engine of the opening, serves the same
+GGUF files as llama.cpp through its own server on the ggml library.
 
 \section{The ledger, engine by engine}
 
+\begin{center}\small
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.28\linewidth}>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}@{}}
+\toprule
+Engine & Spends complexity on & Default path at the pinned commit & Built for \\
+\midrule
+vLLM & generality: models, formats, hardware, parallelism; a process boundary & token-budget scheduler, hashed prefix cache, Model Runner V2, CUDA graphs & data-center GPUs, many models \\
+SGLang & cache reuse and hidden CPU time & radix cache (LRU), FCFS, overlap loop & data-center GPUs, shared prefixes \\
+llama.cpp & hardware and format breadth & one server thread, slots in one cache, ggml backends & every device, one user or a few \\
+Hermon & protocols and product surface; experimental kernels & batched runtime over llama.cpp & desktops and small servers \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The pattern is the book's thesis in miniature. No engine is fastest at
+everything; each chose which constraint to spend complexity on, and the choice
+follows from its hardware and users.
+
 \LedgerSection
+
+What choosing an engine buys and spends:
+
+\begin{ConstraintLedger}
+Memory bandwidth & buys & Every engine's decode kernels approach the same bandwidth bound; on the M1 the three measured engines decoded at 20 to 26 tokens per second against a bound of 23 to 26. \\
+Latency & buys & Process boundaries and overlapped scheduling hide CPU work that would otherwise sit between GPU steps. \\
+Compute & spends & Python front ends, detokenizers and schedulers cost CPU time that small or local deployments feel. \\
+Cost & spends & Complexity: SGLang had grown to nearly 300,000 lines of Python by its developers' count; the teaching engines that reproduce the core of vLLM and SGLang are 1,200 and 5,000. \\
+\end{ConstraintLedger}
 
 \LabSection{trace one request through a real engine}
 
+\LabIntent{In \texttt{code/labs/ch41-real-engines/}, a guided trace: start
+llama.cpp's server with verbose logging, send one streaming request, and match
+every log line to a function in \texttt{tools/server/server-context.cpp} at the
+pinned commit --- tokenization, slot assignment, \texttt{update\_slots}, each
+\texttt{llama\_decode}, each streamed piece. Then write the same trace for one
+other engine from its source alone, and draw its row of
+Figure~\ref{fig:ch41-request-paths}.}
+
 \HappenedSection{design decisions and their reversals}
 
-\FrontierSection{}
+Every engine in this chapter has rewritten its own core at least once. vLLM
+rebuilt its engine as V1 in 2025 --- a separate engine-core process, one
+token-budget scheduler instead of separate prefill and decode paths, and prefix
+caching on by default --- because the original design's CPU overheads had become
+the bottleneck on fast GPUs \cite{vllm2025v1}. In 2026 it rebuilt the model
+runner again around asynchronous scheduling, and at \texttt{bcdacfc} Model Runner
+V2 has become the default \cite{vllm2026mrv2}. SGLang moved its scheduler to the
+overlap loop in version 0.4 for the same reason \cite{sglang2024v04}. Hermon
+replaced its first design, a pool of independent llama.cpp contexts each with
+its own cache, with the batched runtime, because one shared forward pass reads
+the weights once for all sequences (\texttt{batched.rs}). And Text Generation
+Inference stopped: its developers now contribute to the engines that overtook it
+\cite{huggingface2026tgi}. The lesson for an engine's design is that its
+bottleneck moves --- from kernels to the CPU, from one request to many --- and the
+architecture must be rebuilt when it does.
+
+\FrontierSection{2026-09-26}
+
+The engines are converging on one architecture: a token-budget scheduler,
+paged and prefix-shared key--value caches, CPU work overlapped with GPU work,
+and graphs captured ahead of time, with differences in defaults rather than in
+kind. The frontier has moved to the layers around them --- disaggregated prefill
+and decode, key--value transfer between machines and routing by cache contents
+(\Chref{production}) --- and to small engines written to be read, which make the
+large ones legible. Devices without data-center GPUs are served by the ggml
+lineage, and the gap between the two worlds is in scheduling and serving, not in
+kernels.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} A server spends 1.5~ms of CPU time per decode step. Using
+  the napkin method, compute the fraction of throughput it loses on the M1
+  (40~ms per token) and on a GPU decoding an 8-billion-parameter model in 5~ms, and
+  say which engine design in this chapter removes the loss.
+\item \emph{Reading.} Find where vLLM decides that a request must be preempted
+  and what happens to its blocks, at \texttt{bcdacfc}. Draw the path as a row of
+  Figure~\ref{fig:ch41-request-paths}.
+\item \emph{Measurement.} Reproduce the opening with Ollama's prompt cache
+  disabled or with a different prompt per run, and report how the twelvefold
+  prompt-time difference changes.
+\item \emph{Falsification.} Test the Hermon defect: stream from its server with
+  two clients, stop reading from one after its first tokens, and measure whether
+  the other stops too. Then propose and test a fix.
+\end{enumerate}

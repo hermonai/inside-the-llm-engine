@@ -1,0 +1,71 @@
+% One request's path through four engines, read at pinned commits: vLLM bcdacfc, SGLang
+% 3ed56a3, llama.cpp d006858, Hermon 2a3fd52. Boxes are stages; names under them are the
+% components that implement them; shaded regions are operating-system processes, and the
+% dashed lines between them are ZMQ messages. From source reading.
+\begin{tikzpicture}[
+  st/.style={draw=BookBlue, fill=white, rounded corners=1.5pt, align=center, font=\scriptsize\sffamily, minimum width=22mm, minimum height=7mm, inner sep=2pt},
+  hot/.style={st, fill=BookGold!55},
+  who/.style={font=\tiny\ttfamily, text=black!70, align=center, text width=26mm, anchor=north},
+  eng/.style={font=\small\sffamily\bfseries, text=BookBlue, anchor=east},
+  arr/.style={-{Stealth[length=1.4mm]}, BookBlue},
+  ipc/.style={-{Stealth[length=1.4mm]}, BookBlue, dashed, thick},
+  proc/.style={fill=BookPale, rounded corners=3pt},
+  plab/.style={font=\tiny\sffamily, text=BookBlue!80!black, anchor=north west},
+]
+\def\xa{0} \def\xb{2.9} \def\xc{5.8} \def\xd{8.7} \def\xe{11.6} \def\xf{14.5}
+% column headings
+\foreach \x/\t in {\xa/HTTP in, \xb/tokenize, \xc/schedule + cache, \xd/forward pass, \xe/sample, \xf/{detokenize, stream}}
+  {\node[font=\scriptsize\sffamily\bfseries, text=black!60] at (\x, 0.8) {\t};}
+% ---------------- vLLM
+\begin{scope}[yshift=-0.6cm]
+\fill[proc] (-1.3,-0.95) rectangle (4.3,0.85); \node[plab] at (-1.3,0.85) {front-end process};
+\fill[proc] (4.45,-0.95) rectangle (13.05,0.85); \node[plab] at (4.45,0.85) {EngineCore process (busy loop)};
+\fill[proc] (13.2,-0.95) rectangle (15.85,0.85); \node[plab] at (13.2,0.85) {front end};
+\node[eng] at (-1.45,0.15) {vLLM};
+\node[st] (a1) at (\xa,0.15) {API server}; \node[who] at (\xa,-0.25) {FastAPI};
+\node[st] (a2) at (\xb,0.15) {InputProcessor}; \node[who] at (\xb,-0.25) {AsyncLLM};
+\node[hot] (a3) at (\xc,0.15) {Scheduler.schedule}; \node[who] at (\xc,-0.25) {token budget;\\KVCacheManager};
+\node[st] (a4) at (\xd,0.15) {GPUModelRunner}; \node[who] at (\xd,-0.25) {Model Runner V2;\\CUDA graphs};
+\node[st] (a5) at (\xe,0.15) {sampler (GPU)}; \node[who] at (\xe,-0.25) {update\_from\_output};
+\node[st] (a6) at (\xf,0.15) {OutputProcessor}; \node[who] at (\xf,-0.25) {detokenize, stream};
+\draw[arr] (a1) -- (a2); \draw[ipc] (a2) -- (a3); \draw[arr] (a3) -- (a4); \draw[arr] (a4) -- (a5); \draw[ipc] (a5) -- (a6);
+\end{scope}
+% ---------------- SGLang
+\begin{scope}[yshift=-2.7cm]
+\fill[proc] (-1.3,-0.95) rectangle (4.3,0.85); \node[plab] at (-1.3,0.85) {main process};
+\fill[proc] (4.45,-0.95) rectangle (13.05,0.85); \node[plab] at (4.45,0.85) {Scheduler process per TP rank (overlap loop)};
+\fill[proc] (13.2,-0.95) rectangle (15.85,0.85); \node[plab] at (13.2,0.85) {detokenizer process};
+\node[eng] at (-1.45,0.15) {SGLang};
+\node[st] (b1) at (\xa,0.15) {HTTP server}; \node[who] at (\xa,-0.25) {main process};
+\node[st] (b2) at (\xb,0.15) {TokenizerManager}; \node[who] at (\xb,-0.25) {tokenize, route};
+\node[hot] (b3) at (\xc,0.15) {get\_next\_batch}; \node[who] at (\xc,-0.25) {RadixCache;\\FCFS by default};
+\node[st] (b4) at (\xd,0.15) {ModelRunner}; \node[who] at (\xd,-0.25) {CUDA graphs};
+\node[st] (b5) at (\xe,0.15) {sampler}; \node[who] at (\xe,-0.25) {result queue\\(overlap)};
+\node[st] (b6) at (\xf,0.15) {DetokenizerManager}; \node[who] at (\xf,-0.25) {back to the\\tokenizer manager};
+\draw[arr] (b1) -- (b2); \draw[ipc] (b2) -- (b3); \draw[arr] (b3) -- (b4); \draw[arr] (b4) -- (b5); \draw[ipc] (b5) -- (b6);
+\end{scope}
+% ---------------- llama.cpp
+\begin{scope}[yshift=-4.8cm]
+\fill[proc] (-1.3,-0.95) rectangle (15.85,0.85); \node[plab] at (-1.3,0.85) {one process: HTTP threads plus one server loop thread};
+\node[eng] at (-1.45,0.15) {llama.cpp};
+\node[st] (c1) at (\xa,0.15) {HTTP thread}; \node[who] at (\xa,-0.25) {server-http};
+\node[st] (c2) at (\xb,0.15) {tokenize}; \node[who] at (\xb,-0.25) {in the HTTP handler;\\posts a task};
+\node[hot] (c3) at (\xc,0.15) {update\_slots}; \node[who] at (\xc,-0.25) {slots; sampled tokens,\\then prompts};
+\node[st] (c4) at (\xd,0.15) {llama\_decode}; \node[who] at (\xd,-0.25) {ggml graph;\\backend scheduler};
+\node[st] (c5) at (\xe,0.15) {common\_sampler}; \node[who] at (\xe,-0.25) {per slot};
+\node[st] (c6) at (\xf,0.15) {send\_partial}; \node[who] at (\xf,-0.25) {results queue, SSE};
+\draw[arr] (c1) -- (c2); \draw[arr, dotted, thick] (c2) -- (c3); \draw[arr] (c3) -- (c4); \draw[arr] (c4) -- (c5); \draw[arr] (c5) -- (c6);
+\end{scope}
+% ---------------- Hermon
+\begin{scope}[yshift=-6.9cm]
+\fill[proc] (-1.3,-0.95) rectangle (15.85,0.85); \node[plab] at (-1.3,0.85) {one process: async handlers plus one batched worker thread per model};
+\node[eng] at (-1.45,0.15) {Hermon};
+\node[st] (d1) at (\xa,0.15) {axum handler}; \node[who] at (\xa,-0.25) {OpenAI, Ollama,\\Anthropic};
+\node[st] (d2) at (\xb,0.15) {tokenize}; \node[who] at (\xb,-0.25) {llama.cpp vocab};
+\node[hot] (d3) at (\xc,0.15) {BatchedRuntime}; \node[who] at (\xc,-0.25) {one context,\\N sequences};
+\node[st] (d4) at (\xd,0.15) {llama.cpp (FFI)}; \node[who] at (\xd,-0.25) {vendored at 389ff61};
+\node[st] (d5) at (\xe,0.15) {sampler}; \node[who] at (\xe,-0.25) {per sequence};
+\node[st] (d6) at (\xf,0.15) {channel (32)}; \node[who] at (\xf,-0.25) {blocking send, SSE};
+\draw[arr] (d1) -- (d2); \draw[arr] (d2) -- (d3); \draw[arr] (d3) -- (d4); \draw[arr] (d4) -- (d5); \draw[arr] (d5) -- (d6);
+\end{scope}
+\end{tikzpicture}
