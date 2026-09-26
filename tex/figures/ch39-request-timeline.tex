@@ -1,0 +1,36 @@
+% One streamed request and the latency metrics defined on it. Illustrative times.
+% The client queue exists when the load generator (or a gateway) limits concurrency:
+% a closed loop that times from the send, and vLLM's bench serve with --max-concurrency
+% (which records client_queue_time separately at bcdacfc), start the clock at "sent".
+\begin{tikzpicture}[
+  ev/.style={circle, fill=BookBlue, inner sep=0pt, minimum size=2.2mm},
+  tok/.style={draw=BookBlue, fill=BookGold!80, minimum width=2.6mm, minimum height=4.2mm, inner sep=0pt},
+  lab/.style={font=\scriptsize\sffamily, align=center},
+  br/.style={{Bar[width=2.2mm]}-{Bar[width=2.2mm]}, thick, BookBlue},
+  brr/.style={br},
+]
+% time axis
+\draw[-{Stealth[length=2mm]}, thick, black!60] (-0.3,0) -- (13.4,0) node[right, lab] {time};
+% phases under the axis
+\fill[BookPale] (0,-0.35) rectangle (1.8,0.35);
+\fill[BookGreen] (1.8,-0.35) rectangle (3.3,0.35);
+\fill[BookGold!50] (3.3,-0.35) rectangle (5.2,0.35);
+\node[lab] at (0.9,0) {client\\queue};
+\node[lab] at (2.55,0) {server\\queue};
+\node[lab] at (4.25,0) {prefill};
+% events
+\node[ev] (arr) at (0,0) {}; \node[lab, below=6mm] at (arr) {arrives\\(scheduled)};
+\node[ev] (snd) at (1.8,0) {}; \node[lab, below=6mm] at (snd) {sent};
+\node[ev] (adm) at (3.3,0) {}; \node[lab, below=6mm] at (adm) {admitted};
+% tokens
+\foreach \x in {5.2,6.0,6.7,8.9,9.6,10.3,11.0,11.7,12.4} {\node[tok] at (\x,0) {};}
+\node[lab, below=6mm] at (5.2,0) {first\\token};
+\node[lab, below=6mm] at (12.4,0) {last\\token};
+\draw[brr] (6.7,-0.5) -- (8.9,-0.5) node[midway, below=1pt, lab] {a long gap: another request's\\prefill chunk, or a preemption};
+\draw[brr] (11.0,-0.5) -- (11.7,-0.5) node[midway, below=1pt, lab] {ITL};
+% metrics above the axis
+\draw[br] (0,0.55) -- (5.2,0.55) node[midway, above=1pt, lab] {TTFT as the user sees it};
+\draw[br] (1.8,1.35) -- (5.2,1.35) node[midway, above=1pt, lab] {TTFT as a tool that starts at ``sent'' reports it};
+\draw[br] (5.2,0.55) -- (12.4,0.55) node[midway, above=1pt, lab] {TPOT $= (\text{E2E} - \text{TTFT}) / (n - 1)$ for $n$ tokens};
+\draw[br] (0,2.25) -- (12.4,2.25) node[midway, above=1pt, lab] {end-to-end latency (E2E)};
+\end{tikzpicture}

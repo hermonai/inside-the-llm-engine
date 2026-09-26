@@ -1,5 +1,7 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 39 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-26-m1-part8.md (repeat, fa-ab, stall, sweep,
+% engines3); 2026-09-23-m1-llama32-3b.md; 2026-09-24-m1-part7.md (contention).
 \chapter{Benchmarking Without Lying to Yourself}\label{ch:benchmarking}
 
 \begin{ChapterIntent}
@@ -15,30 +17,341 @@ results mislead.
 
 \OpeningSection{The same engine, three times apart}
 
+This book's first measurement was Llama~3.2~3B decoding 128 tokens on the M1:
+21.02 tokens per second, the mean of five repetitions with a standard deviation
+of 0.30 (\Chref{why-inference}). Three days later the same binary decoded the
+same file --- byte for byte, by its SHA-256 --- at 23.6 to 25.6 tokens per
+second in twelve runs made over six minutes. The day in between, beside one
+process copying memory on the CPU, it ran at 13.5 (\Chref{unified-memory}).
+Each number was correctly measured, and they disagree by a factor of nearly two
+(Figure~\ref{fig:ch39-three-days}).
+
+The first run had flash attention off and the later ones had it on, which looks
+like an explanation. It is not. Four interleaved pairs on the third day, one
+with the flag off and one with it on, averaged 24.1 and 24.7 tokens per second:
+the flag is worth about 2\%, and in one pair of the four it lost. With the flag
+off on both days, the two days differ by 15\%. What changed was the machine
+--- what else was running, how much memory was compressed or swapped, how warm
+it was --- and nothing in the first record could have predicted it (records
+\texttt{2026-09-23-m1-llama32-3b}, \texttt{2026-09-24-m1-part7} and
+\texttt{2026-09-26-m1-part8}).
+
+\EngineFigure{ch39-three-days}{One model file, one binary, one command: the
+decode speed of Llama~3.2~3B on the M1, each mark one repetition, on three days
+(measured). The flash-attention flag moves the result by about 2\%, less than
+the spread within one condition; the day moves it by 15\%; a neighbour copying
+memory halves it. A benchmark that reports one of these rows as ``the speed''
+is reporting its conditions without saying so.}{fig:ch39-three-days}
+
 \NapkinSection{Napkin math: how many runs are enough}
+
+Three questions decide whether a benchmark can answer the question asked of it.
+
+\emph{How many runs resolve a difference?} The twelve runs of the third day had
+a standard deviation of $\sigma = 0.59$ tokens per second, 2.4\% of their mean.
+To tell apart two configurations whose true difference is $\delta$, with each
+measured $n$ times, the difference of the means has a standard error of $\sigma
+\sqrt{2/n}$; asking for a difference of two standard errors gives
+\begin{equation}
+n \ge 2 \left( \frac{2\sigma}{\delta} \right)^2 .
+\label{eq:runs}
+\end{equation}
+For $\delta = 2\%$ that is 12 runs per configuration; for 1\%, 46; for 5\%, 2
+(derived). The four pairs above could not have resolved the flag's 2\%, which is
+why one of them came out backwards.
+
+\emph{How many arrivals did the load generator actually send?} A Poisson
+process at rate $\lambda$ for $T$ seconds sends $\lambda T$ requests on average,
+with a standard deviation of $\sqrt{\lambda T}$. The load sweep of
+\Chref{production} ran each rate for 120 seconds. At 0.2 requests per second that
+is $24 \pm 4.9$ arrivals and at 0.3 it is $36 \pm 6.0$; the sweep drew 32 and
+28, so the run that asked for less load offered more. Open-loop runs must be
+reported by the rate they realized, not the rate they requested.
+
+\emph{Can the percentile be estimated from the sample?} The $p$th percentile of
+$n$ values, by nearest rank, is the $\lceil pn/100 \rceil$th smallest. The 99th
+percentile of 50 requests is the 50th: the maximum, one request. A p99 worth
+reporting needs at least a few hundred requests, and ten samples beyond it
+need a thousand.
 
 \section{What to measure}
 
+A streamed request has a few instants that matter
+(Figure~\ref{fig:ch39-request-timeline}): when it should arrive, when it is
+sent, when the server admits it, when its first token arrives, and when its last
+does. The metrics are differences between them. \emph{Time to first token}
+(TTFT) is dominated by queueing and prefill. \emph{Inter-token latency} (ITL) is
+each gap between consecutive tokens; its tail shows every stall a request met,
+including other requests' prefill chunks and preemptions. \emph{Time per output
+token} (TPOT) averages one request's gaps: vLLM's benchmark defines it as
+$(\text{E2E} - \text{TTFT})/(n - 1)$ for a request of $n$ tokens, and reports
+the 99th percentile of TTFT, TPOT and ITL by default
+(\texttt{vllm/benchmarks/serve.py} at \texttt{bcdacfc}). \emph{End-to-end
+latency} (E2E) is what a non-streaming client waits.
+
+\EngineFigure{ch39-request-timeline}{One streamed request and the metrics
+defined on it (illustrative). The clock a benchmark starts decides what it
+measures: from the scheduled arrival, TTFT includes every queue the request met;
+from the send, it omits the client's queue, which is where a closed-loop load
+generator hides the server's slowness.}{fig:ch39-request-timeline}
+
+Throughput has two units and needs a condition. Generated tokens per second
+and completed requests per second are both meaningful; neither means anything
+without the latency at which it was achieved, because any engine can raise
+throughput by batching more and making each user wait. \emph{Goodput} joins the
+two: the rate of requests that met every latency objective. DistServe defined it
+as the rate a system can sustain while a target fraction of requests meet their
+TTFT and TPOT objectives \cite{zhong2024distserve}, and vLLM's benchmark counts
+it directly --- \texttt{--goodput ttft:500 tpot:50} counts the completed requests
+whose TTFT, TPOT and end-to-end latency (as given) are all within their
+limits. Server-side counters complement client measurements: llama.cpp's
+\texttt{/metrics} exposes prompt and generation speeds, requests being processed,
+requests deferred for lack of a slot and busy slots per decode step, all of which
+\Chref{production} uses.
+
 \section{Open and closed loops}
+
+A load generator decides when each request is sent, and the two ways of
+deciding measure different things. A \emph{closed loop} has a fixed number of
+users, each sending its next request when its last one ends. An \emph{open loop}
+draws arrival times in advance, as independent users would, and sends each
+request when its time comes whether or not the server has kept up.
+
+The difference is largest exactly when it matters. The same llama-server, with
+four slots and the same prompts, was driven for 90 seconds by each, and stopped
+with \texttt{SIGSTOP} for five seconds at $t = 40$ s in both runs
+(Figure~\ref{fig:ch39-stall}). The closed loop of four users completed 52
+requests; its first-token times had a median of 3.2~s and a 99th percentile of
+4.9~s. The open loop, asked for 0.45 Poisson arrivals per second, drew 50 ---
+0.56 per second, close to the closed loop's own 0.54 --- and its first-token times
+had a median of 9.9~s and a 99th percentile of 16.5~s. The server and the average
+load were nearly the same; the distribution of latency was three times worse
+(measured; record \texttt{2026-09-26-m1-part8}). The sweep of \Chref{production}
+explains why: under random arrivals this server completes at most about 0.52
+requests per second, so the open loop's queue grew for the whole run, while the
+closed loop's users, arriving in lockstep, filled the four slots exactly and
+never queued.
+
+\EngineFigure{ch39-stall}{The same server driven by a closed and an open loop,
+with the server stopped for 5~s in each run (measured). The closed loop's four
+users synchronized into waves: they start together, prefill their four prompts
+together --- 3.2~s at about 250 prompt tokens per second --- and finish together.
+None of them was waiting to send while the server was stopped, so the stop
+appears in no first-token time at all; it only made the four requests in flight
+finish 5~s late. The open loop's users arrived at random, queued behind one
+another at the same average rate, and five of them arrived during the stop.}{fig:ch39-stall}
+
+Two things hide in the closed loop's numbers. Its users never arrive while the
+server is busy, because they are waiting for it; the queue that random arrivals
+would build never forms. And a stall stops the load generator along with the
+server, so the requests that would have arrived during it are never sent and
+never measured. Gil Tene named the effect \emph{coordinated omission}. His
+\texttt{wrk2} sends at a constant rate and measures from when each request
+should have been sent; in his example, a web server paused for 1.4~s during a
+30-second run showed a 99th percentile of 6.04~ms measured the traditional way
+and 1.27~s measured correctly, a factor of 200 \cite{tene2014wrk2}.
+
+Inference benchmarks inherit the problem through concurrency limits. vLLM's
+benchmark sends requests on an open-loop schedule, but \texttt{--max-concurrency}
+makes it wait for a free slot on the client; its TTFT and end-to-end times start
+when the request is actually sent, and the waiting is recorded separately as
+\texttt{client\_queue\_time}, reported only when selected with
+\texttt{--percentile-metrics} (\texttt{bcdacfc}). A run with a concurrency cap is
+a closed loop in disguise unless that column is read.
 
 \section{Arrivals and workloads}
 
+What arrives matters as much as when. Poisson arrivals --- exponential gaps ---
+are the standard model of independent users, and real traffic is burstier.
+vLLM's benchmark draws gaps from a gamma distribution whose shape is its
+\texttt{--burstiness}: 1 gives Poisson, smaller values give bursts, and infinity
+gives a constant rate. It then rescales the gaps so that the whole run lasts
+exactly the number of requests divided by the rate, which removes the sampling
+error of the napkin section at the price of not quite being Poisson
+(\texttt{bcdacfc}).
+
+Lengths decide cost. Prefill is paid per prompt token and decode per generated
+token, so a benchmark must state both distributions. Fixed output lengths ---
+\texttt{ignore\_eos}, used throughout this book's load tests --- make
+configurations comparable; natural lengths measure what a service will see,
+including the long tail that fills the cache. Datasets encode these choices:
+vLLM's benchmark ships ShareGPT conversations, the BurstGPT trace, synthetic
+random prompts and a \texttt{prefix\_repetition} generator for prefix caching,
+among others. A benchmark that reuses one prompt measures a prefix cache, not an
+engine.
+
 \section{Warm-up, caches and steady state}
+
+The first request to a new server pays costs no later request pays: pages of
+the model file faulted in from storage, GPU pipelines compiled, allocators
+growing. llama.cpp's server was warmed with one request before every load test
+here; the first of Hermon's four runs in \Chref{real-engines} was discarded
+because it paid for the page cache and Metal pipelines. vLLM's benchmark sends no
+warm-up requests unless asked (\texttt{--num-warmups} defaults to 0 at
+\texttt{bcdacfc}).
+
+Caches outlive warm-up. In the three-engine comparison of \Chref{real-engines},
+llama.cpp's server, told not to reuse its prompt cache, spent 526~ms on a
+129-token prompt; Ollama, on the same file and the same prompt, reported 41--44~ms,
+because it kept the prompt cached from its warm-up request. The twelvefold
+difference is a cache hit, not an engine. A long run adds slower drift: caches
+fill, fragmentation grows and the machine heats. Reporting the first minute of a
+service as its steady state is the load-test version of the opening's mistake.
 
 \section{Percentiles and variance}
 
+Latency objectives are percentiles because users meet tails, not means. A
+request that waits 16~s is not made acceptable by forty that wait 1~s. Every
+percentile should be reported with its sample count, for the reason in the
+napkin section; the stall experiment's ``p99'' of 50 requests is simply its
+slowest request.
+
+Two practices cancel what cannot be controlled. Interleaving --- A, B, A, B
+rather than all A then all B --- spreads slow drift in the machine over both
+arms; the flash-attention pairs of the opening were interleaved for that reason.
+And the estimator should fit the question. Hermon's microbenchmarks report the
+fastest of several trials with the spread beside it, arguing that on a loaded
+machine noise only adds time, so the minimum is the least contaminated
+observation (\texttt{docs/KERNEL\_DESIGN.md} at \texttt{2a3fd52}). That is right
+for the speed of a kernel and wrong for a service: a user's latency cannot be
+the best of five.
+
 \section{Comparing engines fairly}
+
+A comparison of two engines is a comparison of two complete configurations,
+and fairness means holding fixed everything but the variable of interest: the
+same weights in the same format, the same prompts and output lengths, the same
+sampling, the same cache state, the same hardware in the same condition. In
+\Chref{real-engines}, llama.cpp's server, Ollama and Hermon ran one GGUF file
+greedily on one prompt and produced the same text; their decode speeds of
+20--26 tokens per second differ by less than the opening's day-to-day spread on
+one engine.
+
+Public comparisons rarely hold so much fixed, and each side can be right about
+its own numbers. In December 2023, AMD launched the MI300X claiming a 1.4 times
+lead over NVIDIA's H100 in Llama~2~70B latency, both running vLLM in FP16. NVIDIA
+answered that with its own TensorRT-LLM and FP8 the H100 was twice as fast, and
+that under a fixed response-time budget a server processes several times more
+requests than one at a time \cite{nvidia2023h100trtllm}. AMD replied that
+NVIDIA had compared FP8 on its hardware with FP16 on AMD's, converted relative
+latency into absolute throughput, and answered figures AMD had recorded in
+November; with newer software its lead was 2.1 times on vLLM, and 1.3 times in
+latency even against TensorRT-LLM in FP8 \cite{amd2023mi300x}. Four numbers, four configurations,
+and not one of them a measurement of the chip alone.
 
 \section{Industry benchmarks}
 
+Two public efforts show what a controlled comparison takes. MLPerf Inference
+fixes the model, the dataset, an accuracy target and a scenario --- offline, or
+a server scenario with Poisson arrivals and latency bounds --- and lets
+submitters vary everything else, with results reviewed by the other submitters
+\cite{reddi2020mlperf}. Its LLM bounds are percentiles: in version 5.0, the
+interactive Llama~2~70B test requires a 99th-percentile TTFT of 450~ms and TPOT of
+40~ms, and Llama~3.1~405B requires 6~s and 175~ms, each while keeping 99\% of
+a 16-bit reference's accuracy \cite{mlcommons2025llmv5}. Version 6.1, published
+on 16 September 2026, drew results from 30 organizations, added a retrieval
+pipeline and an agentic edge workload, and included a system of 512 accelerators
+\cite{mlcommons2026v61}.
+
+SemiAnalysis's InferenceMAX answers a different weakness: a benchmark run once
+goes stale as software improves. It reruns its suite every night on hundreds of
+accelerators from NVIDIA and AMD, with vLLM, SGLang and TensorRT-LLM, and plots
+throughput per GPU against tokens per second per user, with cost per million
+tokens derived from total cost of ownership \cite{semianalysis2025inferencemax}.
+Both efforts report curves, not points --- throughput as a function of the
+latency paid for it --- which is the shape of every honest answer in this chapter.
+
 \section{A benchmark record}
+
+Every number in this book comes from a record in \texttt{research/measurements/},
+and the record's format is the chapter's advice in one place:
+
+\begin{verbatim}
+# <what was measured>, <hardware>              Date: <UTC range>
+Questions      what the measurement must answer, stated before running it
+Setup          hardware, OS, engine build and commit, model file and its SHA-256,
+               every non-default flag
+Conditions     load average, memory pressure, power, other work on the machine
+Commands       exactly as run, with the scripts in the raw directory
+Results        tables with sample counts and spreads; raw outputs alongside
+Derived        each derived number with its arithmetic
+Anomalies      failed runs, surprises and re-runs, kept rather than deleted
+\end{verbatim}
+
+The conditions line is the one most often missing and the one the opening
+needed: with it, the first day's 21.02 and the third day's 24.1 are two honest
+measurements of two different machines that happened to share a name.
 
 \LedgerSection
 
+What honest measurement costs and protects:
+
+\begin{ConstraintLedger}
+Correctness & buys & Every cost claim in a system rests on its benchmarks; controls, open loops and records make those claims reproducible. \\
+Latency & spends & Open-loop load tests near capacity build real queues, and take long runs to measure tails. \\
+Compute & spends & Enough interleaved repetitions to resolve the effect claimed: 12 per arm for 2\% at the opening's noise. \\
+Cost & spends & Machine time and discipline; the alternative is optimizing noise. \\
+\end{ConstraintLedger}
+
 \LabSection{one server, two load generators}
+
+\LabIntent{In \texttt{code/labs/ch39-benchmarking/}, a load generator of about
+200 lines with the Python standard library: closed and open loops against any
+server with a streaming completion endpoint, each request timed both from its
+scheduled arrival and from its send, and a \texttt{SIGSTOP} of the server
+mid-run. Reproduce Figure~\ref{fig:ch39-stall}, then compute Equation~\ref{eq:runs}
+for your own machine from twelve repeated runs, and report the realized arrival
+rate of every open-loop run beside the requested one.}
 
 \HappenedSection{measurements that compared a system with itself}
 
-\FrontierSection{}
+Hermon's development records keep three measurements that measured something
+other than their subject. The first run of its benchmark for streaming experts
+from an SSD reported up to 8,331~MiB/s, several times what the drive can
+deliver; the machine's page cache was serving most reads, and the benchmark was
+``measuring memory bandwidth wearing a storage costume'' until reads bypassed the
+cache with \texttt{O\_DIRECT}. Its first report of a NEON kernel's speedup came
+from one timed run; the same scalar baseline then timed 12.8, 12.9 and 21.6~ms on
+three consecutive runs while a build competed for the cores, which put the
+speedup anywhere from 6.0 to 11.9 times (\texttt{docs/KERNEL\_DESIGN.md} at
+\texttt{2a3fd52}). And a table of that SSD benchmark counted every missed expert
+at the size of the largest one, overstating the bytes read by 7\%, until a
+replay of its trace recounted them (Hermon \texttt{5459c84}; \Chref{expert-streaming}).
+
+This book's own capstone did the same. Its first roofline showed every batch
+size at the same speed, because the ``memory ceiling'' was measured with the
+engine's own dot product --- and that kernel's arithmetic, not memory, set the
+rate. Both ceilings were the kernel's, and the plot compared the engine with
+itself (\Chref{capstone}). The defence in every case was the same: a second
+measurement by an independent route, and a number that could not be true when
+the two disagreed.
+
+\FrontierSection{2026-09-26}
+
+Benchmarking is moving from single numbers to continuously refreshed curves:
+InferenceMAX reruns nightly, MLPerf adds workloads within a year of their
+appearance --- retrieval pipelines and agents in version 6.1 --- and tools now
+record the queueing that closed loops used to hide, as vLLM's client-side queue
+time does. Goodput under stated latency objectives is becoming the unit of
+comparison. The open problems are workloads that no fixed dataset captures ---
+multi-turn agents whose prompts grow with each call and whose value depends on
+cache reuse --- and measurements across a fleet rather than one server, the
+subject of \Chref{production}.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using Equation~\ref{eq:runs} and $\sigma = 2.4\%$, how
+  many interleaved runs per arm are needed to detect a 1\% improvement with two
+  standard errors? How does the answer change if the runs are paired and the
+  pairs' differences have a standard deviation of 4\%?
+\item \emph{Prediction.} A closed loop of $C$ users drives a server with $S$
+  slots. For $C \le S$ and $C > S$, predict what the loop's TTFT distribution
+  shows and what it cannot show, then test it with the lab's generator.
+\item \emph{Measurement.} Run the lab's open loop at five rates for 60 and for
+  600 seconds each. Plot TTFT against the requested and the realized rates, and
+  explain which plot is honest.
+\item \emph{Falsification.} ``The fastest of five runs is the best estimate of
+  an engine's speed.'' Find a measurement in this chapter for which that is the
+  right estimator and one for which it is wrong, and say why.
+\end{enumerate}

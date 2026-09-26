@@ -1,0 +1,27 @@
+% Llama 3.2 3B (Q4_K_M, the same file) decoding 128 tokens with llama-bench (build 8660,
+% all layers on the M1's GPU), measured on three days. Each mark is one repetition's
+% tokens per second; rows are conditions. 23 Sep: record 2026-09-23-m1-llama32-3b.
+% 24 Sep: record 2026-09-24-m1-part7 (contention). 26 Sep: record 2026-09-26-m1-part8
+% (repeat, fa-ab). Measured. Vertical offsets within a row only separate the marks.
+\begin{tikzpicture}
+\begin{axis}[
+  width=13cm, height=7.2cm,
+  xmin=12, xmax=27, ymin=0.4, ymax=6.6,
+  ytick={1,2,3,4,5,6},
+  yticklabels={{23 Sep: flash attention off, 5 repetitions},{24 Sep: flash attention on, alone},{24 Sep: beside 1, 2 or 4 processes copying memory},{26 Sep: flash attention on, 12 runs of 3},{26 Sep, interleaved: flash attention off},{26 Sep, interleaved: flash attention on}},
+  xlabel={Decode speed of one sequence (tokens/s)},
+  xmajorgrids, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  yticklabel style={font=\footnotesize},
+  y dir=reverse,
+]
+\addplot[only marks, mark=*, mark size=1.9pt, draw=BookBlue, fill=BookBlue!60] coordinates {(21.23,0.86) (21.05,0.93) (21.0,1.00) (21.28,1.07) (20.52,1.14)};
+\addplot[only marks, mark=*, mark size=1.9pt, draw=BookBlue, fill=BookBlue!60] coordinates {(25.78,1.86) (25.81,1.93) (25.08,2.00) (25.15,2.07) (25.84,2.14) (25.94,1.86) (25.56,1.93) (24.69,2.00) (25.85,2.07) (25.53,2.14) (23.89,1.86) (24.96,1.93)};
+\addplot[only marks, mark=square*, mark size=1.9pt, draw=red!70!black, fill=red!70!black!60] coordinates {(13.55,2.86) (13.58,2.93) (13.48,3.00) (13.05,3.07) (12.98,3.14) (13.07,2.86) (13.72,2.93) (13.47,3.00) (15.43,3.07)};
+\addplot[only marks, mark=*, mark size=1.9pt, draw=BookBlue, fill=BookBlue!60] coordinates {(24.48,3.86) (25.34,3.93) (25.75,4.00) (24.93,4.07) (25.7,4.14) (25.83,3.86) (25.1,3.93) (24.0,4.00) (23.89,4.07) (23.15,4.14) (24.0,3.86) (23.61,3.93) (25.33,4.00) (24.94,4.07) (23.6,4.14) (25.76,3.86) (25.31,3.93) (25.63,4.00) (24.93,4.07) (24.08,4.14) (25.59,3.86) (25.3,3.93) (25.68,4.00) (25.55,4.07) (23.95,4.14) (25.27,3.86) (25.16,3.93) (24.73,4.00) (24.5,4.07) (24.49,4.14) (25.1,3.86) (24.56,3.93) (23.56,4.00) (25.12,4.07) (24.66,4.14) (25.79,3.86)};
+\addplot[only marks, mark=o, mark size=1.9pt, draw=BookBlue, fill=BookBlue!60] coordinates {(21.83,4.86) (24.19,4.93) (25.19,5.00) (24.77,5.07) (24.89,5.14) (24.59,4.86) (23.98,4.93) (24.74,5.00) (24.51,5.07) (23.3,5.14) (22.97,4.86) (24.7,4.93)};
+\addplot[only marks, mark=*, mark size=1.9pt, draw=BookBlue, fill=BookBlue!60] coordinates {(25.54,5.86) (25.8,5.93) (25.64,6.00) (26.05,6.07) (25.84,6.14) (23.35,5.86) (23.94,5.93) (23.81,6.00) (24.25,6.07) (24.84,6.14) (22.57,5.86) (24.77,5.93)};
+\draw[black!45, dashed] (axis cs:21.02,0.4) -- (axis cs:21.02,6.6);
+\node[font=\scriptsize\sffamily, anchor=east, text=black!60] at (axis cs:20.95,6.42) {21.02: the first day's mean};
+\end{axis}
+\end{tikzpicture}
