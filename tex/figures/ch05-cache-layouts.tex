@@ -1,0 +1,57 @@
+% Three ways to lay out one layer's KV cache for three sequences (illustrative sizes):
+% (a) a contiguous slab per sequence reserved at the maximum length; (b) one sequence's
+% tensor as llama.cpp stores keys (a row of all key/value heads per token) and values
+% (transposed when flash attention is off; src/llama-kv-cache.cpp at d006858); (c) fixed-size
+% blocks from a shared pool with a block table per sequence (Chapter 16).
+\begin{tikzpicture}[
+  used/.style={draw=BookBlue, fill=BookBlue!55, minimum width=4mm, minimum height=4mm, inner sep=0},
+  free/.style={draw=BookBlue!50, fill=white, minimum width=4mm, minimum height=4mm, inner sep=0},
+  title/.style={font=\small\sffamily\bfseries, anchor=west},
+  lab/.style={font=\scriptsize\sffamily, anchor=east},
+  note/.style={font=\scriptsize\sffamily, text=black!70, anchor=west, align=left},
+]
+% ---------- (a) contiguous reservation ----------
+\node[title] at (-1.3,0.6) {(a) One slab per sequence, reserved for the maximum length};
+\foreach \s/\n in {0/5, 1/12, 2/3} {
+  \node[lab] at (-0.1,-0.5*\s) {seq \s};
+  \foreach \i in {0,...,15} {
+    \pgfmathparse{\i<\n ? 1 : 0}
+    \ifnum\pgfmathresult=1
+      \node[used] at (0.4*\i+0.2,-0.5*\s) {};
+    \else
+      \node[free] at (0.4*\i+0.2,-0.5*\s) {};
+    \fi
+  }
+}
+\node[note] at (6.7,-0.5) {20 of 48 slots used:\\the rest is reserved\\for tokens that may\\never be generated};
+% ---------- (b) one sequence's tensors ----------
+\node[title] at (-1.3,-1.9) {(b) Inside one layer: a row of keys per token; values by column};
+\node[lab] at (-0.1,-2.55) {K};
+\foreach \t in {0,...,4} {
+  \foreach \h in {0,1} {
+    \node[used, fill=BookBlue!\the\numexpr 35+30*\h\relax, minimum width=8mm] at (1.0*\h+0.4+2.2*\t,-2.55) {};
+  }
+  \node[font=\tiny\sffamily] at (2.2*\t+0.9,-2.95) {token \t};
+}
+\node[note] at (11.2,-2.55) {one row per token:\\all key/value heads\\side by side};
+\node[lab] at (-0.1,-3.55) {V$^{\top}$};
+\foreach \h in {0,1} {
+  \foreach \t in {0,...,4} {
+    \node[used, fill=BookGold!\the\numexpr 55+30*\h\relax] at (0.4*\t+0.2+2.4*\h,-3.55) {};
+  }
+  \node[font=\tiny\sffamily] at (2.4*\h+1.0,-3.95) {head \h, tokens 0--4};
+}
+\node[note] at (5.0,-3.55) {without flash attention llama.cpp stores values transposed,\\so one head's values for all tokens are contiguous};
+% ---------- (c) paged ----------
+\node[title] at (-1.3,-4.9) {(c) Paged: fixed-size blocks from one pool, a table per sequence};
+\foreach \b/\owner in {0/0, 1/2, 2/0, 3/1, 4/1, 5/1, 6/free, 7/0, 8/free, 9/free} {
+  \node[draw=BookBlue, fill=white, minimum width=10mm, minimum height=5mm, inner sep=0, font=\tiny\sffamily] (blk\b) at (1.15*\b+0.6,-5.6) {\b};
+}
+\foreach \b/\c in {0/BookBlue!55, 2/BookBlue!55, 7/BookBlue!55, 3/BookGold!80, 4/BookGold!80, 5/BookGold!80, 1/BookGreen!90} {
+  \fill[\c] ([xshift=0.4pt,yshift=0.4pt]blk\b.south west) rectangle ([xshift=-0.4pt,yshift=-0.4pt]blk\b.north east);
+  \node[font=\tiny\sffamily] at (blk\b) {\b};
+}
+\node[lab] at (-0.1,-5.6) {pool};
+\node[note] at (-1.3,-6.35) {block tables:\quad seq 0 $\rightarrow$ [0, 2, 7] \qquad seq 1 $\rightarrow$ [3, 4, 5] \qquad seq 2 $\rightarrow$ [1] \qquad free: 6, 8, 9};
+\node[note] at (-1.3,-6.8) {a sequence's tokens are contiguous inside a block, not across blocks; at most one partly filled block per sequence};
+\end{tikzpicture}

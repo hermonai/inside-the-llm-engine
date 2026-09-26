@@ -1,0 +1,61 @@
+\section{Worked problems: sizing and invalidating a cache}
+
+\subsection{Llama 3 405B on eight H200s}
+\textbf{Problem.} Llama~3~405B has 126 layers and 8 key/value heads of width
+128 \cite{llama2024herd}. Compute its cache per token in BF16 and in FP8. Its
+weights are stored in FP8 across eight H200s of 141~GB each; setting aside 4~GB
+per GPU for activations and workspace, how many sequences of 131,072 tokens
+fit?
+
+\textbf{Solution.} Equation~\eqref{eq:kv-per-token}: $2 \times 126 \times 8
+\times 128 \times 2 = 516{,}096$ bytes, 504~KiB per token in BF16, and 252~KiB
+in FP8. A 131,072-token sequence therefore holds 66.1~GB of cache in BF16 or
+33.0~GB in FP8. The eight GPUs have 1,128~GB; the FP8 weights take about
+406~GB and the set-aside 32~GB, leaving about 690~GB. That is 10 sequences with
+a BF16 cache or 20 with an FP8 cache (derived). Eight GPUs and a model that
+reads 406~GB of weights per decode step serve ten or twenty long conversations
+at a time: at this context the cache, not the weights, sets the batch, and
+halving the cache's bytes doubles it. Spread over the eight GPUs by key/value
+head, as tensor parallelism does (\Chref{model-parallelism}), each GPU holds
+one of the eight heads of every layer.
+
+\subsection{A batch of 64 on one H100}
+\textbf{Problem.} Qwen3-8B in BF16 (16.4~GB of weights, 15.1~GB read per decode
+step, 144~KiB of cache per token) serves 64 sequences on one 80~GB H100 with
+4~GB set aside. At what context per sequence does a decode step read more cache
+than weights? At what context does the batch no longer fit?
+
+\textbf{Solution.} The cache read equals the weight read when
+$64 \times S \times 147{,}456 = 15.1 \times 10^{9}$, at $S \approx 1{,}600$ tokens
+per sequence. The memory for caches is $80 - 16.4 - 4 = 59.6$~GB, so the batch
+fits while $64 \times S \times 147{,}456 \le 59.6 \times 10^{9}$, up to about
+6,300 tokens per sequence (derived). Between the two, the batch fits but every
+step reads more cache than weights; the machine is doing what batching was
+supposed to prevent --- streaming bytes that serve one sequence each. Past
+6,300 tokens the engine must shrink the batch, evict, preempt or move caches to
+slower memory (\Chref{paged-kv}, \Chref{kv-storage-tier}).
+
+\subsection{Editing one token of a long prompt}
+\textbf{Problem.} A user edits the 1,000th token of a 4,096-token prompt that an
+engine has already prefilled and cached. Which cache entries are still valid?
+What does it cost on the M1 of \Chref{prefill-decode} to bring the cache up to
+date, and what if the user had inserted a token instead of replacing one?
+
+\textbf{Solution.} Entries for positions 0 to 998 are valid in every layer:
+causal attention means nothing before the edit depends on it. The edited
+token's own entries are invalid in every layer. The entries of later tokens are
+valid in the first layer only: their layer-0 keys and values are projections of
+their own embeddings, which did not change, but from layer 1 on their hidden
+states include attention over the edited token. So the engine must recompute
+the prefill for positions 999 to 4,095 --- 3,097 tokens, attending to up to 4,096
+--- about four fifths of the full prefill's work (three quarters of the matrix
+work, and 94\% of the attention, because the later tokens are the ones with the
+most to attend to): roughly 14~s instead of 18.2~s with llama.cpp's default
+attention path on the M1, or 12~s instead of 15.7~s with flash attention
+(derived from the measured 4,096-token prefill). An
+insertion is worse. Every later token moves one position, and because keys are
+stored after their rotary rotation, even their first-layer keys change: every
+entry from the insertion point on, in every layer, is invalid. This is why
+prefix caches match exact token prefixes at exact positions and nothing more
+(\Chref{prefix-caching}), and why an agent that appends to its context keeps its
+cache while one that edits the middle of it pays for a new prefill.
