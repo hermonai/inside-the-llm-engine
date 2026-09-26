@@ -1,5 +1,6 @@
-% status: SKELETON
+% status: ZERO
 % Chapter 40 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% Measurements: research/measurements/2026-09-26-m1-part8.md (sweep2, coldstart, stall).
 \chapter{Operating Inference in Production}\label{ch:production}
 
 \begin{ChapterIntent}
@@ -11,34 +12,284 @@ handling of timeouts and partial output, safe rollouts of new models, and the
 cost controls that decide whether a deployment makes money.
 \end{ChapterIntent}
 
-\OpeningSection{Minutes to the first token after a scale-up}
+\OpeningSection{Past the knee}
+
+One llama-server on the M1, four slots, Llama~3.2~3B, requests of about 200
+prompt tokens and 48 generated tokens arriving at random. At 0.09 requests per
+second the median user saw the first token after 0.78~s and the slowest after
+1.5~s. At 0.36 per second --- 70\% of what this server can complete --- the
+median had barely moved, to 0.93~s, but the 99th percentile had quadrupled to
+6.3~s. At 0.43 it was 11.9~s. Above 0.52 per second the server could not keep
+up at all: it completed at most 0.52 requests per second whatever arrived, and
+at 0.63 the median user waited 12.7~s and the slowest 29~s, with the queue
+still growing when the run ended (Figure~\ref{fig:ch40-knee}; measured, 120~s
+per rate; record \texttt{2026-09-26-m1-part8}).
+
+Nothing in the engine changed between those rows. The same kernels ran at the
+same speed; only the queue in front of them grew. Operating inference is the
+work of keeping every server on the left of that curve --- by adding capacity
+before the knee, routing each request where it will wait least, and knowing
+from the server's own counters which side of the knee it is on.
+
+\EngineFigure{ch40-knee}{Latency of one server as load rises (measured, open
+loop, rates as realized). Top: first-token time. The tail turns first: at 70\%
+of capacity the median has not moved and the 99th percentile has quadrupled.
+Bottom: completed requests per second against the dashed line of arrivals; the
+server saturates at about 0.52. The numbers are the most requests
+llama.cpp reported deferred at once, waiting for a free slot --- the queue,
+counted by the server itself.}{fig:ch40-knee}
 
 \NapkinSection{Napkin math: cold-start time and headroom}
 
+Queueing theory explains the shape. For the simplest queue, one server with
+random arrivals and service times, the mean time in the system is the service
+time divided by $1 - \rho$, where $\rho$ is the utilization: 70\% utilization
+multiplies it by 3.3, 90\% by 10. Real servers batch, which moves the curve but
+not its form, and the tail diverges before the mean, as the opening showed.
+
+Capacity arrives late. A new replica is useless until its weights are loaded
+and its engine is warm, so a fleet must carry enough headroom to absorb the
+traffic that grows while it waits:
+\begin{equation}
+\rho_{\text{target}} \le \frac{1}{1 + g\,(t_{\text{detect}} + t_{\text{cold}})},
+\label{eq:headroom}
+\end{equation}
+where $g$ is the fractional growth of traffic per unit time. With traffic
+growing 10\% per minute, one minute to notice and three to start a replica, a
+fleet must run below $1/1.4 = 71\%$ utilization to stay under capacity through
+the scale-up (derived, illustrative values) --- and the opening says that at
+70\% the tail is already four times its unloaded value.
+
+Cold-start time is mostly bytes. On the M1, with the model file in the page
+cache, llama-server answered its health check 1.1--2.0~s after starting and its
+first token 0.11~s later; Ollama loaded the same model in 1.1~s (measured; three
+runs each). A data-center replica moves far more bytes over slower paths. A
+70-billion-parameter model in 16 bits is 140~GB: 140~s from storage at 1~GB/s,
+14~s at 10~GB/s (derived), and then the engine compiles kernels and captures
+graphs before it serves. vLLM's developers put a full reload at 30 to more than
+100~seconds per model switch \cite{vllm2025sleepmode}.
+
 \section{Loading models and cold starts}
+
+A cold start has more parts than the copy. vLLM's developers list them: weights
+copied to the GPU, the memory allocator set up, CUDA graphs captured, kernels
+compiled just in time, and caches warmed by the first requests
+\cite{vllm2025sleepmode}. Faster loaders attack the first. vLLM at
+\texttt{bcdacfc} accepts fifteen load formats, among them streaming loaders
+(\texttt{runai\_streamer}, \texttt{fastsafetensors}), pre-sharded and serialized
+states (\texttt{sharded\_state}, \texttt{tensorizer}) and a dummy format that
+skips weights for testing (\texttt{vllm/model\_executor/model\_loader/\_\_init\_\_.py}).
+Keeping the process alive attacks the rest. vLLM's sleep mode puts a model to
+sleep by moving its weights to CPU memory (level 1) or discarding them (level
+2) while keeping the process, its allocator, graphs and compiled kernels. Its
+developers measured waking at 18 to 200 times the speed of a full reload, and
+the first request after waking 61--88\% faster than the first after a cold start
+(A100 GPUs; developers' measurements) \cite{vllm2025sleepmode}. On the M1 the
+llama.cpp server warms itself during loading: its first request was no slower
+than its second.
 
 \section{Autoscaling on the right signal}
 
+The signal must lead the latency users see, and utilization of the GPU does not.
+A decoding GPU shows busy whenever a kernel runs, whether it serves one
+sequence or sixty; the opening's server was ``busy'' at every rate. The signals
+that lead are the queue and the cache. llama.cpp exports
+\texttt{requests\_deferred}, the requests waiting for a slot: 0 or 1 below 70\%
+of capacity, 2 at 70\%, 6 at 83\% and 24 when overloaded in the opening's sweep.
+vLLM exports \texttt{vllm:num\_requests\_waiting}, split by reason into waiting for
+capacity and deferred by transient constraints, with
+\texttt{vllm:kv\_cache\_usage\_perc}, preemption counts and histograms of queue
+time, first-token time and inter-token latency (\texttt{vllm/v1/metrics/loggers.py}
+at \texttt{bcdacfc}). Scaling on queue length or on a windowed 90th-percentile
+TTFT acts before users notice; scaling on utilization acts after.
+
+Scaling down needs the same care. A replica holds cached prefixes, and removing
+one throws away work that a router would have reused; a replica that is draining
+must stop receiving new requests but finish the ones it holds, including long
+generations.
+
 \section{Routing: load, prefixes and adapters}
+
+A router in front of several replicas decides which one serves each request,
+and the best choice is rarely the least loaded. A request whose prefix is cached
+on one replica costs only its new tokens there and its whole prompt anywhere
+else (\Chref{prefix-caching}). SGLang's cache-aware load balancer keeps an
+approximate radix tree of each worker's cache and routes by expected hit; its
+developers reported the hit rate rising from 20\% to 75\% and throughput by 1.9
+times \cite{sglang2024v04}. llm-d and NVIDIA Dynamo route by the overlap of a
+request's blocks with each worker's cache and by load, and report up to twice
+the speed to first token with such routing (vendor measurements)
+\cite{llmd2026,nvidia2026dynamo}. Routing by adapter follows the same logic: a
+request for a LoRA adapter is cheapest where that adapter is loaded, and
+llama.cpp batches together only requests with equal adapter sets
+(\Chref{multi-model-serving}).
+
+Affinity has a cost when the routing rule is wrong. In August 2025, Anthropic
+sent some short-context requests for Claude Sonnet~4 to servers configured for
+an upcoming 1-million-token context window, and those servers gave degraded
+answers. The bug affected 0.8\% of that model's requests at first; a routine
+load-balancing change on 29 August raised the share, to 16\% in the worst hour on
+31 August. Because routing was sticky, a user whose request reached a wrong
+server was likely to stay on it; about 30\% of Claude Code users who made
+requests in the period had at least one message misrouted. The fix, deployed on
+4 September, sent short- and long-context requests to the correct pools
+\cite{anthropic2025postmortem}. A router is part of the model's correctness, not
+only of its speed.
 
 \section{Isolation between tenants}
 
+Sharing is how inference becomes cheap --- one batch, one cache, one set of
+weights for many users --- and every shared resource is a channel between
+tenants. The one specific to inference is the prefix cache: a cached prompt is
+answered faster, so a user who can measure time can test whether someone else
+sent a prompt. An audit of commercial APIs detected prompt caches shared across
+users at seven providers, including OpenAI, and recovered a fact about a model's
+architecture from timing alone \cite{gu2025auditing}. The defence is to key the
+cache by tenant. vLLM lets a request carry a \texttt{cache\_salt}, mixed into the
+hash of its first block so that only requests with the same salt can share
+cached blocks; its own description is that the salt prevents an attacker from
+guessing prompts in multi-user environments (\texttt{bcdacfc}). The same
+reasoning applies to batch composition, which \Chref{fast-wrong-answers} showed
+can change a request's answer: a tenant who needs reproducibility needs batch
+invariance, or a replica of its own.
+
+Noisy neighbours are the older problem. A tenant with long prompts consumes the
+prefill budget of every batch it joins, and one with long generations holds
+cache blocks for minutes. Admission control per tenant, and the scheduling
+policies of \Chref{scheduling}, keep one customer's traffic from setting
+another's latency.
+
 \section{Observability}
+
+Four families of measurements describe a serving system, and all four are
+needed. Request metrics --- first-token time, inter-token latency, end-to-end
+latency and goodput, by percentile and by tenant --- say what users see. Queue
+and cache metrics --- waiting requests, deferred requests, cache usage,
+preemptions, prefix hit rate --- say why. Engine metrics --- batch sizes, tokens
+per step, prefill and decode rates --- say where the time went. And correctness
+metrics say whether the answers are still right: vLLM counts requests whose
+logits contained NaNs, and continuous evaluations sample live traffic
+(\Chref{fast-wrong-answers}). Traces that follow one request through router,
+queue, prefill and decode join the four, and they are how a regression in one
+tenant's p99 is traced to a change in another's traffic.
 
 \section{Timeouts, retries and partial output}
 
+A streamed response can fail halfway, and every layer must agree on what that
+means. A client that disconnects should cancel its request so that its cache
+blocks are freed and its batch slot reused (\Chref{request-lifecycle}); a
+server that keeps generating for a closed connection spends capacity on nobody.
+A slow reader is the opposite case: its unread tokens must not stall the others,
+which is the defect \Chref{real-engines} found in Hermon's batched runtime. A
+timeout must say whether the partial output is valid. And a retry of a
+generation is not idempotent: it doubles the cost, returns a different sample
+unless the seed is fixed, and under overload turns a queue into a storm, which
+is why retries need budgets and backoff that respect the server's own signals.
+
 \section{Rolling out a new model}
+
+A new model, quantization, kernel or engine version changes answers, and
+\Chref{fast-wrong-answers} shows that a single benchmark cannot tell how much.
+Rollouts therefore run in stages: the new version is evaluated offline against
+the old on distributions, not anecdotes; it receives shadow traffic whose
+answers are compared but not returned; then a small share of real traffic, with
+automatic rollback on latency or quality alarms. Anthropic's postmortem gives
+the reason in its own terms: its evaluations had not captured the degradation
+users reported, and one of the three bugs, a misconfiguration deployed to its TPU
+servers on 25 August 2025, occasionally gave high probability to tokens that
+should rarely appear --- Thai or Chinese characters in English answers --- until it
+was rolled back on 2 September. It added tests for unexpected characters to its
+deployment process \cite{anthropic2025postmortem}.
 
 \section{Security: untrusted models and inputs}
 
+A model file is code-adjacent. Weights stored with Python's pickle can run code
+when loaded, which is why formats that store only tensors --- safetensors and
+GGUF --- became the norm, and why vLLM will not run a model's own Python code from
+a hub unless \texttt{trust\_remote\_code} is set; it defaults to false
+(\texttt{vllm/config/model.py} at \texttt{bcdacfc}). Parsers of those formats
+still read attacker-controlled lengths and offsets, and belong in the threat
+model. Administrative endpoints are a second surface: vLLM's sleep and wake
+endpoints require a development-mode variable and, in its developers' words,
+should be exposed only in trusted networks \cite{vllm2025sleepmode}. Inputs are
+the third: prompts can be crafted to exhaust a context window, to maximize
+generation length, or to probe shared caches, and limits on each belong at the
+edge.
+
 \section{Cost control}
+
+The unit of cost is the token served within its latency objective. A replica's
+cost per million generated tokens is its price per hour divided by the tokens
+it generates per hour, in millions. At \$2 per hour and 2,000 tokens per second,
+that is $2 / 7.2 \approx \$0.28$ (illustrative values). Every lever in this book
+moves the denominator: batching, quantization, speculation, prefix caching,
+disaggregation. The opening moves it too. The M1's server generated 17 tokens
+per second at 70\% of capacity and 25 when saturated: running it saturated buys
+44\% more tokens per hour and multiplies the 99th-percentile wait by five to
+seven. That trade is the cost decision in production: how much latency headroom
+a service buys, and how much it pays for each unit.
 
 \LedgerSection
 
+What operating a fleet buys and spends:
+
+\begin{ConstraintLedger}
+Latency & buys & Headroom below the knee keeps tail latency near its unloaded value; routing to cached prefixes shortens prefill. \\
+Cost & spends & Headroom is idle capacity: the rule of Equation~\ref{eq:headroom} keeps a fleet at 70\% or less. Sleep mode and fast loaders trade memory and complexity for faster scaling. \\
+Correctness & buys & Staged rollouts, correctness metrics and routing that respects model configuration; the incidents in this chapter were routing and deployment faults, not kernel bugs. \\
+Memory capacity & spends & Per-tenant cache isolation gives up sharing; sleeping models occupy host memory. \\
+\end{ConstraintLedger}
+
 \LabSection{a router that knows about prefixes}
+
+\LabIntent{In \texttt{code/labs/ch40-production/}, a router of about 300 lines in
+front of two llama.cpp servers: least-loaded routing, then routing by the
+longest prefix each server is known to hold, then a mix that stops following a
+prefix when the target's deferred count passes a threshold. Replay a workload of
+multi-turn conversations with the open-loop generator of \Chref{benchmarking}
+and compare TTFT percentiles, prefix hit rates and deferred counts. Then
+misconfigure one server --- a smaller context window --- and show how sticky
+routing concentrates the damage.}
 
 \HappenedSection{incidents and their lessons}
 
-\FrontierSection{}
+The incidents in this chapter share a pattern: none began in a kernel. A load
+balancer's routine change widened a routing bug from 0.8\% to 16\% of a model's
+traffic; a deployment configuration corrupted sampling on some servers; an
+approximate top-$k$ that failed only at some batch sizes surfaced when a
+workaround was removed (\Chref{fast-wrong-answers}). All three were intermittent,
+platform-specific and hard to reproduce, and evaluations run before deployment
+missed them. Anthropic's lessons were more sensitive evaluations, run
+continuously on production systems, and faster tools for debugging from
+community reports \cite{anthropic2025postmortem}. For an engine, the lesson is
+that correctness is a property of the whole path --- router, configuration,
+batching, sampling --- and has to be measured there.
+
+\FrontierSection{2026-09-26}
+
+The serving stack above the engine is where most change is happening:
+orchestration layers such as llm-d and NVIDIA Dynamo route by cache contents,
+disaggregate prefill from decode and move key--value blocks between machines
+(\Chref{disaggregated-serving}, \Chref{kv-storage-tier}); engines add sleep modes
+and streaming loaders so that capacity follows traffic in seconds rather than
+minutes. The open problems are autoscaling for agentic traffic, whose sessions
+last minutes and whose value depends on keeping their caches warm; isolation
+that does not give up sharing; and continuous measurement of correctness in
+production, which the incidents above show is still largely manual.
 
 \ExercisesSection
+
+\begin{enumerate}
+\item \emph{Derivation.} Using Equation~\ref{eq:headroom}, find the largest
+  target utilization for a fleet whose traffic grows 5\% per minute, with
+  30~seconds to detect and a cold start of 140~GB from storage at 2~GB/s plus
+  45~seconds of initialization. How does sleep mode change the answer?
+\item \emph{Prediction.} Before running it, predict from the opening's sweep the
+  rate at which the same server's 99th-percentile TTFT would pass 5~s with eight
+  slots instead of four, then measure it.
+\item \emph{Implementation.} Build the lab's router and add a tenant-keyed
+  prefix cache: show the hit rate it gives up and the timing signal it removes.
+\item \emph{Falsification.} ``GPU utilization is a good autoscaling signal.''
+  Find a load at which a server reports full utilization while its queue is
+  empty, and one at which the queue grows while utilization is unchanged.
+\end{enumerate}

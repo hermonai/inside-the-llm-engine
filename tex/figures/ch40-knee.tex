@@ -1,0 +1,44 @@
+% One llama-server (build 8660, Llama 3.2 3B Q4_K_M, 4 slots, 8,192-token context) under
+% open-loop Poisson load for 120 s per rate, prompts of about 200 tokens, 48 generated tokens
+% each (ignore_eos), each request timed from its scheduled arrival. x is the realized arrival
+% rate (arrivals / 120 s), not the requested one. Top: first-token time, median and 99th
+% percentile. Bottom: completed requests per second, and the largest number of requests
+% the server reported deferred for lack of a slot (llamacpp:requests_deferred, scraped every
+% 2 s). Measured; record 2026-09-26-m1-part8 (sweep2).
+\begin{tikzpicture}
+\begin{axis}[
+  name=top, width=13cm, height=6.2cm,
+  xmin=0, xmax=0.76, ymin=0, ymax=45,
+  xticklabels={}, ylabel={Time to first token (s)},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.02,0.97)}, anchor=north west, draw=black!30},
+  legend cell align=left,
+]
+\fill[red!8] (axis cs:0.51,0) rectangle (axis cs:0.76,45);
+\node[font=\scriptsize\sffamily, text=red!60!black, align=center] at (axis cs:0.64,4.5) {arrivals exceed\\what the server completes};
+\addplot[red!70!black, mark=triangle*, mark size=2.6pt, thick] coordinates {(0.092,1.51) (0.233,2.07) (0.267,2.67) (0.358,6.32) (0.425,11.88) (0.633,29.25) (0.717,42.48)};
+\addlegendentry{99th percentile}
+\addplot[BookBlue, mark=*, mark size=2.2pt, thick] coordinates {(0.092,0.78) (0.233,0.92) (0.267,0.90) (0.358,0.93) (0.425,1.40) (0.633,12.70) (0.717,24.27)};
+\addlegendentry{median}
+\end{axis}
+\begin{axis}[
+  at={(top.south west)}, anchor=north west, yshift=-0.35cm, width=13cm, height=4.6cm,
+  xmin=0, xmax=0.76, ymin=0, ymax=0.8,
+  xlabel={Arrival rate actually offered (requests/s)}, ylabel={Completed (requests/s)},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+]
+\fill[red!8] (axis cs:0.51,0) rectangle (axis cs:0.76,0.8);
+\addplot[black!40, dashed, domain=0:0.76, samples=2] {x};
+\addplot[BookBlue, mark=square*, mark size=2pt, thick] coordinates {(0.092,0.097) (0.233,0.225) (0.267,0.273) (0.358,0.360) (0.425,0.418) (0.633,0.503) (0.717,0.518)};
+\node[font=\scriptsize\sffamily, anchor=south, text=black!70] at (axis cs:0.092,0.117) {0};
+\node[font=\scriptsize\sffamily, anchor=south, text=black!70] at (axis cs:0.233,0.245) {1};
+\node[font=\scriptsize\sffamily, anchor=south, text=black!70] at (axis cs:0.267,0.293) {1};
+\node[font=\scriptsize\sffamily, anchor=south, text=black!70] at (axis cs:0.358,0.380) {2};
+\node[font=\scriptsize\sffamily, anchor=south, text=black!70] at (axis cs:0.425,0.438) {6};
+\node[font=\scriptsize\sffamily, anchor=south, text=black!70] at (axis cs:0.633,0.523) {12};
+\node[font=\scriptsize\sffamily, anchor=south, text=black!70] at (axis cs:0.717,0.538) {24};
+\node[font=\scriptsize\sffamily, anchor=west, text=black!70] at (axis cs:0.02,0.7) {numbers: most requests deferred at once};
+\end{axis}
+\end{tikzpicture}
