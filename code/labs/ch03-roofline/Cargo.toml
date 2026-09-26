@@ -1,0 +1,9 @@
+[package]
+name = "ch03-roofline"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 3 lab: measure this machine's bandwidth and compute roofs and the decode sweep between them"
+
+[dependencies]
+capstone = { path = "../../mini-engine/crates/capstone" }

@@ -1,5 +1,5 @@
 [workspace]
-members = ["ch01-fake-model"]
+members = ["ch01-fake-model", "ch03-roofline"]
 resolver = "2"
 
 [workspace.package]

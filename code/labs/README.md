@@ -21,3 +21,4 @@ and **break** (a change that makes the mechanism fail or disappear).
 | --- | --- | --- |
 | 1 | [`ch01-fake-model`](ch01-fake-model/) — a weight matrix the size of a small model, decoded at rising batch sizes | Rust |
 | 2 | [`ch02-count-a-model`](ch02-count-a-model/) — a GGUF header reader that prices one decode step, per operator, for any local model | Python |
+| 3 | [`ch03-roofline`](ch03-roofline/) — measures the CPU's bandwidth and compute roofs and predicts a decode sweep from them | Rust |
