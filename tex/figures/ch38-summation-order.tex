@@ -1,0 +1,55 @@
+% Float32 addition is not associative: the same four numbers summed in two orders.
+% Near 1e8 the spacing of float32 values is 8 (2^26 <= 1e8 < 2^27, 23 fraction bits),
+% so 100,000,001 rounds to 100,000,000. Exact arithmetic; illustrative values.
+\begin{tikzpicture}[
+  val/.style={draw=BookBlue, fill=BookPale, rounded corners=2pt, minimum width=20mm, minimum height=7mm, font=\small\ttfamily},
+  res/.style={val, very thick},
+  bad/.style={val, draw=red!70!black, fill=red!8},
+  op/.style={circle, draw=BookBlue, inner sep=1pt, font=\small, minimum size=5mm},
+  stepno/.style={circle, fill=BookBlue, text=white, inner sep=1pt, font=\scriptsize\bfseries, minimum size=4mm},
+  lab/.style={font=\small\sffamily, text=BookBlue},
+  arr/.style={-{Stealth[length=1.6mm]}, BookBlue},
+]
+% ---------------- left: one running sum, as a mat-vec kernel might
+\node[lab, anchor=west] at (-0.2, 5.3) {\textbf{One running sum}: ((a + b) + c) + d};
+\node[val] (a1) at (0.9, 4.3) {1e8};
+\node[val] (b1) at (3.6, 4.3) {1};
+\node[op] (p1) at (2.25, 3.2) {+};
+\node[bad] (s1) at (2.25, 2.3) {100,000,000};
+\node[stepno] at (0.55, 2.3) {1};
+\node[val] (c1) at (5.0, 2.3) {-1e8};
+\node[op] (p2) at (3.6, 1.2) {+};
+\node[val] (s2) at (3.6, 0.3) {0};
+\node[stepno] at (1.9, 0.3) {2};
+\node[val] (d1) at (6.3, 0.3) {1};
+\node[op] (p3) at (4.95, -0.8) {+};
+\node[res] (s3) at (4.95, -1.7) {1};
+\node[stepno] at (3.25, -1.7) {3};
+\draw[arr] (a1) -- (p1); \draw[arr] (b1) -- (p1); \draw[arr] (p1) -- (s1);
+\draw[arr] (s1) -- (p2); \draw[arr] (c1) -- (p2); \draw[arr] (p2) -- (s2);
+\draw[arr] (s2) -- (p3); \draw[arr] (d1) -- (p3); \draw[arr] (p3) -- (s3);
+\node[font=\scriptsize\sffamily, text=red!70!black, align=left, anchor=west] at (-0.2, -0.9)
+  {100,000,001 is not a float32:\\its neighbours are 100,000,000\\and 100,000,008; the 1 is lost};
+% ---------------- right: pairwise sums, as a tiled kernel might
+\begin{scope}[xshift=8.6cm]
+\node[lab, anchor=west] at (-0.2, 5.3) {\textbf{Pairwise}: (a + c) + (b + d)};
+\node[val] (a2) at (0.9, 4.3) {1e8};
+\node[val] (c2) at (3.3, 4.3) {-1e8};
+\node[op] (q1) at (2.1, 3.2) {+};
+\node[val] (t1) at (2.1, 2.3) {0};
+\node[stepno] at (0.5, 2.3) {1};
+\node[val] (b2) at (5.9, 4.3) {1};
+\node[val] (d2) at (8.3, 4.3) {1};
+\node[op] (q2) at (7.1, 3.2) {+};
+\node[val] (t2) at (7.1, 2.3) {2};
+\node[stepno] at (5.5, 2.3) {2};
+\node[op] (q3) at (4.6, 1.2) {+};
+\node[res] (t3) at (4.6, 0.3) {2};
+\node[stepno] at (2.9, 0.3) {3};
+\draw[arr] (a2) -- (q1); \draw[arr] (c2) -- (q1); \draw[arr] (q1) -- (t1);
+\draw[arr] (b2) -- (q2); \draw[arr] (d2) -- (q2); \draw[arr] (q2) -- (t2);
+\draw[arr] (t1) -- (q3); \draw[arr] (t2) -- (q3); \draw[arr] (q3) -- (t3);
+\node[font=\scriptsize\sffamily, text=BookBlue, align=left, anchor=west] at (-0.2, -1.0)
+  {every intermediate is exact;\\the true sum is 2};
+\end{scope}
+\end{tikzpicture}
