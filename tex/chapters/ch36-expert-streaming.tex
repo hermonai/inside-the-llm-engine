@@ -162,9 +162,8 @@ router. Trained routers are pushed toward balanced long-run load
 (\Chref{mixture-of-experts}), but consecutive tokens do reuse experts:
 Eliseev and Mazur built an LRU expert cache for Mixtral-8x7B on that
 observation and ran it at 2.3 tokens per second on an RTX~3060 with 2-bit
-experts \cite{eliseev2023moeoffload}. How much locality Qwen3-30B-A3B's router
-has on real text is unmeasured here \todo{measure: record Qwen3-30B-A3B's
-routing on real prompts and replay it against the pager's cache}. And a 64-token
+experts \cite{eliseev2023moeoffload}. Qwen3-30B-A3B's own router is not
+recorded here; a smaller model's is, at the end of this section. And a 64-token
 trace that starts from an empty cache understates the steady state, because up
 to a quarter of its reads are first touches.
 
@@ -196,6 +195,23 @@ routing a frequency policy learned from the first half keeps most of the
 optimum (Belady's) at every size. Both routings are the
 benchmark's synthetic distributions, not a recorded router; derived by
 simulation.}{fig:ch36-hit-rate}
+
+A recorded router gives the same verdict. IBM's Granite 3.1 3B-A800M routes each
+token to 8 of 40 experts in each of its 32 layers, small enough to run on the
+M1, and llama.cpp recorded its choices over 2,705 tokens generated greedily from
+eight varied prompts --- code, arithmetic, a story, history, translation and two
+passages of technical prose (measured; record \texttt{2026-09-26-m1-part8}). The
+router was far from uniform: a layer's 8 most used experts took 43\% of its
+selections, where uniform routing would give 20\%, and consecutive tokens shared
+46\% of their experts in a layer, against 20\%. Replayed as one session through
+caches of 5 to 50\% of the 1,280 expert records, scoring the second half, the
+recorded trace reproduced the loop: at 5 and 10\%, below the 248 records the
+other 31 layers read between two visits to a layer, LRU hit nothing, while the
+most used experts of the first half hit 16 and 27\% and Belady's optimum 22 and
+42. At a quarter of the records LRU recovered to 46\%, and at half to 77\%, level
+with the frequency policy (derived by simulation from the measured trace). Real
+routing has the locality the synthetic trace assumed; it does not rescue LRU from
+the layer cycle.
 
 \section{Queue depth: a falsified hypothesis}
 

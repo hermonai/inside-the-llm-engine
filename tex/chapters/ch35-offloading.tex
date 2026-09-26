@@ -214,8 +214,20 @@ experts where they live (\texttt{common/arg.cpp} at \texttt{d006858}; explicit
 options). By Equation~\ref{eq:offload-time} a
 token's 1.1~GB of Qwen3-30B-A3B experts cost about 27~ms computed from host
 memory at 40~GB/s, 62~ms copied across the link at 17.8~GB/s, and 0.48~s read
-from the NVMe drive (derived) \todo{measure: --cpu-moe and --n-cpu-moe on
-Qwen3-30B-A3B once a mixture-of-experts model is available locally}.
+from the NVMe drive (derived).
+
+On the M1 the same options can be measured with a small mixture-of-experts
+model, IBM's Granite 3.1 3B-A800M, and there is no link to cross: CPU and GPU
+read the same pages of the file, and \texttt{--no-repack} keeps it that way.
+Keeping every expert on the CPU cut single-sequence decode from 49--58 tokens
+per second to 31--32 and prefill from 573 to 160--181; keeping the experts of
+half the layers there gave 39--43 and 253--323; four sequences decoding
+together lost less, 88--90 tokens per second against 64--67 (measured,
+\texttt{llama-batched-bench}, two interleaved rounds; record
+\texttt{2026-09-26-m1-part8}). With nothing to copy, the option only moves
+arithmetic from the faster processor to the slower one, and prefill, which is
+compute-bound, pays most. On a discrete GPU the same option replaces a copy
+across the link, and by the arithmetic above that is where it wins.
 KTransformers takes the placement to server CPUs, with Intel AMX kernels for
 prefill and lighter AVX-512 kernels for decode; on a dual-socket Xeon with an
 A100 or an RTX~4080 it reports 4.62 to 19.74 times the prefill speed and 1.25
