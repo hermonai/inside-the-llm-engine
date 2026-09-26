@@ -1,0 +1,58 @@
+% One decoder layer of Llama 3.2 3B during decode: the seventh token of "The capital of
+% France is" + " Paris", with six tokens already in the cache. Shapes and parameter
+% counts from the GGUF metadata and tensor list (measured file, lab ch02-count-a-model;
+% record 2026-09-26-m1-pass3); FLOPs and bytes derived.
+\begin{tikzpicture}[
+  st/.style={draw=BookBlue, fill=BookPale, rounded corners=2pt, align=center, font=\small\sffamily, minimum height=8mm, inner sep=3pt},
+  wide/.style={st, minimum width=76mm},
+  mat/.style={st, fill=BookGold!55, minimum width=23mm},
+  state/.style={st, fill=BookGreen, minimum width=76mm},
+  note/.style={font=\scriptsize\sffamily, text=black!70, align=left, anchor=west},
+  arr/.style={-{Stealth[length=1.6mm]}, BookBlue, thick},
+]
+\node[state] (x) at (0, 0) {residual stream $\mathbf{x}$: $1 \times 3072$};
+\node[wide] (n1) at (0, -1.2) {RMSNorm};
+\node[mat] (wq) at (-2.65, -2.5) {$\mathbf{W}_Q$\\$3072 \rightarrow 3072$};
+\node[mat] (wk) at (0, -2.5) {$\mathbf{W}_K$\\$3072 \rightarrow 1024$};
+\node[mat] (wv) at (2.65, -2.5) {$\mathbf{W}_V$\\$3072 \rightarrow 1024$};
+\node[st, minimum width=23mm] (rq) at (-2.65, -3.85) {RoPE\\24 heads of 128};
+\node[st, minimum width=23mm] (rk) at (0, -3.85) {RoPE\\8 heads of 128};
+\node[state, minimum width=49mm] (kv) at (1.325, -5.2) {KV cache of this layer: 7 keys, 7 values\\(6 cached + 1 new), each $1 \times 1024$};
+\node[wide, minimum height=11mm] (att) at (0, -6.65) {attention: each of 24 query heads scores 7 keys of its\\key/value head (3 query heads share one), softmax,\\weighted sum of 7 values $\rightarrow$ $1 \times 3072$};
+\node[mat, minimum width=76mm] (wo) at (0, -8.05) {$\mathbf{W}_O$: $3072 \rightarrow 3072$};
+\node[wide] (a1) at (0, -9.2) {add to $\mathbf{x}$ (residual)};
+\node[wide] (n2) at (0, -10.35) {RMSNorm};
+\node[mat, minimum width=36mm] (wg) at (-1.95, -11.6) {$\mathbf{W}_{\mathrm{gate}}$: $3072 \rightarrow 8192$};
+\node[mat, minimum width=36mm] (wu) at (1.95, -11.6) {$\mathbf{W}_{\mathrm{up}}$: $3072 \rightarrow 8192$};
+\node[wide] (sw) at (0, -12.85) {$\operatorname{SiLU}(\mathrm{gate}) \odot \mathrm{up}$: $1 \times 8192$};
+\node[mat, minimum width=76mm] (wd) at (0, -14.05) {$\mathbf{W}_{\mathrm{down}}$: $8192 \rightarrow 3072$};
+\node[state] (a2) at (0, -15.25) {add to $\mathbf{x}$ $\rightarrow$ the next layer's input, $1 \times 3072$};
+\draw[arr] (x) -- (n1);
+\draw[arr] (n1.south) -- ++(0,-0.25) -| (wq.north);
+\draw[arr] (n1) -- (wk);
+\draw[arr] (n1.south) -- ++(0,-0.25) -| (wv.north);
+\draw[arr] (wq) -- (rq); \draw[arr] (wk) -- (rk);
+\draw[arr] (rk.south) -- (rk.south |- kv.north);
+\draw[arr] (wv.south) -- (wv.south |- kv.north);
+\draw[arr] (rq.south) -- (rq.south |- att.north);
+\draw[arr] (kv.south -| 1.325,0) ++(0,0) -- (1.325, -6.1);
+\draw[arr] (att) -- (wo); \draw[arr] (wo) -- (a1); \draw[arr] (a1) -- (n2);
+\draw[arr] (n2.south) -- ++(0,-0.2) -| (wg.north);
+\draw[arr] (n2.south) -- ++(0,-0.2) -| (wu.north);
+\draw[arr] (wg.south) -- (wg.south |- sw.north); \draw[arr] (wu.south) -- (wu.south |- sw.north);
+\draw[arr] (sw) -- (wd); \draw[arr] (wd) -- (a2);
+\draw[arr, dashed] (x.east) -- ++(0.35,0) |- (a1.east);
+\draw[arr, dashed] (a1.east) -- ++(0.35,0) |- (a2.east);
+\node[note] at (4.6, 0) {one token's hidden state, 12 KB\\in 32-bit floats};
+\node[note] at (4.6, -1.2) {3,072 gains; about $3 \times 3072$ FLOPs};
+\node[note] at (4.6, -2.5) {9.4 M + 3.1 M + 3.1 M weights;\\the query splits into 24 heads,\\keys and values into 8};
+\node[note] at (4.6, -3.85) {rotates pairs of elements\\by position (no weights)};
+\node[note] at (4.6, -5.2) {writes 4 KiB: 2 $\times$ 1,024\\16-bit numbers};
+\node[note] at (4.6, -6.65) {12,288 FLOPs and 4 KiB read\\per cached token};
+\node[note] at (4.6, -8.05) {9.4 M weights};
+\node[note] at (4.6, -9.2) {dashed: the residual path};
+\node[note] at (4.6, -11.6) {25.2 M weights each};
+\node[note] at (4.6, -12.85) {elementwise: no weights};
+\node[note] at (4.6, -14.05) {25.2 M weights};
+\node[note] at (4.6, -15.25) {per layer: 100.7 M weights,\\201 MFLOP $+$ 12,288 per\\cached token};
+\end{tikzpicture}

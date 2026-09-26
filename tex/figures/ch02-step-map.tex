@@ -1,0 +1,32 @@
+% One decode step at batch one with 4,096 tokens in a 16-bit KV cache, BF16 weights.
+% Qwen3-8B (dense; untied tables) and Qwen3-30B-A3B (128 experts, 8 per token; the
+% router's 0.025 GFLOP and 25 MB are folded into the experts), from their published
+% configurations with Chapter 2's equations (derived). Resident memory is all weights.
+\begin{tikzpicture}
+\begin{axis}[
+  xbar stacked, width=13cm, height=6.4cm, bar width=5.5mm,
+  xmin=0, xmax=21.5,
+  symbolic y coords={30B-A3B bytes,30B-A3B FLOPs,8B bytes,8B FLOPs},
+  ytick={30B-A3B bytes,30B-A3B FLOPs,8B bytes,8B FLOPs},
+  yticklabels={{Qwen3-30B-A3B: GB read},{Qwen3-30B-A3B: GFLOP},{Qwen3-8B: GB read},{Qwen3-8B: GFLOP}},
+  y dir=normal, enlarge y limits=0.18,
+  xlabel={GFLOP, or GB read from memory, per decode token},
+  tick label style={font=\small}, label style={font=\small},
+  xmajorgrids, grid style={draw=black!12},
+  legend style={font=\footnotesize, at={(0.5,1.03)}, anchor=south, legend columns=4, draw=black!30},
+  legend cell align=left,
+]
+\addplot[fill=BookBlue!75, draw=BookBlue] coordinates {(3.02,8B FLOPs) (3.02,8B bytes) (1.81,30B-A3B FLOPs) (1.81,30B-A3B bytes)};
+\addlegendentry{attention projections}
+\addplot[fill=red!55!black!70, draw=red!55!black] coordinates {(2.42,8B FLOPs) (0.60,8B bytes) (3.22,30B-A3B FLOPs) (0.40,30B-A3B bytes)};
+\addlegendentry{attention over the cache}
+\addplot[fill=BookGold!85!black, draw=BookGold!50!black] coordinates {(10.87,8B FLOPs) (10.87,8B bytes) (3.65,30B-A3B FLOPs) (3.65,30B-A3B bytes)};
+\addlegendentry{FFN, or 8 active experts}
+\addplot[fill=BookGreen!60!black, draw=BookGreen!30!black] coordinates {(1.24,8B FLOPs) (1.24,8B bytes) (0.62,30B-A3B FLOPs) (0.62,30B-A3B bytes)};
+\addlegendentry{output projection}
+\node[font=\scriptsize\sffamily, anchor=west] at (axis cs:17.6,8B FLOPs) {17.6};
+\node[font=\scriptsize\sffamily, anchor=west, align=left] at (axis cs:15.8,8B bytes) {15.7 (holds 16.4 GB)};
+\node[font=\scriptsize\sffamily, anchor=west] at (axis cs:9.35,30B-A3B FLOPs) {9.3};
+\node[font=\scriptsize\sffamily, anchor=west, align=left] at (axis cs:6.55,30B-A3B bytes) {6.5 (holds 61.1 GB)};
+\end{axis}
+\end{tikzpicture}

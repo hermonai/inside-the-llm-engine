@@ -1,0 +1,81 @@
+\section{Worked problems: counting a step}
+
+\subsection{Sixty-four parameters short}
+\textbf{Problem.} Count Llama~3.2~3B's parameters from its shape alone
+(28 layers, $d = 3{,}072$, $H_q = 24$, $H_{kv} = 8$, $d_h = 128$,
+$d_{\mathrm{ff}} = 8{,}192$, $V = 128{,}256$, tied tables, one RMSNorm gain
+vector before each block and one at the end) and compare with the file's
+3,212,749,888. Account for any difference. Then say what untying the tables
+would cost in memory and in bytes read per token.
+
+\textbf{Solution.} Per layer, equation~\eqref{eq:params-attn} gives
+$3{,}072 \times 3{,}072 = 9{,}437{,}184$ for $\mathbf{W}_Q$,
+$2 \times 3{,}072 \times 1{,}024 = 6{,}291{,}456$ for $\mathbf{W}_K$ and
+$\mathbf{W}_V$, and 9,437,184 for $\mathbf{W}_O$: 25,165,824. The FFN is
+$3 \times 3{,}072 \times 8{,}192 = 75{,}497{,}472$, so the matrices of one layer
+hold 100,663,296 and the two gains 6,144 more. Twenty-eight layers:
+$2{,}818{,}572{,}288 + 172{,}032$. The tied table adds
+$128{,}256 \times 3{,}072 = 394{,}002{,}432$ once, and the final norm 3,072.
+Total: 3,212,749,824 --- exactly 64 short. The file's tensor list names the
+missing tensor: \texttt{rope\_freqs.weight}, 64 floats, one frequency factor for
+each of the $d_h/2 = 64$ rotary pairs (the chapter's section on position reads
+them). No equation of the chapter predicts it, which is the point of checking a
+derivation against the file rather than against another derivation.
+Untying the tables would add a second $128{,}256 \times 3{,}072$ matrix:
+394~million parameters, 12\% more, and 323~MB more in this file's
+\texttt{Q6\_K}. It would add almost nothing per token: the output projection
+reads the whole table every step either way, and the input side reads one row.
+Tying saves capacity, not bandwidth.
+
+\subsection{When the cache overtakes the weights}
+\textbf{Problem.} At what context length $S$ does attention over the cache
+cost as many FLOPs as the rest of a batch-one decode step? As many bytes? Answer
+for Llama~3.2~3B (the \texttt{Q4\_K\_M} file, 16-bit cache) and for Qwen3-8B in
+BF16 and in its \texttt{Q4\_K\_M} file, and explain why one crossover depends on
+the file and the other does not.
+
+\textbf{Solution.} Attention over the cache costs $4\,L\,H_q\,d_h$ FLOPs and
+$2\,L\,H_{kv}\,d_h\,b_{kv}$ bytes per cached token; the rest of the step costs
+$2P_{\text{act}}$ FLOPs and the weights' bytes. For Llama~3.2~3B:
+$4 \times 28 \times 24 \times 128 = 344{,}064$ FLOPs per cached token against
+$6.425$~GFLOP, so $S = 18{,}674$; and $114{,}688$ bytes per cached token against
+2.01~GB of weights, so $S = 17{,}539$. For Qwen3-8B: $589{,}824$ FLOPs per
+cached token against $2 \times (8.191 - 0.622)$~billion $= 15.14$~GFLOP, so
+$S = 25{,}663$; and $147{,}456$ bytes per cached token against 15.14~GB of BF16
+weights read, $S = 102{,}653$, or against 4.87~GB in the \texttt{Q4\_K\_M}
+file, $S = 33{,}022$ (all derived). The FLOP crossover is a property of the
+architecture: precision changes neither side. The byte crossover compares two
+storage formats. Quantizing the weights to about 4.8 bits while the cache stays
+at 16 moved Qwen3-8B's byte crossover from about 103,000 tokens to about
+33,000: past that length the cache, not the weights, is what a decode step
+mostly reads, and the next thing to shrink (\Chref{kv-quantization},
+\Chref{shrinking-kv}). In Llama's file the two crossovers nearly coincide,
+so at long context both the arithmetic and the bytes of a step are mostly
+attention.
+
+\subsection{When a mixture of experts stops saving bandwidth}
+\textbf{Problem.} Granite~3.1~3B-A800M's file holds 1,828~MB of routed-expert
+weights (40 experts per layer, 8 per token) and 205~MB of everything else. If
+each token's experts were drawn uniformly at random, how many bytes would a
+step read, per token, for batches of 1, 4 and 16 tokens? Compare with
+Llama~3.2~3B's 2,012~MB, dense, and find the batch size at which Granite reads
+90\% of its experts. What advantage does Granite keep once it has lost this
+one?
+
+\textbf{Solution.} A batch of $B$ tokens touches a fraction $1 - 0.8^B$ of each
+layer's experts: 20\%, 59\% and 97.2\% for $B = 1$, 4 and 16. A step then reads
+$205 + 1{,}828 \times (1 - 0.8^B)$~MB: 571, 1,284 and 1,982~MB, which is 571,
+321 and 124~MB per token. Llama reads 2,012~MB per step at every batch size:
+2,012, 503 and 126~MB per token. At batch one Granite reads 3.5 times fewer
+bytes per token; at sixteen the two are level (all derived from the files).
+Ninety percent of the experts are touched once $0.8^B \le 0.1$, at
+$B = \ln 0.1 / \ln 0.8 = 10.3$, so eleven tokens (91.4\%); for Qwen3-30B-A3B,
+with 8 of 128, it takes 36. What Granite keeps is compute: each token still
+multiplies only its own eight experts, 1.77~GFLOP per token against Llama's
+6.43 at short context. A mixture of experts trades bandwidth for capacity at
+small batches and compute for capacity at large ones, which is why the same
+model can be a laptop's fastest option at batch one and a data center's
+cheapest at batch several hundred (\Chref{mixture-of-experts},
+\Chref{expert-parallelism}). Routing that favours some experts makes the
+union grow more slowly than this uniform case, and the advantage last longer;
+\Chref{mixture-of-experts} simulates both.

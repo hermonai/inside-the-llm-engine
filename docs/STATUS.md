@@ -32,7 +32,7 @@ if this table is stale. Words are approximate prose words.
 | # | Chapter | Status | Words | TODOs |
 | ---: | --- | --- | ---: | ---: |
 | 1 | Why Inference Is Its Own Discipline | FULL | 6,754 | 0 |
-| 2 | The Forward Pass, Compressed | ZERO | 2,301 | 0 |
+| 2 | The Forward Pass, Compressed | FULL | 6,946 | 0 |
 | 3 | The Roofline: Why Decode Leaves Your GPU Idle | ZERO | 2,873 | 6 |
 | 4 | Prefill and Decode: Two Workloads, One Model | ZERO | 2,057 | 1 |
 | 5 | The KV Cache: Inference's Central Data Structure | ZERO | 2,110 | 0 |

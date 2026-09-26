@@ -1,0 +1,35 @@
+% One attention head by hand: head width 4, a query against four cached tokens.
+% Values computed by code/labs/ch02-count-a-model/worked_numbers.py (derived, exact).
+\begin{tikzpicture}[
+  cell/.style={font=\small, minimum height=7mm, anchor=center},
+  head/.style={font=\scriptsize\sffamily\bfseries, text=BookBlue, align=center, anchor=center},
+  vec/.style={font=\small, draw=BookBlue, fill=BookPale, rounded corners=1.5pt, minimum height=6mm, minimum width=22mm, inner sep=2pt},
+  outv/.style={vec, fill=BookGreen},
+]
+\node[head] at (0, 0.95) {cached\\token};
+\node[head] at (2.0, 0.95) {key $\mathbf{k}_t$};
+\node[head] at (4.35, 0.95) {score\\$\mathbf{q}\cdot\mathbf{k}_t/\sqrt{4}$};
+\node[head] at (6.75, 0.95) {weight $p_t$\\(softmax)};
+\node[head] at (9.6, 0.95) {value $\mathbf{v}_t$};
+\node[head] at (12.55, 0.95) {$p_t\,\mathbf{v}_t$};
+\foreach \t/\k/\s/\p/\pw/\v/\pv in {
+  0/{[1, 0, 0, 0]}/{$1/2 = 0.5$}/0.235/0.235/{[2, 0, 1, 0]}/{[.470, 0, .235, 0]},
+  1/{[0, 1, 0, 0]}/{$0/2 = 0.0$}/0.143/0.143/{[0, 2, 0, 1]}/{[0, .285, 0, .143]},
+  2/{[1, 0, 1, 0]}/{$2/2 = 1.0$}/0.387/0.387/{[1, 1, 1, 1]}/{[.387, .387, .387, .387]},
+  3/{[0, 0, 1, 1]}/{$1/2 = 0.5$}/0.235/0.235/{[0, 0, 2, 2]}/{[0, 0, .470, .470]}} {
+  \node[cell] at (0, -\t*0.85) {$t = \t$};
+  \node[vec] at (2.0, -\t*0.85) {\k};
+  \node[cell] at (4.35, -\t*0.85) {\s};
+  \fill[BookGold!80!black] (5.85, -\t*0.85-0.17) rectangle ++(\pw*3.2, 0.34);
+  \node[cell, anchor=west, font=\small] at (5.85+\pw*3.2+0.05, -\t*0.85) {\p};
+  \node[vec] at (9.6, -\t*0.85) {\v};
+  \node[vec, minimum width=27mm] at (12.55, -\t*0.85) {\pv};
+}
+\node[vec, fill=BookGold!55, minimum width=22mm] (q) at (2.0, 2.2) {[1, 0, 1, 0]};
+\node[font=\small, anchor=east] at (q.west) {query $\mathbf{q}$ of the new token:\ };
+\draw[-{Stealth[length=1.6mm]}, BookBlue, thick] (q.south) -- (2.0, 1.4);
+\draw[BookBlue, thick] (11.2, -3.0) -- (13.9, -3.0);
+\node[font=\small, anchor=east] at (11.1, -3.5) {output $= \sum_t p_t\,\mathbf{v}_t$:};
+\node[outv, minimum width=27mm] at (12.55, -3.5) {[.857, .673, 1.092, 1.000]};
+\node[font=\scriptsize\sffamily, text=black!70, align=left, anchor=north west] at (-0.45, -4.1) {Scores: dot products scaled by $1/\sqrt{d_h}$. Weights: each $e^{s_t}$ divided by $e^{0.5}+e^{0}+e^{1}+e^{0.5} = 2.581$, so they sum to 1. The output mixes the values,\\most of all the value whose key points the same way as the query ($t = 2$); a key at right angles to it ($t = 1$) still gets weight $e^0/2.581 = 0.143$.};
+\end{tikzpicture}

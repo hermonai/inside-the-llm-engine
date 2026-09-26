@@ -1,19 +1,23 @@
-% status: ZERO
+% status: FULL
 % Chapter 2 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-gguf-tensor-bytes.md
+% Measurements: research/measurements/2026-09-23-gguf-tensor-bytes.md (tensor bytes);
+% research/measurements/2026-09-26-m1-pass3.md (the lab's runs on five local files).
 \chapter{The Forward Pass, Compressed}\label{ch:forward-pass}
 
 \begin{ChapterIntent}
 Before we can price a technique we need to know what one decode step
 computes, in the terms an engine sees: operators, shapes, bytes and state.
-This chapter walks a token through a modern decoder --- embedding,
-normalization, attention over the cache, the feed-forward network or its
-mixture of experts, the output projection and sampling --- and counts, for
-each operator, the parameters it reads, the FLOPs it performs and the state it
-touches. The result is the two rules the rest of the book leans on: a forward
-pass costs about two FLOPs per active parameter per token, and batch-one decode
-reads about every weight once per token. Appendix~A builds the same
-computation from scratch.
+This chapter reads a real model's file to find its shape, then walks a token
+through a modern decoder --- embedding, normalization, attention over the
+cache, rotary position, the feed-forward network or its mixture of experts,
+the output projection and sampling --- working each operator by hand on
+numbers small enough to check, and counting, for each, the parameters it
+reads, the FLOPs it performs and the state it touches. The result is the two
+rules the rest of the book leans on --- a forward pass costs about two FLOPs
+per active parameter per token, and batch-one decode reads about every weight
+once per token --- and a list of the places where each rule breaks.
+Appendix~\ref{app:qkv} and its neighbours build the same computation from
+scratch.
 \end{ChapterIntent}
 
 \OpeningSection{The bytes a token actually touches}
@@ -22,8 +26,8 @@ Two model files sit on the laptop used throughout Part~\ref{part:physics}.
 One is Llama~3.2~3B, 2,011,539,712 bytes of tensors; the other is a model
 built on Qwen3-8B, 5,219,418,112 bytes. Both are quantized the same way, to
 about four and a half bits per weight. Reading their headers --- no weights
-loaded --- tells us exactly which tensors they hold (the record is
-\texttt{research/measurements/2026-09-23-gguf-tensor-bytes.md}).
+loaded --- tells us exactly which tensors they hold (this chapter's lab does
+it; the record is \texttt{research/measurements/2026-09-26-m1-pass3.md}).
 
 Generating one token with the first model reads \textbf{every byte} of it.
 Generating one token with the second reads \textbf{93\%}. The difference is a
@@ -35,9 +39,19 @@ second reads the whole table, every step. The Qwen3-based model keeps two
 tables. Its input table, 350~MB in this file, is only ever read one row at a
 time; its output table, 511~MB, is read in full.
 
-To predict what a step costs, then, we cannot use the file size. We need the
-list of operators, what each one reads, what each one computes, and what state
-it keeps. That list is short. This chapter writes it down.
+A third file on the same disk makes the point harder. IBM's Granite~3.1
+3B-A800M has almost exactly as many parameters as Llama~3.2~3B --- 3.30
+billion against 3.21 --- and almost exactly the same file size. Generating a
+token with it reads \textbf{28\%} of its bytes, and on the laptop's GPU it
+decodes 2.4 to 2.9 times as fast (measured). It is a mixture of experts: each
+of its layers holds forty small feed-forward networks and sends each token
+through eight.
+
+To predict what a step costs, then, we cannot use the file size, and we cannot
+use the parameter count. We need the list of operators, what each one reads,
+what each one computes, and what state it keeps. That list is short. This
+chapter writes it down, one operator at a time, and checks every entry against
+a real file.
 
 \NapkinSection{Napkin math: parameters, FLOPs and bytes per layer}
 
@@ -55,12 +69,20 @@ P_{\text{ffn}} = 3\,d\,d_{\mathrm{ff}}.
 \label{eq:params-ffn}
 \end{equation}
 Add a vocabulary table of $V\times d$ at each end (or once, if tied) and a few
-normalization vectors, and the count is complete. For Qwen3-8B
+normalization vectors, and the count is complete.
+
+For Llama~3.2~3B ($d=3{,}072$, $H_q=24$, $H_{kv}=8$, $d_h=128$,
+$d_{\mathrm{ff}}=8{,}192$, 28 layers, $V=128{,}256$, tied), the attention block
+holds $9.44 + 3.15 + 3.15 + 9.44 = 25.2$ million parameters and the FFN
+$3 \times 3{,}072 \times 8{,}192 = 75.5$ million: 100.7 million per layer,
+2.82 billion in all 28. The table adds 394 million and the norms 175,104. The
+sum lands 64 parameters short of the file's 3,212,749,888; the first worked
+problem at the end of the chapter finds them. For Qwen3-8B
 ($d=4{,}096$, $H_q=32$, $H_{kv}=8$, $d_h=128$, $d_{\mathrm{ff}}=12{,}288$,
-36 layers, $V=151{,}936$), equation~\eqref{eq:params-attn} gives 41.9~million
-parameters per layer and equation~\eqref{eq:params-ffn} 151.0~million. With
-the tables and norms the total is 8,190,735,360 --- exactly the count in the
-file (derived; the record shows the sum).
+36 layers, $V=151{,}936$, untied), equation~\eqref{eq:params-attn} gives
+41.9~million parameters per layer and equation~\eqref{eq:params-ffn} 151.0~million.
+With both tables and the norms the total is 8,190,735,360 --- exactly the count
+in the file (derived; the lab checks it).
 
 Each parameter used in a matrix product costs two FLOPs per token, a multiply
 and an add. Attention adds one cost that no parameter count shows: each new
@@ -74,25 +96,119 @@ F_{\text{token}} \approx 2P_{\text{act}} + 4\,L\,S\,H_qd_h,
 where $P_{\text{act}}$ counts the parameters that take part in matrix
 products for this token --- all of them, less the input table's unused rows,
 in a dense model. And at batch one it reads about $b_w P_{\text{act}}$ bytes
-of weights plus $S$ tokens of KV cache (\Chref{kv-cache}).
+of weights, at $b_w$ bytes per weight, plus $S$ tokens of KV cache
+(\Chref{kv-cache}). For Llama~3.2~3B at the start of a conversation that is
+$2 \times (2.82 + 0.39) = 6.43$~GFLOP and 2.01~GB per token; with 4,096 tokens
+in the cache it is 7.83~GFLOP and 2.48~GB (derived). Everything else in this
+chapter explains where those numbers come from and where they fail.
+
+\section{Reading a model's shape from its file}
+
+Every number above came from the model file itself, and the reader should be
+able to get them the same way. A GGUF file --- the format llama.cpp and Ollama
+use --- begins with a small header: four magic bytes, \texttt{GGUF}; a
+version; the number of tensors (255 for Llama~3.2~3B); and the number of
+metadata entries. Then come the metadata, as typed key--value pairs, and a
+description of every tensor: its name, its shape, its storage type and the
+offset of its data. The weights follow, aligned, after the last description.
+Reading the header needs no weights at all, which is why the lab's reader runs
+in milliseconds on a file of any size:
+
+\CodeLines{../code/labs/ch02-count-a-model/count_model.py}{63}{90}
+
+\noindent The metadata keys carry the shape. For Llama~3.2~3B they include
+\texttt{llama.block\_count = 28}, \texttt{llama.embedding\_length = 3072},
+\texttt{llama.attention.head\_count = 24},
+\texttt{llama.attention.head\_count\_kv = 8},
+\texttt{llama.attention.key\_length = 128},
+\texttt{llama.feed\_forward\_length = 8192},
+\texttt{llama.vocab\_size = 128256},
+\texttt{llama.rope.freq\_base = 500000} and
+\texttt{llama.attention.layer\_norm\_rms\_epsilon}, $10^{-5}$ stored as a
+32-bit float. The tensors of the first layer are:
+
+\begin{center}\small
+\begin{tabular}{@{}llllr@{}}
+\toprule
+Tensor & Shape in the file & Type & Operator & Bytes \\
+\midrule
+\texttt{blk.0.attn\_norm.weight} & 3,072 & F32 & RMSNorm gain & 12,288 \\
+\texttt{blk.0.attn\_q.weight} & 3,072 $\times$ 3,072 & Q4\_K & $\mathbf{W}_Q$ & 5,308,416 \\
+\texttt{blk.0.attn\_k.weight} & 3,072 $\times$ 1,024 & Q4\_K & $\mathbf{W}_K$ & 1,769,472 \\
+\texttt{blk.0.attn\_v.weight} & 3,072 $\times$ 1,024 & Q6\_K & $\mathbf{W}_V$ & 2,580,480 \\
+\texttt{blk.0.attn\_output.weight} & 3,072 $\times$ 3,072 & Q4\_K & $\mathbf{W}_O$ & 5,308,416 \\
+\texttt{blk.0.ffn\_norm.weight} & 3,072 & F32 & RMSNorm gain & 12,288 \\
+\texttt{blk.0.ffn\_gate.weight} & 3,072 $\times$ 8,192 & Q4\_K & $\mathbf{W}_{\mathrm{gate}}$ & 14,155,776 \\
+\texttt{blk.0.ffn\_up.weight} & 3,072 $\times$ 8,192 & Q4\_K & $\mathbf{W}_{\mathrm{up}}$ & 14,155,776 \\
+\texttt{blk.0.ffn\_down.weight} & 8,192 $\times$ 3,072 & Q6\_K & $\mathbf{W}_{\mathrm{down}}$ & 20,643,840 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Three details in that table matter later. First, GGUF lists the
+\emph{contiguous} dimension first: \texttt{attn\_k} is stored as 1,024 rows of
+3,072 weights, and each row is one output element's worth --- the dot product
+of that row with the normalized hidden state gives one element of the key.
+That is the layout every matrix--vector kernel in this book walks, one row at
+a time. Second, the \texttt{Q4\_K\_M} ``type'' of the file is a mixture: 168
+tensors are stored in \texttt{Q4\_K} (144 bytes per block of 256 weights, 4.5
+bits each), 29 in \texttt{Q6\_K} (210 bytes per 256, 6.56 bits) --- the
+vocabulary table and, in some layers, the value and down projections, which
+the quantizer protects --- and 58 small tensors in 32-bit floats. The
+average is 5.01 bits per weight; \Chref{weight-quantization} explains the
+formats and the choice. Third, there is one tensor that belongs to no
+layer and no equation: \texttt{rope\_freqs.weight}, 64 floats. We will meet it
+in the section on position.
 
 \section{Tokens in, logits out}
 
 A request enters as text and leaves as text, but the model sees neither.
 A tokenizer turns text into a sequence of integer token IDs from a fixed
 vocabulary (Appendix~\ref{app:tokens} builds one). The first operator gathers
-one row of the input table per token: an $d$-vector of numbers, the token's
+one row of the input table per token: a $d$-vector of numbers, the token's
 starting hidden state. Then $L$ identical layers transform the hidden state.
 A final normalization and the output projection turn the last position's
 hidden state into $V$ scores, the \Term{logits}: one per vocabulary entry. A
 sampler turns logits into one chosen token ID (Appendix~\ref{app:sampling}),
 which is appended to the sequence and becomes the next step's input.
 
+\Chref{why-inference} traced the prompt \texttt{"The capital of France is"}
+through Llama~3.2~3B: six token IDs in, \texttt{" Paris"} out. Here are the
+shapes that trace passes through, first for the prompt (prefill: all six
+tokens in one step) and then for the step after it (decode: \texttt{" Paris"}
+fed back in at position 6, with the six prompt tokens already cached):
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Stage & Prefill, 6 prompt tokens & Decode, 1 new token \\
+\midrule
+Token IDs & 6 & 1 \\
+Embedding gather & $6 \times 3{,}072$ & $1 \times 3{,}072$ \\
+Queries, per layer & $6 \times 3{,}072$ (24 heads of 128) & $1 \times 3{,}072$ \\
+Keys and values, per layer & $6 \times 1{,}024$ each (8 heads of 128) & $1 \times 1{,}024$ each, appended to 6 cached \\
+Attention scores, per head & $6 \times 6$, causal: 21 used & $1 \times 7$ \\
+FFN hidden state, per layer & $6 \times 8{,}192$ & $1 \times 8{,}192$ \\
+Output projection & last row only: $1 \times 3{,}072 \rightarrow 128{,}256$ & $1 \times 3{,}072 \rightarrow 128{,}256$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The two columns do the same arithmetic per token. What differs is
+the number of rows each weight matrix is multiplied against in one pass: six
+in prefill, one in decode. Every weight is read once per step either way, so
+prefill spends each byte on six tokens and decode on one --- the asymmetry
+\Chref{prefill-decode} measures and \Chref{roofline} prices. Notice also that
+prefill computes all six positions' hidden states through every layer but
+needs logits only for the last: the other five exist to fill the cache.
+
 Every stage but one is small. The layers hold nearly all the parameters and
 do nearly all the work; the output projection is the other large matrix, and
-with vocabularies of 150,000--250,000 entries it is no longer negligible:
-Qwen3.5's output table alone is about a billion parameters (derived from its
-configuration: $248{,}320\times4{,}096$).
+with vocabularies of 150,000--250,000 entries it is no longer negligible. In
+Llama~3.2~3B it is 12\% of each decode token's FLOPs (788 of 6,425~MFLOP) and
+16\% of its bytes (323~MB of 2.01~GB); Qwen3.5's output table alone is about a
+billion parameters (derived from its configuration:
+$248{,}320\times4{,}096$).
 
 \section{One decoder layer}
 
@@ -105,87 +221,327 @@ $\mathbf{h}\in\mathbb{R}^{d}$ of each token:
 \label{eq:layer}
 \end{equation}
 The additions are the \Term{residual stream}: each block adds a correction to
-a running vector rather than replacing it. The normalizations
-(RMSNorm, Appendix~\ref{app:embeddings-norm}) rescale the vector before each
-block. Of the two blocks, only attention looks at other tokens; the FFN, the
-norms and the residual additions treat every token independently. That
-asymmetry is why attention gets its own kernels, its own cache and three
-chapters of this book.
+a running vector rather than replacing it. The normalizations rescale the
+vector before each block --- this ``pre-norm'' arrangement is what Llama, Qwen
+and DeepSeek use; Gemma adds a second normalization after each block as well.
+Of the two blocks, only attention looks at other tokens; the FFN, the norms and
+the residual additions treat every token independently. That asymmetry is why
+attention gets its own kernels, its own cache and three chapters of this book.
+Figure~\ref{fig:ch02-layer-shapes} draws one layer of Llama~3.2~3B with every
+shape and every weight count on it.
+
+\EngineFigure{ch02-layer-shapes}{One decoder layer of Llama~3.2~3B during
+decode, with six tokens already in the cache. Gold boxes hold weights; the
+green boxes are state that outlives the step (the residual stream between
+layers, and the layer's slice of the KV cache). Shapes and weight counts are
+from the model file; FLOPs are derived. The four attention matrices hold a
+quarter of the layer's weights and the three FFN matrices three quarters; the
+only operator whose cost grows with the conversation is attention over the
+cache.}{fig:ch02-layer-shapes}
+
+The capstone engine of \Chref{capstone} implements exactly this layer, in
+plain Rust, for any batch of tokens from any mix of sequences. Here is its loop
+over layers, which the rest of this chapter takes apart one numbered step at a
+time:
+
+\CodeLines{../code/mini-engine/crates/capstone/src/model.rs}{73}{149}
+
+\noindent Step~1 normalizes each token's slice of the residual stream \texttt{x}
+into a scratch buffer \texttt{h}. Step~2 runs the three projections for every
+token of the step at once: \texttt{matmul\_rows\_threads} walks each weight
+row once and applies it to all $n$ tokens, which is what makes a batch cheaper
+than $n$ separate steps. Step~3 rotates queries and keys by position and writes
+the new keys and values into the paged cache. Step~4 is attention: each query
+head scores its own sequence's cached keys up to its position --- the causal
+rule --- and mixes the cached values; \texttt{kv\_head = head / c.group()} is
+grouped-query attention in one line. Step~5 is the output projection and the
+first residual addition; step~6 the gated FFN and the second. The weights in
+the capstone are random, so its text is nonsense, but every shape, every loop
+and every byte moved is the real model's.
+
+\section{RMSNorm, by hand}
+
+RMSNorm \cite{zhang2019rmsnorm} divides a vector by the root of its mean square
+and multiplies each element by a learned gain:
+\begin{equation}
+\operatorname{RMSNorm}(\mathbf{x})_i = \frac{x_i}{\sqrt{\frac{1}{d}\sum_j x_j^2 + \epsilon}}\; g_i .
+\label{eq:rmsnorm}
+\end{equation}
+Take $\mathbf{x} = [3, -1, 2, 0]$ and gains $\mathbf{g} = [1, 2, 0.5, 1]$. The
+mean square is $(9 + 1 + 4 + 0)/4 = 3.5$; its root, with
+$\epsilon = 10^{-5}$, is 1.8708. Dividing gives
+$[1.6036, -0.5345, 1.0690, 0]$ and the gains make it
+$[1.6036, -1.0690, 0.5345, 0]$ (derived; \texttt{worked\_numbers.py} in the lab
+prints every number in this chapter's examples). The vector now has a mean
+square of one before the gains, whatever its size was: a residual stream that
+has grown over twenty layers and one that has not enter the next block on the
+same scale.
+
+For the engine, RMSNorm is cheap and awkward. It holds $d$ parameters --- 3,072
+per norm in Llama~3.2~3B, two per layer --- and costs about $3d$ FLOPs per
+token, nothing beside the matrices. But it needs a reduction over the whole
+vector before any element of its output exists, so it cannot be computed a tile
+at a time inside the next matrix product without first finishing the sum; and
+its reduction order changes its low bits, which is one of the ways two correct
+kernels disagree (\Chref{fast-wrong-answers}). Engines fuse it with the next
+operation where they can, to avoid writing the normalized vector to memory and
+reading it back (\Chref{kernel-languages}). The $\epsilon$ is not decoration:
+a model trained with $10^{-5}$ and run with $10^{-6}$ produces slightly
+different numbers everywhere, and a mismatch in this one metadata value is a
+real class of conversion bug (Appendix~\ref{app:embeddings-norm}).
 
 \section{Attention during decode: one query, many keys}
 
 For the new token, attention projects the normalized hidden state into a query
 for each of the $H_q$ query heads and a key and a value for each of the
-$H_{kv}$ key/value heads, applies rotary position embedding to the query and
-key (Appendix~\ref{app:rope}), and appends the key and value to the cache.
-Each query head then scores the new query against every cached key of its
-key/value head, scales by $1/\sqrt{d_h}$, turns the scores into weights with a
-softmax, and takes the weighted sum of the cached values. The heads' outputs
-are concatenated and projected back to width $d$.
+$H_{kv}$ key/value heads, rotates the query and key by position, and appends
+the key and value to the cache. Each query head then scores its query against
+every cached key of its key/value head, scales by $1/\sqrt{d_h}$, turns the
+scores into weights with a softmax, and takes the weighted sum of the cached
+values \cite{vaswani2017attention}:
+\begin{equation}
+\mathbf{o} = \sum_{t=0}^{S-1} p_t\,\mathbf{v}_t,
+\qquad
+p_t = \frac{e^{s_t}}{\sum_{u} e^{s_u}},
+\qquad
+s_t = \frac{\mathbf{q}\cdot\mathbf{k}_t}{\sqrt{d_h}} .
+\label{eq:attention}
+\end{equation}
+The heads' outputs are concatenated and projected back to width $d$ by
+$\mathbf{W}_O$.
 
-At decode, this is a small amount of arithmetic spread over a large amount of
-memory: one query vector per head against $S$ cached keys. With grouped-query
-attention, $H_q/H_{kv}$ query heads share each key/value head --- four in
-Qwen3-8B --- which shrinks the cache without changing the queries
-(\Chref{shrinking-kv}). Prefill does the same computation for all prompt tokens
-at once, with causal masking so that no token attends to a later one.
+Figure~\ref{fig:ch02-attention-worked} does it by hand for one head of width
+four and a cache of four tokens. The query $[1, 0, 1, 0]$ has dot products 1,
+0, 2 and 1 with the four keys; divided by $\sqrt{4} = 2$ they become the scores
+0.5, 0, 1 and 0.5. Exponentiating gives 1.649, 1, 2.718 and 1.649 --- or, as
+the capstone computes it, after subtracting the largest score so that the
+biggest exponent is $e^0$: 0.607, 0.368, 1 and 0.607, which sum to 2.581 ---
+and dividing by the sum gives the weights 0.235, 0.143, 0.387 and 0.235. The
+output is the weighted sum of the four values, $[0.857, 0.673, 1.092, 1.000]$.
+
+\EngineFigure{ch02-attention-worked}{Attention for one head and one new token,
+by hand: head width $d_h = 4$, four cached tokens. The query is compared with
+every cached key; the softmax turns the scaled scores into weights that sum to
+one; the output is the weighted sum of the cached values. Values computed by
+the lab's \texttt{worked\_numbers.py} (derived).}{fig:ch02-attention-worked}
+
+Three details of that small example carry into every real kernel. The
+\emph{scale} $1/\sqrt{d_h}$ keeps the scores in a useful range: if the elements
+of $\mathbf{q}$ and $\mathbf{k}$ are independent with unit variance, their dot
+product has variance $d_h$, and without the division a 128-wide head would feed
+the softmax numbers eleven times too large, pushing nearly all the weight onto
+one token. The \emph{maximum subtraction} is not optional in 32-bit
+arithmetic: $e^{89}$ overflows a float, and real scores reach that; since
+subtracting a constant from every score changes no weight, kernels always do
+it --- and FlashAttention's ``online softmax'' (\Chref{flashattention}) exists
+so that the maximum can be updated as keys stream past instead of being found
+first. And the \emph{weights never reach zero}: the key at right angles to the
+query still gets 14\% of the output, so a kernel cannot skip a cached token
+because its score looks small without changing the answer. Sparse-attention
+methods skip tokens anyway and pay for it in accuracy
+(\Chref{long-context}).
+
+\subsection{Grouped heads and the cost of a cached token}
+
+Llama~3.2~3B has 24 query heads but only 8 key/value heads. Query heads 0, 1
+and 2 all read key/value head 0; heads 3, 4 and 5 read head 1; and so on ---
+\Term{grouped-query attention} \cite{ainslie2023gqa}, with a group of three.
+The queries are as rich as ever; the cache holds a third of the keys and values
+it would otherwise need. Per layer and per token, the cache stores
+$2 \times 8 \times 128 = 2{,}048$ numbers, 4~KiB in 16 bits; over 28 layers,
+112~KiB per token, the number \Chref{kv-cache} builds on.
+
+At decode, attention is a small amount of arithmetic spread over a large amount
+of memory. For each cached token, each of the 24 query heads does a 128-element
+dot product (256 FLOPs) and a 128-element weighted add (another 256): 12,288
+FLOPs per cached token per layer, against 4~KiB of keys and values read. That
+is 3 FLOPs per byte, and no batching changes it, because every sequence reads
+its own cache: at 4,096 tokens of context, attention costs 50.3~MFLOP and reads
+16.8~MB per layer, 1.41~GFLOP and 470~MB over the model --- a fifth of the step
+already. It grows with every token of the conversation while everything else
+stays fixed. \Chref{decode-attention} makes the kernel for this; the second
+worked problem at the end of the chapter finds the context length at which it
+becomes the larger half of the step.
+
+Prefill does the same computation for all prompt tokens at once, with one
+addition: the \Term{causal mask}. Token $i$ may attend only to tokens
+$0 \ldots i$, so of the $6 \times 6$ scores of the six-token prompt, only the
+21 on and below the diagonal are computed or kept. The masked entries are set
+to $-\infty$ before the softmax (weight exactly zero) or, in a kernel that
+tiles the matrix, never computed at all.
+
+\section{Where position comes from: rotary embedding}
+
+Nothing in equation~\eqref{eq:attention} knows where a token is: shuffle the
+cached keys and values together and the output does not change. Position
+enters through the query and key themselves. \Term{Rotary position embedding}
+(RoPE) \cite{su2021roformer} splits each head into pairs of elements and
+rotates each pair by an angle proportional to the token's position, a
+different speed for each pair. In the ``rotate-half'' layout the capstone uses,
+element $i$ pairs with element $i + d_h/2$, and pair $i$ turns by
+$m\,\theta_i$ at position $m$, where $\theta_i = b^{-2i/d_h}$ for a base $b$:
+\begin{equation}
+\begin{pmatrix} x'_i \\ x'_{i+d_h/2} \end{pmatrix} =
+\begin{pmatrix} \cos m\theta_i & -\sin m\theta_i \\ \sin m\theta_i & \cos m\theta_i \end{pmatrix}
+\begin{pmatrix} x_i \\ x_{i+d_h/2} \end{pmatrix}.
+\label{eq:rope}
+\end{equation}
+
+By hand, with $d_h = 4$ and $b = 10{,}000$: pair 0 (elements 0 and 2) turns at
+$\theta_0 = 1$ radian per position, pair 1 (elements 1 and 3) at
+$\theta_1 = 10{,}000^{-1/2} = 0.01$. The head $[1, 0, 0, 1]$ at position 1
+becomes $[\cos 1, -\sin 0.01, \sin 1, \cos 0.01] = [0.5403, -0.0100, 0.8415,
+1.0000]$: the fast pair has swung through 57 degrees, the slow one has barely
+moved. The reason for rotating both queries and keys is what happens to their
+dot product. Rotate a query at position $m$ and a key at position $n$, and
+their dot product depends only on the difference $m - n$: the query
+$[1, 0, 1, 0]$ and key $[0.5, 1, 0, 0.5]$ score $-0.6627$ at positions
+$(5, 3)$, at $(12, 10)$ and at $(102, 100)$ (derived, to twelve digits). The
+attention scores see how far apart two tokens are, not where they are, and they
+see it at many scales at once, from the fast pairs that distinguish neighbours
+to the slow ones that distinguish chapters.
+
+Llama~3.2~3B's metadata gives $b = 500{,}000$ and $d_h = 128$, so its 64 pairs
+turn at rates from 1 radian per token down to $2.46 \times 10^{-6}$. The
+mysterious 64-float tensor \texttt{rope\_freqs.weight} holds one factor per pair
+that \emph{divides} its rate. Read from the file (the lab's \texttt{--dump
+rope\_freqs.weight} prints them), the first 29 factors are 1.0,
+the next six rise --- 1.235, 1.651, 2.277, 3.292, 5.172, 9.667 --- and the last
+29 are 32.0 (measured). The slow pairs turn 32 times more slowly still, while
+the fast pairs, which carry local order, are left alone: one way to stretch the
+positions a model saw in training to the 131,072 tokens its metadata declares
+without disturbing short-range order. llama.cpp applies the factors inside its
+rotary kernel (on the CPU, \texttt{ggml\_rope\_cache\_init} divides each pair's
+rate by its factor; commit \texttt{d006858}). \Chref{long-context} compares this
+with the other stretching schemes.
+
+Rotary embedding holds no learned parameters beyond those 64 factors and costs a
+few FLOPs per element, but it is the operator most often implemented wrong,
+because there are two pairings in use and they look alike. Rotating adjacent
+elements $(0, 1), (2, 3), \ldots$ and rotating halves $(0, 64), (1, 65), \ldots$
+are the same operation on differently ordered weights; an engine that loads one
+model's weights and applies the other model's pairing produces fluent-looking
+text from a wrong computation. The ``What actually happened'' section below
+shows how llama.cpp deals with it; Appendix~\ref{app:rope} derives both and
+shows the failure.
 
 \section{The feed-forward network and its gate}
 
 The FFN widens each token's hidden state, applies a nonlinearity, and narrows
-it again. The gated form used by Llama, Qwen and DeepSeek computes
+it again. The gated form used by Llama, Qwen, Gemma and DeepSeek, SwiGLU
+\cite{shazeer2020glu}, computes
 \begin{equation}
 \operatorname{FFN}(\mathbf{x}) = \mathbf{W}_{\text{down}}
 \bigl(\operatorname{SiLU}(\mathbf{W}_{\text{gate}}\mathbf{x})\odot
 \mathbf{W}_{\text{up}}\mathbf{x}\bigr),
+\qquad \operatorname{SiLU}(z) = \frac{z}{1 + e^{-z}},
 \label{eq:swiglu}
 \end{equation}
 with $\mathbf{W}_{\text{gate}},\mathbf{W}_{\text{up}}\in\mathbb{R}^{d_{\mathrm{ff}}\times d}$
 and $\mathbf{W}_{\text{down}}\in\mathbb{R}^{d\times d_{\mathrm{ff}}}$, where
-$\odot$ is elementwise multiplication. In Qwen3-8B the FFN holds 78\% of each
-layer's parameters (derived). It is pure matrix multiplication with no
-dependence on other tokens --- the easiest part of the model to batch, and the
-part a mixture of experts replaces.
+$\odot$ is elementwise multiplication. SiLU passes large positive inputs almost
+unchanged ($\operatorname{SiLU}(3) = 2.858$), shuts off large negative ones
+($\operatorname{SiLU}(-4) = -0.072$), and bends smoothly between
+($\operatorname{SiLU}(-1) = -0.269$, $\operatorname{SiLU}(0) = 0$). By hand,
+with four hidden units: if the gate projection gives $[2, -1, 0, 3]$ and the up
+projection $[0.5, 2, 4, -1]$, SiLU of the gate is $[1.762, -0.269, 0, 2.858]$
+and the product is $[0.881, -0.538, 0, -2.858]$. The third unit's large ``up''
+value is discarded because its gate is closed; the fourth unit's sign is flipped
+by its up value. Each hidden unit is a feature the gate turns on or off per
+token, and $\mathbf{W}_{\text{down}}$ writes the active features back into the
+residual stream.
+
+For the engine the FFN is the simplest and heaviest part of the layer. It is
+three matrix products and one elementwise function, with no dependence on other
+tokens --- the easiest part of the model to batch. In Llama~3.2~3B it holds
+75.5 of each layer's 100.7 million weights (75\%), in Qwen3-8B 78\% (derived).
+The gate and up projections read the same input, so engines often store them
+as one matrix of $2d_{\mathrm{ff}}$ rows and run one product instead of two;
+the capstone keeps them separate for clarity. The FFN is also the part a
+mixture of experts replaces.
 
 \section{Mixture of experts: a router in front of the FFN}
 
-A mixture-of-experts layer replaces the one FFN with $E$ smaller ones, the
-\Term{experts}, and a router: a small matrix that scores each token against
-every expert and sends the token to the top $k$. The token's FFN output is the
-router-weighted sum of its $k$ experts' outputs, often plus a \emph{shared}
-expert every token uses. Only the chosen experts' parameters take part in
-that token's computation, so $P_{\text{act}}$ in
-equation~\eqref{eq:flops-token} counts $k$ experts, not $E$.
+A mixture-of-experts layer \cite{shazeer2017moe,fedus2022switch} replaces the
+one FFN with $E$ smaller ones, the \Term{experts}, and a router: a small matrix
+of $E \times d$ weights that scores each token against every expert and sends
+the token to the top $k$. The token's FFN output is the router-weighted sum of
+its $k$ experts' outputs, often plus a \emph{shared} expert every token uses.
+Only the chosen experts' parameters take part in that token's computation, so
+$P_{\text{act}}$ in equation~\eqref{eq:flops-token} counts $k$ experts, not $E$.
 
-Qwen3-30B-A3B has 128 experts per layer and routes each token to 8. Its
-30.5~billion parameters include 3.0~billion active per token (derived from its
-configuration, output projection included) --- the ``A3B'' in its name. A
-decode step at batch one computes and reads like a 3-billion-parameter model;
-the engine must still hold all 30.5~billion in memory, and a batch of tokens
-activates the union of their experts (\Chref{mixture-of-experts}).
+By hand, with eight experts and $k = 2$: the router's logits for one token are
+$[1.2, -0.3, 2.1, 0.4, -1.0, 1.9, 0.0, 0.7]$. The two largest are expert~2
+(2.1) and expert~5 (1.9). A softmax over just those two gives weights
+$1/(1 + e^{-0.2}) = 0.550$ and $0.450$, and the layer's output for this token
+is $0.550\,\operatorname{FFN}_2(\mathbf{x}) + 0.450\,\operatorname{FFN}_5(\mathbf{x})$.
+Six experts' weights are not touched. Models differ in the order of the
+steps --- Mixtral takes the top $k$ of the logits and then the softmax
+\cite{jiang2024mixtral}; Qwen3 takes a softmax over all experts, keeps the top
+$k$ and renormalizes, which gives the same weights (the full softmax gives
+experts~2 and~5 0.343 and 0.281, and $0.343/0.624 = 0.550$); DeepSeek-V3 scores
+with a sigmoid, selects with a per-expert bias that balances load, and
+normalizes among the selected \cite{deepseek2024v3}. For the engine the
+difference is a few lines of the router kernel; for correctness it is the whole
+answer, because a router computed in a different order can pick a different
+expert on a near tie (\Chref{fast-wrong-answers}).
 
-\section{Normalization, residuals and position}
+Granite~3.1~3B-A800M, the third file of the opening, has 40 experts per layer
+and routes each token to 8. Its 3.30~billion parameters include 0.88~billion
+active per token (measured from the file by the lab; the ``A800M'' in its name
+counts about the same without the vocabulary table). A decode step at batch one
+computes and reads like a model of under a billion parameters, and the laptop's
+GPU decodes it at 49--58 tokens per second against Llama~3.2~3B's 20 (measured,
+records \texttt{2026-09-26-m1-part8} and \texttt{2026-09-23-m1-llama32-3b}).
+The engine must still hold all 3.30~billion in memory, and a batch of tokens
+activates the \emph{union} of their experts. If a token's $k$ experts were
+chosen uniformly at random, a batch of $B$ tokens would touch a fraction
+$1 - (1 - k/E)^B$ of each layer's experts:
 
-RMSNorm, the residual additions and rotary position embedding touch a few
-thousand numbers per token --- negligible in FLOPs and bytes beside the
-matrices. They matter to an engine for two other reasons. They are numerically
-delicate: a normalization computed with a different reduction order, or a
-rotary embedding with a different pairing convention, produces plausible text
-from a wrong computation (Appendix~\ref{app:rope} shows how). And they are
-where engines \emph{fuse} operations: applying a norm inside the next
-projection's kernel saves a round trip through memory for the whole hidden
-state, which matters at decode when every step is short (\Chref{kernel-languages}).
+\begin{center}\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Tokens in the batch & 1 & 2 & 4 & 8 & 16 & 64 \\
+\midrule
+Granite 3.1 3B-A800M ($E = 40$, $k = 8$) & 20\% & 36\% & 59\% & 83\% & 97\% & 100\% \\
+Qwen3-30B-A3B ($E = 128$, $k = 8$) & 6\% & 12\% & 23\% & 40\% & 64\% & 98\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent At sixteen tokens Granite reads nearly all its experts every step: the
+bandwidth advantage of sparsity is gone, though each token still computes only
+its own eight. The larger and sparser the expert set, the longer the advantage
+lasts. Real routing is not uniform, and skew toward popular experts slows the
+union's growth; \Chref{mixture-of-experts} simulates it and measures what the
+union does to a step.
 
 \section{Logits, sampling and the loop}
 
 The output projection produces $V$ logits for the last position. The sampler
-applies the request's settings --- temperature, top-$k$, top-$p$,
-penalties, a grammar mask (\Chref{structured-output}) --- and draws one token.
+applies the request's settings --- temperature, top-$k$, top-$p$, penalties, a
+grammar mask (\Chref{structured-output}) --- and draws one token. Temperature
+$T$ divides the logits before the softmax. By hand, with four logits
+$[2, 1, 0.5, -1]$: at $T = 1$ the probabilities are
+$[0.609, 0.224, 0.136, 0.030]$; at $T = 0.5$ they sharpen to
+$[0.842, 0.114, 0.042, 0.002]$; at $T = 2$ they flatten to
+$[0.434, 0.263, 0.205, 0.097]$. Top-$p$ with $p = 0.9$ keeps the smallest set
+of tokens whose probabilities reach 0.9 --- here the first three, which sum to
+0.969 --- and renormalizes them to $[0.629, 0.231, 0.140]$. Greedy decoding
+takes the largest logit and needs no softmax at all. The real distribution of
+\Chref{why-inference}'s first step gave \texttt{" Paris"} 0.616 and
+\texttt{" located"} 0.094 at $T = 1$; greedy chose \texttt{" Paris"}, and so
+would any temperature, but a sampled answer begins with something else about
+four times in ten.
+
 If the token ends the sequence, or a stop condition or length budget is met,
 the request finishes; otherwise the token becomes the next input. That loop is
 decode. Its critical path includes everything between two forward passes:
 sampling, detokenizing, streaming and scheduling (\Chref{request-lifecycle}).
-Appendix~\ref{app:sampling} builds the sampler and the loop in full.
+For the engine, the sampler's cost is small but serial: a softmax and a sort or
+a partial selection over 128,256 numbers, on the path of every token, often on
+the CPU while the GPU waits. Appendix~\ref{app:sampling} builds the sampler and
+the loop in full.
 
 \section{A shape-annotated map of one step}
 
@@ -211,14 +567,58 @@ One step & 8.19 B & 17.6 G & 15.7 GB \\
 \end{tabular}
 \end{center}
 
-The step does 17.6~GFLOP while reading 15.7~GB: 1.1 FLOPs per byte. Every
-chapter of Part~\ref{part:physics} starts from that ratio.
+The step does 17.6~GFLOP while reading 15.7~GB: 1.1 FLOPs per byte. The
+quantized file of the opening reads 4.87~GB of weights and the same 0.6~GB of
+cache for the same 17.6~GFLOP, 3.2 FLOPs per byte (measured by the lab from the
+file). Either way the ratio is tens of times below what any processor in this
+book can sustain per byte it reads; every chapter of Part~\ref{part:physics}
+starts from that gap. Figure~\ref{fig:ch02-step-map} sets the dense step beside
+a mixture of experts of the same family.
 
-\FigureIntent{One decode step of Qwen3-8B drawn as a pipeline of operators,
-each box annotated with its tensor shapes and with bars showing its share of
-the step's FLOPs and bytes; a second row shows the same step for Qwen3-30B-A3B,
-where the FFN bar shrinks to the active experts and the resident-memory bar
-does not.}
+\EngineFigure{ch02-step-map}{One decode step at batch one with 4,096 tokens of
+16-bit cache, BF16 weights (derived from the published configurations). The
+dense Qwen3-8B spends most of its FLOPs and bytes in the FFN. Qwen3-30B-A3B
+holds almost four times the weights but computes and reads about half as much
+per token: its FFN bar shrinks to the 8 active experts of 128, and attention
+over the cache becomes its largest compute item.}{fig:ch02-step-map}
+
+\section{Where ``two FLOPs per parameter'' breaks}
+
+The two rules of this chapter --- about $2P$ FLOPs per token, about every weight
+read once per token at batch one --- are good enough to size a server on a
+napkin. They are also wrong in five specific places, each of which an engine
+exploits or suffers.
+
+\begin{enumerate}
+\item \emph{The input table} is $V \times d$ parameters that cost no FLOPs and,
+untied, one row of bytes per token: 622~million of Qwen3-8B's parameters, read
+at 8~KB per token.
+\item \emph{A tied table} is counted once as parameters and paid twice as work:
+a gather at the start and a full matrix product at the end. In Llama~3.2~3B
+those 394~million parameters are 12\% of the FLOPs.
+\item \emph{Attention over the cache} has FLOPs and bytes and no parameters at
+all, and grows with the conversation. For Llama~3.2~3B it equals the rest of
+the step at about 18,700 tokens of context in FLOPs and about 17,500 in bytes
+(derived).
+\item \emph{Experts} are parameters that are mostly idle for any one token.
+Granite computes with 27\% of its parameters per token and reads 28\% of its
+bytes --- until a batch of sixteen touches nearly all of them.
+\item \emph{Per-layer embeddings} are the extreme case. Gemma~4~E4B holds, beside
+its ordinary vocabulary table, a second table of 262,144 rows by 10,752 BF16
+values: a 256-wide slice for each of its 42 layers, 2.82~billion of its 8.0
+billion parameters (measured from its file). Each token reads one row,
+21.5~KB. Its model card counts 4.5~billion ``effective'' parameters of the 8
+--- the E in E4B --- because such tables ``are only used for quick lookups''
+\cite{google2026gemma4}. More than a third of the parameters cost almost
+nothing per token, and an engine is free to keep them in slower memory than the
+rest (\Chref{offloading}).
+\end{enumerate}
+
+\noindent The pattern is the book's in miniature. A parameter count is a
+statement about memory capacity; a FLOP count is about compute; bytes read per
+token are about bandwidth; and the three can be pulled apart by an
+architecture, a batch or a context length. The constraint ledger keeps them
+apart on purpose.
 
 \LedgerSection
 
@@ -226,24 +626,80 @@ This chapter introduces no technique; it prices the baseline every later
 technique changes. One decode step of Qwen3-8B, charged:
 
 \begin{ConstraintLedger}
-Memory bandwidth & spends & 15.7~GB per token at batch one with 4K tokens of context (derived); about 4.7~ms at an H100's 3.35~TB/s. \\
+Memory bandwidth & spends & 15.7~GB per token at batch one with 4K tokens of context in BF16 (derived), 5.5~GB in the \texttt{Q4\_K\_M} file (measured from the file); about 4.7~ms and 1.6~ms at an H100's 3.35~TB/s. \\
 Compute & spends & 17.6~GFLOP per token (derived) --- 18~$\mu$s of an H100's dense BF16 peak. \\
-Memory capacity & spends & 16.4~GB of weights, shared by all requests, plus 0.6~GB of cache per 4K-token sequence. \\
+Memory capacity & spends & 16.4~GB of weights in BF16, shared by all requests, plus 0.6~GB of cache per 4K-token sequence. \\
 Latency & spends & The step is on every token's critical path; nothing inside it can start before the previous token is chosen. \\
 \end{ConstraintLedger}
 
 \LabSection{count a real model from its file}
 
-\LabIntent{In \texttt{code/labs/ch02-count-a-model/}, a standard-library
-Python reader for GGUF headers (the tool behind this chapter's record) that
-lists each tensor's shape, type and bytes, groups them by operator, and prints
-the table above for any local model --- parameters, FLOPs per token and bytes
-read per step. Its oracle is the published configuration: the program
-recomputes the parameter count from equations~\eqref{eq:params-attn}
-and~\eqref{eq:params-ffn} and fails if the file disagrees. Try it on a tied and
-an untied model and explain the difference in bytes per token.}
+The lab in \texttt{code/labs/ch02-count-a-model/} is a standard-library Python
+program that reads a GGUF header, groups every tensor by the operator that
+uses it, and prints this chapter's table for any local model: parameters,
+FLOPs per token and bytes read per step, at a context length and a batch size
+you choose. Its oracle is the model's own metadata. Before pricing anything,
+it recomputes every layer's attention and FFN parameters from the shape keys
+with equations~\eqref{eq:params-attn} and~\eqref{eq:params-ffn} (or the expert
+count, for a mixture) and stops if a single layer disagrees:
 
-\HappenedSection{what a production engine chose not to rewrite}
+\CodeLines{../code/labs/ch02-count-a-model/count_model.py}{140}{165}
+
+\noindent Run it on a model Ollama has downloaded; \texttt{ollama show
+llama3.2:3b --modelfile} prints the path of its weights on the \texttt{FROM}
+line. From the repository root:
+
+\begin{Verbatim}[fontsize=\small]
+python3 code/labs/ch02-count-a-model/count_model.py <path> --context 4096
+python3 code/labs/ch02-count-a-model/worked_numbers.py
+python3 -m unittest discover -s code/labs/ch02-count-a-model
+\end{Verbatim}
+
+\noindent \emph{Predict} first. For each model, write down its parameter count
+from its name and guess whether its tables are tied; then guess what share of
+its bytes one token reads. On the author's M1 the five files Ollama had
+downloaded gave (measured, record \texttt{2026-09-26-m1-pass3}, which lists
+their Ollama tags and file hashes; 4,096 tokens of context):
+
+\begin{center}\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Model file & Parameters & Tensor bytes & Read per token & GFLOP & KV per token \\
+\midrule
+Llama 3.2 3B & 3.21 B & 2.01 GB & 2.01 GB (100\%) & 7.83 & 112 KiB \\
+Qwen2.5-Coder 3B & 3.09 B & 1.92 GB & 1.92 GB (100\%) & 7.38 & 36 KiB \\
+R1-0528-Qwen3-8B & 8.19 B & 5.22 GB & 4.87 GB (93.3\%) & 17.55 & 144 KiB \\
+Granite 3.1 3B-A800M & 3.30 B & 2.03 GB & 0.57 GB (28.1\%) & 2.57 & 64 KiB \\
+Gemma 4 E4B & \multicolumn{5}{l}{oracle stops at layer 0} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent \emph{Explain} each row with the chapter. The two tied models read
+every byte, plus one row. The untied Qwen3-based model skips its input table.
+Granite reads 28\% and computes with 27\%: the router sends each token through
+8 of 40 experts. The KV column is the one to watch for long conversations:
+Qwen2.5-Coder~3B keeps only two key/value heads, so its cache per token is a
+third of Llama's. Compare the measured decode rates on the M1's GPU: 20 tokens
+per second for Llama~3.2~3B, 49--58 for Granite. Reading 3.5 times fewer bytes
+bought 2.4 to 2.9 times the speed, so Granite moves its bytes more slowly ---
+28--33~GB/s against Llama's 40 (derived from the measured rates). Bytes set the
+floor of a step, not its whole length; \Chref{roofline} adds the rest of the
+model, and \Chref{mixture-of-experts} measures where an expert layer's time
+goes.
+
+\emph{Break} it with the fifth file. Gemma~4~E4B fails the oracle at layer~0:
+the file holds 13,107,200 attention parameters where the metadata's shape keys
+imply 26,214,400. Nothing is corrupt. Gemma~4 interleaves two kinds of layer:
+sliding-window layers with 256-wide heads and global layers with 512-wide ones,
+and the single \texttt{key\_length} key describes only the global layers; a
+second key, \texttt{key\_length\_swa}, and a per-layer pattern describe the
+rest. The equations are right; the assumption that every layer has one shape
+is not. The oracle's job is to make that assumption fail loudly rather than
+price the model wrong. The first implementation exercise below fixes it.
+
+\HappenedSection{what engines chose not to rewrite, and a rotation stored twice}
 
 Hermon is an engine that wraps llama.cpp and replaces parts of it. Which parts
 is decided by a written rule in its kernel design: a component moves into
@@ -259,33 +715,77 @@ selected with an environment variable, so these substitutions are PREVIEW
 (checked in source at commit \texttt{2a3fd52}; \texttt{crates/hermon-runtime/src/paged.rs}).
 \Chref{real-engines} reads the same split in vLLM and SGLang.
 
-\FrontierSection{2026-09-23}
+The rotary pairing problem of this chapter was solved in llama.cpp by moving it
+out of the kernel and into the converter. Llama checkpoints on Hugging Face
+store $\mathbf{W}_Q$ and $\mathbf{W}_K$ with their rows ordered for the
+rotate-half pairing. llama.cpp's converter reverses that ordering when it
+writes a Llama GGUF (\texttt{\_reverse\_hf\_permute} in
+\texttt{convert\_hf\_to\_gguf.py}), and its Llama path then rotates adjacent
+pairs (\texttt{LLAMA\_ROPE\_TYPE\_NORM}); Qwen2 and Qwen3 files are written
+without the permutation and run with the rotate-half kernel
+(\texttt{LLAMA\_ROPE\_TYPE\_NEOX}, both in \texttt{src/llama-model.cpp}; checked
+at commit \texttt{d006858}). The same rotation is therefore stored in two
+layouts in two families of files, and the choice of kernel is metadata, not
+code. An engine that reads one family's weights with the other's pairing
+produces text that is fluent for a few tokens and then wrong --- the kind of
+failure no shape check catches, and the reason
+Appendix~\ref{app:rope} tests rotary embedding against a complex-number oracle
+rather than by eye.
+
+\FrontierSection{2026-09-27}
 
 The forward pass has more variants in 2026 than the textbook picture shows, and
 an engine must support each one it serves. From published configurations:
 Qwen3.5 gates the attention output and applies rotary embedding to only a
 quarter of each head \cite{qwen2026qwen35config}; three of every four of its
 layers use a linear-attention recurrence instead of softmax attention
-(\Chref{hybrid-models}); DeepSeek-V3 and Qwen3.5 add a shared expert beside
-the routed ones and a multi-token-prediction layer usable as a drafter
-\cite{deepseek2024v3,qwen2026qwen35config}; gpt-oss alternates windowed and
-full attention \cite{openai2025gptoss}. Vocabularies have grown too ---
-201,088 entries in gpt-oss and 248,320 in Qwen3.5 --- so the output
-projection is a larger share of each step than it was in 2023.
+(\Chref{hybrid-models}), a pattern Qwen3.8 keeps at 2.4~trillion parameters
+with 95~billion active and 512 experts, 10 routed and one shared per token
+\cite{qwen2026qwen38}. DeepSeek-V3 and Qwen3.5 add a shared expert beside the
+routed ones and a multi-token-prediction layer usable as a drafter
+\cite{deepseek2024v3,qwen2026qwen35config}; Thinking Machines' Inkling routes
+each token to 6 of 256 experts plus 2 shared \cite{thinkingmachines2026inkling}.
+GLM-5.3 caches a 576-element latent per token per layer instead of keys and
+values, and adds an indexer that picks 2,048 cached tokens for each query to
+attend to \cite{zai2026glm53} --- attention over the cache stops growing with
+the conversation (\Chref{shrinking-kv}, \Chref{long-context}). gpt-oss
+alternates windowed and full attention \cite{openai2025gptoss}; Gemma~4
+interleaves five sliding-window layers per global layer, shares key/value
+caches across its last layers, and adds the per-layer embeddings of this
+chapter \cite{google2026gemma4}. Vocabularies have grown too --- 201,088
+entries in gpt-oss, 248,320 in Qwen3.5 and 262,144 in the Gemma~4 file measured
+here --- so the output projection is a larger share of each step than it was in
+2023.
 
 \ExercisesSection
 
 \begin{enumerate}
-\item \emph{Derivation.} Using equations~\eqref{eq:params-attn}
-and~\eqref{eq:params-ffn}, count the parameters of Llama~3.2~3B from its shape
-(28 layers, $d=3{,}072$, $H_q=24$, $H_{kv}=8$, $d_h=128$,
-$d_{\mathrm{ff}}=8{,}192$, $V=128{,}256$, tied). Compare with 3,212,749,888.
-\item \emph{Prediction.} At what context length does attention over the cache
-cost as many FLOPs as the rest of a Qwen3-8B decode step? As many bytes?
-\item \emph{Implementation.} Extend the chapter's lab to report, for a
-mixture-of-experts file, total parameters, active parameters per token and
-the bytes a batch of 16 tokens would read if their experts were chosen
-uniformly at random.
-\item \emph{Falsification.} The rule ``FLOPs $\approx 2\times$ parameters''
-fails badly for one operator in this chapter. Which, and when?
+\item \emph{Derivation.} Qwen2.5-Coder~3B has 36 layers, $d = 2{,}048$,
+$H_q = 16$, $H_{kv} = 2$, $d_h = 128$, $d_{\mathrm{ff}} = 11{,}008$,
+$V = 151{,}936$, tied tables, and biases on its query, key and value
+projections. Count its parameters with equations~\eqref{eq:params-attn}
+and~\eqref{eq:params-ffn} and account for every one of the lab's
+3,085,938,688.
+\item \emph{Prediction.} For the same model, at what context length does one
+sequence's 16-bit KV cache hold as many bytes as the \texttt{Q4\_K\_M}
+weights? At what length does attention over the cache cost as many FLOPs as
+the rest of a decode step? Explain why the two answers differ by so much more
+than they do for Llama~3.2~3B.
+\item \emph{Implementation.} Extend the lab's oracle to models with two layer
+shapes: read \texttt{key\_length\_swa} and the sliding-window pattern from the
+metadata, check each layer against its own shape, and count Gemma~4~E4B's
+per-layer embeddings as a lookup (one row per token), not a matrix product.
+Report its parameters, its weights read per token and its FLOPs per token.
+\item \emph{Measurement.} Measure decode tokens per second for Llama~3.2~3B and
+a mixture-of-experts model on your machine with \texttt{llama-bench} or
+\texttt{llama-batched-bench}, and divide each model's weights read per token
+(from the lab) by its step time. Which model uses more of your memory
+bandwidth, and why?
+\item \emph{Falsification.} ``FLOPs per token $\approx 2\times$ parameters.''
+Find a local model for which this overstates a decode step's compute by more
+than three times at short context, and a context length at which it
+understates Llama~3.2~3B's by more than half. Which of the five failures
+listed in the chapter is each?
 \end{enumerate}
+
+\input{worked/ch02-forward-pass.tex}
