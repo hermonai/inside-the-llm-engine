@@ -21,16 +21,11 @@
 //!     cargo run --release -p ch10-weight-quant -- --gguf <llama-3.2-3b.gguf>
 //!         [--threads 4] [--parts 1,2,3] [--dump <dir>]
 
-mod gguf;
-mod quant;
-
-use gguf::{decode, f16, to_f16, Gguf, Q4_0, Q4_K, Q6_K, Q8_0};
-use quant::{awq, gptq, output_error, par_rows, rtn, Grouping};
-use std::collections::BTreeMap;
+use ch10_weight_quant::gguf::{self, decode, f16, to_f16, Gguf, Q4_0, Q4_K, Q6_K, Q8_0};
+use ch10_weight_quant::layer0;
+use ch10_weight_quant::quant::{awq, gptq, output_error, par_rows, rtn, Grouping};
 use std::io::Write;
 use std::time::Instant;
-
-const TOKENS: &str = include_str!("../tokens.txt");
 
 fn arg(name: &str) -> Option<String> {
     let args: Vec<String> = std::env::args().collect();
@@ -117,63 +112,22 @@ fn part1(g: &mut Gguf, dump: Option<&str>) -> std::io::Result<()> {
 /// A labelled quantizer: returns the weights, bits per weight and a note.
 type Method<'a> = (String, Box<dyn Fn() -> (Vec<f32>, f64, String) + 'a>);
 
-/// Distinct tokens with their counts, and their layer-0 inputs.
-fn inputs(
-    g: &mut Gguf,
-    ids: &[u32],
-    emb: usize,
-    gamma: &[f32],
-    eps: f32,
-) -> std::io::Result<(Vec<f32>, Vec<f64>)> {
-    let mut counts: BTreeMap<u32, f64> = BTreeMap::new();
-    for &t in ids {
-        *counts.entry(t).or_insert(0.0) += 1.0;
-    }
-    let cols = gamma.len();
-    let mut x = Vec::with_capacity(counts.len() * cols);
-    let mut c = Vec::with_capacity(counts.len());
-    for (&t, &n) in &counts {
-        let e = g.rows(emb, t as usize, 1)?;
-        let ms = e.iter().map(|v| (*v as f64) * (*v as f64)).sum::<f64>() / cols as f64;
-        let inv = 1.0 / ((ms + eps as f64).sqrt());
-        x.extend(
-            e.iter()
-                .zip(gamma)
-                .map(|(v, gm)| ((*v as f64) * inv) as f32 * gm),
-        );
-        c.push(n);
-    }
-    Ok((x, c))
-}
-
 fn part2(g: &mut Gguf, threads: usize) -> std::io::Result<()> {
     println!("\n2. Quantizing layer 0's value projection, error measured in its output");
-    let ids: Vec<u32> = TOKENS
-        .lines()
-        .filter(|l| !l.starts_with('#'))
-        .flat_map(|l| l.split_whitespace().map(|v| v.parse().expect("token id")))
-        .collect();
+    let ids = layer0::token_ids();
     let (cal_ids, eval_ids) = ids.split_at(1024.min(ids.len()));
-    let emb = g.index("token_embd.weight").expect("token_embd");
-    let norm = g.index("blk.0.attn_norm.weight").expect("attn_norm");
-    let wv = g.index("blk.0.attn_v.weight").expect("attn_v");
-    let eps = g
-        .numbers
-        .get("llama.attention.layer_norm_rms_epsilon")
-        .copied()
-        .unwrap_or(1e-5) as f32;
-    let gamma = g.rows(norm, 0, 1)?;
-    let (cols, rows) = (
-        g.tensors[wv].dims[0] as usize,
-        g.tensors[wv].dims[1] as usize,
-    );
-    let w = g.rows(wv, 0, rows)?;
-    let (xc, cc) = inputs(g, cal_ids, emb, &gamma, eps)?;
-    let (xe, ce) = inputs(g, eval_ids, emb, &gamma, eps)?;
+    let l0 = layer0::load(g)?;
+    let (rows, cols, eps) = (l0.rows, l0.cols, l0.eps);
+    let w = l0.w;
+    let (xc, cc) = l0.cal;
+    let (xe, ce) = l0.eval;
     // A wider calibration set: 4,096 vocabulary entries spread evenly over the
     // first 128,000 IDs (the rest are special tokens).
+    let emb = g.index("token_embd.weight").expect("token_embd");
+    let norm = g.index("blk.0.attn_norm.weight").expect("attn_norm");
+    let gamma = g.rows(norm, 0, 1)?;
     let vocab_ids: Vec<u32> = (0..4096u32).map(|i| i * 31 + 7).collect();
-    let (xv, cv) = inputs(g, &vocab_ids, emb, &gamma, eps)?;
+    let (xv, cv) = layer0::inputs(g, &vocab_ids, emb, &gamma, eps)?;
     let unseen = eval_ids.iter().filter(|t| !cal_ids.contains(t)).count();
     println!(
         "W: {rows} x {cols} (Q6_K in the file, 6.5625 bits per weight, used as the reference)"
