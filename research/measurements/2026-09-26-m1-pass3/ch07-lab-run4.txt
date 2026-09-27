@@ -1,0 +1,18 @@
+# cargo run --release -p ch07-gemm -- --size 512 --threads 4   (bit comparisons, gap relative to the largest output; 2026-09-27T00:19Z; one-minute load 8.53)
+Part 1: C = A B, 512 x 512 f32, best of 3 (GFLOP/s)
+  naive (i, j, k)               2.2   (1x the naive loop; 100.0% of elements bit-identical to it)
+  reordered (i, k, j)          26.0   (12x the naive loop; 100.0% of elements bit-identical to it)
+  blocked 64                   20.1   (9x the naive loop; 100.0% of elements bit-identical to it)
+  register tile 4 x 16         45.6   (21x the naive loop; 100.0% of elements bit-identical to it)
+  register tile, threads      162.2   (74x the naive loop; 100.0% of elements bit-identical to it)
+Part 2: W (4096 x 4096 f32, 64 MiB) times N vectors, 4 threads, best of 3
+     N    rowwise ms       GFLOP/s      tiled ms       GFLOP/s      same bits
+     1          1.25          26.8          3.30          10.2    2.4% (2e-6)
+     2          1.20          55.7          3.28          20.5    2.5% (2e-6)
+     4          1.20         111.9          3.30          40.6    2.5% (2e-6)
+     8          2.21         121.5          3.28          81.7    2.4% (2e-6)
+    16          7.22          74.4          3.26         164.9    2.5% (3e-6)
+    32         13.92          77.2          6.40         167.8    2.5% (3e-6)
+    64         18.96         113.3         45.79          46.9    2.5% (3e-6)
+   128         37.93         113.2         25.42         168.9    2.5% (3e-6)
+   256         98.45          87.3         62.96         136.4    2.5% (3e-6)
