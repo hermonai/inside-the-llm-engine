@@ -1,0 +1,8 @@
+[package]
+name = "ch09-decode-attention"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 9 lab: decode attention split along the sequence and merged by log-sum-exp, checked against float64"
+
+[dependencies]

@@ -49,5 +49,9 @@ name = "ch08-flashattention"
 version = "0.1.0"
 
 [[package]]
+name = "ch09-decode-attention"
+version = "0.1.0"
+
+[[package]]
 name = "engine0"
 version = "0.1.0"
