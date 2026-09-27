@@ -1,0 +1,8 @@
+[package]
+name = "ch08-flashattention"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 8 lab: causal attention naive, online and tiled, checked against float64"
+
+[dependencies]
