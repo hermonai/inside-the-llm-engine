@@ -1,0 +1,67 @@
+# llama.cpp build 8660 (d006858): compute buffers with flash attention off and on
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 4096 -n 1 -p hi -ngl 99 --no-warmup -fa off   (2026-09-27T04:09Z)
+llama_context: n_ctx         = 4096
+llama_context: n_ubatch      = 512
+llama_context: flash_attn    = disabled
+llama_kv_cache:       MTL0 KV buffer size =   448.00 MiB
+sched_reserve:       MTL0 compute buffer size =   256.50 MiB
+sched_reserve:        CPU compute buffer size =    24.01 MiB
+sched_reserve: graph nodes  = 1014
+sched_reserve: graph splits = 2
+generate: n_ctx = 4096, n_batch = 2048, n_predict = 1, n_keep = 1
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 4096 -n 1 -p hi -ngl 99 --no-warmup -fa on   (2026-09-27T04:09Z)
+llama_context: n_ctx         = 4096
+llama_context: n_ubatch      = 512
+llama_context: flash_attn    = enabled
+llama_kv_cache:       MTL0 KV buffer size =   448.00 MiB
+sched_reserve:       MTL0 compute buffer size =   256.50 MiB
+sched_reserve:        CPU compute buffer size =    20.01 MiB
+sched_reserve: graph nodes  = 875
+sched_reserve: graph splits = 2
+generate: n_ctx = 4096, n_batch = 2048, n_predict = 1, n_keep = 1
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 8192 -n 1 -p hi -ngl 99 --no-warmup -fa off   (2026-09-27T04:09Z)
+llama_context: n_ctx         = 8192
+llama_context: n_ubatch      = 512
+llama_context: flash_attn    = disabled
+llama_kv_cache:       MTL0 KV buffer size =   896.00 MiB
+sched_reserve:       MTL0 compute buffer size =   416.01 MiB
+sched_reserve:        CPU compute buffer size =    32.01 MiB
+sched_reserve: graph nodes  = 1014
+sched_reserve: graph splits = 2
+generate: n_ctx = 8192, n_batch = 2048, n_predict = 1, n_keep = 1
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 8192 -n 1 -p hi -ngl 99 --no-warmup -fa on   (2026-09-27T04:09Z)
+llama_context: n_ctx         = 8192
+llama_context: n_ubatch      = 512
+llama_context: flash_attn    = enabled
+llama_kv_cache:       MTL0 KV buffer size =   896.00 MiB
+sched_reserve:       MTL0 compute buffer size =   256.50 MiB
+sched_reserve:        CPU compute buffer size =    28.01 MiB
+sched_reserve: graph nodes  = 875
+sched_reserve: graph splits = 2
+generate: n_ctx = 8192, n_batch = 2048, n_predict = 1, n_keep = 1
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 16384 -n 1 -p hi -ngl 99 --no-warmup -fa off   (2026-09-27T04:09Z)
+llama_context: n_ctx         = 16384
+llama_context: n_ubatch      = 512
+llama_context: flash_attn    = disabled
+llama_kv_cache:       MTL0 KV buffer size =  1792.00 MiB
+sched_reserve:       MTL0 compute buffer size =   816.01 MiB
+sched_reserve:        CPU compute buffer size =    48.01 MiB
+sched_reserve: graph nodes  = 1014
+sched_reserve: graph splits = 2
+generate: n_ctx = 16384, n_batch = 2048, n_predict = 1, n_keep = 1
+
+## Ollama llama3.2:3b, blob sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff; llama-completion -m <blob> -c 16384 -n 1 -p hi -ngl 99 --no-warmup -fa on   (2026-09-27T04:09Z)
+llama_context: n_ctx         = 16384
+llama_context: n_ubatch      = 512
+llama_context: flash_attn    = enabled
+llama_kv_cache:       MTL0 KV buffer size =  1792.00 MiB
+sched_reserve:       MTL0 compute buffer size =   256.50 MiB
+sched_reserve:        CPU compute buffer size =    44.01 MiB
+sched_reserve: graph nodes  = 875
+sched_reserve: graph splits = 2
+generate: n_ctx = 16384, n_batch = 2048, n_predict = 1, n_keep = 1
