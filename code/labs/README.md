@@ -25,3 +25,4 @@ and **break** (a change that makes the mechanism fail or disappear).
 | 4 | [`ch04-prefill-decode`](ch04-prefill-decode/) — the capstone model reads a prompt in one step and token by token, bit-identical, at very different costs | Rust |
 | 5 | [`ch05-kv-cache`](ch05-kv-cache/) — generation with a KV cache against recomputation from scratch, bit for bit, and what one erased entry does | Rust |
 | 6 | [`ch06-napkin`](ch06-napkin/) — the step-time model as a calculator for any model and machine; its tests reproduce the chapter's tables | Python |
+| 7 | [`ch07-gemm`](ch07-gemm/) — a ladder of matrix-multiply kernels, and a decode kernel against a tiled GEMM on skinny shapes | Rust |

@@ -1,0 +1,9 @@
+[package]
+name = "ch07-gemm"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 7 lab: a ladder of matrix-multiply kernels and the skinny shapes of decode"
+
+[dependencies]
+capstone = { path = "../../mini-engine/crates/capstone" }

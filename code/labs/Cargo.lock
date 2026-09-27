@@ -38,5 +38,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ch07-gemm"
+version = "0.1.0"
+dependencies = [
+ "capstone",
+]
+
+[[package]]
 name = "engine0"
 version = "0.1.0"
