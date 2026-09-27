@@ -1,0 +1,10 @@
+[package]
+name = "ch12-kv-quant"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 12 lab: a real layer's KV cache in twelve formats, attention compared with full precision"
+
+[dependencies]
+ch10-weight-quant = { path = "../ch10-weight-quant" }
+ch11-block-formats = { path = "../ch11-block-formats" }
