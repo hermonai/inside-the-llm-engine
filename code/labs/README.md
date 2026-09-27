@@ -24,3 +24,4 @@ and **break** (a change that makes the mechanism fail or disappear).
 | 3 | [`ch03-roofline`](ch03-roofline/) — measures the CPU's bandwidth and compute roofs and predicts a decode sweep from them | Rust |
 | 4 | [`ch04-prefill-decode`](ch04-prefill-decode/) — the capstone model reads a prompt in one step and token by token, bit-identical, at very different costs | Rust |
 | 5 | [`ch05-kv-cache`](ch05-kv-cache/) — generation with a KV cache against recomputation from scratch, bit for bit, and what one erased entry does | Rust |
+| 6 | [`ch06-napkin`](ch06-napkin/) — the step-time model as a calculator for any model and machine; its tests reproduce the chapter's tables | Python |
