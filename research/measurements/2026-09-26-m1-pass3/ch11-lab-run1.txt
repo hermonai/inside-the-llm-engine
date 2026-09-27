@@ -1,0 +1,46 @@
+# code/labs/ch11-block-formats, 2026-09-27T09:36Z
+# cargo run --release -p ch11-block-formats -- --gguf <llama3.2:3b blob> --threads 4   (deterministic; no timings)
+1. Element formats, from their specifications
+  E4M3: 8 bits, 127 finite magnitudes, largest 448, smallest normal 1.5625e-2, smallest subnormal 1.953125e-3
+  E5M2: 8 bits, 124 finite magnitudes, largest 57344, smallest normal 6.1035156e-5, smallest subnormal 1.5258789e-5
+  E2M3: 6 bits, 32 finite magnitudes, largest 7.5, smallest normal 1e0, smallest subnormal 1.25e-1
+  E3M2: 6 bits, 32 finite magnitudes, largest 28, smallest normal 2.5e-1, smallest subnormal 6.25e-2
+  E2M1: 4 bits, 8 finite magnitudes, largest 6, smallest normal 1e0, smallest subnormal 5e-1
+  E2M1 non-negative values: 0, 0.5, 1, 1.5, 2, 3, 4, 6
+
+2. Layer 0's value projection (1024 x 3072, Q6_K in the file) in each format; output error on 2193 evaluation tokens of AUTHORING.md
+  format                                  bits  weight err  output err
+  BF16                                  16.000      0.0016      0.0015
+  FP8 E4M3, one scale per tensor         8.000      0.0265      0.0238
+  FP8 E5M2, one scale per tensor         8.000      0.0526      0.0474
+  MXFP8 (E4M3)                           8.250      0.0303      0.0264  18125 of 98304 blocks saturated
+  MXFP8 (E5M2)                           8.250      0.0543      0.0485  18125 of 98304 blocks saturated
+  MXFP6 (E2M3)                           6.250      0.0288      0.0302  9017 of 98304 blocks saturated
+  MXFP6 (E3M2)                           6.250      0.0543      0.0485  18125 of 98304 blocks saturated
+  MXFP4 (E2M1)                           4.250      0.1195      0.1280  37713 of 98304 blocks saturated
+  NVFP4 (E2M1, E4M3 scales per 16)       4.500      0.0946      0.1032
+  INT8, a scale per 32 (like Q8_0)       8.500      0.0055      0.0073
+  INT4, a scale per 32 (like Q4_0)       4.500      0.1049      0.1507
+
+3. The inputs instead (897 distinct evaluation tokens x 3072 channels), weights exact
+  per token, the largest |x| is 13.3 times the RMS on average; the loudest channel's mean |x| is 12.3 times the average channel's
+  format for the inputs                       bits  output err
+  FP8 E4M3, a scale per token                8.010      0.0237
+  FP8 E4M3, a scale per 128 channels         8.250      0.0224
+  MXFP8 (E4M3)                               8.250      0.0279
+  MXFP6 (E2M3)                               6.250      0.0454
+  MXFP4 (E2M1)                               4.250      0.1787
+  NVFP4, a tensor scale per token            4.500      0.1239
+  INT8, a scale per 32 (like Q8_0)           8.500      0.0139
+  INT4, a scale per 32 (like Q4_0)           4.500      0.2402
+
+4. One value of 30 in a block of 32 values between -1 and 1
+  MXFP8 (E4M3)   the outlier becomes   28.000; the 31 small values: error    2.6%, 0 set to zero
+  MXFP4 (E2M1)   the outlier becomes   24.000; the 31 small values: error  100.0%, 31 set to zero
+  NVFP4          the outlier becomes   30.000; the 31 small values: error   70.1%, 16 set to zero
+
+# the same, --outlier 100 (part 4 only)
+4. One value of 100 in a block of 32 values between -1 and 1
+  MXFP8 (E4M3)   the outlier becomes   96.000; the 31 small values: error    2.6%, 0 set to zero
+  MXFP4 (E2M1)   the outlier becomes   96.000; the 31 small values: error  100.0%, 31 set to zero
+  NVFP4          the outlier becomes  100.000; the 31 small values: error   70.1%, 16 set to zero
