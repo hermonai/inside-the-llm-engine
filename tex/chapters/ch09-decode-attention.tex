@@ -1,6 +1,8 @@
-% status: ZERO
+% status: FULL
 % Chapter 9 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-m1-part2.md
+% Measurements: research/measurements/2026-09-23-m1-part2.md (the opening);
+% research/measurements/2026-09-26-m1-pass3.md (decode by depth for a GQA-3 and a GQA-8
+% model; the lab).
 \chapter{Decode Attention: FlashDecoding, Split-K and Paged Kernels}\label{ch:decode-attention}
 
 \begin{ChapterIntent}
@@ -54,15 +56,26 @@ I_{\text{attn}} \approx \frac{4\,g\,S\,d_h}{2\,S\,d_h\,b_{kv}} = \frac{2g}{b_{kv
 \label{eq:attn-intensity}
 \end{equation}
 one FLOP per byte for multi-head attention in 16-bit, four for a group of four,
-independent of context length. Decode attention is a bandwidth-bound workload,
-and batching does not change that: every sequence reads its own cache.
+independent of context length. The two models this chapter measures sit at
+both ends of today's range: Llama~3.2~3B shares each of its 8 key/value heads
+among 3 query heads, 3~FLOP/byte in a 16-bit cache, and Qwen2.5-Coder~3B shares
+each of its 2 among 8, 8~FLOP/byte. Both are far left of the M1 GPU's ridge of
+38 and of every data-center GPU's (\Chref{roofline}). Decode attention is a
+bandwidth-bound workload, and batching does not change that: every sequence
+reads its own cache. The first worked problem shows what that does to a
+batched step, where attention can outweigh the weights.
 
 The parallelism is the other number. A prefill kernel spreads work over query
 tokens; at decode there is one. The natural decomposition --- one thread block
 per (sequence, head) --- gives $B\,H_q$ blocks. For Llama~3.2~3B at batch one
 that is 24 blocks, against a GPU that needs hundreds of concurrently resident
-warps to hide memory latency. Each block then walks the entire cache alone.
-The sequence dimension is the only place left to find parallelism.
+warps to hide memory latency. Each block then walks the entire cache alone:
+at 8,192 tokens, 4~MiB of keys and values per head per layer, read by one
+block while the rest of the chip waits. The Flash-Decoding authors put it
+starkly: when the batch is smaller than the number of SMs --- 108 on an A100 ---
+such a kernel uses only a small part of the GPU, and at batch one less than 1\%
+of it \cite{dao2023flashdecoding}. The sequence dimension is the only place left
+to find parallelism.
 
 \section{The shape of decode attention}
 
@@ -72,61 +85,217 @@ $\mathbf{K}\in\mathbb{R}^{S\times d_h}$, probabilities
 $\mathbf{p}=\operatorname{softmax}(\mathbf{s})$, output
 $\mathbf{o}=\mathbf{V}^{\top}\mathbf{p}$. No score matrix exists to be
 avoided --- the scores are a single vector of length $S$ --- so the problem
-\Chref{flashattention} solved is not this one. The problem here is reading
-$\mathbf{K}$ and $\mathbf{V}$ as fast as memory allows with far too few
-independent tasks.
+\Chref{flashattention} solved is not this one. At 8,192 tokens the scores of
+one head are 32~KiB of 32-bit floats, against 4~MiB of keys and values in
+16-bit: the traffic is the cache, and nothing else is worth counting. The
+problem here is reading $\mathbf{K}$ and $\mathbf{V}$ as fast as memory allows
+with far too few independent tasks, and \Chref{prefill-decode} measured what
+that costs on the M1: llama.cpp's unfused path, which runs decode attention as
+ordinary matrix--vector products, read the cache at an effective 17--20~GB/s,
+and its fused decode kernel at 52--57~GB/s. Same bytes, same GPU; the
+difference is how many pieces the work was cut into.
 
 \section{Splitting the sequence}
 
 Flash-Decoding divides the cache into chunks and gives each chunk to its own
-thread block \cite{dao2023flashdecoding}. Each block computes attention over its
-chunk exactly as \Chref{flashattention}'s online softmax would, producing a
-partial output with its running maximum and denominator. A second, small pass
-merges the partials. With 16 chunks, a batch-one decode step has 16 times the
-parallelism. Its authors reported attention up to 50 times faster than
-FlashAttention at very long contexts and end-to-end decoding up to 8 times
-faster at batch one on CodeLlama-34B (their measurements, 2023).
+thread block \cite{dao2023flashdecoding}. It works in three steps: split the
+keys and values into chunks; compute, in parallel, the query's attention over
+each chunk, writing beside each partial output one extra number per row and
+split, the log-sum-exp of its scores; then reduce over the splits, using the
+log-sum-exps to weight each split's contribution. With 16 chunks, a batch-one
+decode step has 16 times the parallelism. On an A100 with CodeLlama-34B, at
+sequence lengths from 512 to 64K and batch one, its authors measured the
+attention itself up to 50 times faster than FlashAttention and generation up to
+8 times faster end to end for very long sequences; it shipped in the
+FlashAttention package from version 2.2 and in xFormers from 0.0.22 (their
+measurements, 2023). Figure~\ref{fig:ch09-split-merge} shows the scheme.
+
+\EngineFigure{ch09-split-merge}{Split-K decode attention. Top: one head's cache
+cut into contiguous chunks, each producing a partial maximum, denominator and
+output in parallel, merged in index order (Flash-Decoding; Hermon). Bottom:
+llama.cpp's Metal decode kernel deals 32-cell blocks round-robin to its
+simdgroups instead, then merges the 32 workgroups' partials with SIMD
+reductions (source at \texttt{d006858}).}{fig:ch09-split-merge}
+
+Engines choose the split differently, and the choice is visible in the source.
+llama.cpp's Metal decode kernel always launches 32 workgroups per query and
+head, each of one, two or four simdgroups: one while the attended cache is at
+most 2,048 cells, two up to 4,096, four beyond. It does not cut the cache into
+32 contiguous pieces. It cuts it into blocks of 32 cells and deals the blocks
+round-robin, so that block $b$ goes to simdgroup $b \bmod (32 \cdot n_{sg})$,
+and a block masked in full --- another sequence's cells, say --- is skipped
+without reading its keys (\texttt{kernel\_flash\_attn\_ext\_vec} in
+\texttt{ggml-metal.metal} and its launch in \texttt{ggml-metal-ops.cpp}). Hermon
+cuts contiguous chunks of 256 tokens, between 1 and 64 of them, and runs one
+simdgroup per (query token, query head, chunk) (Hermon
+\texttt{docs/KERNEL\_DESIGN.md}, sections 6.2, 6.3 and K4, at commit
+\texttt{2a3fd52}). The counts differ most where the cache is short. For the
+decode shape of Llama-3-8B (32 query heads, 8 key/value heads) the two launch
+(derived from the rules above):
+
+\begin{center}\small
+\begin{tabular}{@{}rrr@{}}
+\toprule
+Context & llama.cpp simdgroups & Hermon simdgroups \\
+\midrule
+512 & $32 \times 32 \times 1 = 1{,}024$ & $32 \times 2 = 64$ \\
+4,096 & $32 \times 32 \times 2 = 2{,}048$ & $32 \times 16 = 512$ \\
+8,192 & $32 \times 32 \times 4 = 4{,}096$ & $32 \times 32 = 1{,}024$ \\
+32,768 & $32 \times 32 \times 4 = 4{,}096$ & $32 \times 64 = 2{,}048$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent At 512 tokens llama.cpp puts sixteen times as many simdgroups to work
+on the same bytes. The section on occupancy returns to what that is worth.
 
 \section{Merging partial softmaxes}
 
-Two partials over disjoint chunks, each with maximum $m_i$, denominator
-$\ell_i$ and unnormalized output $\mathbf{o}_i$, combine exactly:
+Every split returns what \Chref{flashattention}'s online softmax keeps for a
+row: a maximum $m_i$, a denominator $\ell_i$ and an unnormalized output
+$\mathbf{o}_i$. Equation~\eqref{eq:softmax-merge} combines them exactly, two at
+a time or all at once. Flash-Decoding stores the same information in a
+different form: the split's normalized output $\bar{\mathbf{o}}_i =
+\mathbf{o}_i/\ell_i$ and one number, its log-sum-exp $\lambda_i = m_i + \ln
+\ell_i$. Then
 \begin{equation}
-m = \max(m_1,m_2),\quad
-\ell = \ell_1e^{m_1-m}+\ell_2e^{m_2-m},\quad
-\mathbf{o} = \mathbf{o}_1e^{m_1-m}+\mathbf{o}_2e^{m_2-m},
-\label{eq:lse-merge}
+\lambda = \ln \sum_i e^{\lambda_i},\qquad
+\mathbf{o} = \sum_i e^{\lambda_i - \lambda}\,\bar{\mathbf{o}}_i ,
+\label{eq:lse-combine}
 \end{equation}
-and the result is $\mathbf{o}/\ell$. This is equation~\eqref{eq:online-softmax}
-applied to whole chunks instead of single scores; engines often store
-$m+\log\ell$, the log-sum-exp, as a single number per partial. The merge is
-associative, so partials can be combined in any grouping --- but floating-point
-rounding makes the \emph{order} observable, and the order becomes part of the
-engine's reproducibility contract (\Chref{fast-wrong-answers}).
+a weighted average of the splits' answers, each weighted by its share of the
+total softmax mass. (In practice $\lambda$ is computed as
+$\max_i \lambda_i + \ln \sum_i e^{\lambda_i - \max_i \lambda_i}$, for the same
+reason the softmax subtracts its maximum.)
+
+\emph{A worked merge.} Take \Chref{flashattention}'s row --- scores 1, 3, 2, 5
+against values 1, 2, 3, 4 --- and give its two halves to two splits. The first
+sees scores 1 and 3: $m_1 = 3$, $\ell_1 = e^{-2} + 1 = 1.1353$, normalized output
+$\bar{o}_1 = 1.8808$, and $\lambda_1 = 3 + \ln 1.1353 = 3.1269$. The second sees 2
+and 5: $m_2 = 5$, $\ell_2 = e^{-3} + 1 = 1.0498$, $\bar{o}_2 = 3.9526$,
+$\lambda_2 = 5.0486$. The merge gives $\lambda = 5.0486 + \ln(1 + e^{3.1269 -
+5.0486}) = 5.1852$ and weights $e^{\lambda_1 - \lambda} = 0.1277$ and
+$e^{\lambda_2 - \lambda} = 0.8723$, which sum to 1; the output is
+$0.1277 \times 1.8808 + 0.8723 \times 3.9526 = 3.6881$, the full row's answer.
+The second split's keys carry 87\% of the softmax mass because it holds the
+largest score, and the merge needs nothing but two numbers per split to know
+it. The lab's test checks the same arithmetic.
+
+The two forms cost the same. llama.cpp keeps $(\ell_i, m_i)$ and the unnormalized
+output --- 130 floats per workgroup at head width 128 --- and merges its 32
+workgroups in a second kernel whose 32 SIMD lanes hold one partial each: a
+SIMD maximum finds $m$, each lane scales its partial by $e^{m_i - m}$, and SIMD
+sums produce $\ell$ and each element of $\mathbf{o}$
+(\texttt{kernel\_flash\_attn\_ext\_vec\_reduce}). The partials are small beside
+the cache they summarize: for Llama~3.2~3B at 8,192 tokens, one layer's 24 heads
+$\times$ 32 workgroups $\times$ 130 floats come to 390~KiB, against 32~MiB of
+keys and values read to produce them (derived). The merge is associative in
+exact arithmetic, so the partials can be combined in any grouping --- but
+floating-point rounding makes the grouping observable, and the grouping becomes
+part of the engine's reproducibility contract (\Chref{fast-wrong-answers}).
 
 \section{Grouped-query attention: what the heads share}
 
 With grouped-query attention, the $g$ query heads of a group read the same keys
 and values. A kernel can process the whole group in one pass over the cache,
 reading each key once instead of $g$ times, and equation~\eqref{eq:attn-intensity}
-says that multiplies the useful work per byte by $g$. On a CPU core, which has a
-fixed amount of parallelism and pays for every cache miss, packing the group
-this way is a clear gain. On a GPU the same change also divides the number of
-thread blocks by $g$, and whether it helps depends on whether bytes or
-parallelism was the limit. The case study of this chapter is what happened when
-that question was answered by experiment.
+says that multiplies the useful work per byte by $g$. Hermon's CPU kernel does
+exactly that: it loops over key/value heads, loads each tile of keys once and
+holds the group's query heads in registers, and its design notes expect the
+key traffic to fall by the group size --- four for Llama-3-8B, eight for a model
+with Qwen2.5-72B's grouping (Hermon \texttt{docs/KERNEL\_DESIGN.md}, section
+6.4). llama.cpp's Metal decode kernel does not: it launches one threadgroup per
+\emph{query} head, and each finds its group's cache by dividing its head index
+by the group size (\texttt{ikv2 = iq2/(ne02/ne\_12\_2)} in
+\texttt{kernel\_flash\_attn\_ext\_vec}). On paper, every key is read $g$ times.
+
+So measure it. Qwen2.5-Coder~3B puts 8 query heads on each key/value head, and
+its cache is 36~KiB per token. There are two predictions for the extra time a
+decode step takes at depth: if the cache is read once at the
+49~GB/s of \Chref{napkin-math}, 3.1, 6.2 and 12.3~ms at 4,096, 8,192 and
+16,384 tokens; if each of a group's 8 threadgroups read it from memory, eight
+times that --- 98.6~ms at 16,384. Measured with \texttt{llama-bench}, flash
+attention on, two repetitions (record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+ & Empty & 4,096 & 8,192 & 16,384 \\
+\midrule
+Qwen2.5-Coder 3B ($g = 8$), ms per token & 44.1 & 48.4 & 49.5 & 60.4 \\
+\quad extra, measured & & 4.3 & 5.4 & 16.3 \\
+\quad extra if read once / eight times & & 3.1 / 24.7 & 6.2 / 49.3 & 12.3 / 98.6 \\
+Llama 3.2 3B ($g = 3$), ms per token & 38.4 & 51.0 & 57.6 & 78.3 \\
+\quad extra, measured & & 12.6 & 19.2 & 39.9 \\
+\quad extra if read once / three times & & 9.6 / 28.8 & 19.2 / 57.5 & 38.4 / 115.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\EngineFigure{ch09-gqa-depth}{Extra decode time per token as the cache grows,
+llama.cpp on the M1's GPU with flash attention on (points, measured). The solid
+lines read the cache once at 49~GB/s; the dashed lines read it once per query
+head of a group, as a per-head kernel would if nothing were shared (derived).
+Both models follow the solid lines.}{fig:ch09-gqa-depth}
+
+\noindent Figure~\ref{fig:ch09-gqa-depth} plots the same numbers. Both models land near the read-once line, and far below the
+alternative. At 16,384 tokens the 8 threadgroups of each Qwen group would have
+had to pull 4.8~GB through a memory system that delivers 68~GB/s at best in
+16.3~ms --- 296~GB/s (derived); Llama's three per group, 5.6~GB in 39.9~ms,
+141~GB/s. They did not. The heads of a group run at about
+the same time and read the same cache lines, and the GPU's caches serve the
+repeats; the ``redundant'' reads cost almost nothing. That is the fact on which
+the case study at the end of the chapter turns. The CPU is a different machine:
+a core has no army of concurrent threadgroups to share lines between, and the
+lab measures what packing is worth there.
 
 \section{Reading through a block table}
 
 A paged cache (\Chref{paged-kv}) stores each sequence's keys and values in
 fixed-size blocks scattered through a pool, found through a per-sequence table.
 The kernel's inner loop gains an indirection: for each block of tokens, look up
-where it lives. The table is small and the lookups are cheap compared with the
-bytes they locate, provided blocks are large enough to be read in efficient
-bursts. Attention libraries such as FlashInfer represent paged, ragged and
-sparse layouts in one block-sparse format so that one kernel family serves them
-all \cite{ye2025flashinfer}; DeepSeek's FlashMLA serves paged latent attention
+where it lives. vLLM's blocks hold 16 tokens unless the attention backend
+prefers another size (\texttt{DEFAULT\_BLOCK\_SIZE} in
+\texttt{vllm/config/cache.py}, and \texttt{\_preferred\_block\_size\_for\_backends}
+in \texttt{vllm/platforms/interface.py}, at \texttt{bcdacfc}), and the table holds
+32-bit block numbers (\texttt{vllm/v1/worker/block\_table.py}). For Llama-3-8B in
+BF16, one such block of one key/value head is 4~KiB of keys and 4~KiB of values
+behind a 4-byte table entry --- one byte of indirection per 2,048 of data
+(derived) --- and the lookup costs one extra dependent load per block, which a
+kernel hides by fetching the next entries while it reads the current block.
+The table is small and the lookups are cheap compared with the bytes they
+locate, provided blocks are large enough to be read in efficient bursts.
+
+Not every engine pages. llama.cpp's cache is a pool of cells, each holding one
+token of every layer, and a sequence's tokens may sit in any cells
+(\Chref{kv-cache}). Its kernels read a contiguous window of the pool, the first
+$n_\text{kv}$ cells, and rely on the mask to hide the cells that belong to other
+sequences --- the decode kernel skips a 32-cell block whose mask is empty, so
+the price of foreign cells is paid in mask reads, not key reads. Attention
+libraries such as FlashInfer represent paged, ragged and sparse layouts in one
+block-sparse format so that one kernel family serves them all
+\cite{ye2025flashinfer}; DeepSeek's FlashMLA serves paged latent attention
 \cite{deepseek2025flashmla}.
+
+\section{Ragged batches: balancing the work}
+
+A serving batch rarely holds sequences of one length. Suppose four sequences of
+Llama-3-8B decode together with 32,768, 4,096, 2,048 and 512 tokens of context.
+With one block per (sequence, key/value head), the step launches 32 blocks per
+layer, and it lasts as long as its longest block: eight of them walk 32,768
+tokens while the average block walks 9,856. The machine is busy for 30\% of the
+block-time it pays for (derived: $9{,}856 / 32{,}768$), and adding sequences
+does not help, because the step still waits for the longest one. Cut every
+sequence into 256-token chunks and the same work becomes 1,232 blocks of equal
+size --- 128, 16, 8 and 2 chunks per head --- which a GPU can spread evenly over
+its SMs. Splitting, in other words, is not only for batch one. It turns a batch
+of unequal sequences into a pool of equal pieces of work, which is what the
+schedulers of attention libraries balance: FlashInfer describes its scheduling
+as load-balanced and compatible with CUDA graphs \cite{ye2025flashinfer}, and
+according to Thinking Machines it picks the largest split size that still
+saturates the GPU \cite{he2025nondeterminism}. The other half of the balancing
+problem --- which sequences to put in a step at all --- is the scheduler's
+(\Chref{continuous-batching}).
 
 \section{Occupancy, not bandwidth}
 
@@ -143,8 +312,33 @@ cache at the 48--52~GB/s of the opening measurement, the bandwidth roof in
 practice. Hermon's Metal kernel, measured on the decode shape of Llama-3-8B,
 took 19.2~ms to read one layer's 134~MB of 16-bit keys and values at 32,768
 tokens: about 7~GB/s (derived from Hermon \texttt{docs/KERNEL\_DESIGN.md},
-section K4). Both read the same bytes. What differs is the kernel, and the
-case study below is its developers' account of what they learned about it.
+section K4). Both read the same bytes. Hermon's own measurements say where its
+time goes. Every call costs about 0.94~ms at 512 tokens, whatever the data type
+or the amount of work; a trivial kernel's round trip of commit and wait alone
+is 0.19~ms; and at 512 tokens the grid is 64 threadgroups, which its developers
+call far too few to fill the device (section K4.1). Against one CPU thread
+running its NEON kernel on a 16-bit cache, the GPU lost below about 4,000 tokens
+of context and won by less than a factor of two above it (section K4; PREVIEW,
+opt-in native kernels). llama.cpp, at the same 512 tokens, launches 1,024
+simdgroups. Occupancy is the difference the table in the section on splitting
+predicts, and the case study below is its developers' account of learning it.
+
+\section{Fewer bytes, more work: quantized caches at decode}
+
+If decode attention were purely a matter of bytes, a smaller cache would be a
+faster one. On the M1 it is not always. With the cache stored in llama.cpp's
+8-bit format, \texttt{q8\_0} --- 34 bytes per 32 values, half the F16 cache's
+bytes --- Llama~3.2~3B decoded at 9.48 tokens per second at 16,384 tokens of
+context, against 12.35 with F16; the 4-bit \texttt{q4\_0}, a quarter of the
+bytes, managed 11.44 (flash attention on; record \texttt{2026-09-23-m1-part2}).
+Per step, over each format's own empty-cache time, the F16 cache added 41~ms
+for 1.88~GB, \texttt{q8\_0} 63~ms for 1.00~GB and \texttt{q4\_0} 39~ms for
+0.53~GB (derived): 46, 16 and 14~GB/s of effective cache reads. The quantized
+kernels read fewer bytes and then spend longer on each one, turning blocks of
+integers and scales back into floating point before the dot products. That is
+the chapter's lesson from another side: once a kernel's time is set by
+something other than bytes --- launch, occupancy, or the work done per byte ---
+saving bytes buys nothing. \Chref{kv-quantization} takes up when the trade pays.
 
 \section{Fixed split count or fixed split size}
 
@@ -159,27 +353,124 @@ result independent of which other requests share the batch
 between 1 and 64 splits, so that its plans depend only on the shape of the
 request (Hermon \texttt{docs/KERNEL\_DESIGN.md}, section 6.3).
 
+llama.cpp's Metal kernel is a fixed count with a twist, and the twist shows how
+easily batch dependence creeps in. Its simdgroups per workgroup --- one, two or
+four --- are chosen from $n_\text{kv}$, the number of cells the step attends, and
+$n_\text{kv}$ is the highest used cell of the cache plus one, rounded up to a
+multiple of 256 (\texttt{get\_n\_kv} in \texttt{src/llama-kv-cache.cpp}). In a
+cache shared by several sequences, that is set by whichever sequence reaches
+furthest. A short request decoded beside a long one can therefore have its keys
+dealt to four simdgroups instead of one, and its partials merged in a different
+grouping, than the same request decoded alone (derived from the source; the
+bits were not measured). The results agree to rounding either way. Whether they
+agree to the bit is exactly what an engine must decide to guarantee or not.
+
+The lab measures the other half of the argument on the CPU. With chunks of a
+fixed 256 tokens, merged in index order, every plan gives the same bits on 1, 2,
+4 or 8 threads, whichever thread finishes first. Changing the split changes the
+bits: at 32,768 tokens only 17 of the 2,048 outputs of the split plans match
+the unsplit plan's to the bit, though none differs by more than
+$10^{-7}$. And the split plans are the more accurate, by a factor of about nine
+against float64 ($6.4 \times 10^{-7}$ against $5.5 \times 10^{-6}$): summing a
+long row in chunks and merging the chunks accumulates less rounding than one
+long running sum, the same reason pairwise summation beats a simple loop.
+Splitting buys parallelism and, as a side effect, accuracy; what it costs is
+agreement with any other split.
+
 \LedgerSection
 
 Splitting decode attention along the sequence and merging the partials:
 
 \begin{ConstraintLedger}
-Latency & buys & Parallelism for batch-one decode: 16 splits give 16 times as many independent blocks. \\
-Memory bandwidth & moves & The same cache bytes, now read fast enough to approach the bandwidth roof. \\
-Memory capacity & spends & A workspace of partial outputs, maxima and denominators per split. \\
+Latency & buys & Parallelism for batch-one decode: 16 splits give 16 times as many independent blocks. In the lab, split packed attention ran 3.4 times faster on four threads than on one, where the unsplit plan could use only two (measured). \\
+Memory bandwidth & moves & The same cache bytes, now read fast enough to approach the bandwidth roof (llama.cpp's fused decode kernel reads at 52--57~GB/s against 17--20 for matrix--vector products, measured in \Chref{prefill-decode}). \\
+Memory capacity & spends & A workspace of partial outputs, maxima and denominators per split: 390~KiB per layer for Llama~3.2~3B at 8,192 tokens against 32~MiB of cache (derived). \\
 Compute & spends & A merge pass per head per step. \\
-Correctness & risks & The merge order is observable in the last bits; fix it by construction. \\
+Correctness & risks & The merge order is observable in the last bits; fix it by construction, with a split size that depends only on the request. \\
 \end{ConstraintLedger}
 
 \LabSection{split-K decode attention with a log-sum-exp merge}
 
-\LabIntent{In \texttt{code/labs/ch09-decode-attention/}, a Rust decode-attention
-kernel over a synthetic cache, first single-threaded, then split into $k$
-chunks run on a thread pool and merged with equation~\eqref{eq:lse-merge}. A
-float64 oracle checks every configuration. The reader measures throughput as
-$k$ grows, then implements grouped-query packing and finds whether it helps
-on their CPU --- and predicts, before reading the case study, whether it would
-help on a GPU.}
+The lab in \texttt{code/labs/ch09-decode-attention/} runs one decode step of
+attention for one layer in the shape of Qwen2.5-Coder~3B --- 16 query heads
+sharing 2 key/value heads of width 128, with a 32-bit cache --- under four
+plans: \texttt{heads}, one task per query head over the whole cache;
+\texttt{packed}, one task per key/value head, its 8 query heads sharing one pass
+over the keys and values; \texttt{split}, one task per query head and chunk of
+256 tokens; and \texttt{packed+split}, one task per key/value head and chunk.
+Tasks run on a pool of threads and write their partials into slots indexed by
+head and chunk, so that the merge always runs in chunk order. Every output is
+checked against float64 attention before it is timed. Run it from
+\texttt{code/labs} with \texttt{cargo run --release -p ch09-decode-attention}.
+Packing is a matter of loop order --- each key row is loaded once and used by
+every query head of the group:
+
+\CodeLines{../code/labs/ch09-decode-attention/src/main.rs}{93}{99}
+
+\noindent and the merge is equation~\eqref{eq:softmax-merge}, folded over a
+head's partials in index order:
+
+\CodeLines{../code/labs/ch09-decode-attention/src/main.rs}{128}{147}
+
+\noindent At 32,768 tokens (a 64~MiB cache), best of five, on the M1 (measured,
+record \texttt{2026-09-26-m1-pass3}, two runs):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Plan & Tasks & 1 thread & 2 threads & 4 threads & 8 threads & Error \\
+\midrule
+\texttt{heads} & 16 & 13.8--14.0~ms & 8.3--8.4 & 4.7--5.4 & 4.5--4.6 & $5.5\times10^{-6}$ \\
+\texttt{packed} & 2 & 12.2 & 6.3 & 6.3 & 6.3 & $5.5\times10^{-6}$ \\
+\texttt{split} & 2,048 & 14.5--15.5 & 8.8--9.7 & 5.0--7.7 & 4.1--5.8 & $6.4\times10^{-7}$ \\
+\texttt{packed+split} & 256 & 12.6--13.4 & 6.6--6.7 & 3.6--3.7 & 2.9--3.0 & $6.4\times10^{-7}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent (Eight threads include the M1's four efficiency cores.) Three results.
+\emph{Parallelism:} on one thread the four plans take 12.2 to 15.5~ms ---
+packing saves an eighth, splitting costs up to a tenth for its merges and
+tasks --- because a core running this loop computes at about 22~GFLOP/s and is
+busy with arithmetic, not memory. On more threads the \texttt{packed} plan, with
+only 2 tasks, uses two cores and stays at 6.3~ms; the split plans spread 256 or
+2,048 tasks over every core, and \texttt{packed+split} reaches 3.6~ms on four,
+3.4 times one thread. \emph{Sharing:} the \texttt{heads} plan asks for each key
+and value 8 times, 537~MB per step. Had those reads gone to memory, four threads
+would have needed 98--113~GB/s, well beyond the 60~GB/s four cores draw
+(\Chref{roofline}); the four threads, working on heads of the same group at the
+same moment, found much of it in the shared cache, just as the GPU's
+threadgroups did. Packing still pays once the work is split and the cores are
+busy: on four threads \texttt{packed+split} takes 27--53\% less time than
+\texttt{split}.
+\emph{Determinism:} every plan returns the same bits on every thread count; the
+split plans differ from the unsplit ones in the last bits and are nine times
+closer to float64. The third worked problem places the times on
+\Chref{roofline}'s roofline.
+
+\emph{How big a chunk?} A sweep of the chunk size at 32,768 tokens on four
+threads (\texttt{packed+split}; record \texttt{2026-09-26-m1-pass3}) is flat from
+256 to 4,096 tokens, at 3.7~ms. Chunks of 64 take 4.3~ms and chunks of 16 take
+6.1~ms, because 4,096 tasks of 16 tokens each spend as much time being queued,
+started and merged as computing. A single chunk --- no split --- takes 6.4~ms,
+because two tasks leave two cores idle. The error against float64 has a
+minimum too, at 256 tokens ($6.4\times10^{-7}$), rising to $2.2\times10^{-6}$ at
+both 16 and 4,096 and to $5.5\times10^{-6}$ unsplit. That is the pattern of
+blocked summation: rounding grows with the length of each chunk's running sum
+plus the number of partials merged, a total smallest when the chunk is near the
+square root of the length --- 181 tokens here (derived). A chunk of a few hundred
+tokens is not an accident of one engine; it is where both curves bottom out.
+
+\emph{Predict} before you run: on your machine, how many threads can the
+\texttt{packed} plan use at the default shape, and what does that cap its speed
+at? \emph{Explain} why \texttt{split} and \texttt{packed+split} produce the same
+bits as each other but not as \texttt{heads}. \emph{Break} it: set
+\texttt{--chunk 16} on your machine and find where the task overhead starts to
+swamp the gain; run
+\texttt{--contexts 256} with four threads, where starting the threads costs
+more than the attention (the lab's analogue of a GPU launch); and try
+\texttt{--q-heads 8 --kv-heads 8}, multi-head attention, where packing has
+nothing to share.
 
 \HappenedSection{the GQA fusion that lost in every shape}
 
@@ -199,33 +490,43 @@ groups by the group size, and at decode the grid was already too small to fill
 the device. And the ``redundant'' reads had never cost bandwidth: the thread
 groups of a group ran concurrently and read the same cache lines, so the
 hardware had already removed the traffic the fusion set out to save. The
-developers' conclusion generalizes: on that device, decode attention is
-occupancy-bound, not bandwidth-bound, and an optimization that trades
-parallelism for bytes will lose. They recorded the failure so that it would not
-be repeated --- which is the only reason we can learn from it.
+llama.cpp measurement above is the same fact seen from outside: a per-head
+kernel whose 8 threadgroups per group decode Qwen2.5-Coder at close to the
+read-once cost. The developers' conclusion generalizes: on that device, decode
+attention is occupancy-bound, not bandwidth-bound, and an optimization that
+trades parallelism for bytes will lose. They recorded the failure so that it
+would not be repeated --- which is the only reason we can learn from it.
 
-\FrontierSection{2026-09-24}
+\FrontierSection{2026-09-27}
 
-Decode attention kernels are now chosen per hardware and per model family.
-vLLM's documented defaults put FlashAttention first on Hopper and FlashInfer
-first on Blackwell, with separate backends for latent attention and for
-DeepSeek-V4's sparse attention \cite{vllm2026attentionbackends}; FlashMLA's
-dense decode kernel reports up to 3,000~GB/s on an H800
-\cite{deepseek2025flashmla}. Sparse decode attention, which reads only selected
-parts of the cache, changes this chapter's arithmetic (\Chref{long-context}), and
-attention over quantized caches changes the bytes (\Chref{kv-quantization}).
+Decode attention kernels are now chosen per hardware and per model family. At
+the vLLM commit this book pins, causal attention on Hopper goes to the
+FlashAttention backend first and on Blackwell to FlashInfer first, with separate
+backend lists for latent attention and for DeepSeek's sparse attention
+(\texttt{vllm/platforms/cuda.py} at \texttt{bcdacfc})
+\cite{vllm2026attentionbackends}; FlashMLA's dense decode kernel reports up to
+3,000~GB/s on an H800, a vendor number \cite{deepseek2025flashmla}. Sparse decode
+attention, which reads only selected parts of the cache, changes this chapter's
+arithmetic (\Chref{long-context}), and attention over quantized caches changes
+the bytes (\Chref{kv-quantization}).
 
 \ExercisesSection
 
 \begin{enumerate}
-\item \emph{Derivation.} Prove that equation~\eqref{eq:lse-merge} is
-associative, and give a floating-point example where two groupings produce
-different results.
+\item \emph{Derivation.} Prove that equation~\eqref{eq:lse-combine} gives the
+same result as equation~\eqref{eq:softmax-merge}, and give a floating-point
+example where two groupings of three partials produce different results.
 \item \emph{Prediction.} For Llama-3-8B at batch one and 4,096 tokens of
-context, how many 256-token splits does each head get, and how many
-independent blocks does the step launch?
-\item \emph{Implementation.} In the lab, measure the workspace memory of the
-split partials as a function of batch, heads and splits.
+context, how many 256-token splits does each head get, how many independent
+blocks does the step launch, and how does that compare with an H100's 132 SMs?
+\item \emph{Implementation.} Change the lab's merge to the log-sum-exp form of
+equation~\eqref{eq:lse-combine}, and check whether it gives the same bits as
+equation~\eqref{eq:softmax-merge}.
+\item \emph{Measurement.} Repeat the decode-by-depth measurement for a model
+with a different group size on your machine, and decide whether its kernel
+reads each key once or $g$ times.
 \item \emph{Falsification.} Find a context length and thread count on your CPU
 at which splitting makes decode attention slower.
 \end{enumerate}
+
+\input{worked/ch09-decode-attention.tex}

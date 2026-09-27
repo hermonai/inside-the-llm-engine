@@ -1,0 +1,39 @@
+% Split-K decode attention (conceptual). Top: one query head's cache cut into contiguous
+% chunks of 256 tokens (Flash-Decoding, Hermon); each chunk yields a partial (m, l, o) in
+% parallel, and the partials are merged in index order. Bottom: llama.cpp's Metal decode
+% kernel at d006858 deals 32-cell blocks round-robin to 32 workgroups of 1-4 simdgroups
+% (ggml-metal.metal kernel_flash_attn_ext_vec; ggml-metal-ops.cpp), then merges the 32
+% workgroups' partials with SIMD reductions (kernel_flash_attn_ext_vec_reduce).
+\begin{tikzpicture}[
+  q/.style={draw=BookBlue, fill=BookGold, rounded corners=2pt, font=\scriptsize\sffamily, align=center, minimum height=8mm, inner sep=3pt},
+  part/.style={draw=BookBlue, fill=BookPale, rounded corners=2pt, font=\scriptsize, align=center, minimum width=15mm, minimum height=8mm, inner sep=2pt},
+  merge/.style={draw=BookBlue, fill=BookGreen, rounded corners=2pt, font=\scriptsize\sffamily, align=center, inner sep=4pt},
+  arr/.style={-{Stealth[length=1.5mm]}, BookBlue, thick},
+  lab/.style={font=\small\sffamily\bfseries, text=BookBlue, anchor=west},
+  note/.style={font=\scriptsize\sffamily, text=black!75, align=left},
+]
+% --- top: contiguous chunks
+\node[lab] at (-0.3,1.25) {Flash-Decoding: contiguous chunks, one task each};
+\node[q] (qv) at (-1.2,0) {query\\$\mathbf{q}_h$};
+\foreach \i/\lbl in {0/{0--255},1/{256--511},2/{512--767},3/{768--1023},4/{\dots},5/{$S{-}256$--$S{-}1$}} {
+  \draw[draw=BookBlue, fill=BookBlue!18] (\i*2.1,0.35) rectangle ++(1.9,-0.7);
+  \node[font=\scriptsize\sffamily] at (\i*2.1+0.95,0) {\lbl};
+  \node[part] (p\i) at (\i*2.1+0.95,-1.45) {$(m_{\i}, \ell_{\i}, \mathbf{o}_{\i})$};
+  \draw[arr] (\i*2.1+0.95,-0.35) -- (p\i);
+}
+\draw[arr] (qv) -- (-0.05,0);
+\node[note, anchor=west] at (12.75,0) {keys and values\\of one head};
+\node[merge] (mg) at (5.25,-3.05) {merge in index order: $m = \max_i m_i$,\quad $\ell = \sum_i \ell_i e^{m_i-m}$,\quad $\mathbf{o} = \sum_i \mathbf{o}_i e^{m_i-m}$\quad $\rightarrow$\quad output $\mathbf{o}/\ell$};
+\foreach \i in {0,...,5} { \draw[arr] (p\i.south) -- (mg.north -| p\i.south); }
+\node[note, anchor=west] at (12.75,-1.45) {partials computed\\in parallel};
+% --- bottom: llama.cpp's round-robin blocks
+\node[lab] at (-0.3,-4.35) {llama.cpp (Metal): 32-cell blocks dealt round-robin};
+\foreach \j in {0,...,23} {
+  \pgfmathtruncatemacro{\cix}{mod(\j,4)}
+  \ifcase\cix\relax
+    \def\col{BookBlue!45}\or\def\col{BookGold}\or\def\col{BookGreen}\or\def\col{red!25}\fi
+  \draw[draw=BookBlue!60, fill=\col] (\j*0.52,-4.85) rectangle ++(0.5,-0.55);
+}
+\node[note, anchor=west] at (12.75,-5.12) {block $b$ goes to\\simdgroup $b \bmod (32 \cdot n_{sg})$};
+\node[note, anchor=north west, text width=12.3cm] at (0,-5.6) {Each colour is one simdgroup's share (four shown). A key's block number alone decides which simdgroup reads it; a block that is masked in full is skipped. The 32 workgroups' partials, 130 floats each at head width 128, are merged by a second kernel with SIMD reductions.};
+\end{tikzpicture}

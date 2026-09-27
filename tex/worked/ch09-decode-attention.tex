@@ -1,0 +1,71 @@
+\section{Worked problems: batched steps, split counts and the lab's roofline}
+
+\subsection{When attention outweighs the weights}
+\textbf{Problem.} Llama-3-8B decodes a batch of 64 sequences, each with 4,096
+tokens of context, on an H100 (3.35~TB/s), with BF16 weights and a BF16 cache.
+How many bytes does one step read for the weights and for attention, and what
+share is attention's? Compare batch one, and a batch of 64 with an FP8 cache.
+
+\textbf{Solution.} The model's shape (32 layers, width 4,096, feed-forward width
+14,336, vocabulary 128,256, untied embeddings) gives 8.03~billion parameters,
+16.1~GB in BF16, read once per step whatever the batch: 4.8~ms at 3.35~TB/s. Its
+cache is $2 \times 32 \times 8 \times 128 \times 2 = 131{,}072$~bytes per token,
+so each sequence's 4,096 tokens are 0.54~GB and the batch's are 34.4~GB: 10.3~ms.
+Attention is 68\% of the step's bytes, and the step takes at least 15.1~ms. At
+batch one, the cache is 3\% of the bytes; the step is the weights. An FP8 cache
+halves attention's share of time to 5.1~ms, 52\% of a 9.9~ms step (all derived).
+The arithmetic confirms that bytes, not FLOPs, set the pace: the batch's
+attention is 137~GFLOP, 0.14~ms at the H100's 989~TFLOP/s, at the 4~FLOP/byte of
+equation~\eqref{eq:attn-intensity} with $g = 4$. Batching amortizes the weights,
+never the cache --- which is why the chapters on cache quantization, paging and
+sparse attention are about throughput, not only about memory capacity.
+
+\subsection{How many splits a GPU needs}
+\textbf{Problem.} The same model decodes one sequence at 32,768 tokens on an H100
+with 132 SMs. How many independent blocks does its attention launch without
+splitting, per query head and per packed key/value head? With 256-token
+chunks? How much traffic do the partials add? Then answer the same questions
+for a batch of 64 sequences at 4,096 tokens.
+
+\textbf{Solution.} Unsplit, the step has 32 blocks per layer (one per query head)
+or 8 (one per packed key/value head): a quarter, or a sixteenth, of the SMs,
+each walking 128~MiB of keys and values alone. With 256-token chunks each head
+gets 128 of them: 4,096 blocks, or 1,024 packed --- 31 or 7.8 per SM, enough to
+keep every SM busy. The partials are 130 floats per (query head, chunk):
+$32 \times 128 \times 520$~bytes = 2.1~MB per layer, written once and read once
+by the merge, against 134~MB of cache per layer --- about 3\% more traffic
+(derived). At batch 64 and 4,096 tokens the batch alone supplies
+$64 \times 8 = 512$ packed blocks, 3.9 per SM, before any split. Fixed 256-token
+chunks would still cut each sequence 16 ways: 8,192 blocks and 16 partials per
+head to merge, 17~MB of partials per layer, written and read once beside 537~MB
+of cache: 6\% more traffic for parallelism the batch already had. A fixed chunk size costs a
+little at large batches in exchange for results that do not depend on the
+batch. A split chosen to fill the machine for each batch saves that 6\% and
+gives up the guarantee: FlashInfer's balanced scheduler, for one, picks the
+largest split size that still saturates the GPU \cite{he2025nondeterminism}
+(\Chref{fast-wrong-answers}).
+
+\subsection{The lab on the roofline}
+\textbf{Problem.} At 32,768 tokens the lab's step performs 268~MFLOP (16 query
+heads $\times$ 32,768 tokens $\times$ 512 FLOPs) over a cache of 67~MB, counted
+once. One thread runs the \texttt{packed} plan in 12.2~ms. \Chref{roofline}'s lab
+measured 43.6~GB/s of reads for one thread and 60~GB/s for four. Is one thread
+compute-bound or memory-bound? Predict the four-thread times of
+\texttt{packed}, \texttt{packed+split} and \texttt{heads}, and compare them with
+the measurements.
+
+\textbf{Solution.} One thread computes at $268~\text{MFLOP} / 12.2~\text{ms} =
+22$~GFLOP/s, while reading the cache once would take $67~\text{MB} / 43.6~\text{GB/s}
+= 1.5$~ms: the thread spends eight times longer computing than it would reading,
+so it is compute-bound. Four cores give about 88~GFLOP/s. The \texttt{packed} plan
+has two tasks, so it can use two cores: 44~GFLOP/s, 6.1~ms predicted, 6.3
+measured. \texttt{packed+split} can use all four: 3.05~ms predicted, 3.6
+measured, the difference being the merges, the task queue and starting the
+threads. The \texttt{heads} plan does the same arithmetic but asks for 537~MB,
+each key and value eight times. If every request went to memory, it would take
+$537~\text{MB} / 60~\text{GB/s} = 8.9$~ms; if none did, 3.05~ms like the packed
+version. It measured 4.7--5.4~ms. In 4.7~ms four cores can draw at most 284~MB
+from memory, so at least 47\% of the repeated reads came from the caches, and in
+5.4~ms at least 39\% (all derived). The same arithmetic on the M1's GPU, where
+llama.cpp's per-head kernel ran at close to the read-once cost, says that there
+nearly all of them did.
