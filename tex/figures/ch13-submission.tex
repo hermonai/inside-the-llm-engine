@@ -1,0 +1,67 @@
+% Four ways to submit a chain of dependent kernels (schematic, not to scale). Costs on
+% the right are measured on the Apple M1 GPU by code/labs/ch13-launch/metal (record
+% 2026-09-26-m1-pass3, ch13-metal-run1.txt and -run2.txt, 1,024 elements): per kernel,
+% host wall clock for (a) and (b), GPU timestamps and host encoding for (c), GPU time
+% of the whole fused chain of 1,000 additions for (d).
+\begin{tikzpicture}[
+  host/.style={draw=BookBlue, fill=BookGold, font=\tiny\sffamily, inner sep=0pt, minimum height=4.2mm, anchor=west},
+  kern/.style={draw=BookBlue, fill=BookBlue!30, font=\tiny\sffamily, inner sep=0pt, minimum height=4.2mm, anchor=west},
+  fused/.style={draw=BookBlue, fill=BookGreen, font=\tiny\sffamily, inner sep=0pt, minimum height=4.2mm, anchor=west},
+  wait/.style={draw=black!45, dashed},
+  lane/.style={font=\scriptsize\sffamily, text=black!70, anchor=east},
+  title/.style={font=\small\sffamily\bfseries, text=BookBlue, anchor=west},
+  cost/.style={font=\scriptsize\sffamily, text=BookBlue, anchor=west, align=left, text width=3.9cm},
+  sig/.style={-{Stealth[length=1.3mm]}, black!60},
+]
+\newcommand{\chHost}[4]{\node[host, minimum width=#3cm] at (#1,#2) {#4};}
+\newcommand{\chKern}[4]{\node[kern, minimum width=#3cm] at (#1,#2) {#4};}
+\newcommand{\chIdle}[1]{\draw[black!15, line width=0.8pt] (0,#1) -- (10.3,#1);}
+\newcommand{\chGap}[4]{\draw[black!60] (#1,#3) -- ++(0,-0.09) -- (#2,#3-0.09) -- ++(0,0.09);
+  \node[font=\tiny\sffamily, text=black!70, anchor=north] at ({(#1+#2)/2},#3-0.1) {#4};}
+% --- (a) wait after every kernel
+\node[title] at (-0.95,0) {(a) wait after every kernel};
+\node[lane] at (-0.1,-0.55) {host}; \node[lane] at (-0.1,-1.2) {GPU};
+\chIdle{-1.2}
+\chHost{0}{-0.55}{0.4}{rec} \draw[wait] (0.4,-0.55) -- (3.25,-0.55);
+\chHost{3.25}{-0.55}{0.4}{rec} \draw[wait] (3.65,-0.55) -- (6.5,-0.55);
+\chHost{6.5}{-0.55}{0.4}{rec} \draw[wait] (6.9,-0.55) -- (9.75,-0.55);
+\node[font=\scriptsize] at (10.1,-0.55) {\dots};
+\chKern{1.45}{-1.2}{0.4}{k1} \chKern{4.7}{-1.2}{0.4}{k2} \chKern{7.95}{-1.2}{0.4}{k3}
+\draw[sig] (0.4,-0.72) -- (1.45,-1.03) node[pos=0.58, above, font=\tiny\sffamily, sloped] {submit};
+\draw[sig] (1.85,-1.03) -- (3.25,-0.72) node[pos=0.55, above, font=\tiny\sffamily, sloped] {done};
+\node[font=\tiny\sffamily, text=black!60] at (2.4,-0.36) {wait};
+\node[cost] at (10.55,-0.85) {about 160\,\textmu s per kernel;\\the GPU is busy for 5};
+% --- (b) queue every kernel, wait once
+\node[title] at (-0.95,-2.05) {(b) a command buffer per kernel, one wait};
+\node[lane] at (-0.1,-2.6) {host}; \node[lane] at (-0.1,-3.25) {GPU};
+\chIdle{-3.25}
+\foreach \i in {0,...,5} { \chHost{\i*0.45}{-2.6}{0.35}{} }
+\node[font=\tiny\sffamily, text=black!60, anchor=west] at (2.62,-2.6) {each: record, commit};
+\draw[wait] (4.7,-2.6) -- (8.7,-2.6);
+\node[font=\tiny\sffamily, text=black!60] at (6.7,-2.41) {wait};
+\foreach \i/\k in {0/1,1/2,2/3,3/4,4/5,5/6} { \chKern{0.9+\i*1.45}{-3.25}{0.4}{k\k} }
+\chGap{1.3}{2.35}{-3.5}{per-buffer cost}
+\node[cost] at (10.55,-2.9) {about 31\,\textmu s per command\\buffer, waited for or not};
+% --- (c) record all kernels, submit once
+\node[title] at (-0.95,-4.4) {(c) all kernels in one submission: a command buffer, a CUDA graph};
+\node[lane] at (-0.1,-4.95) {host}; \node[lane] at (-0.1,-5.6) {GPU};
+\chIdle{-5.6}
+\chHost{0}{-4.95}{1.75}{record k1\dots k6} \chHost{1.75}{-4.95}{0.6}{commit}
+\draw[wait] (2.35,-4.95) -- (5.9,-4.95);
+\node[font=\tiny\sffamily, text=black!60] at (4.1,-4.76) {wait};
+\foreach \i/\k in {0/1,1/2,2/3,3/4,4/5,5/6} { \chKern{2.7+\i*0.55}{-5.6}{0.4}{k\k} }
+\chGap{3.1}{3.25}{-5.85}{dependency gap}
+\node[cost] at (10.55,-5.25) {1.2\,\textmu s of GPU time and\\0.14\,\textmu s of encoding per kernel};
+% --- (d) one fused kernel
+\node[title] at (-0.95,-6.8) {(d) the chain fused into one kernel};
+\node[lane] at (-0.1,-7.35) {host}; \node[lane] at (-0.1,-8.0) {GPU};
+\chIdle{-8.0}
+\chHost{0}{-7.35}{0.45}{rec} \chHost{0.45}{-7.35}{0.55}{commit}
+\draw[wait] (1.0,-7.35) -- (3.4,-7.35);
+\node[font=\tiny\sffamily, text=black!60] at (2.2,-7.16) {wait};
+\node[fused, minimum width=1.75cm] at (1.4,-8.0) {k1\dots k6 fused};
+\node[cost] at (10.55,-7.65) {74\,\textmu s of GPU time for\\all 1,000 additions};
+% --- time axis
+\draw[-{Stealth[length=1.5mm]}, black!55] (0,-8.75) -- (10.3,-8.75) node[right, font=\scriptsize\sffamily, text=black!70] {time};
+\node[font=\scriptsize\sffamily, text=black!60, anchor=west] at (0,-9.05) {schematic, not to scale; right: measured on the Apple M1 GPU};
+\end{tikzpicture}

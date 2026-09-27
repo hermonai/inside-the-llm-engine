@@ -1,30 +1,34 @@
-% status: ZERO
+% status: FULL
 % Chapter 13 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md (graph size),
-% research/measurements/2026-09-23-m1-part2.md (dispatch overhead).
+% Measurements: research/measurements/2026-09-26-m1-pass3.md, Chapter 13 (the lab's
+% runs, Metal dispatch costs, llama.cpp's encoding of one decode step);
+% research/measurements/2026-09-23-m1-part2.md (dispatch cost from PyTorch).
 \chapter{How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture}\label{ch:kernel-languages}
 
 \begin{ChapterIntent}
 A decode step launches hundreds of small kernels, and at small batch the time
 spent launching them can rival the time spent running them. This chapter
-surveys how production kernels are written now --- CUDA C++ with CUTLASS and
-CuTe, Triton, Python DSLs such as CuTe DSL and TileLang, and NVIDIA's
-tile-level CUDA --- and what each abstraction hides and exposes. It then
-measures launch overhead and shows how CUDA graphs, fusion and compilers such
-as \texttt{torch.compile} recover it, and why engines capture graphs per batch
-shape.
+measures what a launch costs, piece by piece, on a real GPU; follows how
+llama.cpp and vLLM stop paying for it --- few submissions, CUDA graphs captured
+per batch size, fusion, compilers, megakernels; and surveys how production
+kernels are written now: CUDA C++ with CUTLASS and CuTe, Triton, Python DSLs
+such as CuTe DSL and TileLang, and NVIDIA's tile-level CUDA, with what each
+abstraction hides and what it exposes.
 \end{ChapterIntent}
 
-\OpeningSection{Nine hundred operations per token}
+\OpeningSection{Five hundred kernels per token}
 
-When llama.cpp prepared to decode Llama~3.2~3B on the M1 of
-\Chref{roofline}, it logged the size of the computation it would run for every
-step: a graph of \textbf{931 nodes} (measured; the log line is in the record
-\texttt{2026-09-23-m1-llama32-3b}). Twenty-eight layers of norms, projections,
-rotations, attention, activations and additions, plus the views and reshapes
-that connect them, come to about 33 operations per layer. At 21 tokens per
-second that is some twenty thousand operations a second, each of which the
-host must describe and the GPU must start.
+When llama.cpp decodes a token of Llama~3.2~3B on the M1 of \Chref{roofline},
+it runs a graph of \textbf{875 nodes} (measured; the log is in the record
+\texttt{2026-09-26-m1-pass3}). Many of them cost nothing: views, reshapes and
+permutations only relabel memory. Its Metal backend turns the rest into
+\textbf{481 GPU operations} per token: 197 matrix--vector products, 57
+normalizations, 56 rotations, 56 cache writes, 56 residual additions, 28
+attention calls, 28 activations, and three small gathers and copies. Each
+attention call is itself two kernels here, 32 partial passes over the cache
+and a merge (\Chref{decode-attention}), so the GPU starts about 509 kernels for
+every token --- at the 19.8 tokens per second of that run, ten thousand
+kernels a second, each of which the host must describe and the GPU must start.
 
 Starting one is not free. On an H100, Hazy Research measured about 2.1
 microseconds to launch a kernel on a stream, and about 1.3 with CUDA graphs;
@@ -32,22 +36,26 @@ a Llama-1B forward pass in a conventional engine is around a hundred kernels
 \cite{spector2025megakernel}. A hundred launches at two microseconds is
 0.2~ms --- against a forward pass that streams 2.5~GB of BF16 weights in about
 0.75~ms at the H100's full bandwidth (derived). At batch one on a small model,
-starting the work can cost a quarter of doing it. On the M1 the same effect is
-easy to see from Python. A chain of 1,000 dependent additions on 1,024
-numbers, each addition its own GPU operation, took 6.5~ms; one addition doing
-the same arithmetic took 0.21~ms, so each extra operation cost about
-6~microseconds, none of it arithmetic. Compiled with \texttt{torch.compile},
-the chain became a single generated GPU kernel containing all thousand
-additions, launched once. It took 0.21~ms --- the cost of one operation ---
-after 2.6~s of compilation on first use (measured; record
-\texttt{2026-09-23-m1-part2}).
+starting the work can cost a quarter of doing it.
+
+On the M1 the effect is easy to see from Python. A chain of 1,000 dependent
+additions on 1,024 numbers, each addition its own PyTorch operation on the
+GPU, took 6.5~ms; one addition doing the same arithmetic took 0.21~ms, so each
+extra operation cost about 6~microseconds, none of it arithmetic. Compiled
+with \texttt{torch.compile}, the chain became a single generated GPU kernel
+containing all thousand additions, launched once. It took 0.21~ms --- the cost
+of one operation --- after 2.6~s of compilation on first use (measured; record
+\texttt{2026-09-23-m1-part2}). This chapter's lab takes Python out of the way
+and asks the GPU directly. The same chain costs 160~microseconds per addition
+when the host waits for each one, 31 when it only queues them, and 1.5 when all
+thousand travel in one submission (measured).
 
 The kernels themselves are the other half of the story. Every chapter of this
 part derived an algorithm --- a tiled matrix product, an online softmax, a
 split reduction, a dequantizing inner loop. Someone has to write those
 algorithms for each generation of hardware, and in 2026 they are written in
-more languages than ever. This chapter is about both halves: how kernels are
-written, and how engines stop paying to launch them.
+more languages than ever. This chapter is about both halves: how engines stop
+paying to launch kernels, and how the kernels are written.
 
 \NapkinSection{Napkin math: launch overhead against step time}
 
@@ -58,13 +66,319 @@ f_{\text{launch}} = \frac{n_k\,t_{\text{launch}}}{n_k\,t_{\text{launch}} + t_{\t
 \label{eq:launch-fraction}
 \end{equation}
 The work term shrinks with smaller models, faster GPUs and smaller batches;
-the launch term does not. For Llama-1B at batch one on an H100, $f\approx 0.2$
-(derived above). For an 8-billion-parameter model the work is about 5~ms and a
-few hundred launches cost well under 1~ms: $f\approx 0.1$. For the same model
-at batch 64, the step is about 20~ms (\Chref{napkin-math}) and $f$ falls to a
-few percent. Launch overhead is a batch-one, small-model, fast-GPU problem ---
-exactly the regime of interactive use and of the draft models in speculative
-decoding (\Chref{speculative-decoding}).
+the launch term does not. Four machines and models, put through the equation
+(derived; the M1's kernel count measured from llama.cpp's log and its launch
+cost from this chapter's lab, the H100's kernel counts at Hazy Research's rate
+of about six kernels per layer, and Qwen3-8B's step times from
+\Chref{napkin-math}):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Machine, model, batch & Kernels & Launching & Work & $f_{\text{launch}}$ \\
+\midrule
+M1, Llama~3.2~3B \texttt{Q4\_K\_M}, 1 & 509 & 0.66~ms & 50~ms & 1.3\% \\
+H100, Llama-1B BF16, 1 & 100 & 0.21~ms & 0.75~ms & 22\% \\
+H100, Qwen3-8B BF16, 1 & 220 & 0.46~ms & 5.9~ms & 7\% \\
+H100, Qwen3-8B BF16, 32 & 220 & 0.46~ms & 12.9~ms & 3.5\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The M1 and the H100 sit at opposite corners. The M1's GPU is slow for its
+launch cost: a 3B model's step takes fifty milliseconds, and five hundred
+kernels at about 1.3~microseconds each are just over one percent of it. The
+H100 is fast: a 1B model's weights stream through it in three quarters of a
+millisecond, and a hundred launches are a fifth of the step. Batching dilutes
+the launches, because a step at batch 32 launches the same kernels as a step
+at batch one while taking more than twice as long. Launch overhead is a
+batch-one, small-model, fast-GPU problem --- exactly the regime of interactive
+use and of the draft models in speculative decoding
+(\Chref{speculative-decoding}) --- and it grows with every generation whose
+bandwidth grows faster than its launch latency falls. Hazy Research's
+megakernel, which removes launches altogether, gained more over vLLM on a B200
+than on an H100: 3.5 times against 2.5 (the authors' measurements)
+\cite{spector2025megakernel}.
+
+\section{What a launch costs}
+
+A kernel launch is a message from the CPU to the GPU. In CUDA, the host calls
+a launch function with a grid shape, a block shape and the kernel's arguments;
+the driver packs them into a command and appends it to a \Term{stream}, a queue
+that the GPU's front end consumes in order, and the call returns before the
+kernel has run. The front end sets up the grid and hands thread blocks to
+streaming multiprocessors as they free up; when every block has finished, the
+next command in the stream may start. Metal, which llama.cpp uses on Apple
+silicon, has the same pieces under other names: the host records
+\emph{dispatches} through an encoder into a \emph{command buffer}, commits the
+buffer to a \emph{command queue}, and may wait for it to complete.
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.31\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.3\linewidth}@{}}
+\toprule
+Idea & CUDA & Metal \\
+\midrule
+An ordered queue of GPU work & stream & command queue \\
+One kernel launch & \verb|kernel<<<grid, block>>>(args)| & a dispatch through an encoder \\
+Many launches, one submission & CUDA graph, recorded once & command buffer, recorded each time \\
+Order between dependent kernels & stream order & serial encoder, or barriers \\
+Wait for the GPU & \texttt{cudaStreamSynchronize} & \texttt{waitUntilCompleted} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Metal also has indirect command buffers, which can be recorded once
+and reused, closer to a CUDA graph; llama.cpp's Metal backend at
+\texttt{d006858} does not use them.
+
+Three different costs hide under the name \emph{launch overhead}, and they
+have different remedies.
+
+\begin{description}
+\item[Issue cost.] The host's time to describe a launch: the framework's
+bookkeeping (Python, PyTorch's dispatcher, shape checks) and the driver's
+encoding of the command. It is paid on the CPU, and it hurts when the GPU
+finishes kernels faster than the host can issue them. Recording the launches
+once and replaying them, a CUDA graph, removes most of it.
+\item[Gap cost.] The GPU's time between dependent kernels. The next kernel
+cannot start until the last block of the previous one has finished and its
+writes are visible; then its own blocks must be scheduled and issue their
+first loads. Graphs do not remove it. Fusing the kernels does, and so does a
+persistent kernel that schedules its own work.
+\item[Synchronization cost.] A round trip: the host waits for the GPU to
+finish, learns that it has, and only then sends more. The remedy is not to
+wait --- to queue work ahead and synchronize only when the host needs a
+result, which in decoding is once per token, to sample.
+\end{description}
+
+The lab separates the three on the M1's GPU. It applies a chain of 1,000
+dependent additions, $x \leftarrow x + c_k$, to 1,024 floats in five ways ---
+each addition in its own command buffer, waited for; each in its own command
+buffer, queued without waiting; all as dispatches in one command buffer, in a
+serial encoder or in a concurrent one with a barrier between them, as llama.cpp
+does; and all in one fused kernel. It checks every result bit for bit against
+the CPU, and it reads the GPU's own timestamps to separate time on the GPU from
+time spent getting work to it. In microseconds per addition, two runs of five
+repetitions each (measured, record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+How the chain is submitted & Host & GPU & Encoding \\
+\midrule
+A command buffer per addition, each waited for & 150--169 & 5.3 & --- \\
+A command buffer per addition, one wait & 30.7--31.3 & 30.5--31.2 & --- \\
+One command buffer, serial encoder & 1.49--1.50 & 1.17--1.18 & 0.14 \\
+One command buffer, barriers (as llama.cpp) & 1.81--1.84 & 1.30--1.33 & 0.30 \\
+One fused kernel & 0.23--0.25 & 0.074 & 0.004 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\EngineFigure{ch13-submission}{Four ways to submit a chain of dependent
+kernels (schematic). (a) Waiting after each kernel pays a round trip per
+kernel. (b) Queuing without waiting removes the round trip but still pays for
+every command buffer. (c) One submission for the whole chain --- one Metal
+command buffer, or one CUDA graph replay --- leaves only the gap between
+dependent kernels. (d) Fusion leaves one kernel. Right: costs measured on the
+Apple M1 GPU by the chapter's lab.}{fig:ch13-submission}
+
+Read the table from the top. Waiting after every command buffer costs about
+160~microseconds per addition, and the GPU's timestamps say it was busy for 5
+of them; the other 150 are the round trip, spent submitting the buffer,
+scheduling it, noticing that it has finished and waking the host. Queuing the
+buffers without waiting removes the round trip but not the buffer: each still
+costs about 31~microseconds, and since the host's time and the GPU's span
+agree, the buffers are processed one after another at that rate. A command
+buffer is a heavy object on this machine, and an engine should submit few of
+them. Put all thousand dispatches in one buffer and each costs 1.2
+microseconds of GPU time --- the gap cost of a dependent kernel, since the
+arithmetic on 1,024 floats takes nanoseconds --- plus 0.14 microseconds of host
+time to encode. The concurrent encoder with barriers, which llama.cpp uses so
+that independent operations may overlap, pays a little more for each dependent
+one: 1.3~microseconds on the GPU and 0.3 to encode. Fuse the chain and the
+whole thing is one dispatch. Its 74~microseconds of GPU time, spread over a
+thousand additions, is less per addition than the gap cost of one of them, and
+the 0.24~microseconds per addition that the host sees is mostly the chain's
+single round trip.
+
+The same ladder appears on a CPU, much lower. The lab's Rust part runs the
+chain on a worker thread that owns the buffer and takes commands from a queue,
+as a GPU does from a stream. At 1,024 floats a round trip --- send an addition,
+wait for the worker to report it done --- costs 2.7~microseconds per addition;
+queuing each addition costs 0.073, a recorded chain sent as one command 0.058,
+and a fused kernel 0.026 (measured). A thread in the same process is a much
+nearer device than a GPU behind a driver: its round trip is sixty times cheaper
+and a queued command four hundred times cheaper. But the order is the same,
+and so is the lesson: waiting is dearest, submitting is next, and only fusion
+removes work rather than overhead.
+
+\EngineFigure{ch13-costs}{Cost per addition of a chain of 1,000 dependent
+additions on 1,024 floats, by how the work is submitted, on a logarithmic
+scale (measured). The GPU's ladder (Metal, host wall clock, mean of two runs)
+and the CPU's (a worker thread fed by a queue) have the same order, three rungs
+apart in places: a GPU is a remote device.}{fig:ch13-costs}
+
+Larger buffers show where the fixed costs go. At a million floats a dispatch in
+one command buffer costs 50 to 72~microseconds of GPU time, because each
+addition now reads and writes 8~MB. The overheads shrink against the work:
+waiting after each addition costs five to seven times as much as a dispatch in
+one buffer, down from a hundred times, and a command buffer per addition 1.4
+times as much; on the CPU the three unfused methods agree within a tenth. Only
+fusion still changes the picture, applying the thousand additions at
+6.2~microseconds each on the GPU, because it reads and writes the buffer once
+instead of a thousand times (measured). Launch overhead and memory traffic are
+different problems. A CUDA graph removes the first; only fusion removes the
+second.
+
+\section{How llama.cpp submits a token}
+
+llama.cpp's answers to the three costs are visible in its source at commit
+\texttt{d006858} and in the log of the decode step that opened this chapter.
+
+\emph{Build the graph once.} Before each step the context checks whether the
+new batch's graph would have the same topology as the last one. For decoding
+it does, and the old graph is reused without being rebuilt or re-allocated
+(\texttt{llama\_context::process\_ubatch}; the run reports ``graphs reused'',
+and the environment variable \texttt{LLAMA\_GRAPH\_REUSE\_DISABLE} turns it
+off). This is not a recording of GPU work, only of the host's description of
+it, but it removes the cost of constructing 875 nodes for every token.
+
+\emph{Few command buffers, encoded in parallel.} The Metal backend encodes a
+token's graph into two command buffers. The calling thread encodes the first
+$\max(64, n/10)$ of the $n$ nodes and commits them at once, so that the GPU
+starts working, while a second thread encodes the rest into the other buffer;
+a comment in the source records that one or two extra threads worked best on
+an M1 Pro and an M2 Ultra (\texttt{ggml-metal-context.m}). At about
+31~microseconds per command buffer on the M1, two per token cost 0.06~ms of a
+50~ms step.
+
+\emph{Barriers only where needed.} The encoder is of Metal's concurrent type,
+in which dispatches may overlap. Before each operation the backend compares the
+memory ranges it reads and writes with those of the operations since the last
+barrier. If it writes nothing they touch and reads nothing they write, it runs
+concurrently; otherwise the backend inserts a memory barrier and starts a new
+set (\texttt{ggml-metal-ops.cpp}). In the decode step, 116 of the 481
+operations ran without a barrier --- the key and value projections alongside
+the query projection, the up projection alongside the gate --- and 365 waited
+for the ones before them.
+
+\emph{Fuse the obvious neighbours.} A normalization followed by a
+multiplication by its weight, and an addition if one follows, becomes one
+kernel; so does a chain of up to eight additions of the same shape. In the
+decode step all 57 normalizations were fused with their weights, removing 57
+dispatches and 57 trips of an activation vector through memory. The
+environment variables \texttt{GGML\_METAL\_FUSION\_DISABLE} and
+\texttt{GGML\_METAL\_CONCURRENCY\_DISABLE} turn the last two ideas off, which is
+the quickest way to measure what they are worth on a given machine.
+
+\emph{On NVIDIA GPUs, graphs.} The CUDA backend uses CUDA graphs on Ampere and
+newer GPUs. A graph's first call runs eagerly; a second call whose nodes have
+the same properties completes a warm-up and is captured; later calls with
+unchanged properties replay the capture. When the properties change, the
+warm-up starts again, and the executable graph is updated in place with
+\texttt{cudaGraphExecUpdate} or, if that fails, instantiated anew. Graphs are
+disabled for weights split across GPUs and for mixture-of-experts products
+that would have to synchronize the stream (\texttt{ggml-cuda.cu}).
+
+\section{Launch overhead and CUDA graphs}
+
+A CUDA graph records a sequence of kernel launches once and replays it with a
+single submission, removing most of the issue cost of every launch after the
+first; Hazy Research's 2.1~microseconds fell to 1.3, and the gap cost remains.
+The catch is that a graph captures fixed shapes and fixed memory addresses:
+the replay launches the same kernels with the same arguments on the same
+buffers. An engine that wants graphs therefore keeps the tensors a graph
+touches at fixed addresses, copies each step's inputs into them, and captures
+one graph per batch size it expects.
+
+vLLM's rule is explicit in its source at commit \texttt{bcdacfc}
+(\texttt{vllm/config/vllm.py}, \texttt{vllm/v1/cudagraph\_dispatcher.py}). It
+captures batches of 1, 2 and 4 tokens, every multiple of 8 below 256, and every
+multiple of 16 from 256 up to a maximum: 512 on most GPUs and 1,024 on
+data-centre Blackwell, but never more than twice the number of sequences the
+scheduler may run at once. A batch runs at the smallest captured size that
+holds it, padded with dummy tokens, and a batch larger than the maximum runs
+without a graph. With the H100's default limit of 1,024 sequences that is 51
+sizes; on a B200, 83. The default mode, \texttt{FULL\_AND\_PIECEWISE}, captures
+two kinds of graph for each size: a full graph, attention included, for batches
+in which every request decodes one token, and piecewise graphs --- everything
+except attention --- for batches that mix prefills and decodes, whose attention
+work depends on each request's lengths \cite{vllm2026cudagraphs}. The graphs
+are captured at startup, largest first, before the server accepts a request.
+
+Padding is the price of a finite set of sizes, and the lab's third part
+computes it. If every batch size from 1 to 512 were equally likely, vLLM's 51
+sizes would waste 3.3\% of the computed slots on average; the worst case is a
+batch of 9 padded to 16, 44\% padding. Ten graphs at the powers of two would
+waste 24.5\% on average and up to 49.8\%, for a batch of 257 run at 512
+(derived). The wasted slots cost less than their share suggests in decode,
+where a step is limited by reading weights and cache and a padded token adds
+arithmetic the GPU had idle anyway (\Chref{napkin-math}); they cost their full
+share when a step is limited by compute, as a step carrying prefill chunks is
+(\Chref{prefill-decode}). That is why the sizes are coarse only at the bottom
+--- 1, 2, 4 and 8 --- and step by 8 and 16 above it, where token counts are
+large: there padding costs its full share, the steps are small, and each extra
+size is worth its memory and its capture time.
+
+\section{Fusion and compilers}
+
+Graphs remove the cost of launching kernels; fusion removes kernels, and with
+them the memory traffic between them. The lab's second part measures the
+traffic on the CPU with the three nodes llama.cpp fuses: RMSNorm, a
+multiplication by the norm's weight and an addition, over 4,096 tokens of
+width 3,072, 50~MB of activations. As three kernels the activations cross
+memory three times each way; fused, once each way, so a pass limited by memory
+bandwidth should be three times faster. It was 2.6 to 3.3 times faster in four
+measurements (one and four threads, two runs), with the unfused passes moving
+38 to 55~GB/s by the byte count, most of the M1's 67--68~GB/s
+(\Chref{roofline}), and the outputs were identical to the bit, because the fused kernel rounds each
+element exactly as the three passes do (measured). Here is the fused kernel;
+the unfused version is the same loop split in three:
+
+\CodeLines{../code/labs/ch13-launch/src/main.rs}{306}{317}
+
+Fusion is not free. A fused kernel holds more state per thread and does more
+work between memory accesses; when its arithmetic has too little parallelism
+to hide its own latency, it can be slower than the kernels it replaced. The
+lab shows this by shrinking the fused chain's tile from 64 elements to 8: its
+additions then form too few independent chains to keep the CPU's adders busy,
+and the fused chain became slower than a thousand separate passes, 0.61
+microseconds per addition against 0.31 at 4,096 floats and 118 against 76 at a
+million (measured). On a GPU the same trade appears as registers: a fused
+kernel that needs more registers per thread runs fewer threads at once, and
+may no longer hide memory latency (\Chref{matmul-hardware}).
+
+Writing fused kernels by hand for every pair of neighbours does not scale, so
+engines hand the job to compilers. vLLM compiles each model's forward pass
+with \texttt{torch.compile}, wraps attention as an opaque operation, splits
+the graph at attention, and compiles the pieces between --- the pieces its
+piecewise CUDA graphs capture --- all before it serves a request, so no request
+waits for a compiler \cite{vllm2025torchcompile}. The M1 measurement in the
+opening is the same mechanism at small scale: PyTorch's compiler turned a
+thousand operations into one generated kernel, at the price of 2.6~s of
+compilation on first use.
+
+The limiting case is a single \Term{megakernel}: the whole forward pass as one
+persistent kernel that schedules its own work. Hazy Research built one for
+Llama-1B and named three wastes it removes (the authors' measurements, May
+2025). Launches, which even graphs leave at 1.3~microseconds each. Tails, the
+idle multiprocessors at the end of a kernel whose blocks do not divide evenly
+among them: 512 blocks on a B200's 148 multiprocessors leave 80 idle in the
+last wave. And stalls, the thousands of cycles each kernel spends loading its
+first weights, which could have overlapped the previous kernel's work. Their
+megakernel runs an interpreter on every multiprocessor, executing a
+precomputed list of instructions; it divides shared memory into thirteen
+16~KiB pages that one instruction can hand to the next, so the next weights
+start loading while the current computation finishes; and it replaces kernel
+boundaries with counters in global memory that instructions increment and
+wait on. It used 78\% of an H100's memory bandwidth where engines of the time
+used at most half, and finished a forward pass in under a millisecond on an
+H100 and under 680~microseconds on a B200 \cite{spector2025megakernel}. MPK
+compiles models into such kernels automatically, from a graph of tasks at the
+granularity of single multiprocessors executed by a runtime inside the kernel,
+and reports up to 1.7 times lower end-to-end latency than serving systems that
+launch a kernel per operator \cite{cheng2025mpk}.
 
 \section{The kernel author's choices}
 
@@ -78,6 +392,91 @@ they make the programmer spell out and which they make for them. The more a
 language decides, the faster kernels are written; the less it decides, the
 closer they can get to the hardware's limits.
 
+\section{One kernel, four ways}
+
+The lab's kernel is the smallest possible: add a constant to every element of
+an array. Written for four programming models, it shows where each puts the
+work of mapping data to threads. (The CUDA, Triton and cuTile versions below
+are sketches written from each language's documentation; this book's tests
+cannot run them without an NVIDIA GPU. The Metal version is the lab's.) In
+CUDA C++ the unit is one thread:
+
+\begin{verbatim}
+__global__ void add_one(float *x, float c, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;   // this thread's element
+    if (i < n) x[i] += c;                            // the last block overhangs
+}
+// launch: add_one<<<(n + 255) / 256, 256>>>(x, c, n);
+\end{verbatim}
+
+\noindent The programmer computes each thread's index from its block and thread
+numbers, chooses 256 threads per block, and guards the elements past the end.
+Metal on Apple GPUs is the same model. The lab launches exactly as many threads
+as there are elements, so its kernel needs no guard:
+
+\CodeLines{../code/labs/ch13-launch/metal/kernels.metal}{8}{12}
+
+\noindent In Triton the unit is a \emph{program} that owns a block of elements:
+
+\begin{verbatim}
+@triton.jit
+def add_one(x_ptr, c, n, BLOCK: tl.constexpr):
+    offs = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)   # this program's block
+    mask = offs < n
+    x = tl.load(x_ptr + offs, mask=mask)
+    tl.store(x_ptr + offs, x + c, mask=mask)
+# launch: add_one[(triton.cdiv(n, 256),)](x, c, n, BLOCK=256)
+\end{verbatim}
+
+\noindent Loads and stores move whole blocks, with a mask for the overhang; how
+the block is spread over the threads of a warp, and in what widths memory is
+read, is the compiler's choice. In cuTile Python the unit is a \emph{tile} of
+an array, and the pointer arithmetic disappears:
+
+\begin{verbatim}
+@ct.kernel
+def add_one(x, c, tile: ct.Constant[int]):
+    i = ct.bid(0)                                           # this block's tile
+    t = ct.load(x, index=(i,), shape=(tile,))
+    ct.store(x, index=(i,), tile=t + c)
+# launch: ct.launch(stream, ((n + 255) // 256, 1, 1), add_one, (x, c, 256))
+\end{verbatim}
+
+\noindent The kernel receives arrays that know their shapes, an index names a
+tile rather than an element, and the edges are the runtime's problem: a load
+that runs past the end of the array pads the missing elements, with a value
+the kernel may choose, and a store ignores them. Tile shapes must be known when the kernel is compiled, and each
+dimension must be a power of two \cite{nvidia2026cutile}.
+
+For one addition the four versions are the same program. They part ways as
+soon as an operation needs threads to cooperate. An RMSNorm row needs a sum
+across its 3,072 elements. In CUDA or Metal the programmer writes it: each
+thread sums a slice, the threads of a warp combine their partial sums with
+shuffle instructions, and the warps combine theirs through shared memory, with
+the programmer choosing the number of threads and how the slices interleave.
+In Triton it is \texttt{tl.sum(x * x, axis=0)} over the block, and the compiler
+writes the shuffles; in cuTile it is a reduction over a tile. A matrix product
+goes further. In Triton it is \texttt{tl.dot} on two blocks, and the compiler
+picks the tensor-core instructions and stages the operands through shared
+memory, with \texttt{num\_stages} (3 by default) setting how many loads the
+pipeline keeps in flight and \texttt{num\_warps} (4 by default) how many warps
+share the work \cite{triton2026config}; in CUDA C++ every one of those choices
+is the programmer's.
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.16\linewidth}>{\raggedright\arraybackslash}p{0.16\linewidth}@{}}
+\toprule
+Who decides & CUDA C++, Metal & CUTLASS and CuTe & Triton & cuTile \\
+\midrule
+Unit of code & a thread & a thread, with tensors described by layouts & a program owning a block & a block owning tiles \\
+Mapping elements to threads & programmer & programmer, through layouts & compiler & compiler \\
+Staging through shared memory & programmer & library templates & compiler & compiler \\
+Matrix instructions & programmer & templates per architecture & compiler & compiler \\
+Edges of arrays & explicit guards & predication & masks & padded loads, ignored stores \\
+\bottomrule
+\end{tabular}
+\end{center}
+
 \section{CUDA C++, CUTLASS and CuTe}
 
 At the bottom is CUDA C++ with inline PTX: every choice explicit, every new
@@ -90,15 +489,30 @@ fastest GEMM and attention kernels in production engines are CUTLASS or
 CuTe underneath. The price is template-heavy code that is slow to compile and
 hard to read.
 
+CuTe's central object is the \Term{layout}: a shape and a stride, printed as
+\texttt{Shape:Stride}, which map a coordinate to an offset by the inner product
+of the coordinate with the stride \cite{nvidia2026cutelayout}. A $4\times2$
+tile stored by rows is \texttt{(4,2):(2,1)}, and element $(i, j)$ lives at
+offset $2i + j$; stored by columns it is \texttt{(4,2):(1,4)}, offset $i + 4j$.
+Because shapes and strides can nest, one layout can say how a tile is divided
+among the 128 threads of a Hopper warpgroup in the pattern its matrix
+instruction requires, or how shared memory is permuted to avoid bank
+conflicts; and because layouts compose, a kernel is written as a chain of
+layout transformations from the tensor in global memory to each thread's
+registers. The same algebra serves every architecture; what changes between
+generations is which layouts the hardware's instructions accept.
+
 \section{Triton: tiles in Python}
 
 Triton, introduced in 2019, raised the unit of programming from the thread to
 the tile: the programmer writes what one block computes on blocks of data, and
 the compiler decides how threads cooperate within it \cite{tillet2019triton}.
 It became the default way to write custom kernels in the PyTorch ecosystem,
-and PyTorch's own compiler generates Triton code. vLLM ships a Triton
-attention backend that runs where vendor kernels are not available
-\cite{vllm2026attentionbackends}.
+and PyTorch's own compiler generates Triton code. Triton kernels are usually
+autotuned: the author lists candidate block sizes, warp counts and pipeline
+depths, and Triton times each on the first call for a new problem shape and
+keeps the fastest. vLLM ships a Triton attention backend that runs where vendor
+kernels are not available \cite{vllm2026attentionbackends}.
 
 \section{CuTe DSL, TileLang and ThunderKittens}
 
@@ -115,10 +529,13 @@ authors' measurements \cite{spector2024thunderkittens}.
 
 In December 2025 NVIDIA added a tile-based programming model to CUDA itself:
 CUDA Tile, with a virtual instruction set for tile programs (CUDA Tile IR) and
-cuTile Python, a DSL on top of it, supported at launch on Ampere, Ada and
-Blackwell-class GPUs \cite{nvidia2025cuda131}. Its significance for engines is
-portability: a tile program written once can target tensor cores across
-generations, where a CUTLASS kernel is typically rewritten per architecture.
+cuTile Python, a DSL on top of it \cite{nvidia2025cuda131}. Its reach has grown
+release by release. The CUDA Tile release notes date support for Ampere and
+Ada to CUDA 13.2 in March 2026 \cite{bentz2026cuda132}, Hopper to the release
+aligned with CUDA 13.3 in May, and a developer preview for Rubin to September
+\cite{nvidia2026cudatile}. Its significance for engines is portability: a tile
+program written once can target tensor cores across generations, where a
+CUTLASS kernel is typically rewritten per architecture.
 
 \section{Beyond NVIDIA}
 
@@ -126,58 +543,62 @@ The same layering exists elsewhere, with different names: Metal shaders on
 Apple silicon, used by llama.cpp; HIP and ROCm on AMD, where vLLM has its own
 attention backends; and portable CPU kernels, which ggml provides for every
 major instruction set (Appendix~\ref{app:cpu}). An engine that serves more
-than one vendor's hardware carries a kernel set per backend, and correctness
-tests that compare them (\Chref{fast-wrong-answers}).
-
-\section{Launch overhead and CUDA graphs}
-
-A CUDA graph records a sequence of kernel launches once and replays it with a
-single submission, removing most of the per-launch host work. The catch is
-that a graph captures fixed shapes and fixed memory addresses. Engines
-therefore capture one graph per batch size they expect, pad each real batch to
-the nearest captured size, and keep the tensors a graph uses at fixed
-addresses. vLLM's default captures a full graph for batches in which every
-request decodes one token, and piecewise graphs --- everything except
-attention --- for mixed batches, because attention's work depends on each
-request's context length \cite{vllm2026cudagraphs}.
-
-\section{Fusion and compilers}
-
-Graphs remove the cost of launching kernels; fusion removes kernels. Combining
-a normalization with the projection that follows it, or a quantization with
-the operation that produced its input, saves a launch and a round trip of the
-activation through memory. vLLM compiles each model's forward pass with
-\texttt{torch.compile}, wraps attention as an opaque operation, splits the
-graph at attention, and compiles the pieces between --- all before it serves a
-request, so no request waits for a compiler \cite{vllm2025torchcompile}. The
-limiting case is a single \Term{megakernel}: the whole forward pass as one
-persistent kernel that schedules its own work. Hazy Research built one for
-Llama-1B that used 78\% of an H100's memory bandwidth where engines of the time
-used at most half, and finished a forward pass in under a millisecond
-\cite{spector2025megakernel} (the authors' measurements, May 2025).
+than one vendor's hardware carries a kernel set per backend, and the sets are
+large: at commit \texttt{d006858} llama.cpp's Metal shader library defines 109
+kernel functions, instantiated as 560 named kernels for different types and
+shapes, and its CUDA backend has 61 kernel source files plus 116 generated
+instantiations of templated ones. Every one needs correctness tests that
+compare it with a reference (\Chref{fast-wrong-answers}).
 
 \LedgerSection
 
-Capturing decode steps as CUDA graphs and fusing the operations between
-attention calls:
+Capturing decode steps as CUDA graphs (or submitting them in few command
+buffers) and fusing the operations between attention calls:
 
 \begin{ConstraintLedger}
-Latency & buys & Launch gaps disappear; worth up to about a fifth of a small model's batch-one step (derived). \\
+Latency & buys & Launch gaps and round trips disappear: about a fifth of a 1B model's batch-one step on an H100, about a percent of a 3B model's on an M1 (derived). \\
+Memory bandwidth & buys & Fused operations read and write their activations once, not once per operation: three times faster for norm, scale and shift in the lab (measured). \\
 Compute & buys & The GPU stops idling between kernels. \\
-Memory capacity & spends & One graph and its fixed buffers per captured batch size. \\
-Latency (startup) & spends & Compilation and capture before the first request; cacheable. \\
-Correctness & risks & Padding to captured sizes and replayed addresses are new places for bugs. \\
+Memory capacity & spends & One graph and its fixed buffers per captured size; vLLM captures 51 sizes on an H100 by default. \\
+Latency (startup) & spends & Compilation and capture before the first request (2.6~s to compile a 1,000-operation chain on the M1); cacheable. \\
+Correctness & risks & Padding to captured sizes and replayed addresses are new places for bugs; a fused kernel must round as the unfused ones did, or its outputs change. \\
 \end{ConstraintLedger}
 
 \LabSection{measure what a launch costs}
 
-\LabIntent{In \texttt{code/labs/ch13-launch/}, a Python script that issues a
-chain of $n$ tiny dependent GPU operations (on Apple's MPS or CUDA, whichever
-the reader has) and one operation doing the same arithmetic, checks that both
-give identical results, and fits the per-operation cost. A second part does
-the same on the CPU with a thread pool, spawning a task per operation versus
-running them in one worker, to show the idea is not GPU-specific. The reader
-then estimates $f_{\text{launch}}$ for their machine and a small model.}
+The lab in \texttt{code/labs/ch13-launch/} runs on any laptop CPU. A worker
+thread plays the GPU: it owns a buffer and executes commands from a queue in
+order, and the host can only send commands and wait on a fence:
+
+\CodeLines{../code/labs/ch13-launch/src/main.rs}{116}{131}
+
+\noindent The four ways of applying the chain differ only in what the host sends
+and when it waits:
+
+\CodeLines{../code/labs/ch13-launch/src/main.rs}{188}{211}
+
+\noindent and the fused kernel keeps a tile of 64 elements in registers while
+it applies every addition, in the same order as the separate passes:
+
+\CodeLines{../code/labs/ch13-launch/src/main.rs}{72}{87}
+
+\noindent Every method must reproduce, bit for bit, an oracle that adds the
+constants to each element in turn on the host; only then is it timed. The
+second part times RMSNorm, scale and shift as three passes and as one over
+50~MB of activations, checks both against float64 and against each other, and
+counts bytes; the third derives the padding that captured sizes cost. Run it
+from \texttt{code/labs} with \texttt{cargo run --release -p ch13-launch}.
+
+On a Mac, \texttt{metal/launch.m} is the GPU extension behind this chapter's
+table of Metal costs. It runs the same chain on the GPU five ways, with the two
+kernels of \texttt{metal/kernels.metal} compiled in Metal's safe-math mode so
+that the GPU rounds every addition as the CPU does, and it reads the GPU's
+timestamps for every command buffer; the README shows how to build it with
+\texttt{xcrun clang}. Before running either program, predict: on your machine,
+is a round trip closer to a microsecond or a millisecond, and how many
+dispatches in one command buffer cost as much as one round trip? Then use your
+own numbers in equation~\eqref{eq:launch-fraction} for the smallest model you
+serve.
 
 \HappenedSection{measuring the Metal round trip instead of guessing it}
 
@@ -207,32 +628,53 @@ not to transfer to other devices (\texttt{csrc/attn.c} at commit
 environment variable, so PREVIEW. Two of three planned optimizations would have
 optimized the wrong thing.
 
-\FrontierSection{2026-09-24}
+This chapter's lab measured the same round trip independently, with different
+code on the same kind of machine: 150 to 169~microseconds for a command buffer
+committed and waited for, of which the GPU was busy for about 5. Hermon's
+0.19~ms was the platform's price, not a flaw in Hermon's code --- and the
+lesson generalizes. A kernel that must return its result to the host before the
+next one can start pays the round trip every time, whatever its own speed;
+only moving the work on either side of it to the same device, as llama.cpp
+does by running whole layers on the GPU, removes it.
+
+\FrontierSection{2026-09-27}
 
 Kernel authoring moved up a level in 2025--26. FlashAttention-4 is written in
-CuTe DSL and is vLLM's default attention kernel on Blackwell
-\cite{zadouri2026flashattention4,vllm2026attentionbackends}; NVIDIA made tiles
-a first-class CUDA programming model \cite{nvidia2025cuda131}; and megakernels
-moved from a single demonstration to a research line. In September 2026,
-ForgeMegakernel used coding agents, checked by a float64 oracle, to generate a
-decode megakernel per model, and reported geometric-mean speedups of
-1.21$\times$ over SGLang and 1.54$\times$ over the Mirage megakernel compiler
-on one H100 \cite{li2026forgemegakernel} (the authors' measurements). The constant through all of it is the constraint of this chapter's
-napkin math: at small batch, the time between kernels is as real as the time
-in them.
+CuTe DSL \cite{zadouri2026flashattention4}; in vLLM at commit \texttt{bcdacfc}
+it is the version that the FlashAttention backend selects on Blackwell
+(compute capability 10) when supported, while FlashInfer is the first choice
+for causal attention there (\texttt{vllm/platforms/cuda.py} and
+\texttt{fa\_utils.py}). NVIDIA made tiles a first-class CUDA programming model
+and widened it every few months, to Ampere, Ada, Hopper and, in preview, Rubin
+\cite{nvidia2026cudatile}. Megakernels moved from a single demonstration to a
+research line: MPK compiles models into them automatically
+\cite{cheng2025mpk}, and in September 2026 ForgeMegakernel used coding agents,
+checked by a float64 oracle, to generate a decode megakernel per model,
+reporting geometric-mean speedups of 1.21$\times$ over SGLang and 1.54$\times$
+over MPK on one H100 \cite{li2026forgemegakernel} (the authors'
+measurements). The constant through all of it is the constraint of this
+chapter's napkin math: at small batch, the time between kernels is as real as
+the time in them.
 
 \ExercisesSection
 
 \begin{enumerate}
 \item \emph{Derivation.} Using equation~\eqref{eq:launch-fraction}, find the
-batch size at which launch overhead falls below 2\% for an 8B model with 300
-kernels per step at 2~$\mu$s each on an H100.
+batch size at which launch overhead falls below 2\% for an 8B model with 220
+kernels per step at 2~$\mu$s each on an H100, taking the step time from
+\Chref{napkin-math}.
 \item \emph{Prediction.} A CUDA graph is captured for batch sizes 1, 2, 4, 8,
 16 and 32. Predict the throughput cost of a steady load of 17 concurrent
-requests, and propose a better set of sizes.
+requests, and propose a better set of sizes; compare yours with vLLM's rule.
 \item \emph{Implementation.} Write a fused RMSNorm-plus-matrix--vector kernel
 in Triton or a CPU equivalent in Rust, check it against separate operations,
 and measure what fusion saves at batch one.
 \item \emph{Falsification.} Find an operation that becomes slower when fused
 with its neighbour, and explain which resource the fusion spent.
+\item \emph{Measurement.} Run the lab's Metal extension (or, on an NVIDIA GPU,
+time the same chain with CUDA events, eagerly and as a replayed CUDA graph) and
+fill in this chapter's table of costs for your machine. Which of the three costs
+dominates, and which remedy would you buy first?
 \end{enumerate}
+
+\input{worked/ch13-kernel-languages.tex}

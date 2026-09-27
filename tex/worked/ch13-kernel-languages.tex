@@ -1,0 +1,73 @@
+\section{Worked problems: padded batches, what graphs buy, and when fusion pays}
+
+\subsection{The price of padding}
+\textbf{Problem.} vLLM captures CUDA graphs on an H100 at batch sizes of 1, 2
+and 4 tokens, every multiple of 8 below 256 and every multiple of 16 up to 512,
+and pads each step to the next captured size. Steps carry 17, 100, 300 and 600
+tokens --- decode tokens, or decode tokens mixed with prefill chunks. At what
+size does each run, and what share of its slots is padding? Answer again for
+graphs at the powers of two. When do the padded slots cost time?
+
+\textbf{Solution.} With vLLM's sizes, 17 tokens run at 24 (29\% padding), 100
+at 104 (3.8\%) and 300 at 304 (1.3\%); 600 exceed the largest graph and run
+without one, paying their launches but no padding. With powers of two, 17 run
+at 32 (47\%), 100 at 128 (22\%) and 300 at 512 (41\%) (all derived). A padded
+slot adds arithmetic --- one more row through every matrix product --- but no
+weight reads. A decode step of 17 or 100 sequences is far from compute-bound
+(decode at 4,096 tokens of context stays bandwidth-bound at every batch that
+fits in an H100, \Chref{napkin-math}), so its padded rows cost almost nothing.
+A step of 300 tokens that is mostly a prefill chunk is compute-bound
+(\Chref{prefill-decode}), and there every padded slot costs its share: vLLM's
+1.3\% costs about 1.3\%, while running 300 tokens at 512 would make the step
+about 1.7 times as long for no more output. Dense sizes matter where steps are
+compute-bound, and the large token counts of mixed batches are exactly where
+vLLM's rule is dense.
+
+\subsection{What graphs buy, and what they leave}
+\textbf{Problem.} A Llama-1B forward pass on an H100 at batch one launches
+about 100 kernels and streams 2.5~GB of BF16 weights. Launches cost
+2.1~$\mu$s each, or 1.3~$\mu$s replayed from a CUDA graph
+\cite{spector2025megakernel}. (a) Predict the step time with and without
+graphs if the kernels themselves streamed at the full 3.35~TB/s. (b) Hazy
+Research measured engines of the time at no more than half the H100's
+bandwidth and their megakernel at 78\%. How large is the gap between an engine
+with graphs and the megakernel, and how much of it do launches explain?
+
+\textbf{Solution.} (a) Streaming takes $2.5 / 3.35 = 0.75$~ms. Eager launches add
+0.21~ms, for 0.96~ms; graphs add 0.13~ms, for 0.88~ms --- 8\% faster (derived).
+(b) At half the bandwidth, streaming takes 1.49~ms, and with graphs the step is
+about 1.62~ms; at 78\% it takes 0.96~ms, the megakernel's ``under a
+millisecond'' (derived). The gap is about 0.66~ms, and the graph's launches,
+0.13~ms, are a fifth of it. The other four fifths are bandwidth that the
+separate kernels leave unused --- by Hazy Research's account, at their
+boundaries: multiprocessors idle while a kernel's last wave drains, and every
+kernel stalling while its first weights arrive. Graphs remove the issue cost
+of a launch; the larger prize is the gap cost, and only removing the
+boundaries, by fusion or a persistent kernel, collects it.
+
+\subsection{When does fusion pay?}
+\textbf{Problem.} In the decode step that opened the chapter, llama.cpp fused
+each of Llama~3.2~3B's 57 normalizations with the multiplication by its weight,
+on activations of 3,072 32-bit floats per token. (a) How many bytes and
+dispatches does that save per decoded token, against the 2.0~GB of weights the
+step reads? (b) How many bytes does it save in a 512-token prefill, which the
+M1 runs at 248 tokens per second (record \texttt{2026-09-23-m1-llama32-3b})? (c)
+What kind of fusion would be worth more?
+
+\textbf{Solution.} (a) Unfused, the normalization writes its output and the
+multiplication reads it back: $2 \times 3{,}072 \times 4 = 24.6$~KB per
+fusion, 1.4~MB per token --- 0.07\% of the weights --- and 57 dispatches of
+about 1.3~$\mu$s each, 0.07~ms of a 50~ms step (derived). At decode the
+fusion's value is in the dispatches, and even they are small on this machine.
+(b) A 512-token batch saves $512 \times 24.6$~KB $= 12.6$~MB per fusion,
+0.72~GB in all; at the M1's measured 46--50~GB/s that is about 15~ms of a
+2.07~s prefill, 0.7\% (derived). (c) Fusion pays in proportion to the traffic
+of the intermediate it removes, measured against the step's total. A
+normalization's output is one vector per token, while a projection reads a
+whole matrix; the fusion that changed inference is the one whose intermediate
+grows fastest --- FlashAttention's, which never writes the score matrix, whose
+size grows with the square of the context (\Chref{flashattention}). Fusions of
+a matrix product's epilogue, such as dequantizing weights inside the product
+(\Chref{weight-quantization}) or quantizing an activation as the previous
+kernel writes it, follow the same rule: they remove a full pass over a large
+tensor.

@@ -43,7 +43,7 @@ if this table is stale. Words are approximate prose words.
 | 10 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | FULL | 5,085 | 0 |
 | 11 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | FULL | 5,075 | 0 |
 | 12 | Quantizing the KV Cache | FULL | 5,005 | 0 |
-| 13 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | ZERO | 1,996 | 0 |
+| 13 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | FULL | 6,217 | 0 |
 | 14 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ZERO | 3,298 | 0 |
 | 15 | Continuous Batching | ZERO | 2,002 | 0 |
 | 16 | Paged KV Memory | ZERO | 1,812 | 0 |
