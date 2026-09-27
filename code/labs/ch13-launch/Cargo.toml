@@ -1,0 +1,8 @@
+[package]
+name = "ch13-launch"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 13 lab: what a launch costs, what a recorded graph saves and what fusion saves"
+
+[dependencies]
