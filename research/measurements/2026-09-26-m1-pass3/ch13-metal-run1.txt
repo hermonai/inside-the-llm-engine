@@ -1,0 +1,27 @@
+# code/labs/ch13-launch/metal/launch.m with metal/kernels.metal, run 1, 2026-09-27T14:04Z
+# xcrun clang -O2 -fobjc-arc -framework Foundation -framework Metal metal/launch.m; ../target/ch13-metal (defaults: --ops 1000 --sizes 1024,65536,1048576 --reps 5)
+# load before run: { 3.67 4.10 3.99 }
+Metal on Apple M1: a chain of 1000 dependent additions x += c
+every method checked against the CPU bit for bit, then timed
+microseconds per addition, median of 5 runs: host = wall clock around the
+chain, gpu = GPU timestamps, encode = host time to record the command buffer
+
+   elements  method        host       gpu    encode
+       1024  sync       169.048     5.289         -
+       1024  queued      31.345    31.181         -
+       1024  batched      1.494     1.169     0.136
+       1024  barriers     1.844     1.333     0.302
+       1024  fused        0.231     0.074     0.004
+      65536  sync       164.713     7.601         -
+      65536  queued      31.910    31.738         -
+      65536  batched      2.207     1.898     0.135
+      65536  barriers     3.134     2.593     0.337
+      65536  fused        0.578     0.392     0.004
+    1048576  sync       349.929    94.652         -
+    1048576  queued     101.934   101.704         -
+    1048576  batched     73.212    72.354     0.399
+    1048576  barriers    97.280    90.384     2.113
+    1048576  fused        6.608     6.203     0.057
+
+  bits: all five methods matched the CPU at every size
+# load after run: { 3.85 4.13 4.01 }

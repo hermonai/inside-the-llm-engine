@@ -1,0 +1,30 @@
+# code/labs/ch13-launch, Part 1 at 1,024 elements, 2026-09-27T14:05Z
+# cargo run --release -p ch13-launch -- --sizes 1024 --reps 15 --tokens 64 --threads 1   (Part 2 at 64 rows: in cache, dominated by starting threads)
+# load before run: { 4.09 4.18 4.03 }
+Part 1: a chain of 1000 dependent additions x += c on a worker thread
+every method checked against the host oracle bit for bit, then timed
+microseconds per addition, median of 15 runs
+
+   elements       sync     stream      graph      fused
+       1024      2.684      0.073      0.058      0.026
+
+  bits: all four methods matched the oracle at every size
+
+Part 2: y = rms_norm(x) * w + b on 64 rows of 3072 (x and y 0.8 MB each)
+bytes counted: each pass reads one full array and writes one (w and b stay in cache)
+median of 15 runs
+
+  threads   kernels  passes        ms     GB/s     error
+        1         3       3      0.13     36.1    1.7e-7
+        1         1       1      0.05     30.4    1.7e-7   2.53x faster
+
+  bits: fused and unfused outputs identical
+
+Part 3: padding each batch up to the next captured graph size (derived)
+batches 1..512 equally likely; padding = wasted slots / slots computed
+
+  capture sizes     graphs  mean padding            worst  17 runs at
+  vLLM default          51          3.3%    43.8% (9 -> 16)          24
+  powers of two         10         24.5%    49.8% (257 -> 512)          32
+  every size           512          0.0%     0.0% (1 -> 1)          17
+# load after run: { 4.09 4.18 4.03 }

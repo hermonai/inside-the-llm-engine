@@ -1,0 +1,15 @@
+# code/labs/ch13-launch with const TILE edited from 64 to 8 (the README's first 'Break'), 2026-09-27T14:11Z
+# cargo run --release -p ch13-launch -- --sizes 4096,65536,1048576 --reps 7 --tokens 64 --threads 1
+# load before run: { 4.50 4.17 4.05 }
+Part 1: a chain of 1000 dependent additions x += c on a worker thread
+every method checked against the host oracle bit for bit, then timed
+microseconds per addition, median of 7 runs
+
+   elements       sync     stream      graph      fused
+       4096      5.027      0.329      0.308      0.607
+      65536      7.848      4.743      4.729      7.232
+    1048576     83.873     76.162     75.734    117.525
+
+  bits: all four methods matched the oracle at every size
+# (Parts 2 and 3 omitted: not part of this variant)
+# load after run: { 4.70 4.22 4.06 }
