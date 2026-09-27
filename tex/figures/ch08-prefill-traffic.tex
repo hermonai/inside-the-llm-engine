@@ -1,0 +1,29 @@
+% Extra prefill time of llama.cpp's unfused attention (flash attention off minus on), Llama 3.2
+% 3B Q4_K_M, Metal, micro-batches of 512. Points: measured (record 2026-09-26-m1-pass3:
+% ch04-prefill-long.json for 2,048 and 4,096 tokens, ch08-prefill-8192.json for 8,192).
+% Line: 20 bytes per score (write, masked read, write, read) at 49 GB/s,
+% 512 x 512 x 24 heads x 28 layers x n(n+1)/2 scores for n = P/512 micro-batches (derived).
+\begin{tikzpicture}
+\begin{axis}[
+  width=12.5cm, height=6.6cm,
+  xmode=log, ymode=log, log basis x=2,
+  xmin=400, xmax=10500, ymin=0.05, ymax=20,
+  xtick={512,1024,2048,4096,8192}, xticklabels={512,1024,2048,4096,8192},
+  ytick={0.1,0.2,0.5,1,2,5,10}, yticklabels={0.1,0.2,0.5,1,2,5,10},
+  xlabel={Prompt tokens},
+  ylabel={Seconds added by unfused attention},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.02,0.97)}, anchor=north west, draw=black!30, fill=white},
+  legend cell align=left,
+]
+\addplot[BookBlue, thick, mark=none] coordinates {(512,0.0719) (1024,0.2157) (1536,0.4314) (2048,0.7190) (3072,1.5099) (4096,2.5885) (6144,5.6084) (8192,9.7787)};
+\addlegendentry{predicted: 20 bytes per score at 49 GB/s}
+\addplot[red!70!black, only marks, mark=*, mark size=2.6pt] coordinates {(2048,0.731) (4096,2.477) (8192,10.05)};
+\addlegendentry{measured: off minus on}
+\node[font=\scriptsize\sffamily, anchor=west] at (axis cs:2150,0.62) {0.73 s};
+\node[font=\scriptsize\sffamily, anchor=west] at (axis cs:4300,2.1) {2.48 s};
+\node[font=\scriptsize\sffamily, anchor=east] at (axis cs:7500,10.05) {10.05 s};
+\node[font=\scriptsize\sffamily, align=left, anchor=south east] at (axis cs:9800,0.07) {fused prefill: 284, 261, 197 tokens/s\\unfused: 258, 225, 158 tokens/s};
+\end{axis}
+\end{tikzpicture}

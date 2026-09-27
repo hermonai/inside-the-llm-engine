@@ -38,7 +38,7 @@ if this table is stale. Words are approximate prose words.
 | 5 | The KV Cache: Inference's Central Data Structure | FULL | 5,088 | 0 |
 | 6 | Napkin Math: Latency, Throughput and Cost per Token | FULL | 5,144 | 0 |
 | 7 | Matrix Multiplication on Real Hardware | FULL | 5,021 | 0 |
-| 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | ZERO | 2,083 | 0 |
+| 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | FULL | 6,110 | 0 |
 | 9 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | ZERO | 1,924 | 0 |
 | 10 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | ZERO | 2,139 | 0 |
 | 11 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | ZERO | 2,127 | 1 |

@@ -1,0 +1,81 @@
+\section{Worked problems: re-reads, records and a long prefill}
+
+\subsection{Where the re-reads go}
+\textbf{Problem.} One head of causal attention at $S = 8{,}192$ and $d_h = 128$ in
+BF16 runs on an H100 (989~TFLOP/s dense BF16, 3.35~TB/s of HBM) with
+$128 \times 128$ tiles. How long do its FLOPs take at peak? How long would its
+memory traffic take if every tile loaded its keys and values from HBM, and if
+the unfused kernel ran instead, computing the full square with 16-bit scores?
+What must happen for the tiled kernel to reach its compute roof?
+
+\textbf{Solution.} The kernel computes 2,080 tiles, the 64 on the diagonal in
+full before masking them, and each costs $4 \times 128^3 = 8.39$~MFLOP: 17.4~GFLOP
+in all, 17.6~$\mu$s at peak. If every tile loaded its 32~KiB of keys and 32~KiB
+of values from HBM, the traffic would be 136.3~MB, plus 4.2~MB for $\mathbf{Q}$
+and $\mathbf{O}$: 41.9~$\mu$s at 3.35~TB/s, so the kernel could run at no more
+than 42\% of peak. The unfused kernel is worse: $8{,}192^2$ scores at 8 bytes
+each over its four passes is 537~MB, 160~$\mu$s, against 34.7~$\mu$s for the
+full square's arithmetic --- at most 22\% of peak (all derived). Tiling alone
+is not enough. If each head's keys and values crossed HBM only once, the whole
+kernel would read and write 8.4~MB, 2.5~$\mu$s, far below the 17.6~$\mu$s of
+arithmetic. The 136~MB of re-reads must then come from on-chip reuse --- the
+L2 cache, or on Hopper the shared memory of neighbouring blocks in a cluster
+(\Chref{matmul-hardware}) --- at $136.3~\text{MB} / 17.6~\mu\text{s} = 7.7$~TB/s,
+more than twice HBM's bandwidth (derived). A tile's intensity decides how much
+reuse the kernel needs; the chip's reuse decides whether it gets it.
+
+\subsection{How often does a row rescale?}
+\textbf{Problem.} The lab's tiled kernel rescaled 4,499 times at 2,048 tokens and
+28,383 times at 8,192. Explain the counts, treating the blocks of scores a row
+meets as random and interchangeable. Then explain why a threshold of $\ln 256$
+removed every rescaling on ordinary keys but only 87\% of them on the ramp keys.
+
+\textbf{Solution.} A row rescales at the $j$-th block it meets ($j \ge 2$) only
+if that block holds the largest score of the first $j$ --- for interchangeable
+blocks, a chance of $1/j$. A row that meets $n$ blocks is therefore rescaled
+$\sum_{j=2}^{n} 1/j = H_n - 1$ times on average, where $H_n$ is the $n$-th
+harmonic number, about $\ln n + 0.58$. The 64 rows of the $i$-th query block
+meet $i$ key blocks, so with $N = S/64$ blocks the expected total is
+\[
+64 \sum_{i=1}^{N} (H_i - 1) = 64\,\bigl[(N+1)H_N - 2N\bigr].
+\]
+For $N = 32$ that is $64 \times (33 \times 4.0585 - 64) = 4{,}476$; for $N = 128$,
+$64 \times (129 \times 5.4331 - 256) = 28{,}472$ (derived) --- within 1\% of the
+measured counts. Records grow only logarithmically, which is why 28,383
+rescalings are 5\% of the kernel's 528,384 row-block updates. (At 256 tokens the
+formula gives 155 against 125 measured: the diagonal block, which each row sees
+only up to itself, holds fewer records than a full block, and at four blocks per
+row it matters more.)
+
+The threshold asks for more than a new record: a rise of more than
+$\ln 256 = 5.55$. The lab's queries and keys are uniform on $[-2, 2]$, so each of
+a score's 64 products has variance $(4/3)^2$, and after scaling by $1/8$ the
+score's standard deviation is $4/3$ (derived). The largest of the 64 scores in a
+row's first block is typically about 3; a later block would need a score near
+8.7, six and a half standard deviations out, and among the 2.1~million scores
+at 2,048 tokens that never happened (measured: no rescalings). The ramp keys scale key $j$ by $1 + 4j/S$, so
+the spread of the scores grows fivefold along the sequence and a row's maximum
+keeps climbing. A climbing maximum still crosses the threshold, but only once
+per 5.55 of climb, instead of at every small new record: 1,604 rescalings
+instead of 12,456 (measured). Either way the answer is exact; the threshold only
+bounds how large the exponentials may grow in between.
+
+\subsection{Predicting a long prefill}
+\textbf{Problem.} The 20-bytes-per-score model fitted nothing and matched
+llama.cpp's unfused prefill of 2,048 and 4,096 tokens. Before measuring,
+predict the extra time of the unfused path at 8,192 tokens, and the compute
+buffer it would reserve at 32,768 cells. Then compare with the measurement.
+
+\textbf{Solution.} 8,192 tokens are 16 micro-batches of 512, so the prefill
+writes $176{,}160{,}768 \times (16 \times 17)/2 = 24.0$~billion scores. At 20 bytes
+each that is 479~GB, which at 49~GB/s takes 9.78~s (derived). Measured, two
+repetitions each: 51.79~s with flash attention off and 41.74~s with it on, a
+difference of 10.05~s --- 3\% more than predicted --- and the unfused path's
+throughput fell from 225 to 158 tokens per second between 4,096 and 8,192
+tokens while the fused path's fell from 261 to 197. The buffer grows by 400~MiB
+per 8,192 cells from 416.01~MiB at 8,192, so at 32,768 cells it would be
+$816.01 + 2 \times 400 = 1{,}616$~MiB (derived); the same model puts the unfused
+path's extra time for a 32,768-token prompt at about 150~s. A model that has
+been right three times, with no constant fitted to it, is a model worth planning
+with: on this machine the unfused path's penalty grows with the square of the
+prompt --- 0.73~s at 2,048 tokens, 10~s at 8,192, about 150~s at 32,768.

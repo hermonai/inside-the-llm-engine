@@ -1,6 +1,8 @@
-% status: ZERO
+% status: FULL
 % Chapter 8 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-m1-part2.md
+% Measurements: research/measurements/2026-09-23-m1-part2.md (the opening's attention probe);
+% research/measurements/2026-09-26-m1-pass3.md (the lab; llama.cpp's buffers and long prompts
+% with flash attention off and on).
 \chapter{Attention as a Memory Problem: From Online Softmax to FlashAttention}\label{ch:flashattention}
 
 \begin{ChapterIntent}
@@ -9,9 +11,10 @@ the sequence length and moves it through slow memory several times.
 FlashAttention's insight is that attention's cost is memory traffic: with an
 online softmax, attention can be computed tile by tile in on-chip memory
 without ever writing the score matrix. This chapter derives the online
-softmax, builds a tiled attention and checks it against a naive oracle, then
-follows FlashAttention's four generations as each adapted to a new GPU ---
-better parallelism, asynchrony and FP8 on Hopper, and on Blackwell a software
+softmax by hand, builds a tiled attention and checks it against a naive
+oracle, measures what the fused kernel saves inside llama.cpp, then follows
+FlashAttention's four generations as each adapted to a new GPU --- better
+parallelism, asynchrony and FP8 on Hopper, and on Blackwell a software
 exponential because the tensor cores outran everything else.
 \end{ChapterIntent}
 
@@ -80,120 +83,547 @@ heads --- for a matrix whose only purpose is to be summed away. The napkin math 
 problem is not arithmetic. It is a matrix that never needed to exist in slow
 memory.
 
+Capacity is the first cost. Time is the second, and it depends on the machine.
+Every score costs $4d_h$ FLOPs: $2d_h$ for its dot product and $2d_h$ for its
+share of the second product. In the three-kernel version it also costs
+16~bytes if the scores are 32-bit floats --- written by the first product, read
+and rewritten by the softmax, read by the second product. That is an arithmetic
+intensity of $d_h/4$ FLOP/byte: 32 at $d_h = 128$, 16 at the lab's $d_h = 64$
+(derived). Set against the ridges of equation~\eqref{eq:ridge}:
+
+\begin{center}\small
+\begin{tabular}{@{}lr>{\raggedright\arraybackslash}p{0.45\linewidth}@{}}
+\toprule
+Machine & Ridge & Unfused attention at 32~FLOP/byte \\
+\midrule
+One M1 CPU core, the lab's loops & 0.2~FLOP/B & far right of the ridge (9~GFLOP/s against 44~GB/s): the matrix costs memory, not time \\
+Apple M1 GPU & 38~FLOP/B & just left of the ridge: a modest cost in time \\
+NVIDIA H100 SXM, BF16 & 295~FLOP/B & nine times to the left: at most 11\% of the tensor cores \\
+NVIDIA B200, BF16 & 281~FLOP/B & the same \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent One algorithm, three predictions. On a CPU core, fusing attention
+should save memory and no time. On the M1's GPU it should save a little time,
+more as the sequence grows. On a data-center GPU, the unfused kernel should
+starve the tensor cores. FlashAttention's authors measured that last case on an
+A100 for GPT-2 medium at 1,024 tokens, forward and backward passes together:
+standard attention did 66.6~GFLOPs of work, moved 40.3~GB through HBM and took
+41.7~ms; FlashAttention did \emph{more} arithmetic, 75.2~GFLOPs --- its
+backward pass recomputes the scores rather than storing them --- moved 4.4~GB
+and took 7.3~ms \cite[Figure~2]{dao2022flashattention}. A ninth of the traffic,
+a sixth of the time. This chapter's lab tests the first prediction and
+llama.cpp the second.
+
 \section{Softmax needs the whole row --- or does it?}
 
 The softmax of a row of scores $x_1,\dots,x_n$ is
 $e^{x_j-m}/\sum_i e^{x_i-m}$, where subtracting the row maximum $m$ keeps the
 exponentials from overflowing (Appendix~\ref{app:sampling}). Written that way
-it seems to need two passes over the whole row --- one for $m$, one for the
-sum --- before any output can be produced, which is why a naive implementation
-materializes the row. It does not. Both the maximum and the sum can be
-maintained incrementally, and the weighted sum of values with them.
+it seems to need the whole row before any output can be produced, and the
+textbook implementation takes three passes over it: one to find $m$, one to
+compute and store the exponentials and their sum, and one to divide every
+stored value by the sum. llama.cpp's Metal softmax kernel is exactly that ---
+one threadgroup per row, three loops over the row (\texttt{kernel\_soft\_max}
+in \texttt{ggml-metal.metal} at commit \texttt{d006858}) --- and it sits between
+a kernel that writes the row to memory and one that reads it back.
+
+Milakov and Gimelshein noticed that the first two passes can be one
+\cite{milakov2018online}. Keep a running maximum $m$ and a running sum $d$ of
+exponentials taken against it. When a new score $x$ arrives,
+\begin{equation}
+m' = \max(m, x), \qquad d' = d\,e^{m-m'} + e^{x-m'}.
+\label{eq:online-normalizer}
+\end{equation}
+If $x$ does not raise the maximum, the factor $e^{m-m'}$ is 1 and the update is
+an ordinary sum. If it does, every term already in $d$ was taken against a
+maximum that is now too small, and multiplying by $e^{m-m'}$ moves them all to
+the new one at once. After the last score, $d$ is the softmax denominator, found
+in one pass. Attention can go one step further, because it never needs the
+probabilities themselves --- only their weighted sum of value vectors --- and
+that sum can be carried along in the same way.
 
 \section{The online softmax}
 
-Process the row in pieces. Keep a running maximum $m$, a running denominator
-$\ell=\sum e^{x_i-m}$ and a running output $\mathbf{o}=\sum
-e^{x_i-m}\mathbf{v}_i$. When a new piece raises the maximum from $m$ to
-$m'$, every earlier term was scaled against the old maximum, so rescale
+Process the row in pieces --- one score at a time, or a block of scores. Keep a
+running maximum $m$, a running denominator $\ell=\sum e^{x_i-m}$ and a running
+output $\mathbf{o}=\sum e^{x_i-m}\mathbf{v}_i$. When a new piece raises the
+maximum from $m$ to $m'$, rescale:
 \begin{equation}
 \ell \leftarrow \ell\,e^{m-m'} + \sum_{\text{new}} e^{x_i-m'},\qquad
 \mathbf{o} \leftarrow \mathbf{o}\,e^{m-m'} + \sum_{\text{new}} e^{x_i-m'}\mathbf{v}_i,
 \label{eq:online-softmax}
 \end{equation}
-and at the end divide: the attention output is $\mathbf{o}/\ell$. The result
-is exactly the softmax-weighted sum, computed in one pass with a constant
-amount of state per query row. Milakov and Gimelshein published the running
-normalizer in 2018 \cite{milakov2018online}; applied to attention, it is the
-core of FlashAttention.
+and at the end divide: the attention output is $\mathbf{o}/\ell$.
+
+\emph{Why it is exact.} After any prefix of the row, $\ell$ and $\mathbf{o}$
+are sums of $e^{x_i-m}$ and $e^{x_i-m}\mathbf{v}_i$ over the scores seen so far,
+all taken against the current $m$. Multiplying both by $e^{m-m'}$ moves the
+reference point from $m$ to $m'$, because $e^{x_i-m}\,e^{m-m'} = e^{x_i-m'}$,
+and the new terms are added against $m'$ too. At the end
+\[
+\frac{\mathbf{o}}{\ell}
+= \frac{\sum_i e^{x_i-m}\,\mathbf{v}_i}{\sum_k e^{x_k-m}}
+= \sum_i \frac{e^{x_i}}{\sum_k e^{x_k}}\,\mathbf{v}_i ,
+\]
+because the common factor $e^{-m}$ cancels: the softmax-weighted sum, computed
+in one pass with a constant amount of state per query row. Notice what the
+argument did not use: that $m$ is the maximum. Any reference point gives the
+same quotient in exact arithmetic. The maximum is chosen only so that no
+exponential exceeds 1 --- for floating point's sake, not for correctness.
+FlashAttention-4 turns that freedom into speed.
+
+\emph{A worked example.} Take one query row whose four scores are 1, 3, 2 and 5,
+with scalar values 1, 2, 3 and 4 (a head of width 1), and process it in two
+blocks of two. The direct computation first. Against the maximum, 5, the
+exponentials are $e^{-4}, e^{-2}, e^{-3}, e^{0}$ = 0.0183, 0.1353, 0.0498 and 1;
+their sum is 1.2034; the softmax weights are 0.0152, 0.1125, 0.0414 and 0.8310;
+and the output is $\sum_j w_j v_j = 3.6881$. Now the online version:
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Step & $m$ & $e^{m-m'}$ & $\ell$ & $o$ & $o/\ell$ \\
+\midrule
+Start & $-\infty$ & & 0 & 0 & \\
+Block 1: scores 1 and 3 & 3 & & $e^{-2} + e^{0} = 1.1353$ & $1e^{-2} + 2e^{0} = 2.1353$ & 1.8808 \\
+Block 2: rescale & 5 & 0.1353 & 0.1537 & 0.2890 & \\
+Block 2: add scores 2 and 5 & 5 & & $+\,e^{-3} + e^{0} = 1.2034$ & $+\,3e^{-3} + 4e^{0} = 4.4383$ & 3.6881 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent After the first block the running answer, 1.8808, is exactly the
+attention over the first two keys alone. The second block raises the maximum
+from 3 to 5, the old sums are multiplied by $e^{-2}$, and the final quotient
+matches the direct computation in every printed digit; the lab's test checks it
+to $10^{-12}$ in 64-bit arithmetic. Two variations show what the rescale is for.
+\emph{Forget it}, and block 1's terms stay weighted against the old maximum:
+$\ell = 2.1851$, $o = 6.2847$, and the output is 2.8761 --- 22\% low, because
+the first two keys now count $e^{2} = 7.4$ times too much against the last two.
+\emph{Keep the old maximum on purpose}, adding block 2's terms against 3 rather
+than 5: $\ell = 1.1353 + e^{-1} + e^{2} = 8.8923$,
+$o = 2.1353 + 3e^{-1} + 4e^{2} = 32.7952$, and the output is 3.6881 again. The
+answer is right; only the sizes of the intermediate numbers changed, and
+$e^{2}$ is now the largest term instead of 1. That is the whole of
+FlashAttention-4's conditional rescaling.
+
+\emph{Merging partial results.} Nothing forces the pieces to be processed in
+order by one worker. Two workers that each summarize a disjoint set of keys as
+$(m_a, \ell_a, \mathbf{o}_a)$ and $(m_b, \ell_b, \mathbf{o}_b)$ can be combined:
+\begin{equation}
+m = \max(m_a, m_b),\qquad
+\ell = \ell_a e^{m_a-m} + \ell_b e^{m_b-m},\qquad
+\mathbf{o} = \mathbf{o}_a e^{m_a-m} + \mathbf{o}_b e^{m_b-m}.
+\label{eq:softmax-merge}
+\end{equation}
+Equation~\eqref{eq:online-softmax} is the special case in which the second
+summary is one new block. The merge is associative and commutative in exact
+arithmetic, so the keys of one row can be divided among processors in any way
+and the pieces combined in any order; \Chref{decode-attention} uses exactly this
+to spread one decode step's attention over a whole GPU. The pair $(m, \ell)$ is
+often stored as one number, the log-sum-exp $m + \ln \ell$, which is what
+FlashAttention-2 keeps for its backward pass \cite{dao2023flashattention2}. In
+floating point the merge is \emph{not} associative: a different division of the
+keys, or a different order of merging, changes the last bits of the result.
+The ``What actually happened'' section returns to that.
+
+Milakov and Gimelshein published the running normalizer in 2018
+\cite{milakov2018online}; applied to attention, with the output carried
+alongside it, it is the core of FlashAttention.
 
 \section{Tiling attention}
 
-FlashAttention \cite{dao2022flashattention} loads a block of queries into
-on-chip memory, then streams blocks of keys and values past it. For each
-key/value block it computes the block's scores on chip, updates each query
-row's $(m,\ell,\mathbf{o})$ with equation~\eqref{eq:online-softmax}, and moves
-on. The score matrix exists only one tile at a time, in shared memory and
-registers; slow-memory traffic is the inputs and the output. Causal masking
-skips every tile that lies entirely above the diagonal. The result is exact ---
-the same mathematics in a different order of floating-point operations --- and
-its memory is linear in $S$.
+FlashAttention \cite{dao2022flashattention} applies the online softmax to
+blocks. Split the queries into blocks of $B_r$ rows and the keys and values
+into blocks of $B_c$. A query block is loaded into on-chip memory and the key
+and value blocks stream past it; for each, the kernel computes a
+$B_r \times B_c$ tile of scores on chip, updates every row's
+$(m, \ell, \mathbf{o})$ with equation~\eqref{eq:online-softmax}, and moves on.
+In outline, with the loop order of FlashAttention-2, which the lab also uses:
 
-\FigureIntent{A query block held on chip while key/value blocks stream past;
-beside it, one query row's running maximum, denominator and output vector
-being rescaled as each block arrives; tiles above the causal diagonal drawn
-empty.}
+\begin{verbatim}
+for each query block Q_i (B_r rows), in parallel:
+    load Q_i; for each of its rows set m = -inf, l = 0, o = 0     (on chip)
+    for each key block j at or left of the diagonal:
+        load K_j and V_j
+        S = Q_i K_j^T / sqrt(d_h)           a B_r x B_c tile, on chip
+        if j == i: mask the scores above the diagonal
+        m' = max(m, rowmax(S));  P = exp(S - m')
+        l = l * exp(m - m') + rowsum(P)
+        o = o * exp(m - m') + P V_j
+        m = m'
+    write o / l, and m + ln(l) for the backward pass
+\end{verbatim}
+
+\noindent The score matrix exists one tile at a time, in shared memory and
+registers. The result is exact --- the same mathematics in a different order of
+floating-point operations --- and the only memory beyond the inputs and the
+output is the per-row state, linear in $S$; the paper proves both
+\cite[Theorem~1]{dao2022flashattention}. The first FlashAttention ran the loops
+the other way round, with the key blocks outside and the query blocks inside,
+reading and writing each query block's partial output in HBM once per key block
+\cite[Algorithm~1]{dao2022flashattention}; FlashAttention-2's order keeps it on
+chip until it is finished. Figure~\ref{fig:ch08-tiling} follows one query block
+and one row's state through the worked example.
+
+\EngineFigure{ch08-tiling}{Tiled causal attention. Left: the score matrix as
+$8 \times 8$ tiles; query block 5 stays on chip while key and value blocks 0 to
+5 stream past, the diagonal tile is masked inside, and the tiles above the
+diagonal are never computed. Right: one row's running maximum, denominator and
+output through the worked example of the online softmax
+(derived).}{fig:ch08-tiling}
+
+\emph{Counting tiles.} At $S = 8{,}192$ with $128 \times 128$ tiles, the score
+matrix has $64 \times 64 = 4{,}096$ tiles. Causal masking leaves
+$64 \times 65/2 = 2{,}080$ of them to compute --- 64 on the diagonal, masked
+inside --- and skips the other 2,016 without loading their keys (derived).
+Causal attention does half the work of full attention, plus half a diagonal.
+
+\emph{Counting bytes.} $\mathbf{Q}$ and $\mathbf{O}$ cross slow memory once;
+$\mathbf{K}$ and $\mathbf{V}$ are read once per query block, because every query
+block must meet every key block to its left. For one head at 8,192 tokens with
+$d_h = 128$ in BF16 that is 4~MiB for $\mathbf{Q}$ and $\mathbf{O}$ and, if
+every re-read went to HBM, 130~MiB of keys and values: 2,080 tiles, each
+loading a 32~KiB block of keys and a 32~KiB block of values. An unfused kernel
+that computes the full square and masks it moves 512~MiB of 16-bit scores in
+its four passes (derived). Larger query blocks mean fewer passes over the keys,
+and the size of on-chip memory bounds the block. That is the paper's IO result:
+standard attention needs $\Theta(Nd + N^2)$ accesses to HBM and FlashAttention
+$\Theta(N^2 d^2 M^{-1})$, for $N$ tokens, head width $d$ and an on-chip memory
+of $M$ elements, and no exact attention algorithm can do asymptotically better
+over all $M$ \cite[Theorem~2 and Proposition~3]{dao2022flashattention}. In
+practice the re-reads need not reach HBM at all. The query blocks of one head
+read the same key blocks, and one head's keys and values at 8,192 tokens, 4~MiB,
+fit many times over in an H100's 50~MB L2 cache (\Chref{matmul-hardware}); the
+first worked problem shows how much depends on it. The ridge, again, is a
+property of the whole chip's reuse.
+
+\emph{Budgeting on-chip memory.} The block sizes come from the scarcest
+capacity. FlashAttention-2 typically uses blocks of 64 or 128 rows by 64 or 128
+columns, ``depending on the head dimension $d$ and the device shared memory
+size'' \cite{dao2023flashattention2}. With $B_r = B_c = 128$ and $d_h = 128$ in
+BF16, the query block is 32~KiB, a block of keys and a block of values 32~KiB
+each, and a second stage of keys and values --- loaded while the first is being
+multiplied --- another 64~KiB: 160~KiB of an H100's 228~KB of shared memory per
+SM (derived). The $128 \times 128$ tile of 32-bit scores (64~KiB) and the
+64~KiB output accumulator do not go to shared memory at all. On Hopper they
+live in the registers of the warps that compute them; on Blackwell the matrix
+units write them to tensor memory, 256~KB per SM
+\cite{zadouri2026flashattention4}. The kernel's shape is the shape of the chip.
+
+\section{Attention in llama.cpp, fused and unfused}
+
+llama.cpp builds both versions from the same model graph, and one flag chooses.
+Paraphrasing \texttt{build\_attn\_mha} in \texttt{src/llama-graph.cpp} at
+\texttt{d006858}, for each layer:
+
+\begin{verbatim}
+flash attention on:   out = flash_attn_ext(q, k, v, mask, scale)     one kernel
+flash attention off:  kq  = mul_mat(k, q)          32-bit scores, every head
+                      kq  = soft_max_ext(kq, mask, scale)
+                      out = mul_mat(v_transposed, kq)
+\end{verbatim}
+
+\noindent The unfused path forces the score product to 32-bit precision --- a
+comment in the source warns that the operation ``tends to require high floating
+point range'' --- and stores the value cache transposed, so that its second
+product reads contiguous rows (\Chref{kv-cache}). The fused path is one
+\texttt{flash\_attn\_ext} node per layer, with its accumulation also pinned to
+32 bits. On the M1 its prefill kernel takes 8 queries per threadgroup and walks
+the keys 64 at a time (\texttt{ggml-metal-impl.h}); with fewer than 20 queries
+it switches to the decode kernel of \Chref{prefill-decode}.
+
+The difference in memory is plain in the buffers llama.cpp reserves when it
+creates a context. Loading Llama~3.2~3B with 4,096, 8,192 and 16,384 cells of
+cache, flash attention off and then on, with the default micro-batch of 512
+tokens (measured, record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+Cells & KV cache & GPU compute buffer, off & GPU compute buffer, on \\
+\midrule
+4,096 & 448~MiB & 256.50~MiB & 256.50~MiB \\
+8,192 & 896~MiB & 416.01~MiB & 256.50~MiB \\
+16,384 & 1,792~MiB & 816.01~MiB & 256.50~MiB \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent With flash attention on, the buffer does not move. Its size is set
+by the largest tensor left in the graph, the logits of a full micro-batch:
+$128{,}256 \times 512 \times 4$~bytes = 250.5~MiB (derived). With it off, the
+buffer grows by 400~MiB for every 8,192 more cells. That is one layer's scores
+for 8,192 more keys --- 8,192 keys $\times$ 512 queries $\times$ 24 heads
+$\times$ 4 bytes = 384~MiB --- plus 16~MiB, the size of a 32-bit mask for the
+same keys (derived). One layer's worth, because the layers run one after
+another and the graph allocator reuses the same memory for each. At the model's
+full context of 131,072 cells, the unfused buffer would pass 6~GiB (derived),
+for the scores of a single layer. The defaults choose for you:
+\texttt{llama-completion} and \texttt{llama-server} default to \texttt{auto},
+which turns the fused kernel on when every layer's attention can run on the
+device that holds that layer's cache (\texttt{src/llama-context.cpp}), and
+\Chref{kv-cache}'s run at 8,192 cells, with no flag, reported the fused
+path's 256.50~MiB. \texttt{llama-bench} defaults to off in this build.
+
+Now time. The unfused prefill writes each score once, reads it with its mask
+entry for the softmax, writes it back as a probability and reads it once more
+for the second product: five 4-byte accesses, 20 bytes per score, if the
+softmax's own re-reads of a row stay in cache (derived; the kernel reads each
+row three times). A prompt of $P$ tokens goes through in $n = P/512$
+micro-batches, the $u$-th of which attends to $512u$ keys, so the whole prefill
+writes $512 \times 512 \times 24 \times 28 = 176$ million scores times
+$n(n+1)/2$. At the 49~GB/s that the M1's GPU sustained in \Chref{napkin-math},
+20 bytes a score predicts the extra time of the unfused path:
+
+\begin{center}\small
+\begin{tabular}{@{}rrrrr@{}}
+\toprule
+Prompt & Flash attention off & Flash attention on & Difference, measured & Predicted \\
+\midrule
+2,048 & 7.94~s (258 tok/s) & 7.21~s (284 tok/s) & 0.73~s & 0.72~s \\
+4,096 & 18.17~s (225 tok/s) & 15.69~s (261 tok/s) & 2.48~s & 2.59~s \\
+8,192 & 51.79~s (158 tok/s) & 41.74~s (197 tok/s) & 10.05~s & 9.78~s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The two shorter prompts are \Chref{prefill-decode}'s measurements;
+the 8,192-token pair was run for this chapter, two repetitions each, after the
+prediction was written down (\texttt{llama-bench}, record
+\texttt{2026-09-26-m1-pass3}). Figure~\ref{fig:ch08-prefill-traffic} plots them
+against the model. A model with no fitted constant --- the bandwidth comes from
+another chapter, the bytes from reading the source --- lands within 5\% at
+three lengths. The prediction has the right shape as well as the right size:
+the extra time grows with the square of the prompt, so the fused kernel's
+advantage grows from 10\% at 2,048 tokens to 24\% at 8,192. On the M1's GPU,
+just left of the ridge, the materialized matrix costs time in exact proportion
+to the bytes it moves.
+
+\EngineFigure{ch08-prefill-traffic}{The time llama.cpp's unfused attention adds
+to a prefill on the M1's GPU (Llama~3.2~3B, micro-batches of 512 tokens):
+measured differences between flash attention off and on (points) against 20
+bytes of score traffic per score at 49~GB/s (line, derived with no fitted
+constant).}{fig:ch08-prefill-traffic}
+
+Decode is a different story, told in \Chref{prefill-decode}: at 8,192 tokens of
+context the fused kernel decodes at 18.2 tokens per second against 10.7
+unfused, yet one query's scores are only 768~KiB per layer. The difference
+there is how the work is spread across the GPU, not the size of the scores,
+and \Chref{decode-attention} takes it up.
 
 \section{FlashAttention-2: parallelism and work partitioning}
 
-The first version was IO-optimal but left parallelism on the table. The second
-reorganized the work: parallel across the sequence as well as batch and heads,
-fewer non-matrix-multiply operations, and a better split of work among the warps
-of a block, reaching 50--73\% of an A100's theoretical peak \cite{dao2023flashattention2}.
-The lesson recurs in every later chapter: an algorithm that moves the minimum
-bytes is only fast if it also keeps every unit of the machine busy.
+The first version was IO-aware but left parallelism on the table, in three
+places \cite{dao2023flashattention2}. \emph{Across the chip:} FlashAttention
+parallelized over batch and heads only. With long sequences and small batches
+that gives fewer thread blocks than an A100 has SMs, so FlashAttention-2 also
+parallelizes over the sequence, one thread block per query block --- the loop
+order above. \emph{Within a thread block:} FlashAttention divided the keys and
+values among its four warps, which then had to write their partial results to
+shared memory, synchronize and add them, a scheme the paper calls ``split-K''.
+FlashAttention-2 divides the queries instead and keeps $\mathbf{K}$ and
+$\mathbf{V}$ visible to all four warps, and ``there is no need for
+communication between warps''. \emph{In the arithmetic:} it cut the operations
+that are not matrix multiplications, because they are the expensive ones. An
+A100 does ``312 TFLOPs/s of FP16/BF16 matmul, but only 19.5 TFLOPs/s of
+non-matmul FP32'', so ``each non-matmul FLOP is 16$\times$ more expensive than a
+matmul FLOP''. The division by $\ell$ moves out of the inner loop to the end,
+and the backward pass keeps one log-sum-exp per row instead of both $m$ and
+$\ell$.
+
+The result was about twice FlashAttention's speed and 50--73\% of the A100's
+theoretical peak in the forward pass, and training at up to 225~TFLOP/s per
+A100, 72\% model FLOPs utilization \cite{dao2023flashattention2}. The lab shows
+the non-matmul lesson at small scale: its one-row-at-a-time online softmax
+rescales the 64-element output after every key and takes 1.5--1.6 times as long
+as the tiled version, which rescales once per block of 64. The lesson recurs in
+every later chapter: an algorithm that moves the minimum bytes is only fast if
+it also keeps every unit of the machine busy.
 
 \section{FlashAttention-3: asynchrony and FP8 on Hopper}
 
-Hopper added hardware that a synchronous kernel cannot use: TMA copies issued
-by a single thread and warpgroup matrix instructions that run asynchronously
-(\Chref{matmul-hardware}). FlashAttention-3 specializes warps --- some load, some
-compute --- and interleaves the softmax of one block with the matrix
-multiplication of the next, so the tensor cores rarely wait. It reaches
-740~TFLOP/s in FP16, 75\% of H100 peak, and approaches 1.2~PFLOP/s in FP8, with
-block quantization and a rotation that makes its FP8 variant 2.6 times more
-accurate than a baseline FP8 attention \cite{shah2024flashattention3}.
+On an H100, FlashAttention-2 reached only 35\% utilization
+\cite{shah2024flashattention3}. Hopper added hardware that a synchronous kernel
+cannot use: TMA copies issued by a single thread and warpgroup matrix
+instructions that run asynchronously (\Chref{matmul-hardware}).
+FlashAttention-3 uses it three ways. \emph{Warp specialization:} the warps of a
+thread block become producers, which only issue TMA copies, and consumers,
+which only compute, and Hopper's \texttt{setmaxnreg} instruction moves
+registers from the first to the second, which need them for their
+accumulators. \emph{Pingpong scheduling:} two consumer warpgroups take turns,
+synchronized so that one computes its softmax while the other's matrix products
+run. \emph{Pipelining within a warpgroup:} the second product of one block
+overlaps the softmax of the next.
+
+Why so much machinery to hide a softmax? The exponential. An H100 SXM5 has
+``989 TFLOPS of FP16 matmul but only 3.9 TFLOPS of special functions such as
+exponential''. At head width 128 there are 512 times more matrix FLOPs than
+exponentials, but the exponential has 256 times lower throughput, so the
+exponentials alone can take half as many cycles as the matrix products
+\cite{shah2024flashattention3}. Overlapped with the matrix products, they cost
+nothing; in series with them, a third of the kernel's time.
+
+For FP8, FlashAttention-3 quantizes in blocks, with one scale per block, and
+applies what the paper calls incoherent processing: it multiplies $\mathbf{Q}$
+and $\mathbf{K}$ by the same random orthogonal matrix --- a Hadamard matrix
+times random signs --- which spreads outliers across all the elements before
+quantization and leaves $\mathbf{Q}\mathbf{K}^{\top}$ unchanged, since
+$(\mathbf{Q}\mathbf{M})(\mathbf{K}\mathbf{M})^{\top} = \mathbf{Q}\mathbf{K}^{\top}$
+for orthogonal $\mathbf{M}$. \Chref{kv-cache} met the same kind of rotation in
+llama.cpp's quantized caches. The paper reports 1.5--2.0 times FlashAttention-2's
+speed, 740~TFLOP/s in FP16 (75\% of peak), close to 1.2~PFLOP/s in FP8, and FP8
+error 2.6 times lower than a baseline FP8 attention
+\cite{shah2024flashattention3}.
 
 \section{FlashAttention-4: when the exponential becomes the bottleneck}
 
-On Blackwell, tensor-core throughput roughly doubled while the other units
-did not \cite{zadouri2026flashattention4}. Attention's softmax needs one
-exponential per score, computed by special-function units whose throughput did
-not grow with the matrix units, so at Blackwell speeds the exponentials, not
-the matrix products, set the pace. FlashAttention-4 computes some of the
-exponentials in software --- a range reduction and a polynomial on ordinary
-fused multiply--add units --- alongside the hardware unit; it skips the
-rescaling of equation~\eqref{eq:online-softmax} unless the running maximum
-jumps by more than a tunable threshold; and it holds score and probability
-tiles in Blackwell's tensor memory to relieve register pressure (the authors'
-description, \cite{zadouri2026flashattention4}). Its authors report up to 1,613~TFLOP/s in BF16
-on a B200 --- 71\% of peak --- up to 1.3 times cuDNN and 2.7 times Triton, in a
-kernel written in a Python DSL that compiles 20--30 times faster than its C++
-equivalent. As of September 2026, vLLM uses it by default on Blackwell
-\cite{vllm2026attentionbackends}.
+Blackwell doubled the matrix units and nothing around them. Per SM per clock, a
+B200's BF16 matrix instructions do 8,192 operations against Hopper's 4,096,
+while the multifunction unit that evaluates exponentials still does 16 and
+shared memory still delivers 128 bytes
+\cite[section~2.2]{zadouri2026flashattention4}. For a $128 \times 128$ tile at
+head width 128 the authors count 1,024 cycles of matrix work, 1,024 cycles of
+exponentials and 768 of shared-memory traffic
+\cite[section~3.1.1]{zadouri2026flashattention4}: balanced on a knife edge. The
+balance has a simple form. Each score costs $4d_h$ matrix operations and one
+exponential, so on a B200 the exponentials take
+$(1/16)\,/\,(4d_h/8{,}192) = 128/d_h$ times as long as the matrix work, and on an
+H100 $64/d_h$ (derived). At $d_h = 128$ that is 1 on Blackwell against Hopper's
+one half; at $d_h = 64$ the exponential unit alone would take twice as long as
+the matrices.
+
+FlashAttention-4 attacks the non-matrix work from three sides
+\cite{zadouri2026flashattention4}. \emph{A software exponential.} It computes
+$2^x$ as $2^{\lfloor x \rfloor} \cdot 2^{x - \lfloor x \rfloor}$ --- a
+Cody--Waite range reduction --- and evaluates the fractional power with a
+degree-3 polynomial in Horner form on the ordinary fused multiply--add units,
+with a maximum relative error of $8.8 \times 10^{-5}$ in 32 bits. Only 10--25\%
+of each row's exponentials are emulated; the rest still go to the hardware
+unit, so the two work side by side (section~3.1.3). \emph{Conditional
+rescaling.} It keeps the old maximum unless a block raises it by more than a
+threshold $\tau$, ``typically set to $\log_2(256) = 8.0$'' --- the kernel works
+in base 2, so the exponentials may grow to 256 before a rescale is forced
+(section~3.1.4). The worked example showed why that is exact: the reference
+point cancels in $\mathbf{o}/\ell$. \emph{Asynchrony and tensor memory.}
+Larger tiles and fully asynchronous matrix instructions keep the tensor cores
+fed, and in the backward pass tensor memory and the two-SM matrix mode cut
+shared-memory traffic and atomic additions.
+
+The authors report up to 1,613~TFLOP/s in BF16 on a B200, 71\% of peak, up to
+1.3 times cuDNN~9.13 and 2.7 times Triton, in a kernel written in CuTe DSL, a
+language embedded in Python, that compiles 20--30 times faster than its C++
+template equivalent. The lab reproduces the rescaling half of the story in
+miniature. At 2,048 tokens, with the threshold at $\ln 256$ (the lab works in
+base $e$), its tiled kernel performs no rescalings at all instead of 4,499 on
+ordinary scores, and 1,604 instead of 12,456 on ``ramp'' keys whose scores grow
+along the sequence, while agreeing with float64 to $5\times10^{-7}$ and
+$1.5\times10^{-6}$. The second worked problem explains both counts.
 
 \section{Masks, variable lengths and packed batches}
 
 A serving engine rarely attends over one tidy square. Prompts in a batch have
-different lengths; engines pack them end to end with offsets rather than
-padding them to a common length, and attention kernels take those offsets as
-input. Causal masking is standard; sliding windows (\Chref{long-context}),
-attention sinks, and per-request masks for structured prompts are variations the
-kernel must support without materializing a mask. Every such feature is a
-branch in the inner loop of the most performance-critical kernel in the
-engine, which is why engines ship several attention backends and choose among
-them per request shape and hardware (\Chref{decode-attention}).
+different lengths; engines pack them end to end rather than padding them to a
+common length, and attention kernels take the offsets as input.
+FlashAttention's variable-length interface takes all the queries of a batch as
+one tensor of shape (total queries, heads, head width), the keys likewise, and
+a vector \texttt{cu\_seqlens} of $b + 1$ cumulative lengths that marks where
+each of the $b$ sequences starts. With \texttt{causal=True} the mask is aligned
+to the bottom-right corner of each sequence's score matrix, so that a request's
+new queries see all of its earlier keys; \texttt{window\_size} turns on
+sliding-window attention (\texttt{flash\_attn\_varlen\_func} in
+\texttt{flash\_attn/flash\_attn\_interface.py}) \cite{daoailab2026flashattnrepo}.
+The mask is never stored: it is a comparison of two indices inside the kernel.
+
+llama.cpp does it differently. For each micro-batch it builds one mask, a
+32-bit tensor of (cache cells) $\times$ (tokens), filled on the CPU with 0 or
+$-\infty$ from each cell's sequence and position (\texttt{set\_input\_kq\_mask} in
+\texttt{src/llama-kv-cache.cpp}; the cells are \Chref{kv-cache}'s) and cast to 16
+bits for the fused kernel, and every head reads it. Sliding windows and ALiBi's
+position biases go into the same tensor. So llama.cpp does materialize something
+quadratic --- the mask, though not the scores. Shared by all the heads, it is
+1/24 of one layer's scores for Llama~3.2~3B, and it is what lets one kernel
+serve any mix of sequences in the cache without knowing their structure.
+
+Every other variation --- sliding windows (\Chref{long-context}), attention
+sinks, soft-capping of the scores, per-request masks for structured prompts
+--- is a branch in the inner loop of the most performance-critical kernel in
+the engine; llama.cpp's fused kernel already takes attention sinks and a
+soft-capping value as arguments. That is why engines ship several attention backends and choose
+among them by request shape and hardware (\Chref{decode-attention}).
 
 \LedgerSection
 
-Tiled attention with an online softmax, against the naive three-pass kernel:
+Tiled attention with an online softmax, against the naive three-kernel version:
 
 \begin{ConstraintLedger}
-Memory capacity & buys & No $S\times S$ matrix in slow memory: linear rather than quadratic memory in sequence length (measured: 32,768 tokens ran blockwise where both materializing versions were refused). \\
-Memory bandwidth & buys & Score traffic eliminated; at 8,192 tokens and $d_h=128$, about 64$\times$ the input traffic (derived). \\
-Compute & moves & The same matrix FLOPs, plus rescaling; on Blackwell the exponentials become the limit. \\
-Correctness & risks & Exact in real arithmetic; a different order of floating-point operations, so bitwise results depend on tiling. \\
+Memory capacity & buys & No $S\times S$ matrix in slow memory: 16.9~KB of temporaries in the lab against 256~MiB for the naive version at 8,192 tokens; in llama.cpp a compute buffer flat at 256.50~MiB against 816.01~MiB at 16,384 cells (measured). \\
+Memory bandwidth & buys & Score traffic eliminated: 20 bytes per score in llama.cpp's unfused prefill, which predicts the unfused path's extra time within 5\% at three prompt lengths (measured against derived). \\
+Compute & moves & The same matrix FLOPs, plus rescaling. On one CPU core, no time saved (the lab); on Hopper the exponential must hide behind the matrix products; on Blackwell it equals them at $d_h = 128$. \\
+Correctness & risks & Exact in real arithmetic; a different order of floating-point operations, so bitwise results depend on the tiling, and a conditional-rescaling threshold is bounded by overflow. \\
 \end{ConstraintLedger}
 
 \LabSection{a tiled attention checked against a naive oracle}
 
-\LabIntent{In \texttt{code/labs/ch08-flashattention/}, a Rust implementation
-of causal attention three ways: naive (materializing scores), a one-pass
-online softmax per query row, and a tiled version with configurable block
-sizes. All three are checked against a float64 oracle within a derived
-tolerance, and the program reports peak memory and time as the sequence
-grows. Break it: omit the rescaling in equation~\eqref{eq:online-softmax} and
-observe which inputs still pass the test --- and which do not.}
+The lab in \texttt{code/labs/ch08-flashattention/} computes causal attention
+for one head of width 64 three ways --- naive, with all $S^2$ scores written
+out; online, one row at a time with a running maximum, sum and output; and
+tiled, blocks of 64 queries against blocks of 64 keys --- and checks each
+against float64 attention on eight sampled rows before it reports a time. The
+last row, which attends to every key, is always among them. Run it from
+\texttt{code/labs} with
+\texttt{cargo run --release -p ch08-flashattention -- --forget-rescale}. The
+heart of the tiled kernel is the per-row update, after a block of scores has
+been computed into a $64 \times 64$ tile:
+
+\CodeLines{../code/labs/ch08-flashattention/src/main.rs}{142}{175}
+
+\noindent Lines 143--146 find the block's largest score in the row; lines
+151--164 decide whether to adopt it as the new maximum and, if so, rescale the
+running denominator and output by $e^{m-m'}$; lines 165--174 add the block's
+terms. The division by $\ell$ waits until every key block has been seen. On the
+M1, one thread, two runs (measured, record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}rrrrrrr@{}}
+\toprule
+$S$ & Naive & Temporaries & Online & Temporaries & Tiled & Temporaries \\
+\midrule
+256 & 1.0~ms & 0.25~MiB & 1.5--1.7~ms & 264~B & 1.0--1.1~ms & 16,896~B \\
+1,024 & 15.0--15.5~ms & 4~MiB & 23.7--24.6~ms & 264~B & 14.9--15.5~ms & 16,896~B \\
+4,096 & 249--254~ms & 64~MiB & 381--453~ms & 264~B & 250--282~ms & 16,896~B \\
+8,192 & 1.02--1.05~s & 256~MiB & 1.55--1.57~s & 264~B & 0.95~s & 16,896~B \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Three results. \emph{Memory:} the naive version's temporaries
+quadruple with every doubling of $S$, to 256~MiB at 8,192 tokens; the online
+version keeps 264 bytes (a row's maximum, sum and 64-element output) and the
+tiled version 16,896 (a $64 \times 64$ tile and two numbers per row), whatever
+the length. \emph{Time:} on one CPU core the naive and tiled versions run
+within 10\% of each other at every length, as the napkin math predicted for a
+machine whose ridge lies far below attention's intensity. 8.6~GFLOP at 8,192
+tokens in 0.95~s is 9~GFLOP/s, and at that rate the naive version's score
+traffic needs under a gigabyte per second (derived). The matrix costs this
+machine memory, not time. \emph{Rescaling:} the online version is the slowest,
+1.5--1.6 times the tiled one, because it rescales the output after every key
+rather than after every block of 64 --- FlashAttention-2's non-matmul lesson.
+
+\emph{Predict} before you run: how much memory will the naive version ask for
+at 16,384 tokens (\texttt{--max 16384}), and will your machine give it?
+\emph{Explain} why the tiled kernel rescales only 28,383 times at 8,192 tokens,
+5\% of its 528,384 updates of a row by a block; the second worked problem
+derives the count. \emph{Break} it: \texttt{--forget-rescale} runs the tiled
+kernel with the rescale removed, and at 2,048 tokens its error against float64
+is 0.69 of the output's scale where the correct kernels agree to $10^{-6}$. Yet
+on any sequence of 64 tokens or fewer --- a single block --- it is exactly right,
+which is why a test on short inputs alone would never catch it; the lab's tests
+use sequences long enough to fail. Then vary \texttt{--threshold}: 0 rescales on
+every raise, as FlashAttention does; large values are exact too, until the
+exponentials overflow.
 
 \HappenedSection{making the reduction order a design decision}
 
@@ -216,19 +646,26 @@ directly that the split count depends on the shape and not on the hardware
 (\texttt{crates/hermon-kernels/tests/differential.rs} at commit
 \texttt{2a3fd52}; the native kernels are opt-in, so PREVIEW). The last rule is
 the mirror image of FlashAttention-4's: both replace the library exponential
-with a polynomial, one for speed and one for reproducibility.
-\Chref{fast-wrong-answers} returns to why this matters beyond one engine.
+with a polynomial, one for speed and one for reproducibility. \Chref{fast-wrong-answers} returns to why this matters beyond
+one engine.
 
-\FrontierSection{2026-09-24}
+\FrontierSection{2026-09-27}
 
-FlashAttention-4 moved from a paper to the default attention kernel of a major
-engine on Blackwell within six months
-\cite{zadouri2026flashattention4,vllm2026attentionbackends}. Attention kernels
-are specializing by architecture: DeepSeek's FlashMLA serves latent attention
-and, since September 2025, token-sparse attention for DeepSeek-V3.2
-\cite{deepseek2025flashmla}; sparse and compressed attention appear in
-\Chref{long-context}. The direction is set by the asymmetry FlashAttention-4
-documents: matrix units keep outrunning everything around them.
+FlashAttention-4 went from a paper in March 2026 to the kernel a major engine
+runs on Blackwell by September. At the vLLM commit this book pins, the
+FlashAttention backend runs version 4 on data-center Blackwell GPUs (compute
+capability 10) and version 3 on Hopper; on Blackwell, though, vLLM's first
+choice for causal attention is FlashInfer, with FlashAttention second, while
+for non-causal attention FlashAttention comes first
+(\texttt{vllm/platforms/cuda.py} and
+\texttt{vllm/v1/attention/backends/fa\_utils.py} at \texttt{bcdacfc})
+\cite{vllm2026attentionbackends}. Attention kernels are specializing by
+architecture: DeepSeek's FlashMLA serves latent attention and, since September
+2025, token-sparse attention for DeepSeek-V3.2 \cite{deepseek2025flashmla};
+sparse and compressed attention appear in \Chref{long-context}. The direction
+is set by the asymmetry FlashAttention-4 documents: matrix units keep outrunning
+everything around them, so the work beside the matrix products ---
+exponentials, rescaling, masking --- is where the next kernels will be won.
 
 \ExercisesSection
 
@@ -236,13 +673,23 @@ documents: matrix units keep outrunning everything around them.
 \item \emph{Derivation.} Show that equation~\eqref{eq:online-softmax} produces
 the same result regardless of how the row is divided into pieces. Where does
 floating-point rounding make the pieces matter?
-\item \emph{Prediction.} Estimate the shared memory a 128-query block needs
-for $d_h=128$ in BF16, with a 64-key block in flight, and compare with an
-H100's 228~KB per SM.
+\item \emph{Prediction.} Estimate the shared memory a kernel with 128-query and
+128-key blocks needs at $d_h = 256$ in BF16, with two stages of keys and values
+in flight, and compare it with an H100's 228~KB per SM. Which block would you
+shrink, and what does that cost in re-reads?
 \item \emph{Implementation.} Add a sliding-window mask to the lab's tiled
-kernel without materializing the mask, and skip tiles that lie entirely
-outside the window.
-\item \emph{Falsification.} Construct scores for which skipping the rescaling
-when the maximum changes by less than a threshold produces an error larger
-than FP16 rounding.
+kernel without materializing the mask, and skip the tiles that lie entirely
+outside the window. How many tiles does a window of 1,024 leave at 8,192 tokens?
+\item \emph{Measurement.} Run \texttt{llama-bench -fa 0,1} on your machine at
+prompt lengths from 512 to 8,192 and fit the 20-bytes-per-score model to the
+differences. What bandwidth does the fit imply, and how does it compare with
+your machine's streaming bandwidth from \Chref{roofline}?
+\item \emph{Falsification.} The conditional rescaling is exact in real
+arithmetic. Find where it stops being exact in floating point: the largest
+threshold for which a block's exponentials still fit in FP16 (whose largest
+value is 65,504) when they are converted for the second product, and construct
+scores that overflow a kernel storing them in FP16 with a threshold of 12. Does
+BF16 have the same limit?
 \end{enumerate}
+
+\input{worked/ch08-flashattention.tex}

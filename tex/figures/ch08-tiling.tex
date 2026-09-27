@@ -1,0 +1,65 @@
+% Tiled causal attention (conceptual). Left: the score matrix in 8 x 8 tiles; one query block
+% is held on chip while the key/value blocks at or left of the diagonal stream past it, and the
+% tiles above the diagonal are never computed. Right: one query row's running state through the
+% chapter's worked example (scores 1, 3 | 2, 5 against values 1, 2 | 3, 4; derived in the text
+% and checked by the lab's test the_worked_example_of_the_chapter).
+\begin{tikzpicture}[
+  lab/.style={font=\small\sffamily\bfseries, text=BookBlue},
+  note/.style={font=\scriptsize\sffamily, text=black!75, align=left},
+  arr/.style={-{Stealth[length=1.6mm]}, BookBlue, thick},
+]
+\def\t{0.62}
+% tiles
+\foreach \r in {0,...,7} {
+  \foreach \c in {0,...,7} {
+    \pgfmathsetmacro{\x}{\c*\t}
+    \pgfmathsetmacro{\y}{-\r*\t}
+    \ifnum\c>\r
+      \draw[black!22, dashed] (\x,\y) rectangle ++(\t,-\t);
+    \else
+      \ifnum\c=\r
+        \fill[BookBlue!22] (\x,\y) -- ++(0,-\t) -- ++(\t,0) -- cycle;
+        \draw[BookBlue!55] (\x,\y) rectangle ++(\t,-\t);
+      \else
+        \fill[BookBlue!22] (\x,\y) rectangle ++(\t,-\t);
+        \draw[BookBlue!55] (\x,\y) rectangle ++(\t,-\t);
+      \fi
+    \fi
+  }
+}
+% the query block on chip: row 5, tiles 0..5
+\draw[BookBlue, line width=1.4pt] (0,-5*\t) rectangle (6*\t,-6*\t);
+\fill[BookGold] (-1.35,-5*\t) rectangle (-0.25,-6*\t);
+\node[font=\scriptsize\sffamily, align=center] at (-0.8,-5.5*\t) {$\mathbf{Q}_5$\\on chip};
+\draw[arr] (-0.25,-5.5*\t) -- (0,-5.5*\t);
+% key/value blocks along the top
+\foreach \c in {0,...,7} {
+  \fill[BookGreen] (\c*\t+0.05,0.18) rectangle (\c*\t+\t-0.05,0.62);
+  \node[font=\tiny\sffamily] at (\c*\t+0.5*\t,0.40) {$\mathbf{K}_{\c}\mathbf{V}_{\c}$};
+}
+\node[lab, anchor=south west] at (0,0.75) {keys and values, block by block};
+\node[lab, anchor=south, rotate=90] at (-1.55,-4*\t) {queries, block by block};
+% streaming along the highlighted row
+\draw[arr] (0.1,-8*\t-0.25) -- (6*\t-0.1,-8*\t-0.25);
+\node[note, anchor=north west] at (0,-8*\t-0.4) {$\mathbf{Q}_5$ meets $\mathbf{K}_0\mathbf{V}_0$ to $\mathbf{K}_5\mathbf{V}_5$ in turn,\\one $B_r \times B_c$ tile of scores at a time};
+% callouts
+\node[note, anchor=west] at (5.25,-0.75) {above the diagonal:\\never computed};
+\draw[black!45] (5.2,-0.75) -- (4.7,-0.95);
+\node[note, anchor=west] at (5.25,-2.3) {diagonal tile:\\masked inside};
+\draw[black!45] (5.2,-2.3) -- (2.05,-2.3);
+% running state of one row
+\node[lab, anchor=west] at (7.9,0.4) {one row of $\mathbf{Q}_5$: the running state};
+\node[anchor=north west, font=\scriptsize] at (7.8,0.1) {%
+\begin{tabular}{@{}l r r r r@{}}
+\toprule
+ & $m$ & $e^{m-m'}$ & $\ell$ & $o$ \\
+\midrule
+start & $-\infty$ & & 0 & 0 \\
+block 1: scores 1, 3 & 3 & & 1.1353 & 2.1353 \\
+block 2: scores 2, 5 & 5 & 0.1353 & 1.2034 & 4.4383 \\
+\midrule
+output $o/\ell$ & & & & 3.6881 \\
+\bottomrule
+\end{tabular}};
+\node[note, anchor=north west, text width=6.6cm] at (7.85,-2.3) {Block 2 raises the maximum from 3 to 5, so the running $\ell$ and $o$ are multiplied by $e^{3-5}$ before its own terms are added. Only $o/\ell$ (and $m + \ln \ell$, kept for the backward pass) is written back; the tile of scores never leaves the chip.};
+\end{tikzpicture}
