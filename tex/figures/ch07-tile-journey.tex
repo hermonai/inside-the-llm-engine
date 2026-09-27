@@ -1,0 +1,36 @@
+% One output tile's journey in a warp-specialized GEMM on Hopper and on Blackwell
+% (conceptual; research/FRONTIER.md: Hopper Tuning Guide section 1.4 for TMA and shared
+% memory; CUTLASS WGMMA guide for the warpgroup MMA; CUTLASS Blackwell SM100 guide for
+% tcgen05, tensor memory and the two-SM MMA).
+\begin{tikzpicture}[
+  box/.style={draw=BookBlue, fill=BookPale, rounded corners=2pt, align=center, font=\scriptsize\sffamily, minimum height=12mm, inner sep=3pt, text width=24mm},
+  mem/.style={box, fill=BookGreen},
+  op/.style={box, fill=BookGold!70},
+  arr/.style={-{Stealth[length=1.5mm]}, BookBlue, thick},
+  lab/.style={font=\small\sffamily\bfseries, anchor=west},
+  note/.style={font=\scriptsize\sffamily, text=black!70, align=left, anchor=north west, text width=27mm},
+]
+% Hopper
+\node[lab] at (-1.2,1.35) {Hopper (H100)};
+\node[mem] (h1) at (0.1,0) {HBM\\A and B tiles};
+\node[op]  (h2) at (3.2,0) {TMA copy\\requested by\\one thread};
+\node[mem] (h3) at (6.3,0) {shared memory\\ring of stages\\(228 KB per SM)};
+\node[op]  (h4) at (9.4,0) {\texttt{wgmma}\\128-thread warpgroup\\$64 \times N \times K$};
+\node[mem] (h5) at (12.5,0) {accumulator\\in registers};
+\draw[arr] (h1) -- (h2); \draw[arr] (h2) -- (h3); \draw[arr] (h3) -- (h4); \draw[arr] (h4) -- (h5);
+\node[note] at (1.8,-0.75) {a producer warp keeps the ring full while consumer warpgroups multiply};
+\node[note] at (8.0,-0.75) {asynchronous: issue, keep working, then wait on a fence};
+% Blackwell
+\node[lab] at (-1.2,-2.05) {Blackwell (B200)};
+\node[mem] (b1) at (0.1,-3.4) {HBM\\A, B and\\block scales};
+\node[op]  (b2) at (3.2,-3.4) {TMA copy};
+\node[mem] (b3) at (6.3,-3.4) {shared memory\\ring of stages};
+\node[op]  (b4) at (9.4,-3.4) {\texttt{tcgen05.mma}\\one SM or a\\pair of SMs};
+\node[mem] (b5) at (12.5,-3.4) {accumulator in\\tensor memory;\\registers left free};
+\draw[arr] (b1) -- (b2); \draw[arr] (b2) -- (b3); \draw[arr] (b3) -- (b4); \draw[arr] (b4) -- (b5);
+\node[note] at (8.0,-4.15) {2--4$\times$ Hopper's MMA rate; FP8, FP6 and FP4 with their scales};
+% epilogue
+\node[box, text width=40mm] (e) at (12.5,-6.1) {epilogue: accumulator $\rightarrow$\\registers $\rightarrow$ shared memory $\rightarrow$\\TMA store to HBM};
+\draw[arr] (h5.east) -- ++(0.45,0) |- (e.east);
+\draw[arr] (b5) -- (e);
+\end{tikzpicture}

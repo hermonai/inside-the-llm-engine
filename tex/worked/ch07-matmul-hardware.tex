@@ -1,0 +1,61 @@
+\section{Worked problems: tiles, waves and crossovers}
+
+\subsection{A tile that reaches the ridge}
+\textbf{Problem.} Using equation~\eqref{eq:tile-intensity}, find the smallest
+square tile $T \times T$ whose intensity in BF16 exceeds an H100's ridge of about
+295~FLOP/byte. How much shared memory would one stage of its operands need for a
+$K$-slice of 64, and how much room would its accumulators take?
+
+\textbf{Solution.} For a square tile in BF16, $I = 2T^2/(2T \times 2) = T/2$
+FLOP/byte, so the tile must be at least $591 \times 591$; say $592 \times 592$. One
+stage of operands is $2 \times 592 \times 64 \times 2$~bytes $= 148$~KB --- one
+stage fits in the 228~KB of an SM's shared memory, two do not, so the kernel could
+not load the next slice while multiplying this one. The accumulators are
+$592^2 \times 4$~bytes $= 1.34$~MiB in 32-bit floats: six times the SM's entire
+shared memory, and far more than its registers can hold. No single SM's tile
+reaches the ridge from HBM. Real kernels get there by reusing tiles \emph{across}
+SMs: neighbouring blocks read the same rows of $\mathbf{A}$ or columns of
+$\mathbf{B}$ in turn, so most of their loads hit the 50~MB L2 cache rather than
+HBM, and on Hopper a cluster of up to 16 blocks can read one another's shared
+memory directly \cite{nvidia2026hoppertuning}. The ridge is a property of the
+whole chip's reuse, not of one tile.
+
+\subsection{Recovering a lost wave}
+\textbf{Problem.} A product divides into 150 output tiles on a GPU with 132 SMs,
+one tile per SM at a time. Compare its time with that of a 132-tile product, and
+evaluate two remedies: splitting every tile's $K$ loop into equal parts
+(split-K), and stream-K, which gives each SM an equal share of all the tiles'
+$K$ iterations.
+
+\textbf{Solution.} Without a remedy the product takes two tile-times --- 132 tiles
+in the first wave, 18 in the second --- and the SMs do useful work in
+$150/264 = 57\%$ of the slots. Splitting each tile's $K$ loop in two gives 300
+half-tiles: three waves of half-tiles, 1.5 tile-times, 75\% of the slots used,
+plus a reduction that adds 150 pairs of partial tiles. The best uniform split,
+into sevenths, gives 1,050 units in eight waves of a seventh each: 1.14
+tile-times, but with seven partial tiles to add for every output tile. Stream-K
+gives each SM $150/132 = 1.14$ tiles' worth of $K$ iterations directly: 1.14
+tile-times, with every SM busy until the end, and only the tiles whose
+iterations are divided between two SMs need a fix-up of partial sums (derived).
+Both remedies turn two tile-times into about 1.14; stream-K pays for it with
+fewer reductions, which is why its authors could use one tile configuration for
+thousands of shapes \cite{osama2023streamk}.
+
+\subsection{Predicting the crossover}
+\textbf{Problem.} In the lab, the streaming decode kernel takes 1.2~ms at small
+$N$ (the 67~MB weight matrix read at about 57~GB/s) and computes at about
+110~GFLOP/s once the arithmetic dominates; the tiled GEMM takes 3.28~ms for any
+$N$ from 1 to 16. Predict the $N$ at which the tiled kernel becomes faster, and
+compare with the measurement.
+
+\textbf{Solution.} The streaming kernel's time is the longer of 1.2~ms and
+$2 \times 4{,}096^2 \times N / 110$~GFLOP/s $= 0.305N$~ms. It reaches the tiled
+kernel's 3.28~ms at $N = 3.28 / 0.305 \approx 11$ (derived). Measured, the
+streaming kernel took 2.2~ms at $N = 8$ and 6.0--7.2~ms at $N = 16$ against the
+tiled kernel's 3.3~ms at both, so the crossover lies between 8 and 16, as
+predicted. The prediction is slightly optimistic at 16 --- it gives 4.9~ms ---
+because the streaming kernel's arithmetic rate falls once sixteen vectors no
+longer fit beside a weight row in the first-level cache. An engine's switching
+threshold is this crossover, measured for its own kernels on its own hardware;
+llama.cpp's Metal backend switches at eight rows (\Chref{roofline}), and a
+different machine or kernel would move it.

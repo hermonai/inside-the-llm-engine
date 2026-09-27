@@ -1,0 +1,30 @@
+% The ladder of matrix-multiply implementations on the Apple M1, GFLOP/s (log scale).
+% Rungs 1-5: code/labs/ch07-gemm, 512 x 512 f32, best of 3 (record 2026-09-26-m1-pass3,
+% ch07-lab-run1/run2). Accelerate (NumPy float32) and the GPU through PyTorch MPS: 4,096 x 4,096
+% products (record 2026-09-23-m1-part2). Reference lines: the multiply-add peak of the four
+% performance cores measured by Chapter 3's lab (377 GFLOP/s) and Apple's 2.6 TFLOP/s for the GPU.
+\begin{tikzpicture}
+\begin{axis}[
+  xbar, bar shift=0pt, width=12.5cm, height=7.6cm, bar width=4.2mm,
+  xmode=log, xmin=1, xmax=5000,
+  xtick={1,10,100,1000}, xticklabels={1,10,100,1000},
+  symbolic y coords={naive,ikj,blk,t1,t4,acc,gpu32,gpu16},
+  ytick={naive,ikj,blk,t1,t4,acc,gpu32,gpu16},
+  yticklabels={{naive loops (i, j, k), 512},{loops reordered (i, k, j)},{blocked 64},{register tile 4 $\times$ 16},{register tile, 4 threads},{CPU, Accelerate, 4,096},{GPU, MPS, 32-bit, 4,096},{GPU, MPS, 16-bit, 4,096}},
+  enlarge y limits=0.1,
+  xlabel={GFLOP/s (logarithmic)},
+  tick label style={font=\small}, label style={font=\small},
+  xmajorgrids, grid style={draw=black!12},
+  nodes near coords, nodes near coords style={font=\scriptsize\sffamily, anchor=west},
+  point meta=explicit symbolic,
+]
+\addplot[fill=BookGold!85!black, draw=BookGold!50!black] coordinates {
+  (2.2,naive) [2.2] (26.1,ikj) [26] (19.7,blk) [20] (45.6,t1) [46] (160,t4) [160]};
+\addplot[fill=BookBlue!70, draw=BookBlue] coordinates {
+  (873,acc) [873] (1604,gpu32) [1,604] (2213,gpu16) [2,213]};
+\draw[red!70!black, densely dashed, thick] (axis cs:377,naive) -- (axis cs:377,gpu16);
+\node[font=\scriptsize\sffamily, text=red!70!black, anchor=south, rotate=90] at (axis cs:377,blk) {CPU multiply--add peak};
+\draw[BookBlue, densely dashed, thick] (axis cs:2600,naive) -- (axis cs:2600,gpu16);
+\node[font=\scriptsize\sffamily, text=BookBlue, anchor=south, rotate=90] at (axis cs:2600,blk) {GPU peak (Apple)};
+\end{axis}
+\end{tikzpicture}

@@ -1,0 +1,25 @@
+% A 4,096 x 4,096 matrix times a 4,096 x N matrix on the Apple M1 GPU through PyTorch 2.10's
+% MPS backend, float16 and float32, every N from 1 to 32 and eight larger values; best of two
+% sweeps, each point the median of 20 timings (record 2026-09-26-m1-pass3, ch07-mps-sweep*.json).
+\begin{tikzpicture}
+\begin{axis}[
+  width=12.5cm, height=6.8cm,
+  xmode=log, log basis x=2,
+  xmin=0.85, xmax=600, ymin=0, ymax=9.5,
+  xtick={1,2,4,8,16,32,64,128,256,512}, xticklabels={1,2,4,8,16,32,64,128,256,512},
+  xlabel={Columns of the right-hand matrix ($N$)},
+  ylabel={Milliseconds per product},
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.02,0.97)}, anchor=north west, draw=black!30, fill=white},
+  legend cell align=left,
+]
+\addplot[BookBlue, mark=*, mark size=1.5pt, thick] coordinates {(1,0.91) (2,0.84) (3,0.90) (4,1.14) (5,1.42) (6,1.50) (7,1.57) (8,1.50) (9,1.90) (10,1.16) (11,1.16) (12,1.12) (13,1.07) (14,1.04) (15,1.06) (16,1.01) (17,1.64) (18,1.44) (19,1.36) (20,1.39) (21,1.68) (22,1.73) (23,1.69) (24,1.61) (25,1.56) (26,1.47) (27,1.46) (28,1.40) (29,1.25) (30,1.24) (31,1.36) (32,1.39) (40,2.06) (48,1.70) (64,1.51) (96,3.24) (128,2.36) (256,4.38) (512,8.48)};
+\addlegendentry{16-bit}
+\addplot[red!70!black, mark=square*, mark size=1.5pt, thick] coordinates {(1,1.39) (2,1.38) (3,1.48) (4,1.68) (5,2.17) (6,2.64) (7,1.96) (8,2.36) (9,3.48) (10,2.07) (11,1.91) (12,1.90) (13,1.87) (14,1.97) (15,2.25) (16,2.88) (17,2.39) (18,2.39) (19,2.37) (20,2.46) (21,2.58) (22,2.84) (23,2.78) (24,3.48) (25,2.97) (26,2.87) (27,3.21) (28,2.62) (29,2.49) (30,2.54) (31,2.24) (32,1.93) (40,2.36) (48,2.19) (64,1.88) (96,4.67) (128,2.56) (256,4.67) (512,8.73)};
+\addlegendentry{32-bit}
+\node[font=\scriptsize\sffamily, anchor=south] at (axis cs:9,3.6) {$N = 9$};
+\node[font=\scriptsize\sffamily, anchor=north] at (axis cs:14,0.95) {10--16 faster than 5--9};
+\node[font=\scriptsize\sffamily, anchor=south] at (axis cs:96,4.8) {96 slower than 128};
+\end{axis}
+\end{tikzpicture}
