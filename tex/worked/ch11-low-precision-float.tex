@@ -1,0 +1,63 @@
+\section{Worked problems: clamped blocks, mantissa bits and a scale's range}
+
+\subsection{How often does an MX block clamp?}
+\textbf{Problem.} Equation~\eqref{eq:mx-exponent} maps a block's largest magnitude
+into the element format's top binade, $[2^{e_{\max}}X, 2^{e_{\max}+1}X)$, but the
+format's largest value is $t \cdot 2^{e_{\max}}X$ with $t < 2$: 1.5 for E2M1, 1.75
+for E4M3, E5M2 and E3M2, 1.875 for E2M3. If the fractional part of
+$\log_2 \max_i \lvert v_i\rvert$ is spread evenly over $[0, 1)$ across blocks,
+what fraction of blocks clamps its largest value, and by how much at worst?
+Compare with the lab's counts on the real projection.
+
+\textbf{Solution.} A block clamps when its maximum, within the top binade, exceeds
+$t$ times the binade's start, which happens for a fraction $1 - \log_2 t$ of
+evenly spread logarithms: $1 - \log_2 1.5 = 41.5\%$ for E2M1, $1 - \log_2 1.75 =
+19.3\%$ for the three formats topping out at 1.75, and $1 - \log_2 1.875 = 9.3\%$
+for E2M3 (derived). The lab counted 38.4\%, 18.4\% and 9.2\% of 98,304 blocks
+(measured). The worst clamp takes a value just below the next power of two down
+to $t$ times the binade's start: it loses $(2 - t)/2$, a quarter of its value in
+E2M1 and an eighth in the 1.75 formats. Every clamped block pays that on its
+largest, usually most important, element --- which is why NVFP4 fits its scale to
+the block instead, and why one could give MX conversion one binade of headroom
+and trade the clamp for a coarser grid (the lab's ``break it'' exercise).
+
+\subsection{Mantissa bits predict the table}
+\textbf{Problem.} Rounding to a floating-point grid with $m$ mantissa bits has a
+step of $2^{-m}$ relative to the binade, so its relative error scales as
+$2^{-m}$, as long as the values stay within the format's normal range. Predict
+the ratios of the errors of E5M2 to E4M3 and of E2M1 to E2M3, and compare with
+the lab's table.
+
+\textbf{Solution.} E5M2 has two mantissa bits and E4M3 three, so E5M2 should be
+twice as bad; E2M1 has one and E2M3 three, so MXFP4 should be four times as bad
+as MXFP6 (E2M3) (derived). Measured, with one scale per tensor, E5M2's weight and
+output errors are 1.98 and 1.99 times E4M3's; in MX blocks, MXFP4's are 4.15 and
+4.24 times MXFP6 (E2M3)'s. The prediction ignores the exponent bits entirely, and
+it works because a scaled block barely needs them: the lab's projection has
+groups of 32 whose largest weight is only 2.6 times their root-mean-square
+(\Chref{weight-quantization}), so almost every weight lands within a few
+binades of the top. That is also why E3M2 and E5M2 tie: once the block is
+scaled, the three extra exponent bits of E5M2 cover values that never occur.
+Choosing a format for weights is choosing mantissa bits; exponent bits are for
+tensors whose range cannot be scaled away.
+
+\subsection{When does NVFP4's tensor scale bite?}
+\textbf{Problem.} In equation~\eqref{eq:nvfp4}, a block with largest magnitude $a_b$
+in a tensor with largest magnitude $a_t$ stores the scale
+$S_b = 448\,a_b / a_t$ in E4M3, whose smallest normal value is $2^{-6}$ and
+smallest subnormal $2^{-9}$. How small can a block's maximum be, relative to the
+tensor's, before its scale loses precision, and before it becomes zero? What
+does that mean for weights and for activations?
+
+\textbf{Solution.} The scale stays normal while $448\,a_b/a_t \ge 2^{-6}$, that is
+while $a_b \ge 3.5 \times 10^{-5}\,a_t$; below that it is subnormal, with fewer
+significant bits, and below half the smallest subnormal, $a_b < 2.2 \times
+10^{-6}\,a_t$, it rounds to zero and the whole block decodes as zero (derived).
+For weights this never happens in practice: a block's maximum is rarely more
+than a few hundred times smaller than the tensor's. For an activation with one
+outlier channel a thousand times its neighbours it is still three orders of
+magnitude away. The limit only bites when a tensor mixes values that differ by
+more than $10^{4}$ --- and then a per-tensor FP32 scale was never going to be
+enough. MX formats have no such limit, because E8M0 spans $2^{\pm127}$: they
+trade NVFP4's exact fit for range, and the lab shows which trade the weights
+of a real model prefer.

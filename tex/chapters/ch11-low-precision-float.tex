@@ -1,6 +1,8 @@
-% status: ZERO
+% status: FULL
 % Chapter 11 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Sources: research/FRONTIER.md (Part II additions, 2026-09-24).
+% Sources: research/FRONTIER.md (Part II additions, 2026-09-24; update rows 2026-09-27).
+% Measurements: research/measurements/2026-09-26-m1-pass3.md (the block-format lab on a real
+% projection of Llama 3.2 3B).
 \chapter{Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4}\label{ch:low-precision-float}
 
 \begin{ChapterIntent}
@@ -8,11 +10,12 @@ Blackwell-class tensor cores multiply four-bit floating-point numbers
 directly, provided each small block of values carries a scale. This chapter
 explains the formats that make this work --- FP8's E4M3 and E5M2, the OCP
 microscaling family with a shared power-of-two exponent per 32 values, and
-NVFP4 with an FP8 scale per 16 values and a per-tensor scale --- and what each
-trades between range, precision and overhead. It separates the tolerances of
-weights, activations and the KV cache, and follows the shift from quantizing
-trained models to training them in low precision, as in DeepSeek-V3's FP8
-blocks and the MXFP4 checkpoints of gpt-oss and Kimi~K3.
+NVFP4 with an FP8 scale per 16 values and a per-tensor scale --- encodes numbers
+in each by hand, and measures what each does to one real layer of a real
+model. It separates the tolerances of weights, activations and the KV cache,
+and follows the shift from quantizing trained models to training them in low
+precision, as in DeepSeek-V3's FP8 blocks and the MXFP4 checkpoints of gpt-oss
+and Kimi~K3.
 \end{ChapterIntent}
 
 \OpeningSection{117 billion parameters in 65 gigabytes}
@@ -72,7 +75,8 @@ each halving of precision: 2.25~PFLOP/s in BF16, 4.5 in FP8, 9 in FP4 (NVIDIA
 HGX specification, logged in \texttt{research/FRONTIER.md}). A format that
 halves the bytes \emph{and} doubles the arithmetic keeps a workload's position
 relative to the ridge (\Chref{roofline}) while making everything twice as
-fast --- if the accuracy survives.
+fast --- if the accuracy survives. The rest of the chapter measures when it
+does.
 
 \section{Floating point with fewer bits}
 
@@ -91,6 +95,15 @@ resolution near zero, where most values lie; the integer grid spends it
 evenly. A shared per-block scale decides which real interval these eight
 points cover.}{fig:ch11-fp4-grid}
 
+\emph{A number by hand.} Encode 0.3 in E4M3, whose exponent field has a bias of
+7. Write it as $1.2 \times 2^{-2}$: the exponent field is $-2 + 7 = 5$, binary
+0101, and the mantissa must approximate 0.2 in three bits, in steps of $1/8$:
+$0.2 \times 8 = 1.6$ rounds to 2, binary 010. The code is 0\,0101\,010, 0x2A,
+and its value is $(1 + 2/8) \times 2^{-2} = 0.3125$ --- an error of 4.2\%, from
+neighbours $0.28125$ and $0.3125$ that are 11\% apart. Three mantissa bits give
+every binade eight steps, so the relative error of any normal E4M3 value is at
+most one part in 16. (The lab's test checks the code.)
+
 Eight magnitudes cannot represent a tensor on their own. The idea that makes
 four-bit formats usable is the shared scale: a whole block of values is
 divided by one scale factor chosen so that the block's largest magnitude lands
@@ -104,10 +117,24 @@ The two FP8 formats standardized in 2022 split eight bits differently
 bits; it gives up infinities and keeps a single NaN pattern to extend its
 range to $\pm448$. E5M2 has five exponent bits and two mantissa bits, keeps
 IEEE-style special values, and reaches $\pm57{,}344$ with less precision. The
+lab's decoders, written from those rules and tested against every one of the
+256 codes of each, count 127 non-negative finite E4M3 values from $2^{-9}$ to
+448 --- eighteen binades --- and 124 for E5M2, from $2^{-16}$ to 57,344. The
 usual division of labour is E4M3 for weights and activations, where precision
 matters more, and E5M2 for gradients in training, where range does --- but
 DeepSeek-V3 used E4M3 everywhere, relying on fine-grained scales to supply the
 range \cite{deepseek2024v3}.
+
+\emph{One scale for a whole tensor, by hand.} The lab's real projection has a
+largest weight of 0.0849 and a root-mean-square of 0.0114 (read from the file;
+\Chref{weight-quantization}). One FP32 scale maps the largest weight to 448, so
+$s = 0.0849/448 = 1.9 \times 10^{-4}$, and a typical weight becomes
+$0.0114/s \approx 60$ --- in E4M3's binade from 32 to 64, where the step is 4. A
+step of 4 around 60 is a relative step of about 7\%, so a typical weight is
+rounded by at most 3.5\%, and on average by less; the lab measured 2.65\% RMS
+error. The smallest weights, a hundred times smaller, land near 0.6, among E4M3's
+subnormals, where the step is $2^{-9}$ in absolute terms and the relative error
+grows --- which is what finer scales are for (derived).
 
 \section{Scaling granularity: tensor, channel, block}
 
@@ -131,10 +158,46 @@ The OCP microscaling (MX) formats standardize block scaling for hardware: a
 block of 32 elements shares one 8-bit scale in E8M0 --- an exponent with no
 mantissa, so every scale is a power of two \cite{rouhani2023mx}. Multiplying by
 a power of two is exact and cheap in hardware: it adjusts exponents without
-rounding. The family covers MXFP8, MXFP6, MXFP4 and MXINT8, each with the same
-32-element blocks. Because the scale can only be a power of two, a block's
-largest value may land anywhere between the top half and the top of the
-element grid, wasting up to one bit of its resolution.
+rounding. An E8M0 byte stands for $2^{c-127}$, so the scales span more exponents
+than FP32 itself, and the MX paper notes that its scale's representable
+exponents are a superset of FP32's \cite{rouhani2023mx}: an MX block can never
+run out of range, only of precision. The family covers MXFP8, MXFP6, MXFP4 and
+MXINT8, each with the same 32-element blocks. The conversion the MX paper gives as a working example is
+three lines: the shared exponent is
+\begin{equation}
+e_{\text{shared}} = \lfloor \log_2 \max_i \lvert v_i \rvert \rfloor - e_{\max},
+\qquad X = 2^{e_{\text{shared}}},
+\label{eq:mx-exponent}
+\end{equation}
+where $e_{\max}$ is the exponent of the element format's largest normal value
+(2 for E2M1, whose largest value is $6 = 1.5 \times 2^2$; 8 for E4M3), and each
+element is $v_i / X$ rounded to the element format, with values beyond its
+largest normal clamped to it \cite[Algorithm~1]{rouhani2023mx}.
+
+\emph{A block by hand.} Take \Chref{weight-quantization}'s eight weights, 0.90,
+$-0.35$, 0.12, 0.05, $-0.61$, 0.28, $-0.02$, 0.44, as an MXFP4 block. The largest
+magnitude is 0.9, $\lfloor \log_2 0.9 \rfloor = -1$, so $e_{\text{shared}} = -3$ and
+$X = 1/8$. Dividing by $X$ gives 7.2, $-2.8$, 0.96, 0.4, $-4.88$, 2.24, $-0.16$ and
+3.52; rounding to the E2M1 grid gives 6, $-3$, 1, 0.5, $-4$, 2, 0 and 4; and
+multiplying back gives 0.75, $-0.375$, 0.125, 0.0625, $-0.5$, 0.25, 0 and 0.5.
+The block's largest weight has lost a sixth of its value: 7.2 lies above the
+grid's top, 6, and was clamped. The relative error over the block is 15.9\%,
+against 7.4\% for \Chref{weight-quantization}'s 4-bit integers with one exact
+scale (derived; the lab's test checks the block).
+
+The clamp is not bad luck; it is built in. A power-of-two scale maps the
+block's largest value somewhere in the top binade, $[4X, 8X)$ for E2M1, but the
+format's grid stops at $6X$, so every block whose maximum lands in $(6X, 8X)$
+saturates. The second worked problem predicts how often that happens, and the
+lab counts it on real weights: 38\% of the MXFP4 blocks of a real projection
+clamp their largest value, and even MXFP8, whose E4M3 grid stops at
+$1.75 \times 2^{8}$, clamps 18\%. The clamp belongs to the recipe, not to the
+format. The MX paper offers Algorithm~1 as a working example and says in so many
+words that the specification allows other, implementation-defined conversion
+recipes \cite{rouhani2023mx}; a converter that chose the scale one binade higher
+would never clamp and would round every element on a grid twice as coarse. The
+bytes on disk do not say which recipe made them, which is one more reason to
+measure a quantized checkpoint rather than trust its format's name.
 
 \section{NVFP4: two-level scaling}
 
@@ -142,11 +205,139 @@ NVIDIA's NVFP4 keeps the E2M1 elements but changes the scaling
 \cite{nvidia2025nvfp4}: blocks of 16 instead of 32, and a scale stored in E4M3
 --- a real fraction, not just a power of two --- chosen to fit the block
 closely. Because an E4M3 scale has limited range of its own, a second, FP32
-scale per tensor brings each tensor's scales into the E4M3 range. The price
-is a quarter of a bit per value more than MXFP4 (4.5 against 4.25); the gain is
-smaller blocks and exact-fit scales. NVIDIA reports that DeepSeek-R1-0528
-served in NVFP4 lost 1\% or less of accuracy against FP8 on its evaluations
-(vendor measurement, not reproduced here).
+scale per tensor brings each tensor's scales into the E4M3 range. NVIDIA's
+NVFP4 pretraining paper writes the recipe as equations
+\cite{nvidia2025nvfp4pretrain}: with $a_{\text{tensor}}$ the tensor's largest
+magnitude and $a_b$ block $b$'s,
+\begin{equation}
+s_{\text{enc}} = \frac{6 \cdot 448}{a_{\text{tensor}}},\qquad
+S_b = \operatorname{e4m3}\!\left(\frac{a_b}{6}\, s_{\text{enc}}\right),\qquad
+\hat{v}_i = \operatorname{e2m1}\!\left(v_i \frac{s_{\text{enc}}}{S_b}\right)\frac{S_b}{s_{\text{enc}}},
+\label{eq:nvfp4}
+\end{equation}
+so that the tensor's largest block scale lands on E4M3's largest value, 448, and
+each block's largest element lands on E2M1's, 6. The price is a quarter of a
+bit per value more than MXFP4 (4.5 against 4.25); the gain is smaller blocks and
+scales that fit. The same eight weights show it: $s_{\text{enc}} = 2{,}986.7$, the
+block scale $0.9/6 = 0.15$ is stored exactly (as 448), and the weights divided by
+0.15 --- 6, $-2.33$, 0.8, 0.33, $-4.07$, 1.87, $-0.13$, 2.93 --- round to 6, $-2$, 1,
+0.5, $-4$, 2, 0 and 3, which are 0.9, $-0.3$, 0.15, 0.075, $-0.6$, 0.3, 0 and 0.45.
+The largest weight survives exactly, and the block's error falls from 15.9\% to
+5.6\% (derived). NVIDIA reports that DeepSeek-R1-0528 served in NVFP4 lost 1\%
+or less of accuracy against FP8 on its evaluations (vendor measurement, not
+reproduced here).
+
+\section{Every format on one real layer}
+
+Hand examples show the mechanisms; a real tensor shows their sizes. The lab
+takes the layer \Chref{weight-quantization} used --- layer 0's value projection
+of Llama~3.2~3B, $1{,}024 \times 3{,}072$ weights, with the real inputs of the
+book's \texttt{AUTHORING.md} --- and round-trips it through every format, with
+encoders written from the specifications above, measuring bits per value, the
+weight error, and the error in the layer's output on 2,193 tokens (measured,
+record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Format & Bits per value & Weight error & Output error & Blocks clamped \\
+\midrule
+BF16 & 16 & 0.16\% & 0.15\% & --- \\
+INT8, a scale per 32 (like Q8\_0) & 8.5 & 0.55\% & 0.73\% & --- \\
+FP8 E4M3, one scale per tensor & 8 & 2.65\% & 2.38\% & --- \\
+MXFP8 (E4M3) & 8.25 & 3.03\% & 2.64\% & 18\% \\
+MXFP6 (E2M3) & 6.25 & 2.88\% & 3.02\% & 9\% \\
+FP8 E5M2, one scale per tensor & 8 & 5.26\% & 4.74\% & --- \\
+MXFP8 (E5M2) & 8.25 & 5.43\% & 4.85\% & 18\% \\
+MXFP6 (E3M2) & 6.25 & 5.43\% & 4.85\% & 18\% \\
+NVFP4 & 4.5 & 9.46\% & 10.32\% & --- \\
+MXFP4 & 4.25 & 11.95\% & 12.80\% & 38\% \\
+INT4, a scale per 32 (like Q4\_0) & 4.5 & 10.49\% & 15.07\% & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Four lessons, each against a common assumption. \emph{Mantissa bits
+buy precision, exponent bits buy range, and weights need little range once
+they are scaled.} E2M3, six bits with three mantissa bits, beats both 8-bit
+E5M2 formats with two; E3M2 matches MXFP8 (E5M2) to the fourth digit, because
+within a scaled block the extra exponent range is never used. \emph{For weights,
+integers with fine scales beat FP8.} Q8\_0-style 8-bit integers with a scale
+per 32 are three times more accurate than FP8 with one scale per tensor: the
+floating-point grid spends its levels on range a scaled block does not need.
+FP8's case rests on activations, whose range is dynamic, and on tensor cores
+that multiply it natively. \emph{Power-of-two scales cost precision.} MXFP8
+trails per-tensor FP8 on these weights because of its clamped blocks, and MXFP4
+trails NVFP4 by 2.5 points of output error --- the clamp again, and blocks twice
+as long. \emph{At four bits floating point beats integers in the output.} NVFP4
+and MXFP4 both beat 4-bit integers with a scale per 32 on the layer's output
+(10.3\% and 12.8\% against 15.1\%), though MXFP4's weight error is the larger:
+the grids put their error on different weights, and \Chref{weight-quantization}
+showed that where the error lands is what the output feels.
+
+\section{The same formats on the activations}
+
+Weights are one operand of a product; the activations are the other, and they
+are a different kind of tensor. The lab quantizes the same layer's inputs
+instead --- the RMS-normalized embeddings of 897 distinct tokens --- keeps the
+weights exact, and measures the error in the output again (measured, record
+\texttt{2026-09-26-m1-pass3}). First the inputs themselves: in each token's
+vector of 3,072 values, the largest is on average 13.3 times the vector's
+root-mean-square, where a Gaussian vector of that length would reach about 3.7,
+and the loudest channel's mean magnitude is 12.3 times the average channel's.
+These are the outlier channels of \Chref{weight-quantization}, at the very
+first layer.
+
+\begin{center}\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Format for the inputs & Bits per value & Output error \\
+\midrule
+INT8, a scale per 32 (like Q8\_0) & 8.5 & 1.39\% \\
+FP8 E4M3, a scale per 128 channels & 8.25 & 2.24\% \\
+FP8 E4M3, a scale per token & 8.01 & 2.37\% \\
+MXFP8 (E4M3) & 8.25 & 2.79\% \\
+MXFP6 (E2M3) & 6.25 & 4.54\% \\
+NVFP4, a tensor scale per token & 4.5 & 12.39\% \\
+MXFP4 & 4.25 & 17.87\% \\
+INT4, a scale per 32 (like Q4\_0) & 4.5 & 24.02\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\EngineFigure{ch11-formats}{Output error against bits per value for one real
+layer, with its weights (circles) or its inputs (squares) in each format
+(measured). Eight bits cost a few percent whatever the format; below that,
+mantissa bits and scale fit decide, and at four bits the inputs' outliers make
+every format worse than on the weights.}{fig:ch11-formats}
+
+\noindent Figure~\ref{fig:ch11-formats} puts both tables on one plot. At eight bits every format is within 1.4--2.8\% of the output, and
+DeepSeek-V3's choice for activations, a scale per token per 128 channels, is the
+best of the floating-point ones. At six bits the range starts to show: E2M3,
+which matched E4M3 on the weights, has twice the error on the activations. At
+four bits the outliers dominate. Every 4-bit format loses more on the
+activations than on the weights --- MXFP4 17.9\% against 12.8\%, 4-bit integers
+24.0\% against 15.1\% --- and the floating-point formats now beat the integers
+by a wide margin, because an exponent is exactly what a block with one loud
+value needs. The measurement is the argument for the split the rest of the
+chapter describes: four bits for weights, eight for activations.
+
+\section{One outlier in a block}
+
+Activations, unlike weights, carry outliers: a few channels whose values are
+tens of times larger than the rest (\Chref{weight-quantization}). The lab puts
+one such value, 30, in a block of 31 values between $-1$ and 1 and asks each
+format to hold it. MXFP8 (E4M3) keeps the small values to within 2.6\% and
+clamps the outlier to 28. MXFP4 keeps nothing: the shared exponent puts
+$X = 4$, every small value divided by 4 is at most 0.25, and E2M1's smallest
+non-zero value is 0.5, so all 31 round to zero --- and the outlier itself clamps
+to 24. NVFP4 represents the outlier exactly and loses the 15 small values that
+share its 16-element block; the other block keeps a scale of its own, and only
+one of its values, a tiny one, rounds to zero. That is 16 of 31 set to zero and
+70\% error on the small values: bad, but half the damage (measured).
+This is why the formats split the tensors the way this chapter's next sections
+describe: four bits are for weights, which have no outliers of that size;
+activations get eight bits, fine blocks, or both.
 
 \section{Tensor cores that consume scales}
 
@@ -156,7 +347,47 @@ take the scale factors alongside the operands: one UE8M0 scale per 32 elements
 of the reduction dimension for the MX types, one UE4M3 scale per 16 for NVFP4
 (CUTLASS documentation, logged in \texttt{research/FRONTIER.md}). The kernel
 never expands a block to 16 bits in registers; the tensor core applies the
-scales inside the multiply--accumulate.
+scales inside the multiply--accumulate. Because the blocks run along the
+reduction dimension, a matrix quantized for $\mathbf{W}\mathbf{x}$ is not
+quantized for $\mathbf{W}^{\top}\mathbf{x}$: the MX paper notes that converting
+to an MX format and transposing do not commute \cite{rouhani2023mx}, which
+matters to training, whose backward pass multiplies by the transpose.
+
+\emph{Why a block-scaled product is cheap.} For two vectors in an MX format,
+the dot product splits by blocks:
+\begin{equation}
+\mathbf{a}\cdot\mathbf{b} = \sum_{\text{blocks } j} X^{(a)}_j X^{(b)}_j
+\sum_{i \in j} p^{(a)}_i\, p^{(b)}_i ,
+\label{eq:block-dot}
+\end{equation}
+with the elements' products inside and the scales outside. E2M1 values are
+halves of the integers 0, 1, 2, 3, 4, 6, 8 and 12, so a product of two is a
+quarter of an integer no larger than 144, and a block's sum of 32 such products
+is a quarter of an integer no larger than 4,608: exactly representable in FP32
+(derived). The inner sum can therefore be computed without rounding, and for MX
+the scale product $X^{(a)}_j X^{(b)}_j = 2^{e_a + e_b}$ is an addition of
+exponents. A four-element example shows the arithmetic: $(1.5, -2, 0.5, 6) \cdot
+(4, 3, -1, 0.5)$. Doubled, as llama.cpp stores them (below), the elements are the
+integers $(3, -4, 1, 12)$ and $(8, 6, -2, 1)$, whose integer dot product is
+$24 - 24 - 2 + 12 = 10$; dividing by the four the doubling introduced gives 2.5,
+exactly the real dot product $6 - 6 - 0.5 + 3$. With scales $2^{-3}$ and $2^{5}$,
+the block contributes $2.5 \times 2^{2} = 10$ to the accumulator, and no bit was
+lost until that addition. Rounding enters only when the blocks are accumulated. NVFP4's E4M3
+scales make the outer product a real multiplication, of two 4-bit significands,
+which is still small beside the 32 multiply--adds it scales.
+
+\emph{How an engine without FP4 tensor cores stores it.} llama.cpp reads MXFP4
+checkpoints such as gpt-oss's into a 17-byte block: one E8M0 byte and sixteen
+bytes of 4-bit codes, 4.25 bits per value. Its decoder turns each code into an
+8-bit integer from a table of the E2M1 values \emph{doubled} --- 0, 1, 2, 3, 4, 6,
+8, 12 and their negatives --- and multiplies by half of $2^{e-127}$ to compensate
+(\texttt{block\_mxfp4}, \texttt{kvalues\_mxfp4} and
+\texttt{dequantize\_row\_mxfp4} in \texttt{ggml} at \texttt{d006858}). Every
+weight is then an 8-bit integer times a power of two, which puts MXFP4 on the
+integer dot-product path that \Chref{weight-quantization}'s lab found fastest on
+a CPU. The same build defines an NVFP4 block as well: 64 values with four UE4M3
+scales, one per 16, and 32 bytes of codes --- 36 bytes, 4.5 bits per value, the
+per-tensor scale kept outside the block.
 
 Hopper has FP8 tensor cores but no FP4, and its FP8 path has a subtlety that
 DeepSeek found in production training: on H800 GPUs, FP8 matrix products keep
@@ -172,7 +403,7 @@ The three kinds of tensor tolerate low precision differently. Weights are
 fixed: they can be quantized once, with care, offline, and checked. Activations
 are computed per request, contain outlier channels, and must be quantized on
 the fly with scales computed from the data itself, which costs a reduction per
-block at run time. The KV cache is written once and read at every later step;
+block at run time, and the lab's layer showed what four bits do to them. The KV cache is written once and read at every later step;
 its errors enter every attention score that follows
 (\Chref{kv-quantization}). A deployment chooses per tensor: gpt-oss keeps
 attention and embeddings in 16 bits and stores only expert weights in MXFP4;
@@ -189,10 +420,45 @@ $128\times128$ blocks, so serving it in FP8 introduces no conversion at all
 MXFP4, and its reported evaluations use the quantized model
 \cite{openai2025gptoss}. Kimi~K3 reports quantization-aware training for its
 MXFP4 weights \cite{moonshot2026kimik3}. NVIDIA trained a 12-billion-parameter
-model on 10~trillion tokens in NVFP4 with loss matching an FP8 baseline
-\cite{nvidia2025nvfp4pretrain}. When a model is trained or post-trained in a
+model on 10~trillion tokens in NVFP4 with loss matching an FP8 baseline, and
+it took more than a format to do it: random Hadamard transforms to spread
+outliers before quantizing, two-dimensional scaling so that a weight matrix and
+its transpose see consistent blocks, stochastic rounding for gradients, and a
+few layers kept in higher precision \cite{nvidia2025nvfp4pretrain}. Each of
+those is an answer to something this chapter measured: the outliers of the
+activation table, and the MX paper's warning that quantizing and transposing do
+not commute. When a model is trained or post-trained in a
 format, the question ``how much accuracy does quantization cost?'' changes to
-``what does it cost to serve this model in any \emph{other} format?''
+``what does it cost to serve this model in any \emph{other} format?'' The
+lab's numbers above are the post-training answer for one layer of a model
+that was trained in 16 bits; a model trained for the format has learned to
+live on its grid.
+
+\section{Choosing a format}
+
+The measurements and sources of this chapter reduce to a short decision
+procedure. \emph{First, ask what the model was made in.} A model trained or
+post-trained in a format --- DeepSeek-V3 in FP8 blocks, gpt-oss's experts in
+MXFP4 --- is served most faithfully in that format, and any other format is a
+new quantization to be measured. \emph{Second, ask what the hardware multiplies.}
+On Blackwell, FP4 weights and FP8 activations run on the tensor cores at two to
+four times the BF16 rate; between the two four-bit formats, the lab's layer
+favoured NVFP4 (10.3\% output error against MXFP4's 12.8\%). On Hopper, FP8 is
+the native low-precision type and FP4 checkpoints must be converted or decoded
+in the kernel; per-block FP8 scales, as in DeepSeek-V3, avoid per-tensor
+fragility, with FP32 promotion of partial sums to keep the accumulators honest.
+On CPUs and Apple GPUs no floating-point format below 16 bits has dedicated
+matrix hardware in this book's measurements, and integer block formats win
+(\Chref{weight-quantization}). \emph{Third, separate the tensors.} For weights,
+precision within a scaled block matters and range does not: on the lab's layer,
+8-bit integers with a scale per 32 were three times more accurate than FP8 with
+one scale, and six bits with three mantissa bits beat eight with two. For
+activations and the KV cache, range matters: outliers are real
+(\Chref{kv-quantization}), and a four-bit format with 32-value blocks loses
+whole blocks to them. \emph{Fourth, measure the output, not the tensor}: every
+comparison in this chapter was decided by the layer's output error, and in two
+cases --- AWQ in \Chref{weight-quantization}, MXFP4 against INT4 here --- the
+output reversed the verdict of the weight error.
 
 \LedgerSection
 
@@ -203,19 +469,47 @@ NVFP4) instead of BF16:
 Memory bandwidth & buys & 3.6--3.8$\times$ fewer bytes per weight read (equation~\eqref{eq:bits-per-value}). \\
 Memory capacity & buys & gpt-oss-120b in 65~GB instead of about 234~GB (measured file sizes; derived). \\
 Compute & buys & 4$\times$ the dense tensor-core peak of BF16 on Blackwell; nothing on Hopper, which has no FP4 tensor cores. \\
-Correctness & risks & Block-scale error and outliers; negligible when the model was trained for the format, to be measured when it was not. \\
+Correctness & risks & On a real layer of a model trained in 16 bits: 10.3\% output error in NVFP4, 12.8\% in MXFP4, whose power-of-two scales clamp 38\% of blocks (measured); negligible when the model was trained for the format, to be measured when it was not. \\
 \end{ConstraintLedger}
 
-\LabSection{round-trip three formats and compare their errors}
+\LabSection{round-trip real weights through every format}
 
-\LabIntent{In \texttt{code/labs/ch11-block-formats/}, reference encoders and
-decoders for E4M3, MXFP4 (32-element blocks, power-of-two E8M0 scales) and
-NVFP4 (16-element blocks, E4M3 scales, FP32 tensor scale), written from the
-specifications and tested against every representable value. The lab
-round-trips real weight rows --- dequantized from a GGUF file --- and synthetic
-rows with injected outliers, and reports relative error per format and block
-size. Break it: put one large outlier in a block and watch which formats
-lose the block's small values.}
+The lab in \texttt{code/labs/ch11-block-formats/} implements the element formats
+from their specifications --- one small structure describes E4M3, E5M2, E2M3,
+E3M2 and E2M1 by their exponent bits, mantissa bits, bias and special values ---
+and builds the tensor formats on them: FP8 with a scale per tensor, the MX
+family by equation~\eqref{eq:mx-exponent}, and NVFP4 by
+equation~\eqref{eq:nvfp4}. Its tests decode and re-encode every code of every
+format, check the specifications' extreme values, ties to the even code and
+saturation, and pin this chapter's hand examples. It then uses
+\Chref{weight-quantization}'s lab, as a library, to load the real projection
+and inputs for the table above, and runs the outlier experiment. Run it from
+\texttt{code/labs} with
+\texttt{cargo run --release -p ch11-block-formats -- --gguf <file>}. The MX
+conversion is the whole of Algorithm~1:
+
+\CodeLines{../code/labs/ch11-block-formats/src/formats.rs}{184}{206}
+
+\noindent Line 195 is equation~\eqref{eq:mx-exponent}, and lines 196--198 count the
+blocks whose largest value will clamp. NVFP4 needs two scales where MX needs
+one, and the encoder shows why it is still short:
+
+\CodeLines{../code/labs/ch11-block-formats/src/formats.rs}{210}{232}
+
+\noindent The tensor scale is computed once (line 212); each block's scale is the
+block's largest magnitude over 6, multiplied into E4M3's range and rounded to
+E4M3 (line 217); and each element is divided by that stored scale, rounded to
+E2M1 and multiplied back (line 224). Because the stored scale, not the exact
+one, divides the elements, the block's largest value lands within E4M3's
+rounding of 6: a clamp, when it happens, costs at most one part in 16, where
+MXFP4's can cost a quarter.
+
+\emph{Predict} before you run: which clamps more blocks, MXFP6 (E2M3) or
+MXFP6 (E3M2)? \emph{Explain} why the E3M2 row matches the MXFP8 (E5M2) row.
+\emph{Break} it: run \texttt{--outlier 100} and predict first what happens to
+NVFP4's small values; then give the MX scale one more bit of headroom
+(subtract $e_{\max} + 1$ instead of $e_{\max}$) and see what the clamp was
+costing, and what the extra headroom costs instead.
 
 \HappenedSection{fourteen bits of accumulator}
 
@@ -231,18 +525,22 @@ reminder that a format's specification describes its storage, not the
 precision of every operation performed on it --- and that the only way to find
 the difference is to test against a higher-precision oracle.
 
-\FrontierSection{2026-09-24}
+\FrontierSection{2026-09-27}
 
 Four-bit floating point moved from research to shipping checkpoints in about a
 year: MXFP4 in gpt-oss (August 2025) and Kimi~K3 (2026), NVFP4 pretraining
 at 10~trillion tokens \cite{nvidia2025nvfp4pretrain}. Blackwell Ultra parts
 list more dense FP4 throughput than B200 while trimming INT8 and FP64 (NVIDIA
-HGX specification), a sign of where hardware designers expect inference
-arithmetic to go. AMD's MI355X goes further for six bits: it lists 10.1
-dense PFLOP/s for MXFP6 and MXFP4 alike, twice its FP8 rate and four times its
-BF16 rate, so on that part a six-bit format costs no more arithmetic time than
-a four-bit one \cite{amd2025mi355x}. \todo{verify: Rubin-class FP4
-specifications from NVIDIA}.
+HGX specification), and NVIDIA's Rubin, ``ramping into full production'' in
+2026, lists 35~PFLOP/s of
+dense NVFP4 for training against 17.5 of FP8 and 4 of BF16 per GPU, with
+50~PFLOP/s of NVFP4 for inference quoted under a sparse specification
+\cite{nvidia2026verarubin}: every generation widens the gap between four bits
+and sixteen. AMD's MI355X goes further for six bits: it lists 10.1 dense
+PFLOP/s for MXFP6 and MXFP4 alike, twice its FP8 rate and four times its BF16
+rate, so on that part a six-bit format costs no more arithmetic time than a
+four-bit one \cite{amd2025mi355x} --- and the lab's table says six bits buy
+four times less error.
 
 \ExercisesSection
 
@@ -251,10 +549,14 @@ specifications from NVIDIA}.
 MXFP4 and NVFP4 for a 1-trillion-parameter model. How many H200s does each
 need for weights alone?
 \item \emph{Prediction.} A block of 32 values has one value of 100 and the
-rest between $-1$ and 1. Predict which of MXFP4 and NVFP4 represents the small
-values better, and by how much.
-\item \emph{Implementation.} Extend the lab to MXFP6 and measure where it sits
-between MXFP4 and MXFP8 in error per bit.
+rest between $-1$ and 1. Predict what MXFP4 and NVFP4 do to the small values,
+then check with the lab's \texttt{--outlier} option.
+\item \emph{Implementation.} Add MXINT8 to the lab and place it in the table.
+Where does it sit between INT8 with FP16 scales and MXFP8?
+\item \emph{Measurement.} Round-trip a later layer's FFN-down projection, whose
+inputs follow a SwiGLU, and see whether the formats' order changes.
 \item \emph{Falsification.} Find a matrix for which per-tensor FP8 beats
 per-block MXFP8 in error. What property must it have?
 \end{enumerate}
+
+\input{worked/ch11-low-precision-float.tex}
