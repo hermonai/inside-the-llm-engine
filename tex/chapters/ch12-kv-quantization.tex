@@ -1,6 +1,8 @@
-% status: ZERO
+% status: FULL
 % Chapter 12 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-m1-part2.md
+% Measurements: research/measurements/2026-09-23-m1-part2.md (cache formats at depth);
+% research/measurements/2026-09-26-m1-part8.md (KL divergence of quantized caches);
+% research/measurements/2026-09-26-m1-pass3.md (the lab: a real layer's cache in twelve formats).
 \chapter{Quantizing the KV Cache}\label{ch:kv-quantization}
 
 \begin{ChapterIntent}
@@ -10,9 +12,10 @@ most direct relief. Its errors behave differently from weight errors: they
 enter every attention score of every later token, and keys carry outlier
 channels that per-token scaling handles badly. This chapter derives
 per-channel key and per-token value quantization, FP8 caches with calibrated
-scales, four-bit and lower schemes, and pre-RoPE and rotated variants, and it
-shows how to measure long-context damage rather than trusting short-context
-perplexity.
+scales, four-bit and lower schemes, and pre-RoPE and rotated variants; it
+measures all of them on the real keys and values of a real model's first
+layer, and shows how to measure long-context damage rather than trusting
+short-context perplexity.
 \end{ChapterIntent}
 
 \OpeningSection{Twice the context in the same memory}
@@ -39,6 +42,9 @@ So the case for a quantized cache on this machine is capacity alone. The case
 for speed needs two more things: a workload in which the cache is most of the
 bytes, and a kernel that reads the smaller format at close to full bandwidth.
 The napkin math below prices the first; only a measurement settles the second.
+And both assume the smaller cache still gives the model the answers the full
+one would --- which, for a cache, is a sharper question than for weights, and
+the second half of this chapter measures it.
 
 \NapkinSection{Napkin math: when the cache is most of the bytes}
 
@@ -59,6 +65,14 @@ efficiencies, and assuming the kernel reads FP8 as efficiently as BF16 --- the
 assumption the opening measurement warns about). No weight format change in
 \Chref{weight-quantization} buys that much at this operating point.
 
+The per-token arithmetic is worth doing once. Llama~3.2~3B keeps, per token and
+layer, 8 key heads and 8 value heads of 128 values: 2,048 values, 57,344 across
+its 28 layers. In 16 bits that is 112~KiB; in Q8\_0, 34 bytes per 32 values,
+59.5~KiB; in Q4\_0, 18 bytes per 32, 31.5~KiB; in a 4-bit format with a 16-bit
+scale and minimum per 32 values, 35~KiB (derived). A laptop with 4~GiB to spare
+holds 37,000 tokens of 16-bit cache and 133,000 of Q4\_0 --- the difference
+between one long document and the model's whole 131,072-token context.
+
 \section{Why cache errors are different}
 
 A quantized weight's error enters one layer's output for the current token. A
@@ -70,6 +84,71 @@ accumulate into a wrong answer at 50,000, because the model's ability to
 retrieve one fact from far back depends on one key standing out from many.
 Values are gentler: their errors are averaged by the attention weights.
 
+Put numbers to the exponential. A key whose score is off by 0.5 gets
+$e^{0.5} = 1.65$ times its correct weight before normalization; by 0.1,
+$1.105$ times. Scores are dot products of 128 channels scaled by
+$1/\sqrt{128}$, so a key error spread evenly over the channels partly averages
+out, but an error concentrated in the one channel where the query is also
+large does not. That is why the \emph{shape} of a key's error --- which channels
+it lands on --- matters more than its size, and why the rest of the chapter is
+about where the quantizer puts its error.
+
+\emph{A near tie, by hand.} Two keys score 5.0 and 4.9 against a query, and
+nothing else is close. Their attention weights are in the ratio $e^{0.1}:1$,
+0.525 and 0.475 of the pair. Quantization lowers the first score by 0.1 and
+raises the second by 0.05: now 4.9 against 4.95, weights 0.4875 and 0.5125. The
+most-attended token has changed, yet the two distributions differ by only 0.0028
+nats of KL divergence (derived). Both measures in the lab's table are right; they
+answer different questions. KL divergence asks how far the weights moved; the
+top-token count asks whether the winner changed, and a winner decided by a near
+tie changes for errors far smaller than the ones that move a distribution.
+
+\section{A real cache, measured}
+
+The claims of this chapter can be tested on a real cache without an inference
+engine. Layer 0 of Llama~3.2~3B computes its queries, keys and values from the
+token embeddings alone, so the lab builds them from the model file for the
+3,217 tokens of this book's \texttt{AUTHORING.md} --- 24 query heads and 8
+key/value heads of 128 values, with RoPE applied exactly as llama.cpp applies it
+for this model, to pairs of adjacent channels with base 500,000 and the file's
+frequency factors (\texttt{ggml-cpu/ops.cpp} and \texttt{llama-model.cpp} at
+\texttt{d006858}). The last 256 tokens attend causally to everything before
+them. The lab then stores the keys and values in twelve formats and compares
+each format's attention with full precision three ways: the error in the
+attention output; how often the most-attended token of a (query, head) pair
+changes; and the Kullback--Leibler divergence between the two attention
+distributions (measured, record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.43\linewidth}rrrr@{}}
+\toprule
+Cache format & Bits & Output error & Top token changed & KL (nats) \\
+\midrule
+16-bit floats & 16 & 0.03\% & 0\% & $6.0\times10^{-8}$ \\
+Q8\_0 per token (llama.cpp \texttt{q8\_0}) & 8.5 & 1.6\% & 1.9\% & $1.7\times10^{-4}$ \\
+FP8 E4M3, calibrated scale per tensor & 8 & 4.4\% & 4.9\% & $9.6\times10^{-4}$ \\
+FP8 E4M3, scale 1 & 8 & 4.6\% & 5.2\% & $9.4\times10^{-4}$ \\
+4-bit keys per channel before RoPE, values per token & 5 & 8.7\% & 5.8\% & $1.2\times10^{-3}$ \\
+4-bit keys per channel, values per token & 5 & 9.5\% & 8.1\% & $2.5\times10^{-3}$ \\
+Q4\_0 per token, rotated as llama.cpp does & 4.5 & 15.8\% & 21.8\% & $1.6\times10^{-2}$ \\
+Q4\_0 per token (llama.cpp \texttt{q4\_0}) & 4.5 & 18.9\% & 22.7\% & $2.7\times10^{-2}$ \\
+4-bit keys and values per token & 5 & 24.0\% & 23.1\% & $3.1\times10^{-2}$ \\
+2-bit keys per channel before RoPE, values per token & 3 & 42.7\% & 26.7\% & $3.1\times10^{-2}$ \\
+2-bit keys per channel, values per token (KIVI) & 3 & 49.8\% & 34.0\% & $7.1\times10^{-2}$ \\
+2-bit keys and values per token & 3 & 88.5\% & 56.9\% & 0.51 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The table is the chapter in one page, and the next sections read it
+row by row. Figure~\ref{fig:ch12-kl} draws its last column.
+
+\EngineFigure{ch12-kl}{How far each cache format moves layer 0's attention
+distributions from full precision, in nats of KL divergence per (query, head),
+on a logarithmic scale (measured, the last 256 tokens of a 3,217-token text).
+At 4 and 2 bits, quantizing keys per channel moves attention 7 to 26 times less
+than quantizing them per token.}{fig:ch12-kl}
+
 \section{Keys have outlier channels}
 
 Key vectors are not evenly distributed across their dimensions: a few channels
@@ -78,16 +157,63 @@ measured this and drew the design conclusion: quantize keys \emph{per channel},
 so that each channel gets its own scale across a group of tokens, and values
 \emph{per token}, because their outliers are not channel-aligned
 \cite{liu2024kivi}. With that split, KIVI stored both at 2 bits with little
-quality loss and fit up to four times larger batches.
+quality loss, cut peak memory 2.6 times including the weights, and fit up to four
+times larger batches, for 2.35 to 3.47 times the throughput on real workloads.
+
+The lab sees the same thing in layer 0 of Llama~3.2~3B. Averaged over the 3,217
+tokens, the loudest key channel's magnitude is 16.0 times the median channel's
+before RoPE and 15.4 times after it; in the first head the loudest are channels
+79, 80 and 76, the same in both. The values' loudest channel is 7.7 times their
+median. Per-token quantization gives each token one scale per 32 channels, and
+the one loud channel in a group sets it: its neighbours, 16 times smaller, are
+left a handful of levels.
+
+\emph{A group by hand.} Take one token's group of 32 key channels in which one
+channel holds 16 and the other 31 lie between $-1$ and 1, and quantize it to 4
+bits with a minimum and a scale, as the lab's per-token rows do. If the group
+spans $-1$ to 16, the fifteen steps between those ends are $17/15 = 1.13$ wide,
+so every small channel lands on $-1$ or $0.13$, and a value of 0.5 comes back as
+0.13: the small channels keep about one bit of information between them. Now
+quantize per channel instead, one channel across 32 tokens: the loud channel's
+values, all near 16, share their own range, and each quiet channel's values
+between $-1$ and 1 share a range with steps of $2/15 = 0.13$, eight times finer
+(derived). The bits per value are the same; only the direction along which the
+scale is shared has changed, and with it which values the loud channel can
+starve.
+
+\section{Keys are the fragile half}
+
+The argument that values are gentler can be tested by quantizing one half of the
+cache at a time. With 4-bit per-token values and exact keys, the lab's attention
+outputs are 8.3\% off, but not one most-attended token changes and the attention
+distributions are untouched --- values do not enter the softmax at all. With 4-bit
+per-token keys and exact values, the output is 22.5\% off, 23.1\% of the
+(query, head) pairs attend to a different top token, and the distributions move
+by 0.031 nats: all of the damage of the full 4-bit per-token row, and most of
+its output error. At 2 bits the split is starker: 72.6\% output error from the
+keys alone, 40.9\% from the values alone (measured). A value error stays where it
+is, averaged over the tokens a query attends to; a key error decides which tokens
+those are. Everything a cache format does for keys matters twice.
 
 \section{Per-channel keys, per-token values}
+
+The table makes the case. At 4 bits, keys and values both quantized per token
+change the most-attended token for 23.1\% of the (query, head) pairs; quantize
+the keys per channel instead, in groups of 32 tokens, and it falls to 8.1\%,
+with twelve times less KL divergence ($2.5\times10^{-3}$ against
+$3.1\times10^{-2}$) for the same 5 bits per value. At 2 bits the gap is wider
+still: per-token keys and values move attention by half a nat per pair and
+change the top token for 57\% of the pairs, which is noise; KIVI's split holds
+it to 34\%.
 
 The asymmetry has a systems cost. A per-token scale can be computed the moment a
 token's key is produced. A per-channel scale spans many tokens, so it cannot be
 fixed until a group of tokens exists; recent tokens wait in higher precision
 until their group is complete and can be quantized together. The engine's
 cache becomes two-tiered --- a quantized body and a small full-precision tail
---- and every attention kernel must read both.
+--- and every attention kernel must read both. The lab keeps the last,
+incomplete group in 16 bits for that reason; the second worked problem prices
+the tail.
 
 \section{FP8 caches and their scales}
 
@@ -98,7 +224,23 @@ FP8 halves the cache with small, usually negligible error --- provided the
 scale is right. E4M3's largest value is 448 \cite{micikevicius2022fp8}; a cache
 whose values exceed the range at a scale of 1.0 saturates, and one whose values
 are tiny wastes most of the format's precision. ``Usually negligible'' is a
-claim to measure per model.
+claim to measure per model. The choice between the two FP8 formats follows from
+Chapter~\ref{ch:low-precision-float}'s lesson: E5M2's five exponent bits span a ratio
+of about $2^{32}$ between its largest and smallest values without any scale, which forgives a missing
+calibration, and its two mantissa bits halve the precision of E4M3's three,
+which a calibrated scale would have made unnecessary.
+
+On the lab's layer the largest key is 19.6 and the largest value 0.94, so a
+scale of 1.0 saturates nothing, and calibrating the scale to the tensor's
+maximum barely helps: 4.4\% output error against 4.6\%, both changing the top
+token for about 5\% of the pairs. The surprise is the row above them. llama.cpp's
+\texttt{q8\_0} cache --- 8-bit integers with a 16-bit scale per token per 32
+channels --- is three times more accurate than FP8 (1.6\%) for half a bit more,
+the same verdict \Chref{low-precision-float} reached for weights: for storage,
+fine integer scales beat a floating-point grid. FP8's case is elsewhere: an
+attention kernel can feed FP8 keys and values straight to FP8 tensor cores, as
+FlashAttention-3 does \cite{shah2024flashattention3}, which an integer cache
+cannot do without converting.
 
 \section{Four bits and below}
 
@@ -122,9 +264,50 @@ on position (Appendix~\ref{app:rope}), which mixes the outlier channels with
 their partners and makes their statistics depend on position. Quantizing keys
 \emph{before} RoPE preserves the channel structure that per-channel scales
 exploit, at the price of applying RoPE when the key is read rather than when it
-is written \cite{hooper2024kvquant}. Rotation methods use the opposite idea:
-apply a known orthogonal rotation that spreads outliers evenly, so that plain
-per-token quantization works.
+is written \cite{hooper2024kvquant}. The lab confirms it: per-channel keys
+quantized before RoPE and rotated afterwards move attention half as much as the
+same keys quantized after RoPE --- $1.2\times10^{-3}$ against $2.5\times10^{-3}$
+nats at 4 bits, $3.1\times10^{-2}$ against $7.1\times10^{-2}$ at 2 --- and change
+the top token for 5.8\% of the pairs instead of 8.1\%.
+
+Rotation methods use the opposite idea: apply a known orthogonal rotation that
+spreads outliers evenly, so that plain per-token quantization works. llama.cpp
+does this by default for quantized caches. When the cache type is quantized and
+the head width a multiple of 64, it multiplies keys by a Walsh--Hadamard matrix
+the size of the head and values by 64-point blocks --- smaller, its source notes,
+because that ``seems beneficial'' for values --- and undoes the rotation on the
+way out (\texttt{attn\_rot\_k} and \texttt{attn\_rot\_v} in
+\texttt{src/llama-kv-cache.cpp} at \texttt{d006858}; an environment variable
+turns it off). \Chref{kv-cache}'s allocation log showed both flags set for its
+\texttt{q8\_0} and \texttt{q4\_0} caches. In the lab the same rotation cut
+\texttt{q4\_0}'s KL divergence by 40\% and its output error from 18.9\% to
+15.8\%, but left the top token changed for 21.8\% of the pairs: a rotation spreads
+the loud channel's energy over all 128, and then every channel carries part of
+it, and 4 bits per token remain coarse. Per-channel keys did better at the same
+bit budget.
+
+\section{Does the damage grow with context?}
+
+The warning at the start of this chapter --- an error harmless at 500 tokens can
+matter at 50,000 --- is a claim about scaling, and the lab can test its first
+factor of ten. It rebuilds each cache from only the first $m$ tokens of the text,
+for $m$ from 256 to 3,217, and lets the last 64 of those tokens attend (measured,
+record \texttt{2026-09-26-m1-pass3}). The KL divergence per (query, head) barely
+moves with $m$: $1.6$--$2.0\times10^{-4}$ nats for Q8\_0 throughout,
+$1.4$--$1.7\times10^{-2}$ for rotated Q4\_0, $1.1$--$1.3\times10^{-3}$ for 4-bit
+per-channel keys before RoPE. The count of changed top tokens tells a different
+story for the coarse formats: 18.2\% at 256 tokens and 27.1\% at 3,217 for rotated
+Q4\_0, and 31\% to 35\% for 2-bit KIVI, while Q8\_0 stays near 2\%.
+
+The two measures disagree for a reason. A longer context puts more keys near the
+top of each query's scores, so the same key errors break more near-ties: the
+winner changes more often even though the distribution, taken as a whole, moves
+no further. For a model, which of the two matters depends on what it is doing.
+A summary depends on the distribution; a retrieval of one fact from far back
+depends on a single winner standing out, and that is the measure that grows with
+context. Three thousand tokens of layer 0 cannot show the fifty-thousand-token
+case, nor what deeper layers, whose keys are shaped by earlier attention, do with
+the errors; that takes the long-context evaluations of the next section.
 
 \section{Kernels that read a quantized cache}
 
@@ -133,13 +316,23 @@ first expanding it back to 16 bits in memory, which would spend the bandwidth it
 saved. The kernel dequantizes blocks as it loads them, inside the tiled loop of
 \Chref{flashattention} and \Chref{decode-attention}. llama.cpp makes the
 coupling explicit: it refuses a quantized value cache unless flash attention is
-enabled (llama.cpp \texttt{src/llama-context.cpp} at commit \texttt{389ff61d}),
-tying the cache's format to the fused kernel. The dequantization is extra
-arithmetic in what should be a bandwidth-bound loop, and it is not always
+enabled (``V cache quantization requires flash\_attn'', \texttt{llama\_init\_from\_model}
+in \texttt{src/llama-context.cpp} at \texttt{d006858}), tying the cache's format to
+the fused kernel, and with flash attention left on \texttt{auto} it also checks
+that the format's block size divides the head width. The dequantization is
+extra arithmetic in what should be a bandwidth-bound loop, and it is not always
 free. In the opening measurement, llama.cpp's Metal kernels read an 8-bit cache
 at about a third of the rate at which they read a 16-bit one, so the smaller
-cache was the slower one. Whether a format pays in time is a property of the
-kernel and the hardware, not of the format.
+cache was the slower one; the third worked problem finds the context length at
+which the 4-bit cache would overtake it. Whether a format pays in time is a
+property of the kernel and the hardware, not of the format.
+
+Per-channel schemes cost kernels more than per-token ones. A per-token block
+arrives with its own scale; a per-channel group needs a scale per channel for a
+block of tokens, applied along the other axis of the tile, and a separate path
+for the full-precision tail. None of the kernels this book measures implements
+KIVI's layout; llama.cpp's quantized caches are per-token blocks with a
+rotation, and the lab's table shows what that choice costs at 4 bits.
 
 \section{Measuring long-context damage}
 
@@ -154,6 +347,57 @@ accuracy on a mathematics benchmark fell from 0.900 to about 0.860 on
 Qwen3-4B \cite{vllm2026turboquantpr} --- one metric unmoved, another clearly
 moved, by the same change.
 
+The same kind of measurement, token by token over the whole model, is cheap to
+make with llama.cpp's own tools. Against Llama~3.2~3B with its 16-bit cache, over
+2,040 scored tokens, the \texttt{q8\_0} cache chose the same next token 99.5\%
+of the time with a mean KL divergence of 0.00009; the \texttt{q4\_0} cache, with
+llama.cpp's rotation on, 93.5\% of the time, with a mean divergence of 0.021 and,
+at the worst token, a 41-point swing in a probability (record
+\texttt{2026-09-26-m1-part8}; \Chref{fast-wrong-answers} builds the harness).
+The lab's layer-0 attention and the whole model's next-token distribution agree
+on the order: 8 bits per token is almost free, 4 bits per token is not.
+
+\section{Quantized blocks in a paged, shared cache}
+
+A cache format is also a data-structure decision, and it meets the serving
+machinery of the next part of this book in three places. \emph{Paging}
+(\Chref{paged-kv}) stores the cache in fixed blocks of tokens --- 16 in vLLM by
+default (\Chref{decode-attention}) --- and a per-token format fits a block
+without ceremony: each token is quantized when it is written, into the block
+that holds it. A per-channel format does not. Its groups of 32 tokens span two
+16-token blocks, its scales belong to the group rather than to either block, and
+its tail waits in a separate full-precision area until the group completes; the
+block table must now describe two kinds of storage. \emph{Prefix sharing}
+(\Chref{prefix-caching}) reuses the cached blocks of a common prompt across
+requests. With a quantized cache, what is shared is the quantized bytes: every
+request that reuses a prefix inherits the same rounding, so the error becomes
+part of the shared state, and a cache written in one format cannot be reused by
+a request that wants another. \emph{Tiering} (\Chref{kv-storage-tier}) moves
+cold blocks to host memory or disk and back. There a smaller format pays at its
+full ratio, because the transfer, not an attention kernel, is the bottleneck:
+half the bytes is half the time over a PCIe link, whatever the kernels do (all
+derived from the formats' layouts).
+
+\section{Choosing a cache format}
+
+The chapter's measurements reduce to a few rules. \emph{Eight bits per token
+is almost free.} On the lab's layer, llama.cpp's \texttt{q8\_0} cache changed the
+most-attended token for 2\% of the pairs at any context length, and over the whole
+model it left 99.5\% of next tokens unchanged; FP8 with a sensible scale was
+within a few percent too. The remaining question is speed, and that belongs to
+the kernel: on the M1 the 8-bit cache was the slowest of the three, while an
+FP8 cache feeding FP8 tensor cores is the point of FP8. \emph{Four bits per token
+is not free.} Rotated or not, per-token 4-bit keys changed the top token for a
+fifth to a quarter of the pairs, and 6.5\% of the model's next tokens; they buy
+capacity for workloads that need it and should be measured before they are
+trusted. \emph{Below that, keys need per-channel treatment}, preferably before
+RoPE, or a rotation designed for the purpose; the published 2- and 3-bit schemes
+all do one or the other, and the lab shows why. \emph{Values can go lower than
+keys}, because their errors never change which tokens a query attends to, only what it reads from them. And
+\emph{measure where the application lives}: at the context lengths and on the
+tasks it serves, with a token-by-token comparison of distributions, not a short
+perplexity.
+
 \LedgerSection
 
 Storing the KV cache in 8 or 4 bits instead of 16:
@@ -162,17 +406,46 @@ Storing the KV cache in 8 or 4 bits instead of 16:
 Memory capacity & buys & 1.88$\times$ the tokens per byte at 8 bits and 3.56$\times$ at 4 (llama.cpp's q8\_0 and q4\_0 caches: 8.5 and 4.5 bits per value). \\
 Memory bandwidth & buys & Fewer cache bytes per step (derived) --- time saved only if the kernel reads the smaller format at full speed; on the M1, llama.cpp's did not, and the 16-bit cache was fastest at every measured depth. \\
 Compute & spends & Dequantization inside the attention kernel: on the M1, enough to cut the cache's effective read rate from about 46 to 14--16~GB/s (derived). \\
-Correctness & risks & Errors in every later attention score; measure at long context, not with short perplexity. \\
+Correctness & risks & Errors in every later attention score: on a real layer, 1.9\% of top tokens changed at 8 bits per token, 22.7\% at 4, 8.1\% with 4-bit per-channel keys (measured); measure at long context, not with short perplexity. \\
 \end{ConstraintLedger}
 
 \LabSection{quantize a cache and watch attention drift}
 
-\LabIntent{In \texttt{code/labs/ch12-kv-quant/}, a Rust program that records
-real keys and values from a small model's forward pass (or synthetic ones with
-planted outlier channels), quantizes them per token and per channel at 8, 4 and
-2 bits, and measures the error in attention outputs as the context grows,
-against the full-precision oracle. The reader finds the context length at which
-per-token 4-bit keys first change which token receives the most attention.}
+The lab in \texttt{code/labs/ch12-kv-quant/} computes layer 0's queries, keys and
+values of Llama~3.2~3B from the model file, using \Chref{weight-quantization}'s
+lab as a library for the reader and the inputs and \Chref{low-precision-float}'s
+for FP8. It applies RoPE, stores the cache in twelve formats and compares each
+with full-precision attention for the last 256 tokens of a 3,217-token text, as
+in the table above; it then quantizes the keys and the values separately, and
+sweeps the context from 256 tokens to the whole text. Its tests check that RoPE preserves norms and makes scores
+depend only on the distance between positions, that the Hadamard transform is
+orthogonal and its own inverse, that per-channel groups keep their tail in 16
+bits, and that identical caches agree exactly. Run it from \texttt{code/labs}
+with \texttt{cargo run --release -p ch12-kv-quant -- --gguf <file>}. RoPE is
+four lines per pair of channels:
+
+\CodeLines{../code/labs/ch12-kv-quant/src/main.rs}{35}{45}
+
+\noindent and per-channel quantization is a transposition of per-token
+quantization, with a tail left alone:
+
+\CodeLines{../code/labs/ch12-kv-quant/src/main.rs}{93}{116}
+
+\noindent The first lines of the output are worth reading before the table. They
+report the loudest key channel's average magnitude against the median channel's,
+before and after RoPE, with the loudest channels of the first head, and the
+largest key and value in the cache: the facts that decide which formats will
+work. A model whose keys had no loud channels would make per-token and
+per-channel quantization equal, and one whose largest key exceeded 448 would
+saturate an FP8 cache at scale 1; run the lab on another model before trusting
+this chapter's ranking for it.
+
+\emph{Predict} before you run: which moves attention more, 4-bit
+per-token keys with a rotation or 4-bit per-channel keys without one?
+\emph{Explain} why the FP8 rows barely depend on the scale for this layer.
+\emph{Break} it: quantize the keys per channel in groups of 256 tokens instead of
+32 and watch the tail grow and the scales coarsen; run the queries over only the
+first 512 tokens and see whether short contexts hide the damage.
 
 \HappenedSection{half the bytes, slower}
 
@@ -186,19 +459,22 @@ instruction that converts four values at once made the 16-bit write 8.8 times
 faster and, as it should always have been, faster than the 32-bit one (Hermon
 \texttt{docs/KERNEL\_DESIGN.md}, section 1; the kernels are selected by an
 environment variable, so PREVIEW). A smaller format is a promise about bytes,
-not about time; the conversion is part of the cost.
+not about time; the conversion is part of the cost. llama.cpp's Metal cache
+kernels in the opening measurement are the same lesson at a larger scale.
 
-\FrontierSection{2026-09-24}
+\FrontierSection{2026-09-27}
 
 KV-cache formats moved from research into engines' command lines between 2024
 and 2026: FP8 caches are routine \cite{vllm2026attentionbackends}, and
 rotation-plus-scalar schemes such as TurboQuant ship behind a flag
-\cite{vllm2026turboquantpr}. Architectures attack the same bytes from the other
+\cite{vllm2026turboquantpr}. Four-bit floating point has reached the cache as
+well: NVIDIA's TensorRT-LLM offers an NVFP4 KV cache, enabled with
+\texttt{KvCacheConfig(dtype='nvfp4')} after offline quantization with its Model
+Optimizer, and for now only together with FP8 weights and activations
+\cite{nvidia2026trtllmquant}. Architectures attack the same bytes from the other
 side --- latent attention stores a compressed cache by design
 (\Chref{shrinking-kv}), and DeepSeek-V4 compresses along the sequence, reporting
 a tenth of DeepSeek-V3.2's cache at a million tokens \cite{deepseek2026v4}.
-\todo{verify: NVFP4 KV-cache support in NVIDIA's serving stack from a primary
-source}.
 
 \ExercisesSection
 
@@ -209,8 +485,14 @@ sequences more than quantizing the weights to FP8.
 \item \emph{Prediction.} A key's score with a query is $3.0$; the cache
 quantization adds an error of $+0.2$. By what factor does that token's
 attention weight change before normalization?
-\item \emph{Implementation.} Add pre-RoPE key quantization to the lab and
-compare it with post-RoPE at 4 bits.
+\item \emph{Implementation.} Add TurboQuant's idea to the lab: a random
+orthogonal rotation per head followed by per-coordinate scalar quantization,
+and place it in the table at 3.5 bits.
+\item \emph{Measurement.} Run the lab's comparison for queries at the start,
+middle and end of the text, and plot the top-token changes against context
+length for per-token and per-channel 4-bit keys.
 \item \emph{Falsification.} Find a synthetic distribution of keys for which
 per-token quantization beats per-channel quantization.
 \end{enumerate}
+
+\input{worked/ch12-kv-quantization.tex}

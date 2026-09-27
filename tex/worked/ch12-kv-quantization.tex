@@ -1,0 +1,54 @@
+\section{Worked problems: tokens that fit, a tail's price and a crossover}
+
+\subsection{What fits in 80 gigabytes}
+\textbf{Problem.} Llama-3-8B serves from an 80~GB H100 with 16.1~GB of BF16
+weights. Suppose 64~GiB are left for the cache. How many tokens of cache fit in
+BF16, in FP8, in Q8\_0, in Q4\_0, with 4-bit per-channel keys and per-token
+values (5 bits per value with their scales), and with KIVI's 2 bits (3 with
+scales)? How many 4,096-token conversations is that?
+
+\textbf{Solution.} The model keeps $2 \times 32 \times 8 \times 128 = 65{,}536$
+values per token: 128~KiB in BF16. In 64~GiB that is 524,288 tokens, 128
+conversations of 4,096 tokens. FP8 halves the bytes: 1,048,576 tokens, 256
+conversations. Q8\_0's 8.5 bits give 987,000 tokens (241); Q4\_0's 4.5 bits,
+1,864,000 (455); 5 bits, 1,678,000 (410); 3 bits, 2,796,000 (683) (all derived,
+ignoring activations and the small full-precision tails). The capacity gains are
+exactly the bit ratios, and at the operating point of \Chref{napkin-math} each
+doubling of conversations is roughly a doubling of throughput --- which is why
+a serving system will accept the 1.9\% of changed top tokens that the lab
+measured for 8-bit per-token caches, and think hard before accepting the 22.7\%
+of 4-bit per-token ones.
+
+\subsection{The price of a full-precision tail}
+\textbf{Problem.} A per-channel cache quantizes keys in groups of $G$ tokens and
+keeps the most recent tokens, up to $R$ of them, in 16 bits until their group
+is complete. With $R = 128$ and scales that add one bit per value, what does the
+cache cost per value at 4,096 and at 32,768 tokens, at 2 and at 4 bits?
+
+\textbf{Solution.} The average is $\bigl(16R + (b + 1)(S - R)\bigr)/S$ bits. At
+2 bits: 3.41 bits per value at 4,096 tokens and 3.05 at 32,768; at 4 bits, 5.34
+and 5.04 (derived). The tail costs a third of a bit at 4,096 tokens and almost
+nothing at long context, where quantization matters most. Its real price is in
+the kernel: every attention step reads two differently stored tiers and merges
+them, a second code path in the tightest loop of the engine, and the recent
+tokens --- the ones a model attends to most --- are read at full width. That
+complexity, not the bits, is what per-token formats avoid.
+
+\subsection{When would the 4-bit cache be faster on the M1?}
+\textbf{Problem.} In the opening measurement, llama.cpp's decode step on the M1
+took 40.0~ms with an empty 16-bit cache and 81.0~ms at 16,384 tokens; 48.8 and
+87.4~ms with the \texttt{q4\_0} cache; 42.3 and 105.5~ms with \texttt{q8\_0}
+(record \texttt{2026-09-23-m1-part2}). Assuming each grows linearly with
+context, at what context does each quantized cache overtake the 16-bit one? What
+read rate would the \texttt{q8\_0} kernel need to break even?
+
+\textbf{Solution.} Per 1,000 tokens of context the 16-bit step grows by 2.50~ms,
+the \texttt{q4\_0} step by 2.36~ms and the \texttt{q8\_0} step by 3.86~ms. The
+\texttt{q4\_0} cache starts 8.8~ms behind and gains 0.15~ms per 1,000 tokens, so
+it overtakes the 16-bit cache near 60,000 tokens, within the model's 131,072 but
+far beyond most conversations. The \texttt{q8\_0} cache never does: it loses
+more per token than the 16-bit one (all derived). To break even at 16,384
+tokens, its kernel would have to read its 1.00~GB in the 41~ms the 16-bit cache
+takes for 1.88~GB, at 24~GB/s --- one and a half times the 16~GB/s it managed.
+On this machine the quantized caches buy capacity; on hardware and kernels that
+read them at full bandwidth, the same bytes buy speed as well.
