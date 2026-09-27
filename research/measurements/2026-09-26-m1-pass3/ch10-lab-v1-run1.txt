@@ -1,0 +1,51 @@
+# code/labs/ch10-weight-quant, full run, 2026-09-27T05:22Z
+# cargo run --release -p ch10-weight-quant -- --gguf <llama3.2:3b blob> --threads 4 --dump <scratch>
+# load before run: { 4.19 7.11 7.21 }
+1. Real K-quant blocks, decoded with ggml's reference layouts
+
+blk.0.attn_q.weight: 3072 x 3072 as Q4_K (1728 bytes per row of 3072, 4.5000 bits per weight)
+  first super-block: d = 3.600121e-4, dmin = 3.845215e-3
+  six-bit (scale, min) of its 8 sub-blocks: (43,22) (63,54) (63,63) (34,24) (36,26) (29,16) (45,32) (48,21)
+  first 8 codes: [3, 7, 10, 9, 4, 2, 7, 15]
+  first 8 weights: -0.038153 +0.023769 +0.070210 +0.054730 -0.022673 -0.053634 +0.023769 +0.147613
+  wrote rows 0-3 as f32 bits to <scratch>/blk.0.attn_q.weight.rows0-3.txt
+
+blk.0.attn_v.weight: 1024 x 3072 as Q6_K (2520 bytes per row of 3072, 6.5625 bits per weight)
+  first super-block: d = -7.688999e-6; eight-bit scales of its 16 sub-blocks: [91, -84, -69, -102, -62, -69, 80, -91, 61, -128, 90, -73, -113, -61, -69, -102]
+  first 8 weights: +0.015393 +0.006297 +0.002799 -0.013294 +0.000700 +0.011895 -0.002799 -0.008396
+  wrote rows 0-3 as f32 bits to <scratch>/blk.0.attn_v.weight.rows0-3.txt
+
+2. Quantizing layer 0's value projection, error measured in its output
+W: 1024 x 3072 (Q6_K in the file, 6.5625 bits per weight, used as the reference)
+inputs: RMSNorm(embedding) x attn_norm, eps 1e-5; calibration 1024 tokens (501 distinct), evaluation 2193 tokens (897 distinct, 1081 not in calibration)
+
+method                                bpw   weight err output (cal) output (eval)  seconds
+8-bit round-to-nearest, groups of 32  8.500       0.0055       0.0073       0.0073      0.0
+4-bit round-to-nearest, one scale   4.000       0.2940       0.3859       0.3873      0.0
+4-bit round-to-nearest, scale per row  4.005       0.1735       0.2445       0.2461      0.0
+4-bit round-to-nearest, groups of 32  4.500       0.1049       0.1499       0.1507      0.0
+4-bit AWQ-style scaling, groups of 32  4.500       0.1247       0.0855       0.0862      4.6  alpha 0.6
+4-bit GPTQ, groups of 32            4.500       0.1680       0.0400       0.1217      9.9
+4-bit GPTQ, 4,096 vocabulary rows   4.500       0.1704       0.1753       0.1751     12.0  calibrated on vocabulary
+3-bit round-to-nearest, one scale   3.000       0.6272       0.6745       0.6759      0.0
+3-bit round-to-nearest, scale per row  3.005       0.3883       0.4802       0.4816      0.0
+3-bit round-to-nearest, groups of 32  3.500       0.2375       0.3216       0.3233      0.0
+3-bit AWQ-style scaling, groups of 32  3.500       0.2625       0.2003       0.2017      4.6  alpha 0.7
+3-bit GPTQ, groups of 32            3.500       0.3920       0.0993       0.2783     10.2
+3-bit GPTQ, 4,096 vocabulary rows   3.500       0.3898       0.3881       0.3883     12.2  calibrated on vocabulary
+
+3. A 4096 x 4096 matrix times B vectors, 4 threads, best of 5; error relative to the largest float64 output
+kernel                     B        ms      GB/s   GFLOP/s      error
+f32                        1     1.187      56.6      28.3     2.8e-7
+Q8_0, dequantized          1     2.224       8.0      15.1     2.5e-7
+Q4_0, dequantized          1     2.315       4.1      14.5     2.8e-7
+Q4_0 x Q8_0, integer       1     0.541      17.4      62.0     4.6e-3
+f32                        4     1.334      50.3     100.6     3.4e-7
+Q8_0, dequantized          4     5.793       3.1      23.2     4.0e-7
+Q4_0, dequantized          4     5.875       1.6      22.8     2.5e-7
+Q4_0 x Q8_0, integer       4     1.130       8.4     118.8     3.4e-3
+f32                       16     5.928      11.3      90.6     2.6e-7
+Q8_0, dequantized         16    23.248       0.8      23.1     2.5e-7
+Q4_0, dequantized         16    23.452       0.4      22.9     2.4e-7
+Q4_0 x Q8_0, integer      16     2.798       3.4     191.8     2.9e-3
+# load after run: { 4.58 6.70 7.06 }

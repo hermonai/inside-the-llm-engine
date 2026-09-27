@@ -1,0 +1,6 @@
+# ch10_ggml_oracle.py (on the dump of ch10-lab-v1-run1) <llama3.2:3b blob> <scratch> code/labs/ch10-weight-quant/tokens.txt, 2026-09-27T05:23Z
+1. ggml's decoders against the lab's, rows 0-3, bit for bit
+  blk.0.attn_q.weight: 12288 of 12288 values bit-identical; largest difference 0.000e+00
+  blk.0.attn_v.weight: 12288 of 12288 values bit-identical; largest difference 0.000e+00
+2. ggml's Q4_K quantizer (no importance matrix) on blk.0.attn_v.weight
+  4.5 bits per weight: weight error 0.0767, output error on the evaluation tokens 0.1119

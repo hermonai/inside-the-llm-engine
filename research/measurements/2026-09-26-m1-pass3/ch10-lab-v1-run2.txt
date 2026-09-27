@@ -1,0 +1,19 @@
+# code/labs/ch10-weight-quant, part 3 again, 2026-09-27T05:23Z
+# cargo run --release -p ch10-weight-quant -- --parts 3 --threads 4
+# load before run: { 4.48 6.45 6.95 }
+
+3. A 4096 x 4096 matrix times B vectors, 4 threads, best of 5; error relative to the largest float64 output
+kernel                     B        ms      GB/s   GFLOP/s      error
+f32                        1     1.675      40.1      20.0     2.8e-7
+Q8_0, dequantized          1     2.238       8.0      15.0     2.5e-7
+Q4_0, dequantized          1     2.325       4.1      14.4     2.8e-7
+Q4_0 x Q8_0, integer       1     0.541      17.4      62.0     4.6e-3
+f32                        4     1.322      50.8     101.5     3.4e-7
+Q8_0, dequantized          4     5.803       3.1      23.1     4.0e-7
+Q4_0, dequantized          4     5.872       1.6      22.9     2.5e-7
+Q4_0 x Q8_0, integer       4     1.127       8.4     119.0     3.4e-3
+f32                       16     5.942      11.3      90.4     2.6e-7
+Q8_0, dequantized         16    24.229       0.7      22.2     2.5e-7
+Q4_0, dequantized         16    23.441       0.4      22.9     2.4e-7
+Q4_0 x Q8_0, integer      16     3.467       2.7     154.8     2.9e-3
+# load after run: { 4.48 6.45 6.95 }
