@@ -1,0 +1,8 @@
+[package]
+name = "ch10-weight-quant"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 10 lab: decode real K-quant blocks, quantize a real projection five ways, and time dequantizing kernels"
+
+[dependencies]
