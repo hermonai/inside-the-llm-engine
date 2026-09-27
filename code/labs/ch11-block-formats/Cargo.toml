@@ -1,0 +1,9 @@
+[package]
+name = "ch11-block-formats"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 11 lab: FP8, MX and NVFP4 from their specifications, round-tripped on a real projection"
+
+[dependencies]
+ch10-weight-quant = { path = "../ch10-weight-quant" }

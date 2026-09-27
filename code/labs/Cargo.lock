@@ -57,5 +57,12 @@ name = "ch10-weight-quant"
 version = "0.1.0"
 
 [[package]]
+name = "ch11-block-formats"
+version = "0.1.0"
+dependencies = [
+ "ch10-weight-quant",
+]
+
+[[package]]
 name = "engine0"
 version = "0.1.0"
