@@ -1,0 +1,93 @@
+\section{Worked problems: napkin math at three scales}
+
+\subsection{Llama 3 70B on eight H100s}
+\textbf{Problem.} Llama~3~70B (80 layers, width 8,192, 64 query and 8 key/value
+heads of 128, FFN 28,672, vocabulary 128,256, untied tables) runs in FP8 ---
+weights and cache --- on eight H100s joined by NVLink, split by tensor
+parallelism. Ignoring communication, predict the step time, per-user rate,
+aggregate throughput and cost at batch one and at the largest batch that fits at
+4,096 tokens of context, with $\eta_\beta = 0.8$, $\eta_\pi = 0.6$ and 4~GB per GPU
+set aside. Which input is most likely to make the prediction wrong?
+
+\textbf{Solution.} The model has 70.55~billion parameters: 12.08~billion in
+attention, 56.37~billion in the FFNs and 2.10~billion in the two tables. A step
+multiplies everything but the input table, 69.5~GB in FP8. The cache is
+$2 \times 80 \times 8 \times 128 \times 1 = 160$~KiB per token, 671~MB per
+4,096-token sequence. Eight GPUs are, to the napkin model, one machine with
+26.8~TB/s, 15.8~PFLOP/s of dense FP8 and 640~GB. The batch that fits is
+$(640 - 70.6 - 32) / 0.671 = 800$ sequences. At $B = 800$ a step reads
+$69.5 + 800 \times 0.671 = 606$~GB, 28.3~ms at 21.4~TB/s, and computes
+$800 \times 150$~GFLOP, 12.6~ms at 9.5~PFLOP/s: bandwidth-bound, 28,300 tokens per
+second in aggregate, 35 per user, and at eight times \$3.99 an hour, \$0.31 per
+million tokens --- the same price as Qwen3-8B on one GPU in BF16, because in both
+deployments each GPU ends up holding about a hundred 4,096-token caches and
+needs about 28~ms to stream its full memory. At $B = 1$ the step
+reads 70.2~GB, 3.3~ms: 306 tokens per second for one user. The input most likely
+to be wrong is the one the problem told us to ignore. Tensor parallelism needs two
+all-reduces of the hidden states per layer, 160 per step. At batch one each moves
+only 16~KB but costs a synchronization of eight GPUs, several microseconds each,
+so they add a millisecond or more to a 3.3~ms step; at $B = 800$ each GPU moves
+about 3.7~GB of partial sums per step, several milliseconds even at NVLink's
+900~GB/s (\Chref{model-parallelism}).
+
+\subsection{Goodput with two objectives}
+\textbf{Problem.} A service runs Qwen3-8B in BF16 on one H100 and promises a
+time to first token under 500~ms and a time per output token under 30~ms, for
+requests of 2,000 prompt tokens and 300 output tokens. With the chapter's
+efficiencies and chunked prefill that mixes prompt tokens into decode steps, how
+many requests per second can it accept, and which objective binds first?
+
+\textbf{Solution.} A request's prompt costs $2 \times 7.57 \times 10^{9} \times
+2{,}000$ FLOPs of matrix products plus about 1.2~TFLOP of causal attention,
+31.5~TFLOP in all: 53~ms of the GPU at 60\% of peak. During decode the mean context
+is about 2,150 tokens, so a decode step with $B$ sequences takes
+$5.65 + 0.118B$~ms of memory time (its compute is a quarter of that). At an
+arrival rate $\lambda$, each step of length $T$ must also absorb
+$\lambda T \times 53$~ms of prefill work, and by Little's law the number of
+sequences decoding is $B = \lambda \times 300 \times T$. Setting $T = 30$~ms:
+$30(1 - 0.053\lambda) = 5.65 + 0.118 \times 9\lambda$, so $\lambda = 9.2$ requests
+per second, with $B = 82$ sequences decoding (derived). Memory is not the limit:
+188 sequences of 2,150 tokens would fit. Nor is the first-token objective: at
+that rate each 30~ms step carries about 550 prompt tokens, so a new prompt is
+absorbed in about four steps, 120~ms plus queueing, far inside 500~ms. The time
+per output token binds first, at about 2,750 output tokens and 18,300 prompt tokens
+per second. Half of every step is prefill; a service with longer replies or
+shorter prompts would get more requests through, and one with a tighter TPOT
+objective would get fewer --- the trade \Chref{scheduling} makes explicit.
+
+\subsection{DeepSeek's decode step, line by line}
+\textbf{Problem.} DeepSeek reports that each decode GPU in its V3/R1 service
+held two routed experts and the shared expert, produced about 1,850 tokens per
+second while users saw 20--22, and that the average cache length per output
+token was 4,989 \cite{deepseek2025inference}. From DeepSeek-V3's configuration
+(61 layers, the first 3 dense; width 7,168; 128 heads with multi-head latent
+attention caching 576 numbers per token per layer in 16 bits; experts of
+$3 \times 7{,}168 \times 2{,}048$ weights, 8 routed per token; FP8 weights), price one
+GPU's decode step in memory, compute and network time, and compare with the
+reported step.
+
+\textbf{Solution.} Throughput over per-user speed gives about 88 conversations
+per GPU, stepping every $1/21 \approx 48$~ms if each step yields one token per
+conversation (the report does not say whether multi-token prediction was used; if
+it was, steps are further apart). \emph{Memory:} the GPU holds the full attention
+weights for its own conversations, about 11.4~GB in FP8; the shared expert,
+2.6~GB; the three dense layers' FFNs, 1.2~GB; its two routed experts in each of 58
+layers, 5.1~GB; the output head, 0.9~GB --- 21~GB of weights per step. The cache
+is $88 \times 4{,}989 \times 70{,}272$~bytes $= 31$~GB. The 52~GB take 15.5~ms at
+3.35~TB/s, assuming the H800 streams memory as fast as the H100 SXM whose
+datasheet gives that figure. \emph{Compute:} attention projections for 88 tokens,
+2.0~TFLOP; the routed experts, which receive $88 \times 144 \times 8 / 288 = 352$
+tokens per expert slot per layer, 3.6~TFLOP; shared expert, dense layers and output
+head, 0.8~TFLOP --- 6.4~TFLOP in FP8, 3.2~ms at 1,979~TFLOP/s; and the latent
+attention itself, 1.4~GFLOP per token per layer at 4,989 tokens of context,
+7.5~TFLOP in BF16, 7.5~ms at 989~TFLOP/s --- 10.8~ms in all. \emph{Network:} each
+token's hidden state goes to its 8 experts (7~KB each in FP8) and comes back
+(14~KB in BF16) in each of 58 layers: $88 \times 8 \times 21{,}504 \times 58 =
+0.88$~GB per step, 17.6~ms over a 50~GB/s InfiniBand link \cite{deepseek2024v3}
+(an upper bound, since one expert in eighteen is on the same node). The floors
+sum to 44~ms against about 48~ms reported. The step is not memory-bound, or
+compute-bound, or network-bound: it uses all three, for a quarter to two fifths
+of its length each, and it is only as short as it is because DeepSeek's five-stage
+pipeline overlaps them --- incompletely, by this arithmetic (derived; every
+input is the operator's report or the model's configuration, and nothing here
+was measured by the book).

@@ -1,0 +1,31 @@
+% Throughput against per-user speed for Qwen3-8B at 4,096 tokens of context, from the
+% Chapter 6 step-time model (code/labs/ch06-napkin/napkin.py; eta_b = 0.8, eta_p = 0.6,
+% 4 GB reserved; derived, illustrative efficiencies). Points are batch sizes 1, 2, 4, ...,
+% and the largest batch that fits (98, 224 and 555).
+\begin{tikzpicture}
+\begin{axis}[
+  width=13cm, height=7.4cm,
+  xmode=log, ymode=log,
+  xmin=25, xmax=1100, ymin=120, ymax=30000,
+  xtick={30,50,100,200,500,1000}, xticklabels={30,50,100,200,500,1000},
+  ytick={200,500,1000,2000,5000,10000,20000}, yticklabels={200,500,1k,2k,5k,10k,20k},
+  xlabel={Tokens per second for each user (1 / TPOT)},
+  ylabel={Tokens per second in aggregate},
+  x dir=reverse,
+  grid=major, grid style={draw=black!12},
+  tick label style={font=\small}, label style={font=\small},
+  legend style={font=\footnotesize, at={(0.5,1.03)}, anchor=south, legend columns=3, draw=black!30, fill=white},
+  legend cell align=left,
+]
+\addplot[black!60, mark=square*, mark size=1.8pt, thick] coordinates {(170.3,170) (164.0,328) (152.7,611) (134.2,1074) (108.1,1729) (77.8,2488) (49.8,3189) (36.1,3534)};
+\addlegendentry{H100, BF16 (up to 98 sequences)}
+\addplot[BookBlue, mark=*, mark size=1.8pt, thick] coordinates {(340.5,341) (327.9,656) (305.4,1222) (268.4,2147) (216.1,3458) (155.5,4977) (99.6,6377) (58.0,7421) (35.6,7982)};
+\addlegendentry{H100, FP8 (up to 224)}
+\addplot[red!70!black, mark=triangle*, mark size=2.2pt, thick] coordinates {(813.2,813) (783.2,1566) (729.3,2917) (641.0,5128) (516.1,8258) (371.4,11885) (238.0,15229) (138.5,17723) (75.4,19303) (39.5,20204) (36.5,20277)};
+\addlegendentry{B200, FP8 (up to 555)}
+\draw[black!55, densely dashed, thick] (axis cs:66.7,120) -- (axis cs:66.7,30000);
+\node[font=\scriptsize\sffamily, anchor=south west, align=left] at (axis cs:64,130) {TPOT 15 ms};
+\node[font=\scriptsize\sffamily, anchor=west] at (axis cs:170.3,150) {$B=1$};
+\node[font=\scriptsize\sffamily, anchor=north east] at (axis cs:36.1,3300) {memory full};
+\end{axis}
+\end{tikzpicture}

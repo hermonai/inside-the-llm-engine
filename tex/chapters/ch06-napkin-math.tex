@@ -1,7 +1,9 @@
-% status: ZERO
+% status: FULL
 % Chapter 6 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md
-% Derived tables: inputs from research/FRONTIER.md; efficiencies illustrative.
+% Measurements: research/measurements/2026-09-23-m1-llama32-3b.md (the opening predictions);
+% research/measurements/2026-09-26-m1-pass3.md (the model checked against batched decode at
+% two contexts). Derived tables: inputs from research/FRONTIER.md; efficiencies illustrative;
+% the lab's calculator reproduces every table.
 \chapter{Napkin Math: Latency, Throughput and Cost per Token}\label{ch:napkin-math}
 
 \begin{ChapterIntent}
@@ -10,9 +12,12 @@ per token, FLOPs per token and cache bytes per token. This chapter turns them
 into a five-minute model of an inference deployment --- step time, the batch
 size at which decode stops being bandwidth-bound, tokens per second per user
 and in aggregate, time to first token, memory headroom and dollars per million
-tokens at a latency target. Each prediction is checked against a measurement,
-and the chapter catalogues where napkin math goes wrong: kernel efficiency,
-launch and scheduling overhead, communication, and real workload mixes.
+tokens at a latency target. It shows how to calibrate the model's two
+efficiencies on the reader's own machine, checks its predictions against
+measurements on the laptop, reconstructs a published data-center deployment
+from its configuration, and catalogues where napkin math goes wrong: kernel
+efficiency, launch and scheduling overhead, communication, and real workload
+mixes.
 \end{ChapterIntent}
 
 \OpeningSection{Predicting a benchmark before running it}
@@ -68,16 +73,19 @@ B_{\max} &= \frac{M_{\text{HBM}}-M_{\text{weights}}-M_{\text{act}}}{m_{kv}\bar{S
 Five inputs describe the model ($W$, $F_{\text{token}}$, $m_{kv}$ and the
 resident weight bytes) and four the machine ($\beta$, $\pi$, capacity, price).
 The two efficiencies are the only numbers that must be measured rather than
-looked up.
+looked up. The chapter's lab is a calculator that evaluates exactly this
+model; every table in the chapter is its output, and its core is a dozen lines:
+
+\CodeLines{../code/labs/ch06-napkin/napkin.py}{79}{95}
 
 \section{Batch size: the throughput--latency curve}
 
 Take Qwen3-8B in BF16 on one H100 with 4,096 tokens of mean context. From its
 configuration, a step reads 15.1~GB of weights and 0.6~GB of cache per
 sequence and costs 17.6~GFLOP per sequence (\Chref{forward-pass}). Take
-$\eta_\beta=0.8$, $\eta_\pi=0.6$ and $t_0=0$ (all three illustrative; the lab
-measures them on the reader's machine) and the H100's 3.35~TB/s and 989 dense
-BF16 TFLOP/s:
+$\eta_\beta=0.8$, $\eta_\pi=0.6$ and $t_0=0$ (all three illustrative; the
+calibration section below measures them on the reader's machine) and the H100's
+3.35~TB/s and 989 dense BF16 TFLOP/s:
 
 \begin{center}
 \begin{tabular}{@{}rrrrr@{}}
@@ -97,6 +105,24 @@ Aggregate throughput rises twenty-fold while each user's pace falls by a
 factor of five. That is the throughput--latency curve every serving system
 lives on; the scheduler's job is to choose a point on it
 (\Chref{continuous-batching}, \Chref{scheduling}).
+Figure~\ref{fig:ch06-throughput-latency} draws the curve for three
+configurations of the same model.
+
+\EngineFigure{ch06-throughput-latency}{The throughput--latency curve of
+Qwen3-8B at 4,096 tokens of context, from the chapter's step-time model
+(derived, illustrative efficiencies). Each point is a batch size, from one
+sequence to the largest that fits in memory; moving right trades each user's
+speed for aggregate throughput. A 15~ms time-per-output-token objective (dashed)
+cuts all three curves well before their memory limits: it allows 41 sequences on
+the H100 in BF16, 108 in FP8 and 292 on the B200, at \$0.40, \$0.15 and \$0.10 per
+million tokens.}{fig:ch06-throughput-latency}
+
+Read the rows by hand once. At $B = 1$ the step reads 15.1~GB of weights and
+0.6~GB of cache: 15.7~GB at $0.8 \times 3.35 = 2.68$~TB/s is 5.9~ms, while
+17.6~GFLOP at $0.6 \times 989 = 593$~TFLOP/s would take 0.03~ms. At $B = 32$
+the weights are still read once, but the cache is read 32 times: $15.1 + 32
+\times 0.60 = 34.4$~GB, 12.9~ms. The compute side has grown to 0.95~ms, still
+thirteen times shorter. The step's growth from 5.9 to 12.9~ms is all cache.
 
 \section{The knee: where decode turns compute-bound}
 
@@ -110,16 +136,17 @@ compute side of equation~\eqref{eq:step-time} but $\bar{S}m_{kv}$ to the
 bandwidth side. Decode can become compute-bound at any batch size only if the
 first grows faster than the second:
 \begin{equation}
-\bar{S} < \frac{F_{\text{token}}}{\eta_\pi\pi}\cdot\frac{\eta_\beta\beta}{m_{kv}}
-\approx 460\ \text{tokens}
+\bar{S} < \frac{F_{\text{token}}(\bar{S})}{\eta_\pi\pi}\cdot\frac{\eta_\beta\beta}{m_{kv}}
+\approx 470\ \text{tokens}
 \label{eq:knee-context}
 \end{equation}
-for Qwen3-8B on an H100 (derived). Above about 460 tokens of mean context,
-adding sequences adds more memory time than compute time, and decode stays
-bandwidth-bound however large the batch. The threshold does not move if both
-weights and cache are stored in FP8: the bytes halve and the FP8 compute peak
-doubles. Long-context decode is a memory problem by construction, and the
-techniques that change it are the ones that cut $m_{kv}$
+for Qwen3-8B on an H100 (derived; $F_{\text{token}}$ itself grows with the
+context, so the calculator solves for the crossing). Above about 470 tokens of
+mean context, adding sequences adds more memory time than compute time, and
+decode stays bandwidth-bound however large the batch. The threshold does not
+move if both weights and cache are stored in FP8: the bytes halve and the FP8
+compute peak doubles. Long-context decode is a memory problem by construction,
+and the techniques that change it are the ones that cut $m_{kv}$
 (\Chref{shrinking-kv}, \Chref{kv-quantization}) or read less of the cache
 (\Chref{long-context}).
 
@@ -133,6 +160,60 @@ not weights}. Shorter contexts allow larger batches and make the weights
 matter again; longer contexts make the cache matter more. A napkin model that
 leaves out the cache is wrong by a factor of five at this operating point.
 
+\section{Calibrating the model on your own machine}
+
+The model has two numbers that cannot be looked up, and they must come from
+measurements on the machine in question. The labs of Chapters~\ref{ch:roofline}
+and~\ref{ch:prefill-decode} already produced them for the M1's GPU:
+
+\begin{itemize}
+\item $\eta_\beta$, the fraction of nominal bandwidth a real kernel moves: the
+streaming kernel reached 46--50~GB/s of the nominal 68, $\eta_\beta \approx 0.72$;
+llama.cpp's decode reached 42~GB/s, 0.62.
+\item $\eta_\pi$, the fraction of peak compute a real kernel sustains: the
+prefill plateau of \Chref{prefill-decode}, 248--297 tokens per second at
+6.43~GFLOP each, is $\eta_\pi = 0.61$--$0.73$ against Apple's 2.6~TFLOP/s.
+\item $t_0$, the fixed cost per step: small on this machine, because the
+batch-one step measured below (40.9~ms) is within 1\% of the time the 2.01~GB of
+weights take to stream at the streaming kernel's 49~GB/s; it is the number that
+matters most for small models on fast GPUs, where a step lasts a millisecond and
+launches a hundred kernels or more (\Chref{kernel-languages}).
+\end{itemize}
+
+\noindent With these, the calculator predicts llama.cpp's batched decode of
+Llama~3.2~3B on the M1, and \texttt{llama-batched-bench} can check it at two
+contexts --- 128-token prompts (a mean context of about 144 during 32 generated
+tokens) and 2,048-token prompts (about 2,064) --- with flash attention on
+(measured, record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+ & \multicolumn{2}{c}{Context 144} & \multicolumn{2}{c}{Context 2,064} & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+$B$ & Predicted & Measured & Predicted & Measured & Measured extra for context \\
+\midrule
+1 & 41.4 ms & 40.9 ms & 45.9 ms & 43.3 ms & 2.4 ms (predicted 4.5) \\
+2 & 41.8 ms & 73.3 ms & 50.7 ms & 82.2 ms & 8.9 ms (8.9) \\
+4 & 42.4 ms & 72.2 ms & 60.4 ms & 87.8 ms & 15.6 ms (18.0) \\
+8 & 43.8 ms & 138.9 ms & 79.8 ms & 167.3 ms & 28.4 ms (36.0) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The table is a lesson in reading a model's errors. For one sequence
+the prediction is within 1 and 6\%. For two to eight sequences the measured step
+is 1.5 to 3.2 times the prediction, because the model assumes one pass over the
+weights per step and this GPU's kernels make two passes for two sequences, one
+slower pass for four, and two for eight (\Chref{roofline}). That error is in the
+weight term. The cache term, isolated in the last column as the difference
+between the two contexts, is predicted to within about a fifth for two to eight
+sequences: each extra token of context costs roughly what reading 112~KiB at the
+streaming bandwidth predicts. At one sequence the measured extra, 2.4~ms, is half
+the prediction, a difference within the noise of a 32-token run. A model whose
+terms can be checked one at a time is worth more than one that is merely close on
+average.
+
 \section{Prefill in the same model}
 
 Prefill of a 4,096-token prompt costs about 62~TFLOP --- the layers' matrix
@@ -143,6 +224,49 @@ time as four decode steps of the full 98-sequence batch. In a mixed workload,
 prompts and replies compete for the same seconds, and the price of a token
 depends on how many prompt tokens came with it (\Chref{chunked-prefill},
 \Chref{prefix-caching}).
+
+The same numbers price an input token. A prompt token of Qwen3-8B costs about
+16~GFLOP of matrix products and attention at 2,000--4,000 tokens of context, 27~$\mu$s
+at 60\% of the H100's BF16 peak: about 37,000 prompt tokens per second, or about
+\$0.03 per million input tokens at the rental price below (derived) --- a tenth
+of the \$0.31 per million output tokens at a full batch. The ratio is the
+roofline again: a prompt token shares its weight bytes with thousands of others
+in the same step, a generated token with at most a hundred. It is why pricing
+input and output tokens separately makes sense, and why a service's cost depends
+on its mix of the two.
+
+\section{A mixture of experts in the same model}
+
+A mixture of experts changes one input: the weight bytes a step reads grow with
+the batch, as the batch touches more experts (\Chref{forward-pass}). Run
+Qwen3-30B-A3B through the calculator in BF16 on the same H100 at 4,096 tokens of
+context, assuming uniform routing (derived):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+ & \multicolumn{2}{c}{Qwen3-8B (dense)} & \multicolumn{2}{c}{Qwen3-30B-A3B (MoE)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+$B$ & Step & Aggregate & Step & Aggregate \\
+\midrule
+1 & 5.9 ms & 170 tok/s & 2.4 ms & 413 tok/s \\
+8 & 7.5 ms & 1,074 tok/s & 10.8 ms & 738 tok/s \\
+32 & 12.9 ms & 2,488 tok/s & 24.6 ms & 1,300 tok/s \\
+Largest batch & 98 & 3,534 tok/s & 37 & 1,416 tok/s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent At one sequence the mixture of experts is 2.4 times faster: it reads
+6.1~GB of weights per step against 15.1. At eight it is already slower, because
+eight tokens touch 40\% of each layer's experts; at 32, 87\%. And it holds 61~GB
+of weights, so only 37 sequences of 4,096 tokens fit beside them. On one GPU the
+model with a third of the active parameters produces half the throughput. The
+mixture of experts pays off at batch one --- a laptop, an agent working alone ---
+and at the scale where its experts are spread over many GPUs and each GPU's
+experts see a large batch (\Chref{expert-parallelism}); in between, it is the
+more expensive model to serve. The napkin model says so in two lines, before any
+deployment is built.
 
 \section{From tokens per second to dollars per million tokens}
 
@@ -165,10 +289,164 @@ Throughput is only worth selling if users accept the latency it comes with.
 Suppose the service promises a time per output token of at most 15~ms --- about
 67 tokens per second per user. Equation~\eqref{eq:step-time} then limits the
 BF16 H100 to $B\le41$, 2,750 tokens per second and \$0.40 per million: the
-promise costs 30\% more per token than running the memory full. At a looser
-50~ms objective, all three configurations above are limited by memory, not by
-the objective. The latency target, not the hardware, often sets the price
-\cite{zhong2024distserve}.
+promise costs 30\% more per token than running the memory full. In FP8 the same
+promise allows 108 sequences and \$0.15 per million, and on a B200 292 and \$0.10
+(derived). At a looser 50~ms objective, all three configurations are limited by
+memory, not by the objective. The latency target, not the hardware, often sets the price
+\cite{zhong2024distserve}. The worked problems add a time-to-first-token
+objective and find which one binds first.
+
+\section{Time to first token under load}
+
+Equation~\eqref{eq:step-time} prices a step; it says nothing about how long a
+request waits before its first step. That wait is a queue, and queues have one
+behaviour every engineer should carry around: as the arrival rate $\lambda$
+approaches the service's capacity $\mu$, waiting grows like
+$\rho/(1-\rho)$, where $\rho = \lambda/\mu$ is the utilization. At half of
+capacity the typical wait is about one service time; at 80\% it is four; at
+90\%, nine; past 100\%, the queue grows without limit and so does every waiting
+time. The napkin model gives $\mu$ --- the requests per second the machine can
+finish at the chosen batch --- and queueing turns it into a time to first token.
+
+The book measured this curve on the laptop, with llama-server serving
+Llama~3.2~3B from four slots to an open-loop stream of requests of about 200
+prompt tokens and 48 generated tokens (measured, record
+\texttt{2026-09-26-m1-part8}). Completions topped out at about 0.52 requests per
+second. The 99th-percentile time to first token was 2.1~s at 0.23 requests per
+second (45\% of that capacity), 6.3~s at 0.36 (69\%), 11.9~s at 0.43 (82\%), and
+29 and 42~s once arrivals exceeded the capacity. The median moved less --- 0.9~s
+up to 69\%, then 1.4~s, then 12.7~s --- because a queue's tail feels the load
+first. Between 45\% and 82\% of capacity the tail wait grew 5.7-fold, and
+$\rho/(1-\rho)$ grows 5.6-fold over the same range: the shape of the formula,
+measured on a laptop.
+
+For a deployment the lesson is a rule of provisioning. A service that must keep
+its time-to-first-token tail within a few service times cannot run its machines
+near 100\% of the capacity the napkin model computes; it must run them at 60 to
+80\% and pay for the idle remainder. The chapter's goodput section priced a TPOT
+objective at 30\% more per token; a tail-latency objective on TTFT costs another
+20 to 40\% of capacity on top. \Chref{scheduling} chooses where to sit on the
+curve, and \Chref{production} measures this same server's knee in detail.
+
+\section{Napkin math on your own machine}
+
+The same model answers the question most readers ask first: how fast will a
+model run on my computer? At batch one the answer is the bytes a token reads,
+from \Chref{forward-pass}'s lab, divided by the bandwidth a streaming kernel
+reaches, from \Chref{roofline}'s. For the M1's GPU at 49~GB/s, the four model
+files the book has measured give (predicted from the files; measured with
+llama.cpp, records \texttt{2026-09-23-m1-llama32-3b}, \texttt{2026-09-26-m1-part8}
+and \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Model file (\texttt{Q4\_K\_M}) & Weights read per token & Predicted & Measured \\
+\midrule
+Llama 3.2 3B & 2.01 GB & 24 tok/s & 20--27 tok/s \\
+Qwen2.5-Coder 3B & 1.92 GB & 25 tok/s & 26 tok/s \\
+Granite 3.1 3B-A800M (mixture of experts) & 0.57 GB & 86 tok/s & 49--58 tok/s \\
+R1-0528-Qwen3-8B & 4.87 GB & 10 tok/s & not measured \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The dense models land on the prediction; Llama's range is the spread
+between days, load and the flash-attention setting. The mixture of experts
+misses by a factor of 1.5 to 1.8: its expert layers move their bytes at 28--33~GB/s
+rather than 49 (\Chref{forward-pass} derived this from the same runs), an
+efficiency the model has to be told, and \Chref{mixture-of-experts} measures
+where it goes. Capacity is the other half of the question. The M1's GPU could use
+12.1~GB of its 16 (llama.cpp's own report, \Chref{kv-cache}); an 8-billion-parameter
+model in four bits and a few thousand tokens of cache fit, a 14-billion one fits
+with little room to spare, and anything much larger does not.
+
+The first-token side is just as predictable and more often forgotten. On the
+same laptop a 2,048-token prompt took 7.3~s to prefill (measured, at 282 prompt
+tokens per second), and the prefill rate falls as prompts grow
+(\Chref{prefill-decode}): a 32,000-token document would take more than two
+minutes before the first word of an answer, even at the 225 tokens per second
+measured for 4,096 tokens (derived). That is why pasting a long document into a
+local model feels slow while chatting with it does not, and why caching a
+document's prefix is worth as much on a laptop as in a data center
+(\Chref{prefix-caching}).
+
+Newer machines change the inputs, not the method. Apple quotes 153~GB/s for the
+M5, 614~GB/s for the M5~Max and 1.2~TB/s for the M5~Ultra with up to 512~GB of
+memory \cite{apple2025m5,apple2026m5ultra}. A 70-billion-parameter model in four
+bits reads about 40~GB per token; at 72\% of the quoted bandwidth --- the fraction
+the M1's streaming kernel reached --- that is about 3 tokens per second on an M5,
+11 on an M5~Max and 22 on an M5~Ultra (derived). Whether the
+model fits --- and how much cache is left for context once it does --- decides the
+rest. The prediction takes a minute; a download of 40~GB takes longer, which is
+the practical case for doing the arithmetic first.
+
+\section{Which input matters}
+
+A napkin model is most useful when it says which of its inputs is worth
+improving. Change each input of the Qwen3-8B, BF16, H100 row by 20\% at the full
+batch, and the cost per million output tokens moves as follows (derived with the
+lab's calculator):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Change & Largest batch & Step & Cost per million \\
+\midrule
+None (4,096 tokens of context) & 98 & 27.7 ms & \$0.314 \\
+Memory bandwidth, or $\eta_\beta$, $+20\%$ & 98 & 23.1 ms & $-16.7\%$ \\
+Peak compute $+20\%$ & 98 & 27.7 ms & $0.0\%$ \\
+Memory capacity $+20\%$ & 125 & 33.8 ms & $-4.4\%$ \\
+Weight bytes $-20\%$ & 104 & 28.0 ms & $-5.0\%$ \\
+Cache bytes per token $-20\%$ & 123 & 27.8 ms & $-20.1\%$ \\
+Price per GPU-hour $-20\%$ & 98 & 27.7 ms & $-20.0\%$ \\
+Context doubled to 8,192 & 49 & 27.7 ms & $+100\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Three things stand out. Compute does not matter at all at this
+operating point: every step is bandwidth-bound, so a faster tensor core buys
+nothing. Capacity and weights matter only a little: more room buys a larger
+batch, but each added sequence adds its cache to every step's reads, so most of
+the gain is eaten. And the cost is exactly proportional to the cache bytes per
+token and to the context --- halving the cache per token is worth as much as
+halving the price of the GPU, and doubling the conversation's length doubles the
+cost of every token in it. This is the quantitative case for the cache chapters
+of Part~\ref{part:architectures} (\Chref{shrinking-kv}, \Chref{kv-quantization}):
+at long context the cache, not the model, is what a token costs.
+
+The same analysis at batch one gives a different ranking. Only bandwidth and
+weight bytes matter, each almost in proportion, and the cache hardly at all.
+Which input to improve depends on where the deployment runs on the
+throughput--latency curve, and the napkin model is the cheapest way to find out.
+
+\section{A procedure for napkin math}
+
+The chapter's calculations follow the same seven steps each time, and writing
+them down makes them quick enough to do in a design meeting.
+
+\begin{enumerate}
+\item \emph{Bytes per step.} From the configuration: the weights a step
+multiplies, at the stored precision --- all but the input table in a dense model,
+the union of the batch's experts in a mixture.
+\item \emph{FLOPs per token.} Two per multiplied weight, plus attention's
+$4\,L\,S\,H_qd_h$ at the context in question.
+\item \emph{Cache per token.} Equation~\eqref{eq:kv-per-token} of
+\Chref{kv-cache}, at the cache's precision, counting only the layers that keep
+a growing cache.
+\item \emph{Largest batch.} Memory less weights less a reserve, divided by the
+cache of one sequence.
+\item \emph{Step time and bound.} Equation~\eqref{eq:step-time} at each batch of
+interest, with measured efficiencies if you have them.
+\item \emph{Objectives.} The batch a TPOT objective allows, the utilization a
+TTFT tail allows, and the smaller of those and the memory limit.
+\item \emph{One measurement.} Check one prediction on the real system before
+trusting the rest, and assign its error to a term.
+\end{enumerate}
+
+\noindent The last step is the one that is skipped, and the one that makes the
+other six worth doing: without it, a napkin model is a guess with units.
 
 \section{Worked examples on real hardware}
 
@@ -186,9 +464,12 @@ B200, FP8 weights and cache & 555 & 27 ms & 20,277 & 0.09 \\
 
 The step time at full memory is nearly the same on every machine --- a
 coincidence of HBM capacity divided by bandwidth, which is about 22--24~ms for
-both the H100 and the B200. \todo{measure: check the table against vLLM or
-SGLang on an H100 with Qwen3-8B at 4K context, and record $\eta_\beta$ and
-$\eta_\pi$.}
+both the H100 and the B200. These rows are derived with the illustrative
+efficiencies of the batch-size section, not measured; the calibration section
+shows how to replace those efficiencies with measured ones, and on a data-center
+GPU the check is the same two runs of \texttt{llama-batched-bench} or of an
+engine's benchmark at two contexts. On the M1, where the book could run it, the
+model's cache term held and its weight term did not.
 
 \section{Where napkin math breaks}
 
@@ -197,7 +478,8 @@ fails somewhere a later chapter lives.
 
 \begin{itemize}
 \item \emph{Kernel efficiency} is not a constant. It depends on shapes and
-batch sizes, as the M1's staircase showed (\Chref{matmul-hardware}).
+batch sizes, as the M1's staircase and the calibration table showed
+(\Chref{matmul-hardware}).
 \item \emph{Fixed overheads} $t_0$ --- kernel launches, synchronization,
 scheduling, sampling --- can dominate short steps (\Chref{kernel-languages}).
 \item \emph{Communication} between GPUs appears in no term; tensor and expert
@@ -206,9 +488,14 @@ parallelism add it to every layer (\Chref{model-parallelism},
 \item \emph{Workload mix}: real batches mix prompts and replies of different
 lengths, and the mean hides the tail (\Chref{benchmarking}).
 \item \emph{Mixture of experts}: the weights read per step grow with the batch,
-as more experts are touched (\Chref{mixture-of-experts}).
+as more experts are touched (\Chref{mixture-of-experts}), and real routing is
+not uniform.
 \item \emph{Tokens per step}: speculative decoding produces more than one
 token per sequence per step (\Chref{speculative-decoding}).
+\item \emph{Run-to-run variance}: on the laptop, the first passes over freshly
+written weights ran 20--25\% slow and other programs moved single points by as
+much again (\Chref{roofline}'s lab kept every run); compare a prediction with the
+best of several runs, and report the spread with it (\Chref{benchmarking}).
 \end{itemize}
 
 \LedgerSection
@@ -225,42 +512,71 @@ Correctness & risks & Unknown until measured per model and task (\Chref{weight-q
 
 \LabSection{a cost calculator you can trust}
 
-\LabIntent{In \texttt{code/labs/ch06-napkin/}, a small Python program that
-reads a model's \texttt{config.json} and a machine description (bandwidth,
-peak, capacity, price) and prints the tables of this chapter for any context
-length and latency objective. Its efficiencies come from the reader's own
-measurements in the labs of \Chref{roofline} and \Chref{prefill-decode}. The
-test of the calculator is falsification: predict the reader's own
-\texttt{llama-bench} and \texttt{llama-batched-bench} numbers before running
-them, and record the error.}
+The lab in \texttt{code/labs/ch06-napkin/} is the calculator itself: a
+standard-library Python program that reads a model's Hugging Face
+\texttt{config.json} (or one of three built-in configurations) and a machine
+description --- bandwidth, peak compute by precision, memory, price --- and prints
+this chapter's tables for any context length, precision, batch list and latency
+objective. Its unit tests reproduce the chapter's tables, so a change that moves
+a number in the book fails a test. From the repository root:
 
-\HappenedSection{predictions against a published system}
+\begin{Verbatim}[fontsize=\small]
+python3 code/labs/ch06-napkin/napkin.py --model qwen3-8b --machine h100 --tpot 15
+python3 code/labs/ch06-napkin/napkin.py --model qwen3-30b-a3b --machine h100 --batches 1,8,32
+python3 code/labs/ch06-napkin/napkin.py --model llama-3.2-3b --machine m1-gpu \
+    --bytes 0.626 --kv-bytes 2 --context 2064 --eta-b 0.72 --eta-p 0.7 --batches 1,2,4,8
+\end{Verbatim}
+
+\noindent \emph{Predict} with it before you measure: take your machine's
+bandwidth and peak from its datasheet, $\eta_\beta$ and $\eta_\pi$ from the labs
+of \Chref{roofline} and \Chref{prefill-decode}, and write down the step time
+\texttt{llama-batched-bench} will report at two contexts. \emph{Run} the
+benchmark as the calibration section did. \emph{Explain} each error by the term
+it belongs to: an error that does not change with context is in the weight term
+(a kernel reading weights more than once, or a fixed overhead); an error that
+grows with context is in the cache term (an attention kernel that does not
+stream its cache). \emph{Break} the model deliberately: run a mixture-of-experts
+model and compare the calculator's uniform-routing prediction with its measured
+steps, or run with flash attention off and watch the cache term's error grow ---
+\Chref{prefill-decode} measured that path reading the cache at a third of the
+speed.
+
+\HappenedSection{a published deployment, reconstructed}
 
 DeepSeek has published statistics from its own serving of DeepSeek-V3 and R1
 over one day in February 2025 \cite{deepseek2025inference}: each decode
-instance spanned 18 eight-GPU nodes, with the experts spread across its 144
-GPUs; each node produced about 14,800 output tokens per second, while users
-saw 20--22 tokens per second. From those operator-reported figures alone (derived): each GPU
-produced about 1,850 tokens per second, so it carried about 88 conversations
-at a time, each stepping about every 48~ms. At the \$2 per GPU-hour DeepSeek
-assumed, decode GPUs cost about \$0.30 per million output tokens; charging
-the whole day's fleet to output tokens gives \$0.52 per million, and to all
-tokens, input included, \$0.11.
+instance spanned 18 eight-GPU H800 nodes, with each GPU holding two routed
+experts and the shared expert; each node produced about 14,800 output tokens per
+second, while users saw 20--22 tokens per second; and the average cache length
+per output token was 4,989 tokens. From those operator-reported figures alone
+(derived): each GPU produced about 1,850 tokens per second, so it carried about
+88 conversations at a time, each stepping about every 48~ms. At the \$2 per
+GPU-hour DeepSeek assumed, decode GPUs cost about \$0.30 per million output
+tokens; charging the whole day's fleet to output tokens gives \$0.52 per
+million, and to all tokens, input included, \$0.11.
 
-Equation~\eqref{eq:step-time} has no term for what a 144-GPU decode step
-must also do: send every token's hidden state to the GPUs holding its experts
-and gather the results back, in every one of 58 mixture-of-experts layers.
-Reconstructing that 48~ms step needs the communication terms of
-Part~\ref{part:scaling-out}; until it is reconstructed, the published numbers
-are a target for the model, not a confirmation of it \todo{FULL pass:
-reconstruct DeepSeek's decode step from its configuration and EP144 layout,
-and compare with the reported 20--22 tok/s}.
+Equation~\eqref{eq:step-time} can price most of that 48~ms step from the model's
+configuration --- the third worked problem does it line by line. One GPU's step
+reads about 21~GB of weights and 31~GB of latent cache (88 conversations of 4,989
+tokens at 69~KiB each), 15~ms at the H100's bandwidth; performs about 6.4~TFLOP
+in FP8 and 7.5~TFLOP of attention in BF16, 11~ms at the datasheet's peaks; and,
+in a term the single-GPU model does not have, sends each token's hidden state to
+the GPUs holding its eight experts and gathers the results back in each of 58
+layers, about 0.9~GB per step, 18~ms over a 50~GB/s InfiniBand link
+\cite{deepseek2024v3}. The three floors sum to 44~ms against a measured step of
+about 48. DeepSeek overlaps them with a five-stage pipeline that splits
+attention into two parts; the reconstruction says the overlap is far from
+complete, and that the step is balanced across memory, arithmetic and the
+network rather than bound by any one of them --- which is exactly why a
+deployment of that size needs the communication terms of
+Part~\ref{part:scaling-out}.
 
-\FrontierSection{2026-09-23}
+\FrontierSection{2026-09-27}
 
 The inputs to this chapter's model move faster than its structure. Per-GPU
 memory bandwidth reached 8~TB/s with the B200 and did not rise in its successor
-while four-bit compute did (\Chref{roofline}); four-bit weights and caches halve
+while four-bit compute did; NVIDIA's Rubin raises it to 19.2~TB/s
+\cite{nvidia2026verarubin} (\Chref{roofline}). Four-bit weights and caches halve
 $W$ and $m_{kv}$ again, and 2026 checkpoints ship in them
 \cite{moonshot2026kimik3,openai2025gptoss}; disaggregated serving prices
 prefill and decode on separate machines (\Chref{disaggregated-serving}); and
@@ -273,12 +589,18 @@ before trusting any dollar figure here.
 \begin{enumerate}
 \item \emph{Prediction.} Redo this chapter's table for Llama~3~70B in FP8 on
 eight H100s joined by NVLink, ignoring communication. Which input is most
-likely to make your prediction wrong?
+likely to make your prediction wrong? (Worked below.)
 \item \emph{Derivation.} Derive equation~\eqref{eq:knee-context} and show that
 it is unchanged when every byte count halves and the compute peak doubles.
-\item \emph{Implementation.} Build the chapter's calculator and predict your
-machine's batch-one decode rate for two models before measuring them.
+\item \emph{Implementation.} Add prefill to the chapter's calculator: given an
+arrival rate and prompt length, charge each step for the prompt tokens it must
+absorb, and print TTFT beside TPOT.
 \item \emph{Goodput.} A service promises TTFT under 500~ms and TPOT under
 30~ms for 2,000-token prompts. For Qwen3-8B on one H100, how many requests per
-second can it accept, and which constraint binds first?
+second can it accept, and which constraint binds first? (Worked below.)
+\item \emph{Falsification.} Predict your own machine's batched decode at two
+contexts with the calculator, measure it, and attribute every error of more than
+10\% to the weight term or the cache term.
 \end{enumerate}
+
+\input{worked/ch06-napkin-math.tex}

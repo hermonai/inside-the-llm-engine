@@ -36,7 +36,7 @@ if this table is stale. Words are approximate prose words.
 | 3 | The Roofline: Why Decode Leaves Your GPU Idle | FULL | 5,117 | 0 |
 | 4 | Prefill and Decode: Two Workloads, One Model | FULL | 5,021 | 0 |
 | 5 | The KV Cache: Inference's Central Data Structure | FULL | 5,088 | 0 |
-| 6 | Napkin Math: Latency, Throughput and Cost per Token | ZERO | 2,126 | 2 |
+| 6 | Napkin Math: Latency, Throughput and Cost per Token | FULL | 5,144 | 0 |
 | 7 | Matrix Multiplication on Real Hardware | ZERO | 2,086 | 2 |
 | 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | ZERO | 2,083 | 0 |
 | 9 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | ZERO | 1,924 | 0 |
