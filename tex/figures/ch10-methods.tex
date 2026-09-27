@@ -1,0 +1,28 @@
+% Output error of layer 0's value projection of Llama 3.2 3B quantized to 4 bits (about 4.5
+% bits per weight with scales) six ways, on the calibration tokens and on new tokens
+% (record 2026-09-26-m1-pass3, ch10-lab-run1.txt and ch10-ggml-oracle.txt; Q4_K has no
+% calibration, so one bar). Measured.
+\begin{tikzpicture}
+\begin{axis}[
+  xbar, bar width=6pt,
+  width=12.5cm, height=7.4cm,
+  xmin=0, xmax=42,
+  xlabel={Output error of the layer (\%)},
+  symbolic y coords={gptqv,gptq,awq,q4k,group,row,tensor},
+  ytick={gptqv,gptq,awq,q4k,group,row,tensor},
+  yticklabels={GPTQ calibrated on vocabulary rows, GPTQ calibrated on the text, AWQ-style scaling, {llama.cpp Q4\_K (no data)}, {rounding, a scale per 32}, {rounding, a scale per row}, {rounding, one scale}},
+  y dir=reverse,
+  enlarge y limits=0.08,
+  tick label style={font=\small}, label style={font=\small},
+  xmajorgrids, grid style={draw=black!12},
+  legend style={font=\footnotesize, at={(0.98,0.97)}, anchor=north east, draw=black!30},
+  legend cell align=left,
+  nodes near coords, nodes near coords style={font=\scriptsize, anchor=west},
+  point meta=explicit symbolic,
+]
+\addplot[fill=BookGold, draw=BookBlue!70] coordinates {(17.5,gptqv)[17.5] (4.0,gptq)[4.0] (8.6,awq)[8.6] (15.0,group)[15.0] (24.5,row)[24.5] (38.6,tensor)[38.6]};
+\addlegendentry{calibration tokens}
+\addplot[fill=BookBlue!70, draw=BookBlue] coordinates {(17.5,gptqv)[17.5] (12.2,gptq)[12.2] (8.6,awq)[8.6] (11.2,q4k)[11.2] (15.1,group)[15.1] (24.6,row)[24.6] (38.7,tensor)[38.7]};
+\addlegendentry{new tokens}
+\end{axis}
+\end{tikzpicture}

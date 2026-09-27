@@ -1,0 +1,74 @@
+\section{Worked problems: a file's bits, a group's maximum and a kernel's budget}
+
+\subsection{Taking a Q4\_K\_M file apart}
+\textbf{Problem.} The Llama~3.2~3B file of this chapter holds 1,362,493,440 bytes
+of Q4\_K tensors, 648,345,600 bytes of Q6\_K and 700,672 bytes of F32 (record
+\texttt{2026-09-23-gguf-tensor-bytes}). How many parameters does each format
+hold, what is the file's average bits per weight, and what decode ceiling does
+equation~\eqref{eq:quant-ceiling} give at the 49~GB/s the M1's GPU sustains? How
+much faster could the file be if every Q6\_K tensor were Q4\_K instead?
+
+\textbf{Solution.} Q4\_K stores 256 weights in 144 bytes and Q6\_K in 210, so the
+file holds $1{,}362{,}493{,}440 / 144 \times 256 = 2{,}422{,}210{,}560$ Q4\_K weights,
+$648{,}345{,}600 / 210 \times 256 = 790{,}364{,}160$ Q6\_K weights and 175,168 F32
+values: 3,212,749,888 parameters, exactly the count read from the file. The
+average is $2{,}011{,}539{,}712 \times 8 / 3{,}212{,}749{,}888 = 5.01$ bits per weight.
+The Q6\_K tensors are a quarter of the parameters (24.6\%) and a third of the
+bytes (32.2\%). The ceiling is $49~\text{GB/s} / 2.01~\text{GB} = 24.4$ tokens per
+second; \Chref{decode-attention}'s depth measurement decoded this file at 26.0
+tokens per second with an empty cache, an effective 52~GB/s. Storing the Q6\_K
+weights as Q4\_K would save $790{,}364{,}160 \times (210 - 144)/256 = 203.8$~MB,
+10\% of the file, and raise the ceiling to 27.1 tokens per second (all derived).
+The mix spends that 10\% on the tensors llama.cpp's authors found most
+sensitive --- the vocabulary table, which is also the output projection here,
+and half the layers' value and FFN-down projections --- and the rest of this
+chapter shows why a few tensors deserve the bits.
+
+\subsection{Predicting round-to-nearest from the maximum}
+\textbf{Problem.} Rounding to a grid of step $s$ leaves an error spread evenly over
+$\pm s/2$ when the step is small beside the weights, with root-mean-square
+$s/\sqrt{12}$. With symmetric scales $s = a_{\max}/q_{\max}$, predict the relative
+weight error of round-to-nearest from the ratio of each group's largest
+magnitude to the weights' root-mean-square, $a_{\max}/\sigma$. Reading layer 0's
+value projection gives $a_{\max}/\sigma = 7.46$ for the whole matrix, 4.28 on
+average per row and 2.57 on average per group of 32. Compare with the lab.
+
+\textbf{Solution.} The relative error is
+$(s/\sqrt{12})/\sigma = (a_{\max}/\sigma)/(q_{\max}\sqrt{12})$. At 4 bits,
+$q_{\max} = 7$ and $q_{\max}\sqrt{12} = 24.2$: the prediction is 30.8\% with one
+scale, 17.7\% with a scale per row and 10.6\% per group, against 29.4\%, 17.4\%
+and 10.5\% measured. At 3 bits, $q_{\max}\sqrt{12} = 10.4$: 41.2\% per row and
+24.7\% per group against 38.8\% and 23.8\%, but 71.8\% with one scale against
+62.7\% (derived against measured). The last prediction fails for the reason the
+first sentence of the problem allows: a step of $7.46\sigma/3 = 2.5\sigma$ is
+not small beside the weights, most of them round to zero, and a weight that
+rounds to zero loses only itself --- less than a uniform error over the whole
+step. The model also explains why groups help: a group's maximum grows with its
+size. Were the weights Gaussian, a group of 32 would have a mean maximum of
+$2.36\sigma$, a row of 3,072 of $3.74\sigma$, and the 3.1 million weights of the
+matrix $5.35\sigma$ (derived by sampling). This matrix's tails are heavier ---
+its kurtosis is 4.6 against a Gaussian's 3 --- and the heavier the tails, the
+more a single scale wastes the grid on a few large weights.
+
+\subsection{A kernel's budget at batch one}
+\textbf{Problem.} In the lab's third part, a $4{,}096 \times 4{,}096$ product with
+one vector reads 67.1~MB of weights in 32-bit floats and 9.44~MB in Q4\_0. Four
+M1 cores stream about 60~GB/s. Which kernels can be memory-bound, and what does
+that predict for their times? Explain the integer kernel's time.
+
+\textbf{Solution.} Streaming 67.1~MB at 60~GB/s takes 1.12~ms, and the f32 kernel
+measured 1.18--1.62~ms: it is memory-bound, close to the roof. Q4\_0's 9.44~MB would
+take 0.16~ms, but no 4-bit kernel came near it: dequantizing to floats cost
+1.27--1.97~ms with the scale folded and 1.84--2.68~ms with a reduction per block, the
+integer kernel 0.54--0.74~ms. All three are bound by arithmetic, not memory:
+the 16.8 million multiply--adds of the product must be preceded by unpacking
+16.8 million codes, and in the float kernels each code is also converted to a
+float and scaled. The integer kernel skips both conversions and does the
+multiply--adds more densely: its 32-element dot product compiles to two
+\texttt{sdot} instructions, each performing sixteen 8-bit multiply--adds into four
+32-bit sums (checked in the disassembly), where a 128-bit float instruction
+handles four 32-bit values. That is
+how a kernel reading an eighth of the bytes can still be only
+2.2 times faster than f32 at batch one: quantization moved the bottleneck
+from memory to arithmetic, and only the integer path made the arithmetic cheap
+enough to profit.

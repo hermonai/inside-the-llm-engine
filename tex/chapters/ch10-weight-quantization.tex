@@ -1,6 +1,8 @@
-% status: ZERO
+% status: FULL
 % Chapter 10 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-23-m1-part2.md
+% Measurements: research/measurements/2026-09-23-m1-part2.md (the format sweep);
+% research/measurements/2026-09-26-m1-pass3.md (the lab: real K-quant blocks, five quantizers
+% on a real projection, dequantizing kernels; the ggml oracle); 2026-09-26-m1-part8.md (KL).
 \chapter{Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants}\label{ch:weight-quantization}
 
 \begin{ChapterIntent}
@@ -10,9 +12,11 @@ model four times larger fit. This chapter builds weight quantization from
 scales and groups upward: round-to-nearest and its failure, GPTQ's
 error-correcting updates, AWQ's protection of salient channels,
 weight--activation schemes such as SmoothQuant, and the K-quant formats of
-llama.cpp. It then puts dequantization inside a kernel, where bandwidth savings
-can be lost to arithmetic, and shows how to measure what quantization costs in
-accuracy.
+llama.cpp, taken apart byte by byte. It quantizes one real projection of a real
+model every way it describes and measures the error where it matters, in the
+layer's output. It then puts dequantization inside a kernel, where bandwidth
+savings can be lost to arithmetic, and shows how to measure what quantization
+costs in accuracy.
 \end{ChapterIntent}
 
 \OpeningSection{Fewer bits, more tokens}
@@ -71,7 +75,8 @@ table and, in half the layers, the value and FFN-down projections in the
 \texttt{2026-09-23-gguf-tensor-bytes}). For a 70-billion-parameter model on an
 H100, equation~\eqref{eq:quant-ceiling} gives 24 tokens per second at 16 bits,
 48 at 8 and about 85 at a real 4.5-bit average --- if it fits: only the last
-two do, in 80~GB.
+two do, in 80~GB. The first worked problem takes the 3B file apart tensor type
+by tensor type.
 
 \section{What a quantized weight is}
 
@@ -86,6 +91,20 @@ chooses $s$, $z$ and each $q$; dequantizing computes $s(q-z)$ inside the
 kernel, just before the multiply. A symmetric scheme fixes $z$ at the middle of
 the range and stores only $s$.
 
+\emph{A worked example.} Take eight weights --- 0.90, $-0.35$, 0.12, 0.05,
+$-0.61$, 0.28, $-0.02$ and 0.44 --- and quantize them to 4 bits with one
+symmetric scale. Seven levels on each side of zero must reach the largest
+magnitude, so $s = 0.90/7 = 0.1286$. Dividing by $s$ and rounding gives the
+codes 7, $-3$, 1, 0, $-5$, 2, 0, 3, and multiplying back gives 0.900, $-0.386$,
+0.129, 0, $-0.643$, 0.257, 0 and 0.386. Every error lies within half a step,
+$\pm 0.064$: the largest is $-0.054$, on 0.44, and the two small weights 0.05
+and $-0.02$ are rounded away altogether. Storage is eight 4-bit codes and one
+16-bit scale, 48 bits: 6 bits per weight for this tiny group, 4.5 for a group of
+32, 4.06 for a group of 256. (The lab's first test checks these numbers.) Two
+consequences follow at once. The step, and so every error, is set by the
+group's single largest weight; and the scale's cost is spread over the group.
+A format is a choice of group size between those two pressures.
+
 \section{Scales, zero points and groups}
 
 One scale for a whole matrix wastes the grid on its few largest values. One
@@ -95,7 +114,40 @@ $(b_s+b_z)/g$ extra bits per weight --- 0.25 bits for a 16-bit scale and a
 super-blocks of 256 weights, split into sub-blocks with their own scales, which
 are themselves quantized to 6 bits against a super-block scale
 \cite{kawrakow2023kquants}. Q4\_K spends 4.5 bits per weight this way; Q6\_K,
-6.5625; Q2\_K, 2.5625.
+6.5625; Q2\_K, 2.5625. The simplest formats keep one 16-bit scale per 32
+weights: Q8\_0 stores 32 signed bytes beside it (34 bytes, 8.5 bits per weight),
+and Q4\_0 32 four-bit codes read as $q - 8$ (18 bytes, 4.5 bits)
+(\texttt{ggml/src/ggml-common.h} at \texttt{d006858}).
+
+\section{A real block, byte by byte}
+
+The lab reads the Llama~3.2~3B file itself and decodes its blocks with ggml's
+layouts. A Q4\_K super-block is 144 bytes: a 16-bit scale $d$, a 16-bit scale of
+minimums $d_{\min}$, 12 bytes packing eight 6-bit sub-block scales and eight
+6-bit minimums, and 128 bytes of 4-bit codes. Each 32-weight sub-block $j$
+decodes as
+\begin{equation}
+w = d\,\sigma_j\,q - d_{\min}\,\mu_j ,
+\label{eq:q4k}
+\end{equation}
+an affine rule whose scale $d\sigma_j$ and offset $d_{\min}\mu_j$ are themselves
+quantized. The first super-block of layer 0's query projection holds
+$d = 3.600 \times 10^{-4}$ and $d_{\min} = 3.845 \times 10^{-3}$; its first
+sub-block's 6-bit scale and minimum are 43 and 22; and its first code is 3. So
+the model's first query weight is
+$3.600\times10^{-4} \times 43 \times 3 - 3.845\times10^{-3} \times 22 = -0.03815$,
+and the next codes, 7, 10 and 9, give $+0.0238$, $+0.0702$ and $+0.0547$
+(measured by reading the file, record \texttt{2026-09-26-m1-pass3}). Every weight
+of that sub-block lies on a grid of sixteen points spaced $0.0155$ apart, from
+$-0.0846$ up. A Q6\_K super-block is 210 bytes: 128 bytes of the codes' low four
+bits, 64 of their high two, sixteen 8-bit sub-block scales and one 16-bit $d$,
+and a weight is $d\,\sigma_j\,(q - 32)$ over sixteen 16-weight sub-blocks. The
+lab's decoders are twenty lines each. To check them, the lab's oracle script
+called the \texttt{dequantize\_row\_q4\_K} and \texttt{dequantize\_row\_q6\_K}
+functions of the very ggml library this book's llama.cpp build links against,
+on the same bytes: all 24,576 values of four rows of each tensor agreed \emph{bit
+for bit}. A format is only a byte layout and an arithmetic rule; transcribe
+both exactly and a decoder can be rebuilt from scratch.
 
 \section{Round-to-nearest and why it fails}
 
@@ -108,14 +160,113 @@ in the weights that multiply those channels are amplified; large errors
 elsewhere barely matter. Every method below uses data about the activations to
 decide where the error goes.
 
+The lab measures it on real data. It takes layer 0's value projection of
+Llama~3.2~3B, a $1{,}024 \times 3{,}072$ matrix stored in the file as Q6\_K,
+and feeds it exactly what layer 0 sees: the token embeddings of a real text,
+RMS-normalized and multiplied by the layer's own normalization weights. The
+text is this book's \texttt{AUTHORING.md}, 3,217 tokens; the first 1,024
+calibrate the methods that need data, and the other 2,193, of which 1,081 are
+tokens the calibration never saw, evaluate them. Errors are relative,
+$\lVert(\mathbf{W} - \hat{\mathbf{W}})\mathbf{X}\rVert / \lVert\mathbf{W}\mathbf{X}\rVert$
+over the evaluation tokens (measured, record \texttt{2026-09-26-m1-pass3}):
+
+\begin{center}\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.38\linewidth}rrrr@{}}
+\toprule
+ & & & \multicolumn{2}{c}{Output error} \\
+\cmidrule(l){4-5}
+Method & Bits/weight & Weight error & calibration & new tokens \\
+\midrule
+8-bit, groups of 32 & 8.5 & 0.6\% & 0.7\% & 0.7\% \\
+4-bit, one scale & 4.0 & 29.4\% & 38.6\% & 38.7\% \\
+4-bit, a scale per row & 4.0 & 17.4\% & 24.5\% & 24.6\% \\
+4-bit, groups of 32 & 4.5 & 10.5\% & 15.0\% & 15.1\% \\
+4-bit, AWQ-style, groups of 32 & 4.5 & 12.5\% & 8.6\% & 8.6\% \\
+4-bit, GPTQ, groups of 32 & 4.5 & 16.8\% & 4.0\% & 12.2\% \\
+4-bit, GPTQ, 4,096 vocabulary rows & 4.5 & 17.0\% & 17.5\% & 17.5\% \\
+llama.cpp's Q4\_K, no importance matrix & 4.5 & 7.7\% & --- & 11.2\% \\
+3-bit, groups of 32 & 3.5 & 23.8\% & 32.2\% & 32.3\% \\
+3-bit, AWQ-style, groups of 32 & 3.5 & 26.3\% & 20.0\% & 20.2\% \\
+3-bit, GPTQ, groups of 32 & 3.5 & 39.2\% & 9.9\% & 27.8\% \\
+3-bit, GPTQ, 4,096 vocabulary rows & 3.5 & 39.0\% & 38.8\% & 38.8\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\EngineFigure{ch10-methods}{The same projection quantized to 4 bits six ways,
+its output error on the tokens the methods were calibrated on and on new
+tokens (measured). Rounding and AWQ do the same on both; GPTQ calibrated on the
+text is best on its calibration set and loses most of the advantage on new
+tokens; calibrated on vocabulary rows it does not overfit, and does worse than
+rounding.}{fig:ch10-methods}
+
+\noindent Figure~\ref{fig:ch10-methods} draws the 4-bit rows. Round-to-nearest improves as the groups shrink, from 38.7\% of the
+output with one scale to 15.1\% with a scale per 32 weights, for half a bit
+more per weight: a smaller group has a smaller maximum, and the second worked
+problem shows that the maximum alone predicts these errors. Notice also that
+the output errors are 1.3 to 1.4 times the weight errors. The rounding is
+uniform across the weights, but the inputs are not: the channels that carry
+more energy turn the same weight error into more output error. The two methods
+that use the inputs make that visible from the other side.
+
 \section{GPTQ: second-order error correction}
 
 GPTQ quantizes a weight matrix one column at a time and, after each column,
-adjusts the columns not yet quantized to compensate for the error just made,
-using second-order information estimated from a small set of calibration
-activations \cite{frantar2023gptq}. It is one-shot --- no retraining --- and
-its authors quantized 175-billion-parameter models to 3--4 bits in about four
-GPU hours with little loss.
+adjusts the columns not yet quantized to compensate for the error just made
+\cite{frantar2023gptq}. It is one-shot --- no retraining --- and its authors
+quantized 175-billion-parameter models to 3 or 4 bits in about four GPU hours,
+with negligible loss on the tasks they measured, and ran them end to end about
+3.25 times faster than 16-bit on an A100 and 4.5 times on the less expensive
+A6000. The idea is exact least
+squares. For a layer with calibration inputs $\mathbf{X}$ it seeks
+\begin{equation}
+\hat{\mathbf{W}} = \arg\min_{\hat{\mathbf{W}}}
+\lVert \mathbf{W}\mathbf{X} - \hat{\mathbf{W}}\mathbf{X} \rVert_2^2 ,
+\label{eq:gptq-objective}
+\end{equation}
+which splits into one quadratic problem per row, all with the same Hessian
+$\mathbf{H} = 2\mathbf{X}\mathbf{X}^{\top}$. Quantizing weight $q$ of a row moves
+it by $w_q - \operatorname{quant}(w_q)$, and the best compensating change of
+every weight not yet quantized is
+\begin{equation}
+\boldsymbol{\delta} = -\frac{w_q - \operatorname{quant}(w_q)}{[\mathbf{H}^{-1}]_{qq}}\,
+(\mathbf{H}^{-1})_{:,q},
+\label{eq:obq-update}
+\end{equation}
+the update of Optimal Brain Quantization, on which GPTQ builds. Its
+contributions are about making that affordable. It quantizes every row in the
+same column order, so that one sequence of inverse Hessians serves all rows;
+it applies the updates lazily, 128 columns at a time, to raise arithmetic
+intensity on a GPU; and it reads everything it needs from the Cholesky factor
+of $\mathbf{H}^{-1}$, computed once, after adding 1\% of the average diagonal to
+$\mathbf{H}$ for numerical stability \cite{frantar2023gptq}. The lab implements
+the same algorithm without the lazy batches, in about forty lines: it forms
+$\mathbf{H}$ from the calibration tokens, obtains the upper-triangular factor
+$\mathbf{U}$ with $\mathbf{H}^{-1} = \mathbf{U}^{\top}\mathbf{U}$ from one Cholesky
+factorization and one triangular inverse, and runs the rows in parallel; on
+the M1's four performance cores it quantizes the 3.1 million weights of the lab's
+projection in about ten seconds.
+
+On the calibration tokens GPTQ is spectacular: 4.0\% output error at 4 bits,
+against 15.0\% for round-to-nearest with the same groups, and 9.9\% at 3 bits
+against 32.2\%. On the tokens it was not calibrated on, it gives back most of
+the gain: 12.2\% and 27.8\%. The weight error tells why. GPTQ moved the weights
+far from the original --- 16.8\%, the largest of any 4.5-bit method --- in the
+directions the calibration inputs could see, and the calibration could not
+see much. Layer 0's input depends only on the token, so 1,024 calibration
+tokens are 501 distinct vectors in a 3,072-dimensional space: $\mathbf{H}$ has
+rank at most 501, and GPTQ is free to push error into the directions it never
+observes, held back only by the damping. The obvious cure is a wider
+calibration set, and the lab tried it: 4,096 embeddings spread evenly over the
+vocabulary, enough for $\mathbf{H}$ to have full rank. The overfitting
+vanished --- 17.5\% on both sets of text tokens --- and so did the benefit:
+GPTQ now did \emph{worse} than plain rounding, whose 15.1\% used no data at all.
+Rows spread evenly over the vocabulary are mostly rare tokens, and they do not
+look like this text; GPTQ minimized the error for the inputs it was shown,
+faithfully, and paid for it on the inputs it was not. Both failures teach one
+lesson. Second-order correction fits its calibration set, so the calibration
+set must be large enough to span the inputs \emph{and} drawn from the traffic
+the model will actually serve.
 
 \section{AWQ: protect the salient channels}
 
@@ -123,19 +274,85 @@ AWQ observes that protecting about 1\% of weights --- those that multiply the
 largest-magnitude activation channels --- removes most of the error, and that
 it can protect them without storing them separately: scale those input
 channels up in the weights and down in the activations, an equivalent
-transformation, before quantizing \cite{lin2024awq}. It needs no gradient or
-reconstruction, only activation statistics; its authors ran the resulting
-4-bit models, up to Llama-2-70B, on desktop and mobile GPUs with their own
-runtime.
+transformation, before quantizing \cite{lin2024awq}. With $s_{X,j}$ the average
+magnitude of input channel $j$, the scale is
+\begin{equation}
+s_j = s_{X,j}^{\,\alpha},\qquad
+\hat{\mathbf{W}} = \operatorname{quant}(\mathbf{W}\operatorname{diag}(\mathbf{s}))\,
+\operatorname{diag}(\mathbf{s})^{-1},
+\label{eq:awq}
+\end{equation}
+with $\alpha$ found by a grid search over $[0, 1]$ --- twenty points in the
+paper, eleven in the lab --- that minimizes the output error on the calibration
+data. A weight in a loud channel is multiplied by a large $s_j$ before rounding,
+so it occupies more of its group's grid and loses less relative precision;
+dividing by $s_j$ afterwards restores the product. It needs no gradients and no
+reconstruction, only activation statistics, and its authors argue that this
+is why it does not overfit its calibration set.
+
+The lab bears that out. At 4 bits the search picked $\alpha = 0.6$, and the
+output error fell from round-to-nearest's 15.1\% to 8.6\% on new tokens --- the
+best of the methods here, better than llama.cpp's own Q4\_K at the same 4.5
+bits --- while the \emph{weight} error rose, from 10.5\% to 12.5\%. AWQ spends
+precision where the inputs are loud and saves it where they are quiet, and it
+does so with one number per input channel, which a handful of tokens estimates
+as well as a thousand: its calibration and evaluation errors agree to a tenth
+of a point (8.55\% and 8.62\%). At 3 bits, with $\alpha = 0.7$, it cut the error
+from 32.3\% to 20.2\%. Its authors ran the resulting 4-bit models, up to
+Llama-2-70B, on desktop and mobile GPUs with their own runtime.
+
+\section{One error, four answers}
+
+The methods look different; they answer one question. For one output row with
+weight error $\mathbf{e}$, the squared error over a set of inputs
+$\mathbf{x}_t$ is
+\begin{equation}
+\sum_t (\mathbf{e}^{\top}\mathbf{x}_t)^2 = \mathbf{e}^{\top}\mathbf{G}\,\mathbf{e},
+\qquad \mathbf{G} = \sum_t \mathbf{x}_t\mathbf{x}_t^{\top},
+\label{eq:gram-error}
+\end{equation}
+a quadratic form in the Gram matrix of the inputs --- half of GPTQ's Hessian.
+Every method is a different approximation of $\mathbf{G}$. Round-to-nearest
+pretends it is the identity and minimizes $\lVert\mathbf{e}\rVert^2$, the weight
+error. An importance matrix keeps only its diagonal: llama.cpp's
+\texttt{llama-imatrix} accumulates, for every input column of every matrix, the
+sum of the squared activations that pass through it, and the K-quant quantizer
+then fits each sub-block's scale and minimum by weighted least squares, each
+weight's error weighted by its column's entry (\texttt{tools/imatrix/imatrix.cpp}
+and \texttt{quantize\_row\_q4\_K\_impl} in \texttt{ggml-quants.c} at
+\texttt{d006858}). AWQ also uses per-column statistics, but spends them before
+the rounding, by rescaling columns so that plain rounding lands where the
+diagonal is large. GPTQ uses all of $\mathbf{G}$, including the correlations
+between columns, and moves the unrounded weights to cancel errors along them.
+The more of $\mathbf{G}$ a method uses, the better it can do on the inputs
+$\mathbf{G}$ was built from, and the more it depends on $\mathbf{G}$ being
+right: a diagonal is estimated well from a few hundred tokens, a
+$3{,}072 \times 3{,}072$ matrix of correlations is not. The lab's table is that
+trade in numbers: plain rounding the same on every input, AWQ nearly as good on
+new tokens as on its calibration, GPTQ superb on its calibration set and
+ordinary elsewhere.
 
 \section{Weights and activations: SmoothQuant and W8A8}
 
 Quantizing activations too lets the matrix product itself run in low-precision
 integer arithmetic rather than dequantizing to 16 bits first --- a compute
 saving for prefill, where compute binds. Activations are harder to quantize
-than weights because of those outlier channels. SmoothQuant migrates the
-difficulty into the weights with the same kind of equivalent scaling, enabling
-8-bit weights and activations \cite{xiao2023smoothquant}. At 4 bits,
+than weights because of those outlier channels: in OPT-13B, SmoothQuant's authors
+found a few activation channels with magnitudes above 70, in a layer whose
+weights were flat. SmoothQuant migrates the difficulty into the weights with the
+same kind of equivalent scaling as AWQ, $\mathbf{Y} =
+(\mathbf{X}\operatorname{diag}(\mathbf{s})^{-1})(\operatorname{diag}(\mathbf{s})\mathbf{W})$,
+but chooses the scale to balance the two operands rather than to protect one:
+\begin{equation}
+s_j = \frac{\max\lvert \mathbf{X}_j\rvert^{\alpha}}{\max\lvert \mathbf{W}_j\rvert^{1-\alpha}},
+\label{eq:smoothquant}
+\end{equation}
+so that with $\alpha = 0.5$, the value that suited most models, channel $j$'s
+largest activation and largest weight come out equal after scaling. The division
+of the activations folds into the preceding layer's parameters offline, so it
+costs nothing at run time, and both operands then fit an 8-bit grid; the
+authors report up to 1.56 times the speed of 16-bit inference with half the
+memory \cite{xiao2023smoothquant}. At 4 bits,
 rotation-based methods multiply activations and weights by orthogonal matrices
 that spread outliers evenly across channels without changing the layer's
 output: QuaRot uses Hadamard rotations and quantizes weights, activations and
@@ -151,6 +368,17 @@ and for value and FFN-down projections in half of the layers, 4.5-bit K-quants
 for everything else, and 32-bit floats for norms. The name describes the
 majority format, not the average.
 
+How good is the format itself? The lab's oracle quantized the same value
+projection with ggml's reference Q4\_K quantizer --- the path
+\texttt{llama-quantize} takes when it is given no importance matrix --- and
+measured 11.2\% output error on the new tokens, at the same 4.5 bits per weight
+as round-to-nearest in groups of 32 (15.1\%). Q4\_K's asymmetric sub-blocks and
+refined scales buy a quarter of the error without any data; AWQ's activation
+statistics bought 43\%. llama.cpp can bring data in too, through the importance
+matrix described above, which \texttt{llama-quantize --imatrix} takes as an input
+(both tools ship in the build this book uses; the importance-weighted quantizer
+was not measured here).
+
 \section{Dequantization inside the kernel}
 
 A weight-only quantized matrix product loads packed codes, unpacks them,
@@ -158,15 +386,56 @@ applies scales, and multiplies in 16- or 32-bit arithmetic --- extra work per
 weight that the bandwidth saving must pay for. At batch one there is spare
 arithmetic, and the kernel stays bandwidth-bound; the opening measurement's
 46--51~GB/s for the 4- to 8-bit files is that regime, and the fall to
-39~GB/s at 2 and 3 bits is the unpacking beginning to show. As the batch grows, the unpacking is repeated
-work per weight that batching does not amortize the same way, and a
-quantized kernel can become compute-bound before a 16-bit one would.
-Specialized kernels push that point out: Marlin, an FP16$\times$INT4 kernel,
-stays close to the ideal 4$\times$ speedup up to batches of 16--32
-\cite{frantar2024marlin}, and vLLM's Machete kernel does the same job with
-Hopper's asynchronous copies and warpgroup MMA (vLLM pull request 7174). The
-fastest CPU kernels avoid floating point altogether and compute dot products
-directly on the integer codes, applying scales once at the end.
+39~GB/s at 2 and 3 bits is the unpacking beginning to show. As the batch
+grows, the unpacking is repeated work per weight that batching does not
+amortize the same way, and a quantized kernel can become compute-bound before
+a 16-bit one would. Specialized kernels push that point out: Marlin, an
+FP16$\times$INT4 kernel, stays close to the ideal 4$\times$ speedup up to
+batches of 16--32 \cite{frantar2024marlin}, and vLLM's Machete kernel does the
+same job with Hopper's asynchronous copies and warpgroup MMA (vLLM pull request
+7174). The fastest CPU kernels avoid floating point altogether and compute dot
+products directly on the integer codes, applying scales once at the end.
+
+The lab's third part measures all of that on the M1's CPU. A
+$4{,}096 \times 4{,}096$ matrix times 1, 4 and 16 vectors, on four threads, with
+the weights in 32-bit floats (67~MB), in Q8\_0 (17.8~MB) and in Q4\_0 (9.4~MB)
+dequantized inside the kernel, and in Q4\_0 multiplied against activations
+quantized to Q8\_0 with integer dot products, every product checked against
+float64 (measured, record \texttt{2026-09-26-m1-pass3}, two runs):
+
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Kernel & Weight bytes & 1 vector & 4 vectors & 16 vectors \\
+\midrule
+32-bit floats & 67.1~MB & 1.18--1.62~ms & 1.34--2.14~ms & 5.89--7.27~ms \\
+Q8\_0, scale folded, reduced per row & 17.8~MB & 1.28--1.44 & 4.87--5.00 & 20.6--21.8 \\
+Q4\_0, reduced per 32-weight block & 9.4~MB & 1.84--2.68 & 4.37--4.47 & 17.5--17.8 \\
+Q4\_0, scale folded, reduced per row & 9.4~MB & 1.27--1.97 & 4.96--5.02 & 20.3--20.5 \\
+Q4\_0 $\times$ Q8\_0, integer & 9.4~MB & 0.54--0.74 & 1.15--1.54 & 2.70--2.72 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Four findings. \emph{Reductions cost.} Converting a block of codes to
+floats and reducing it on its own, the obvious way, is the slowest kernel at one
+vector; folding each block's scale into its unpacked weights and keeping sixteen
+running sums in registers for the whole row, reduced once at the end, is 1.4
+times faster --- the fix in the case study at the end of this chapter.
+\emph{Unpacking costs about what the bandwidth saves.} Even the better float
+kernel only draws level with 32-bit floats at one vector, although it reads an
+eighth of the bytes: four cores stream the 32-bit weights at 40--57~GB/s, close
+to their roof, while unpacking and converting 16.8 million codes takes as long.
+\emph{Batches expose the unpacking.} At 4 and 16 vectors the float kernels fall
+three to four times behind, because 32-bit weights are reused by every vector
+for free while codes must be unpacked --- once per vector here, or reduced once
+per block per vector. \emph{Integers win everywhere.} Quantizing the activations
+to 8 bits once per product and multiplying codes by codes, as llama.cpp's CPU
+kernels do, is 2.2 times faster than 32-bit floats at one vector and 2.2--2.7
+times at sixteen, for an error of 0.3--0.5\% of the largest output where the
+float kernels stay within $4\times10^{-7}$ of float64 --- the price of rounding
+the activations. The third worked problem accounts for the times.
+
 
 \section{Measuring what you lost}
 
@@ -175,9 +444,16 @@ honest way to measure it is to compare distributions. Perplexity on a text
 corpus is a coarse average; the Kullback--Leibler divergence between the
 quantized and unquantized models' next-token distributions, token by token,
 shows where and how often they disagree; task evaluations show whether the
-disagreements matter. \Chref{fast-wrong-answers} builds the harness. A
+disagreements matter. \Chref{fast-wrong-answers} builds the harness, and one of
+its measurements belongs here. Against Llama~3.2~3B in Q4\_K\_M, over 2,040
+scored tokens, the same model requantized to Q2\_K chose the same top token only
+65.8\% of the time, with a mean KL divergence of 0.58 and perplexity 1.63 times
+higher; the same machinery scores an 8-bit KV cache at 99.5\% agreement and a
+mean divergence of 0.00009 (record \texttt{2026-09-26-m1-part8}; the Q2\_K file
+was made from the 4-bit one, so it overstates a proper Q2\_K's loss). A
 quantized model whose perplexity barely moves can still change the answers to
-the questions a particular application asks.
+the questions a particular application asks; a divergence measured token by
+token shows how often it does.
 
 \LedgerSection
 
@@ -186,20 +462,36 @@ Weight-only quantization from 16 bits to llama.cpp's Q4\_K\_M mix, 5.0 bits per 
 \begin{ConstraintLedger}
 Memory bandwidth & buys & About 3.2$\times$ fewer bytes per decode step than 16-bit weights (derived); on the M1, going from 8-bit to Q4\_K\_M cut the bytes 1.70$\times$ and raised decode speed 1.52$\times$ (measured). \\
 Memory capacity & buys & The same factor in resident weight bytes. \\
-Compute & spends & Unpacking and scaling per weight; visible at 2--3 bits and at larger batches. \\
-Correctness & risks & Perplexity and task accuracy fall as bits fall; measure per model (llama.cpp's own table: +0.66 perplexity at 3 bits on Llama-3-8B). \\
+Compute & spends & Unpacking and scaling per weight; visible at 2--3 bits and at larger batches, and avoidable on CPUs with integer dot products (the lab). \\
+Correctness & risks & Output error of 8.6--15.1\% on a real projection at 4.5 bits, depending on the method (measured); calibrated methods can fit their calibration set instead of the traffic. Measure per model (llama.cpp's own table: +0.66 perplexity at 3 bits on Llama-3-8B). \\
 \end{ConstraintLedger}
 
-\LabSection{quantize a matrix three ways}
+\LabSection{quantize a real matrix five ways}
 
-\LabIntent{In \texttt{code/labs/ch10-weight-quant/}, a Rust program that takes
-a real weight matrix (dequantized from a GGUF file) and real activations from
-the mini-engine, quantizes the weights by per-tensor round-to-nearest,
-per-group round-to-nearest, and an AWQ-style activation-aware scaling, and
-reports the error in the layer's \emph{output} rather than in the weights. A
-second part times a dequantizing matrix--vector product against the 32-bit
-one, checking both against a float64 oracle, and finds the batch size at which
-the quantized kernel stops winning.}
+The lab in \texttt{code/labs/ch10-weight-quant/} has three parts. Part one reads
+a GGUF file with a 200-line reader and decodes real Q4\_K and Q6\_K blocks with
+decoders transcribed from ggml; the oracle script in the record checks them
+against ggml's own functions. Part two quantizes layer 0's value projection with
+round-to-nearest (one scale, a scale per row, a scale per 32 weights), with an
+AWQ-style scaling and with GPTQ, at 8, 4 and 3 bits, and measures each in the
+layer's output on real inputs, as in the table above. Part three times the
+dequantizing kernels. Parts one and two need the model file; part three and the
+tests do not. Run it from \texttt{code/labs} with
+\texttt{cargo run --release -p ch10-weight-quant -- --gguf <file>}. The heart of
+GPTQ is its inner loop, one row at a time:
+
+\CodeLines{../code/labs/ch10-weight-quant/src/quant.rs}{264}{279}
+
+\noindent Each column is rounded with its group's scale, the rounding error is
+divided by the diagonal of the inverse Hessian's Cholesky factor, and the error
+is spread over the columns still to come, weighted by the factor's row ---
+equation~\eqref{eq:obq-update}, one column at a time.
+
+\emph{Predict} before you run: will AWQ's weight error be larger or smaller than
+round-to-nearest's? Will GPTQ generalize from 501 distinct inputs? \emph{Explain}
+why the 8-bit row's calibration and evaluation errors agree to the digit.
+\emph{Break} it: calibrate GPTQ on the evaluation tokens and watch its evaluation
+error collapse --- then decide what that number would mean in a paper.
 
 \HappenedSection{a SIMD matrix--vector kernel slower than scalar}
 
@@ -217,12 +509,12 @@ team had measured vectorizing other kernels (Hermon
 \texttt{docs/STORAGE\_ARCHITECTURE.md}, section 5.8, commit \texttt{a7c0597}).
 Its authors located the remaining multiple precisely: the fast implementations
 never convert the codes to floating point, computing integer dot products and
-scaling once at the end. Correctness held throughout: the vectorized path
-reproduced a NumPy reference on real Qwen3 weights exactly. The kernel is
-callable through the kernel crate's public interface, but no request path
-calls it at commit \texttt{2a3fd52}, so LIBRARY.
+scaling once at the end --- the lab's fourth kernel. Correctness held
+throughout: the vectorized path reproduced a NumPy reference on real Qwen3
+weights exactly. The kernel is callable through the kernel crate's public
+interface, but no request path calls it at commit \texttt{2a3fd52}, so LIBRARY.
 
-\FrontierSection{2026-09-24}
+\FrontierSection{2026-09-27}
 
 Post-training weight quantization is becoming one option among several.
 Models increasingly arrive already quantized or trained for a format
@@ -234,8 +526,8 @@ replace uniform grids with fixed code books: an index selects a pattern of
 eight (IQ2) or four (IQ3) weight magnitudes from a 256-entry table, and the IQ4
 formats use sixteen non-uniform levels. Scales included, they run from 1.5625
 bits per weight (IQ1\_S) through 2.0625 (IQ2\_XXS) and 3.0625 (IQ3\_XXS) to
-4.25 (IQ4\_XS) (block definitions in llama.cpp
-\texttt{ggml/src/ggml-common.h} at commit \texttt{389ff61d}).
+4.25 (IQ4\_XS) (block definitions in \texttt{ggml/src/ggml-common.h} at
+\texttt{d006858}).
 
 \ExercisesSection
 
@@ -243,10 +535,16 @@ bits per weight (IQ1\_S) through 2.0625 (IQ2\_XXS) and 3.0625 (IQ3\_XXS) to
 \item \emph{Derivation.} Compute the average bits per weight of a file that
 stores 90\% of its weights in Q4\_K and 10\% in Q6\_K. What decode speed does
 equation~\eqref{eq:quant-ceiling} predict on your machine?
-\item \emph{Prediction.} Before running the lab, predict the batch size at
-which a dequantizing kernel stops beating the 16-bit one on your CPU.
+\item \emph{Prediction.} Before running the lab's third part, predict the batch
+size at which a dequantizing kernel stops beating the 32-bit one on your CPU.
 \item \emph{Implementation.} Add group-wise zero points to the lab's
-round-to-nearest quantizer and measure whether they help at 4 and 3 bits.
+round-to-nearest quantizer and measure whether they help at 4 and 3 bits. How
+close do they bring it to Q4\_K?
+\item \emph{Measurement.} Quantize a later layer's projection, whose inputs are
+not embeddings, and see whether GPTQ still overfits a calibration set of 1,024
+tokens.
 \item \emph{Falsification.} Construct a weight matrix and activation
 distribution for which round-to-nearest beats an activation-aware scaling.
 \end{enumerate}
+
+\input{worked/ch10-weight-quantization.tex}

@@ -40,7 +40,7 @@ if this table is stale. Words are approximate prose words.
 | 7 | Matrix Multiplication on Real Hardware | FULL | 5,021 | 0 |
 | 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | FULL | 6,110 | 0 |
 | 9 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | FULL | 5,072 | 0 |
-| 10 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | ZERO | 2,139 | 0 |
+| 10 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | FULL | 5,090 | 0 |
 | 11 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | ZERO | 2,127 | 1 |
 | 12 | Quantizing the KV Cache | ZERO | 1,895 | 1 |
 | 13 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | ZERO | 1,996 | 0 |
