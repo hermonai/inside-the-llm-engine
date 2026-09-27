@@ -21,7 +21,9 @@
 //!     cargo run --release -p ch10-weight-quant -- --gguf <llama-3.2-3b.gguf>
 //!         [--threads 4] [--parts 1,2,3] [--dump <dir>]
 
-use ch10_weight_quant::gguf::{self, decode, f16, to_f16, Gguf, Q4_0, Q4_K, Q6_K, Q8_0};
+use ch10_weight_quant::gguf::{
+    self, decode, f16, quantize_q4_0, quantize_q8_0, to_f16, Gguf, Q4_0, Q4_K, Q6_K, Q8_0,
+};
 use ch10_weight_quant::layer0;
 use ch10_weight_quant::quant::{awq, gptq, output_error, par_rows, rtn, Grouping};
 use std::io::Write;
@@ -227,41 +229,6 @@ fn part2(g: &mut Gguf, threads: usize) -> std::io::Result<()> {
 }
 
 // ---------------------------------------------------------------- part 3
-
-/// ggml's reference Q8_0 and Q4_0 quantizers (quantize_row_q8_0_ref, _q4_0_ref).
-fn quantize_q8_0(x: &[f32]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(x.len() / 32 * 34);
-    for b in x.chunks_exact(32) {
-        let amax = b.iter().fold(0.0f32, |a, v| a.max(v.abs()));
-        let d = amax / 127.0;
-        let id = if d != 0.0 { 1.0 / d } else { 0.0 };
-        out.extend_from_slice(&to_f16(d).to_le_bytes());
-        out.extend(b.iter().map(|v| (v * id).round() as i8 as u8));
-    }
-    out
-}
-
-fn quantize_q4_0(x: &[f32]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(x.len() / 32 * 18);
-    for b in x.chunks_exact(32) {
-        let (mut amax, mut max) = (0.0f32, 0.0f32);
-        for &v in b {
-            if amax < v.abs() {
-                amax = v.abs();
-                max = v;
-            }
-        }
-        let d = max / -8.0;
-        let id = if d != 0.0 { 1.0 / d } else { 0.0 };
-        out.extend_from_slice(&to_f16(d).to_le_bytes());
-        for j in 0..16 {
-            let q0 = ((b[j] * id + 8.5) as i8).min(15) as u8;
-            let q1 = ((b[16 + j] * id + 8.5) as i8).min(15) as u8;
-            out.push(q0 | (q1 << 4));
-        }
-    }
-    out
-}
 
 #[inline]
 fn dot(a: &[f32], b: &[f32]) -> f32 {

@@ -176,6 +176,41 @@ pub fn decode(ty: u32, bytes: &[u8]) -> Vec<f32> {
     y
 }
 
+/// ggml's reference Q8_0 and Q4_0 quantizers (quantize_row_q8_0_ref, _q4_0_ref).
+pub fn quantize_q8_0(x: &[f32]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(x.len() / 32 * 34);
+    for b in x.chunks_exact(32) {
+        let amax = b.iter().fold(0.0f32, |a, v| a.max(v.abs()));
+        let d = amax / 127.0;
+        let id = if d != 0.0 { 1.0 / d } else { 0.0 };
+        out.extend_from_slice(&to_f16(d).to_le_bytes());
+        out.extend(b.iter().map(|v| (v * id).round() as i8 as u8));
+    }
+    out
+}
+
+pub fn quantize_q4_0(x: &[f32]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(x.len() / 32 * 18);
+    for b in x.chunks_exact(32) {
+        let (mut amax, mut max) = (0.0f32, 0.0f32);
+        for &v in b {
+            if amax < v.abs() {
+                amax = v.abs();
+                max = v;
+            }
+        }
+        let d = max / -8.0;
+        let id = if d != 0.0 { 1.0 / d } else { 0.0 };
+        out.extend_from_slice(&to_f16(d).to_le_bytes());
+        for j in 0..16 {
+            let q0 = ((b[j] * id + 8.5) as i8).min(15) as u8;
+            let q1 = ((b[16 + j] * id + 8.5) as i8).min(15) as u8;
+            out.push(q0 | (q1 << 4));
+        }
+    }
+    out
+}
+
 pub struct TensorInfo {
     pub name: String,
     pub dims: Vec<u64>,

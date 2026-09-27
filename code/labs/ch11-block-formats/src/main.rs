@@ -12,12 +12,10 @@
 //!     cargo run --release -p ch11-block-formats -- --gguf <llama-3.2-3b.gguf>
 //!         [--threads 4] [--outlier 30]
 
-mod formats;
-
 use ch10_weight_quant::gguf::Gguf;
 use ch10_weight_quant::layer0;
 use ch10_weight_quant::quant::{output_error, rtn, Grouping};
-use formats::{
+use ch11_block_formats::formats::{
     bf16_round, mx, nvfp4, per_tensor, Minifloat, Quantized, E2M1, E2M3, E3M2, E4M3, E5M2,
 };
 
