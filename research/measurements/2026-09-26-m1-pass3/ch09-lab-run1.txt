@@ -1,0 +1,72 @@
+# code/labs/ch09-decode-attention, run 1, 2026-09-27T04:54Z
+# cargo run --release -p ch09-decode-attention   (defaults: --contexts 512,4096,32768 --threads 1,2,4,8 --chunk 256 --reps 5)
+# load before run: { 4.35 7.80 7.32 }
+decode attention, one layer: 16 query heads, 2 key/value heads, head width 128, f32 cache; chunks of 256 tokens
+every output checked against float64 (error relative to the output's scale)
+
+context 512 (cache 1.0 MiB, counted once)
+  plan           tasks  threads    best ms     GB/s     error  bits across thread counts
+  heads             16        1      0.225      4.7    7.7e-7  first
+  heads             16        2      0.389      2.7    7.7e-7  identical
+  heads             16        4      0.230      4.6    7.7e-7  identical
+  heads             16        8      0.224      4.7    7.7e-7  identical
+  packed             2        1      0.399      2.6    7.7e-7  first
+  packed             2        2      0.248      4.2    7.7e-7  identical
+  packed             2        4      0.164      6.4    7.7e-7  identical
+  packed             2        8      0.211      5.0    7.7e-7  identical
+  packed        against heads: 2048 of 2048 outputs bit-identical, largest gap 0.0e0
+  split             32        1      0.357      2.9    5.9e-7  first
+  split             32        2      0.220      4.8    5.9e-7  identical
+  split             32        4      0.139      7.5    5.9e-7  identical
+  split             32        8      0.152      6.9    5.9e-7  identical
+  split         against heads: 131 of 2048 outputs bit-identical, largest gap 9.7e-8
+  packed+split       4        1      0.277      3.8    5.9e-7  first
+  packed+split       4        2      0.158      6.6    5.9e-7  identical
+  packed+split       4        4      0.110      9.5    5.9e-7  identical
+  packed+split       4        8      0.170      6.2    5.9e-7  identical
+  packed+split  against heads: 131 of 2048 outputs bit-identical, largest gap 9.7e-8
+
+context 4096 (cache 8.0 MiB, counted once)
+  plan           tasks  threads    best ms     GB/s     error  bits across thread counts
+  heads             16        1      1.768      4.7    2.5e-6  first
+  heads             16        2      1.131      7.4    2.5e-6  identical
+  heads             16        4      0.513     16.3    2.5e-6  identical
+  heads             16        8      0.490     17.1    2.5e-6  identical
+  packed             2        1      1.523      5.5    2.5e-6  first
+  packed             2        2      0.811     10.3    2.5e-6  identical
+  packed             2        4      0.851      9.9    2.5e-6  identical
+  packed             2        8      0.852      9.8    2.5e-6  identical
+  packed        against heads: 2048 of 2048 outputs bit-identical, largest gap 0.0e0
+  split            256        1      1.795      4.7    5.0e-7  first
+  split            256        2      1.145      7.3    5.0e-7  identical
+  split            256        4      0.655     12.8    5.0e-7  identical
+  split            256        8      0.510     16.4    5.0e-7  identical
+  split         against heads: 39 of 2048 outputs bit-identical, largest gap 1.0e-7
+  packed+split      32        1      1.658      5.1    5.0e-7  first
+  packed+split      32        2      0.900      9.3    5.0e-7  identical
+  packed+split      32        4      0.512     16.4    5.0e-7  identical
+  packed+split      32        8      0.453     18.5    5.0e-7  identical
+  packed+split  against heads: 39 of 2048 outputs bit-identical, largest gap 1.0e-7
+
+context 32768 (cache 64.0 MiB, counted once)
+  plan           tasks  threads    best ms     GB/s     error  bits across thread counts
+  heads             16        1     13.967      4.8    5.5e-6  first
+  heads             16        2      8.436      8.0    5.5e-6  identical
+  heads             16        4      5.446     12.3    5.5e-6  identical
+  heads             16        8      4.540     14.8    5.5e-6  identical
+  packed             2        1     12.180      5.5    5.5e-6  first
+  packed             2        2      6.322     10.6    5.5e-6  identical
+  packed             2        4      6.307     10.6    5.5e-6  identical
+  packed             2        8      6.324     10.6    5.5e-6  identical
+  packed        against heads: 2048 of 2048 outputs bit-identical, largest gap 0.0e0
+  split           2048        1     15.537      4.3    6.4e-7  first
+  split           2048        2      9.663      6.9    6.4e-7  identical
+  split           2048        4      7.658      8.8    6.4e-7  identical
+  split           2048        8      5.769     11.6    6.4e-7  identical
+  split         against heads: 17 of 2048 outputs bit-identical, largest gap 7.0e-8
+  packed+split     256        1     13.354      5.0    6.4e-7  first
+  packed+split     256        2      6.622     10.1    6.4e-7  identical
+  packed+split     256        4      3.634     18.5    6.4e-7  identical
+  packed+split     256        8      2.878     23.3    6.4e-7  identical
+  packed+split  against heads: 17 of 2048 outputs bit-identical, largest gap 7.0e-8
+# load after run: { 4.40 7.75 7.31 }

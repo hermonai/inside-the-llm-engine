@@ -1,0 +1,46 @@
+# code/labs/ch09-decode-attention, chunk-size sweep, 2026-09-27T04:56Z
+# for c in 16 64 256 1024 4096 32768: --contexts 32768 --threads 1,4 --chunk $c   (packed+split rows kept)
+# load before: { 5.24 6.58 6.88 }
+## --chunk 16
+  split          32768        1     19.483      3.4    2.2e-6  first
+  split          32768        4      9.543      7.0    2.2e-6  identical
+  split         against heads: 15 of 2048 outputs bit-identical, largest gap 8.2e-8
+  packed+split    4096        1     15.952      4.2    2.2e-6  first
+  packed+split    4096        4      6.051     11.1    2.2e-6  identical
+  packed+split  against heads: 15 of 2048 outputs bit-identical, largest gap 8.2e-8
+## --chunk 64
+  split           8192        1     15.981      4.2    8.6e-7  first
+  split           8192        4      5.508     12.2    8.6e-7  identical
+  split         against heads: 12 of 2048 outputs bit-identical, largest gap 7.4e-8
+  packed+split    1024        1     13.499      5.0    8.6e-7  first
+  packed+split    1024        4      4.258     15.8    8.6e-7  identical
+  packed+split  against heads: 12 of 2048 outputs bit-identical, largest gap 7.4e-8
+## --chunk 256
+  split           2048        1     14.904      4.5    6.4e-7  first
+  split           2048        4      5.467     12.3    6.4e-7  identical
+  split         against heads: 17 of 2048 outputs bit-identical, largest gap 7.0e-8
+  packed+split     256        1     12.889      5.2    6.4e-7  first
+  packed+split     256        4      3.678     18.2    6.4e-7  identical
+  packed+split  against heads: 17 of 2048 outputs bit-identical, largest gap 7.0e-8
+## --chunk 1024
+  split            512        1     13.915      4.8    7.6e-7  first
+  split            512        4      4.794     14.0    7.6e-7  identical
+  split         against heads: 14 of 2048 outputs bit-identical, largest gap 7.1e-8
+  packed+split      64        1     12.317      5.4    7.6e-7  first
+  packed+split      64        4      3.705     18.1    7.6e-7  identical
+  packed+split  against heads: 14 of 2048 outputs bit-identical, largest gap 7.1e-8
+## --chunk 4096
+  split            128        1     13.823      4.9    2.2e-6  first
+  split            128        4      4.350     15.4    2.2e-6  identical
+  split         against heads: 12 of 2048 outputs bit-identical, largest gap 6.6e-8
+  packed+split      16        1     12.171      5.5    2.2e-6  first
+  packed+split      16        4      3.734     18.0    2.2e-6  identical
+  packed+split  against heads: 12 of 2048 outputs bit-identical, largest gap 6.6e-8
+## --chunk 32768
+  split             16        1     14.413      4.7    5.5e-6  first
+  split             16        4      4.734     14.2    5.5e-6  identical
+  split         against heads: 2048 of 2048 outputs bit-identical, largest gap 0.0e0
+  packed+split       2        1     12.243      5.5    5.5e-6  first
+  packed+split       2        4      6.360     10.6    5.5e-6  identical
+  packed+split  against heads: 2048 of 2048 outputs bit-identical, largest gap 0.0e0
+# load after: { 5.04 6.47 6.83 }
