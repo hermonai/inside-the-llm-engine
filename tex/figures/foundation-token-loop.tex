@@ -1,0 +1,21 @@
+% Original pedagogical diagram; illustrative values, not model measurements.
+\begin{tikzpicture}[font=\small\sffamily,
+  obj/.style={block,text width=27mm,minimum height=16mm},
+  tag/.style={font=\scriptsize\sffamily,text=BookBlue,align=center}]
+\node[obj] (hist) at (0,0) {Token history\\integer IDs};
+\node[obj] (model) at (4,0) {Model evaluation\\fixed parameters};
+\node[obj,fill=BookGold] (logits) at (8,0) {Logits\\$[\log 2,0,0]$};
+\node[obj,fill=BookGreen] (probs) at (8,-2.5) {Probabilities\\$[.5,.25,.25]$};
+\node[obj,fill=BookGreen] (token) at (4,-2.5) {Selected token\\draw $.6$: blue};
+\node[obj] (weights) at (4,2.3) {Shared weights\\learned once};
+\node[obj] (cache) at (0,-2.5) {Per-request KV\\evaluated prefix};
+\draw[flow] (hist) -- node[tag,above]{IDs} (model);
+\draw[flow] (weights) -- node[tag,right]{read} (model);
+\draw[flow] (model) -- node[tag,above]{project} (logits);
+\draw[flow] (logits) -- node[tag,right]{softmax} (probs);
+\draw[flow] (probs) -- node[tag,above]{sample} (token);
+\draw[thick,BookBlue,{Stealth[length=2mm]}-{Stealth[length=2mm]}]
+ (cache.north east) -- node[tag,sloped,above]{reuse / append} (model.south west);
+\draw[control] (token.south) -- (4,-4) -- (-2,-4) -- (-2,0) -- (hist.west);
+\node[tag,anchor=north] at (1,-4.1) {Commit the choice; evaluate it on the next step};
+\end{tikzpicture}

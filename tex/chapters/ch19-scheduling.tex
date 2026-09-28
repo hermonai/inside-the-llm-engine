@@ -39,6 +39,17 @@ recomputed later (\texttt{vllm/v1/core/sched/scheduler.py} at commit
 \texttt{bcdacfc}). At the peak, the policy decides whether one user waits or
 every user fails.
 
+\Foundations{Arrival rate, service rate and overload}{
+A queue stores work that has arrived but cannot yet run. If offered work persistently
+exceeds sustainable service, waiting grows unless the system rejects, sheds or slows
+arrivals. Memory can fill before compute reaches its limit because each waiting or
+active request may retain state. Preemption interrupts admitted work; admission
+control decides whether to accept it in the first place. Neither guarantees fairness
+without a declared service policy. Chapter~\ref{ch:continuous-batching} supplies the
+execution unit. Appendix~\ref{app:reproducing} distinguishes open-loop arrivals from
+clients that reduce their offered load whenever the server slows.
+}
+
 \NapkinSection{Napkin math: utilization, queues and Little's law}
 
 Two laws explain why serving systems degrade abruptly. Little's law says that

@@ -37,6 +37,16 @@ eviction. Both come from the shape of the attention layer, fixed before
 training. This chapter derives each shape, prices it in bytes and FLOPs, and
 follows what it demands of the kernels and the parallelism that serve it.
 
+\Foundations{Shared heads do not mean shared queries}{
+A query head asks its own question of the history. Several query heads may use the
+same key and value head, so reducing stored heads need not reduce the number of query
+outputs. A latent cache compresses a different object: it stores a representation from
+which required information is recovered or contracted algebraically. These changes
+affect the model's computation, unlike paging the same cache into different physical
+blocks. Appendix A.7 introduces head geometry. Chapter~\ref{ch:kv-cache} provides the
+uncompressed reference against which storage savings must be counted.
+}
+
 \NapkinSection{Napkin math: cache bytes per token, design by design}
 
 A decoder with $L$ layers, $H_{kv}$ key/value heads of width $d_h$ and cache

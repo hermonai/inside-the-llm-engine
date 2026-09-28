@@ -49,6 +49,17 @@ attached, and its contract --- what the client sees, when, what the engine
 spends, and when it stops --- decides both the latency users feel and the
 capacity the engine wastes. This chapter makes that contract explicit.
 
+\Foundations{Ownership is a correctness property}{
+A request is not merely a string passed to a model. It has a history, a cancellation
+signal, output buffers and resources that must eventually be released. A state machine
+declares which transitions are legal. A terminal state means no later token may be
+published for that request; it does not prove all asynchronous device work has already
+stopped. A single owner must coordinate publication and reclamation across that
+boundary. Chapter~\ref{ch:kv-cache} identifies the largest mutable resource. Keep
+transport disconnection, cancellation observation and safe memory release separate
+while following the trace below.
+}
+
 \NapkinSection{Napkin math: what a stream costs the engine}
 
 A streamed token becomes an event on the wire. In the measured build each

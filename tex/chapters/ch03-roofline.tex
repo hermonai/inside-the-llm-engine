@@ -59,6 +59,17 @@ imbalance, larger, on every data-center GPU in this book, and the lab at the
 end of the chapter shows it on the laptop's CPU cores as well. It is a property
 of the workload. This chapter explains which property, and what changes it.
 
+\Foundations{Work is not a rate}{
+FLOPs count arithmetic operations. FLOP/s measures a machine's rate of doing them.
+Likewise, bytes describe traffic and bytes/s describes bandwidth. Dividing work by a
+rate gives time. Arithmetic intensity $I=F/D$ divides an operation count $F$ by bytes
+$D$ crossing a \emph{named} memory boundary. An operand reused in cache still
+contributes arithmetic but may avoid another DRAM transfer. Therefore intensity
+belongs to an algorithm, shape and memory level, not to a model name alone.
+Appendix~\ref{app:notation} shows a complete dimensional calculation;
+Appendix~\ref{app:gpu} explains the physical boundaries.
+}
+
 \NapkinSection{Napkin math: bytes per token, tokens per second}
 
 If every token must stream $W$ bytes of weights through a memory system of

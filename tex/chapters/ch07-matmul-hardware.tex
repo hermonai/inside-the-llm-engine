@@ -56,6 +56,17 @@ is given more to do; a change of kernel inside the library can, and Apple does
 not publish which kernel it runs for which shape. Decode runs at exactly these
 shapes.
 
+\Foundations{An output tile owns a reduction}{
+Matrix multiplication forms each output by summing products over the shared dimension.
+Splitting output rows or columns gives independent results; splitting the reduction
+dimension creates partial sums that must be combined. A tile is a small rectangular
+region assigned to a cooperating group of workers. Keeping its operands nearby can
+reduce repeated transfers, but consumes local storage and limits how many groups can
+run together. More workers therefore need not mean more throughput. Appendix A.5
+derives the scalar loop; Appendices~\ref{app:gpu} and~\ref{app:cpu} connect those
+loops to GPU and CPU storage.
+}
+
 \NapkinSection{Napkin math: the work and the bytes of a GEMM}
 
 A product $\mathbf{C}=\mathbf{A}\mathbf{B}$ with

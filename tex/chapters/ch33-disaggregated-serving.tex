@@ -31,6 +31,17 @@ own phase. This chapter prices that move against the prefill it replaces,
 derives when separating the phases pays, and follows the systems that do it
 over networks rather than through a file.
 
+\Foundations{Handoff moves state and responsibility}{
+Separating prefill from decode means the second worker must receive the state needed
+to continue the same history. A tensor transfer alone is insufficient if its model
+version, positions, layout or request ownership disagree. Transfer also introduces
+queueing and a failure boundary: who owns a request if the sender finishes but the
+receiver has not acknowledged it? Chapter~\ref{ch:kv-cache} defines the state, while
+Chapter~\ref{ch:request-lifecycle} defines terminal ownership. Price the handoff
+against both recomputation and local continuation before interpreting a faster prefill
+worker as a faster service.
+}
+
 \NapkinSection{Napkin math: KV transfer time against prefill time}
 
 Prefill of $S$ tokens on hardware delivering $\pi$ FLOP/s at utilization $u$

@@ -37,6 +37,17 @@ anecdote about accuracy, but a measurement of cost: every one of those tokens
 was a decode step, a cache entry of 144~KiB, and, on a commercial API, a billed
 output token.
 
+\Foundations{The answer is not the whole workload}{
+A request can compute many tokens before presenting a short final answer. Search can
+also produce multiple candidate continuations and then discard most of them. Those
+tokens still consume compute, bandwidth and state. Cost per visible token may
+consequently be misleading; cost per successfully solved task is often the relevant
+outcome. Longer computation does not guarantee a correct answer.
+Chapter~\ref{ch:prefill-decode} supplies the phase accounting, and
+Chapter~\ref{ch:benchmarking} supplies the measurement contract. Keep generated work,
+retained work and delivered output as separate counters.
+}
+
 \NapkinSection{Napkin math: cost per answer}
 
 A request with a prompt of $P$ tokens, $R$ reasoning tokens and $A$ answer

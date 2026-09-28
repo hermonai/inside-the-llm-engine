@@ -46,6 +46,17 @@ the first word; the reply's cost arrives as the pace of the words after it.
 They are different quantities with different physics, and an engine that
 treats them alike serves both badly.
 
+\Foundations{Known positions versus unknown choices}{
+A prompt's tokens are already known. A causal mask prevents each position from seeing
+later positions, but the engine can still evaluate those known positions in parallel
+within each layer. During ordinary generation, the next input token depends on the
+previous sampling result. That dependency, not the causal mask by itself, serializes
+decode steps. A prompt of length $S$ does not require $S$ separate model invocations
+in a normal prefill. Conversely, batching different requests does not let one request
+skip its own dependency. Appendix A.3 develops the feedback loop;
+Chapter~\ref{ch:forward-pass} identifies the operators inside one invocation.
+}
+
 \NapkinSection{Napkin math: time to first token and time per output token}
 
 Let a model have $P$ parameters in its layers, stored at $b_w$ bytes each,

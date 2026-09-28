@@ -46,7 +46,9 @@ specific ("Eighty-five tokens per second"), but the parts must be recognisable.
 
 1. **Opening measurement** — a real, surprising, reproducible number, with its
    setup in a measurement record. Lead with the phenomenon.
-2. **Napkin math** — the back-of-envelope cost model before any code, using
+2. **Napkin math** — preceded by a short, chapter-specific foundation bridge
+   defining prerequisite concepts and linking to their detailed treatment;
+   then the back-of-envelope cost model before any code, using
    real model and hardware numbers. This is the most transferable skill in the
    field; practise it every chapter.
 3. **The mechanism** — derived, drawn and explained from first principles.

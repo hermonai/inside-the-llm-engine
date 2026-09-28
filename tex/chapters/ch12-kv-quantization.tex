@@ -46,6 +46,17 @@ And both assume the smaller cache still gives the model the answers the full
 one would --- which, for a cache, is a sharper question than for weights, and
 the second half of this chapter measures it.
 
+\Foundations{Errors can change both the address and the payload}{
+A key participates in the score that decides how strongly a position is attended to. A
+value supplies the content mixed into the output. Thus key error can change the mixing
+weights, whereas value error changes what is mixed; treating them as interchangeable
+arrays hides a useful distinction. Both effects can propagate through later layers and
+generated positions. The cache is produced from the actual request, unlike a fixed
+weight tensor. Chapter~\ref{ch:kv-cache} establishes its lifetime and
+Appendix~\ref{app:numerics} separates representation error from task-level quality
+loss.
+}
+
 \NapkinSection{Napkin math: when the cache is most of the bytes}
 
 For $B$ sequences with mean context $\bar{S}$, the cache's share of a decode

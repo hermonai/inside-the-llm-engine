@@ -44,6 +44,17 @@ batch before anyone gets a token (\texttt{tools/server/server-context.cpp} at
 commit \texttt{d006858}). A decoding user's next token waits for the prompt
 chunk it rode with.
 
+\Foundations{A scheduling slice is not a new prompt}{
+Chunking divides the evaluation of one prompt into scheduling units without resetting
+its history or positions. Later chunks still depend on keys and values from earlier
+chunks. The scheduler can interleave those units with decode work, reducing the time a
+decode waits behind one large invocation. It may also increase launch overhead and
+delay the long prompt's first output. Chapter~\ref{ch:prefill-decode} distinguishes
+the two workloads, and Chapter~\ref{ch:continuous-batching} explains iteration
+boundaries. A token budget controls work admitted to a step, not a universal bound on
+that step's duration.
+}
+
 \NapkinSection{Napkin math: a step's token budget}
 
 Let a step process $n$ tokens: $n_d$ decode tokens and a prompt chunk of $c$

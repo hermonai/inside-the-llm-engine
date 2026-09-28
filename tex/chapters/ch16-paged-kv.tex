@@ -37,6 +37,17 @@ memory held actual token states; the rest was reservation and fragmentation
 (\Chref{kv-cache}), a cache two-thirds wasted is a batch a third of its
 possible size --- and, on the roofline, a third of the throughput.
 
+\Foundations{Logical order need not be physical order}{
+Attention needs keys in the correct logical positions; it does not require all their
+bytes to occupy one contiguous allocation. A block table maps a request's logical
+block number to a physical block. The offset within that block then selects a token.
+Sharing a full immutable block is different from allowing two requests to append into
+the same mutable tail. This distinction motivates reference counts and copy-on-write.
+Chapter~\ref{ch:kv-cache} supplies the append-only history model;
+Appendix~\ref{app:notation} gives the quotient-and-remainder arithmetic used by an
+address translation.
+}
+
 \NapkinSection{Napkin math: fragmentation under real length distributions}
 
 Suppose each request reserves room for $S_{\max}$ tokens but uses $S_i$, its

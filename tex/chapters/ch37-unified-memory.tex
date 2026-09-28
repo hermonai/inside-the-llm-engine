@@ -41,6 +41,17 @@ one pool of bandwidth, shared by every processor and every program on the
 machine --- and a design question the previous chapters could avoid: who
 decides what stays in it.
 
+\Foundations{Shared addresses do not imply free access}{
+An address space describes what a processor can name; physical placement and the
+memory fabric determine what it costs to access. CPU and GPU may share physical
+memory, or a runtime may migrate pages behind a unified-address interface. Those are
+different mechanisms. Even physically shared memory has finite bandwidth and competing
+users. Synchronization still determines when a producer's writes are usable by a
+consumer. Appendices~\ref{app:gpu} and~\ref{app:cpu} describe the two execution
+agents. Chapter~\ref{ch:offloading} explains the transfers that a particular
+shared-memory design does, or does not, eliminate.
+}
+
 \NapkinSection{Napkin math: one bandwidth shared three ways}
 
 Decode reads its weights once per step, so on a machine whose memory delivers

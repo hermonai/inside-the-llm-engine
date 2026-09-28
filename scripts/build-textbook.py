@@ -29,9 +29,10 @@ def main():
         raise SystemExit("\n".join(failures))
     shutil.copyfile(build/"inside-the-llm-engine.pdf", output)
     sources = sorted((ROOT/"tex").rglob("*.tex"))
-    sources += [ROOT/"Makefile", ROOT/"AUTHORING.md",
-                ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py"]
-    record = {"edition": "latex-first textbook revision; partial editorial rewrite",
+    sources += [ROOT/"tex/references.bib", ROOT/"Makefile", ROOT/"AUTHORING.md",
+                ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py",
+                ROOT/"scripts/check-foundations.py"]
+    record = {"edition": "second edition; breadth-first working draft",
               "pdf": str(output.relative_to(ROOT)),
               "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
               "sources": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()

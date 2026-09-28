@@ -40,6 +40,17 @@ is per request, grows with every token, is written once and read at every
 later step, and must be released when the request ends. Managing it is most of
 what distinguishes an inference engine from a model runner.
 
+\Foundations{Memoization with a moving frontier}{
+Memoization saves a result when a later computation needs the same result again. In
+causal attention, an earlier position's key and value remain usable after more tokens
+arrive, provided the weights, position convention and preceding history remain
+unchanged. The new query is different, so the old attention output is not the item to
+reuse. The cache boundary separates positions already evaluated from tokens that exist
+in the history but have not yet been processed. Drawing that boundary prevents
+off-by-one errors after sampling. Appendix A.7 distinguishes query, key and value;
+Chapter~\ref{ch:prefill-decode} explains when each is computed.
+}
+
 \NapkinSection{Napkin math: bytes per token, sequences per GPU}
 
 For a model with $L$ attention layers, $H_{kv}$ key/value heads of width $d_h$,

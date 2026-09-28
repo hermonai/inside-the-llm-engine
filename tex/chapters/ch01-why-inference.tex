@@ -57,6 +57,18 @@ decision this book is about. Chapter by chapter, we will find that almost every
 technique in a modern inference engine is a trade of this shape: one scarce
 resource spent to relieve another, for users who are waiting.
 
+\Foundations{Model, algorithm, engine}{
+A language model assigns probabilities to the next token given a token history. A
+token is an integer vocabulary entry, not necessarily a word. A decoding algorithm
+turns those probabilities into a choice; an engine arranges the computation and owns
+its memory. Training changes the weights. Ordinary inference changes the history and
+request state while keeping the weights fixed. Consequently, two engines can implement
+the same model while having different latency, memory use and failure behaviour. Keep
+these three objects separate when reading a speed comparison.
+Appendix~\ref{app:transformer} builds the numerical computation; this chapter begins
+the resource accounting.
+}
+
 \NapkinSection{Napkin math: training pays once, inference pays per token}
 
 Training a model with $N$ active parameters on $D$ tokens costs about $6ND$

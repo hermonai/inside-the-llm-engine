@@ -52,6 +52,17 @@ beyond, the union saturates and extra tokens are nearly free. The 4-bit kernel
 stays several times above its bandwidth line: it is limited by dequantization,
 not by bytes.}{fig:ch26-expert-batch}
 
+\Foundations{Stored parameters and selected parameters}{
+A router chooses which expert networks process a token. Parameters in unselected
+experts still occupy storage even though that token does not execute them. Across a
+batch, different tokens may select different experts; the union of selected experts
+determines how much weight reuse is possible. Routing itself costs work, and unequal
+assignments create stragglers. A sparse model is therefore neither a dense model of
+its total size nor automatically one of its active size. Chapter~\ref{ch:forward-pass}
+introduces the expert computation; Chapter~\ref{ch:roofline} explains why a batch
+changes the bytes-per-token estimate.
+}
+
 \NapkinSection{Napkin math: the expert union as batch grows}
 
 Take a layer with $E$ experts of which each token selects $k$. If routing

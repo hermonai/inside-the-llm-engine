@@ -1,0 +1,18 @@
+\begin{tikzpicture}[font=\small\sffamily,
+  tier/.style={block,minimum height=11mm},
+  annot/.style={font=\small\sffamily,align=left,text=BookBlue,anchor=west}]
+\node[tier,minimum width=32mm,fill=BookGreen] (reg) at (0,0) {Registers};
+\node[tier,minimum width=48mm,fill=BookGreen] (local) at (0,-1.7) {Cooperative local storage};
+\node[tier,minimum width=67mm] (dev) at (0,-3.4) {Device memory: weights and KV};
+\node[tier,minimum width=84mm,fill=BookGold] (host) at (0,-5.1) {Host memory / checkpoint staging};
+\draw[thick,BookBlue,{Stealth[length=2mm]}-{Stealth[length=2mm]}] (reg) -- (local);
+\draw[thick,BookBlue,{Stealth[length=2mm]}-{Stealth[length=2mm]}] (local) -- (dev);
+\draw[thick,BookBlue,{Stealth[length=2mm]}-{Stealth[length=2mm]}] (dev) -- (host);
+\node[annot,text width=58mm] at (4.7,0) {Partial sums live close\\to the arithmetic};
+\node[annot,text width=58mm] at (4.7,-1.7) {Tile reuse spends local capacity\\to reduce repeated traffic};
+\node[annot,text width=58mm] at (4.7,-3.4) {Count bytes across this boundary\\for a device-memory roofline};
+\node[annot,text width=58mm] at (4.7,-5.1) {A discrete-device transfer has\\a different bandwidth and timer};
+\draw[dashed,BookBlue] (-4.4,-4.25) -- (10.7,-4.25);
+\node[font=\scriptsize\sffamily,anchor=south east,text=BookBlue] at (10.7,-4.2)
+ {host--device boundary};
+\end{tikzpicture}

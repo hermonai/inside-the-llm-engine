@@ -34,6 +34,17 @@ token count set by resolution rather than by what the user typed. This chapter
 counts those tokens, prices the encoder, and follows the caching, scheduling
 and disaggregation that serving them has produced.
 
+\Foundations{A modality becomes a model input}{
+An image, waveform or video is not inherently a sequence of text tokens. A
+model-specific processor converts it into patches, features or other representations,
+which the model consumes through its declared interface. Text length alone can
+therefore understate both prefill work and retained state. Equal image dimensions do
+not imply equal token counts across architectures. Chapter~\ref{ch:forward-pass}
+explains why tensor shapes determine work; Appendix~\ref{app:formats} explains why
+configuration and preprocessing belong to model identity. Separate encoder execution,
+transfer, prefill and decode when locating a multimodal bottleneck.
+}
+
 \NapkinSection{Napkin math: tokens and FLOPs per image}
 
 A vision transformer cuts an image into square patches of $p$ pixels, embeds

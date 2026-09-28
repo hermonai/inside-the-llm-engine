@@ -59,6 +59,17 @@ A kernel for one row accumulates in one running sum; a kernel for many rows
 splits the sum into partial sums and adds them at the end. Both are correct,
 and they differ. Exact arithmetic; illustrative values.}{fig:ch38-summation-order}
 
+\Foundations{Choose the equivalence you intend to test}{
+Bitwise equality, small numerical error, the same greedy token and the same sampling
+distribution are different contracts. A seed fixes random choices only when the
+surrounding computation and ordering also agree. Floating-point reductions can differ
+with batch shape even when their real-arithmetic formulas are identical. An oracle
+should be independently implemented enough to avoid sharing the optimized path's
+likely bug. Appendix~\ref{app:numerics} explains rounding and reduction order. State
+the expected equivalence before choosing tolerances; otherwise a permissive test can
+certify the wrong property.
+}
+
 \NapkinSection{Napkin math: how much rounding error to expect}
 
 A 32-bit float carries 24 significant bits, so each addition may round by up to

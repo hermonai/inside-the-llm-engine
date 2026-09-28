@@ -48,6 +48,17 @@ model captures the binding resource, it is accurate. When an implementation
 detail binds instead, the model's error \emph{is} the finding: it points at the
 detail. This chapter builds the model and then lists the details.
 
+\Foundations{A model with declared omissions}{
+An estimate is useful because its assumptions are visible. Separate resident bytes
+from bytes transferred per step, and separate per-request latency from aggregate
+tokens per second. A service can improve the second while worsening the first. Use the
+resource equation to identify a lower bound, then add the queueing and software costs
+it omits; do not silently call a lower bound a prediction. Decimal GB and binary GiB
+differ, as Appendix~\ref{app:notation} explains. Before using the chapter's equations,
+write down batch size, context length, precision and the boundary at which time is
+measured.
+}
+
 \NapkinSection{Napkin math: the step-time model}
 
 A decode step for $B$ sequences with mean context $\bar{S}$ reads the weights

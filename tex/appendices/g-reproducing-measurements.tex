@@ -1,17 +1,96 @@
-% status: SKELETON
-% Appendix of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% status: ZERO
 \chapter{Reproducing the Book's Measurements}\label{app:reproducing}
-
 \begin{ChapterIntent}
-Every measured number in this book has a record: the hardware, software,
-model file, command, workload and raw output that produced it. This appendix
-explains the record format, lists the machines used, and gives the commands
-to reproduce each chapter's measurements on your own hardware --- the most
-useful check on a book about performance.
+Reproduction executes the stated experiment and compares observations;
+it does not demand identical speed from different hardware. This appendix
+routes readers to canonical evidence rather than copying raw logs.
+The foundational arithmetic runs without a model download.
 \end{ChapterIntent}
 
-\section{The measurement record}
+\section{State the hypothesis}
+Batching reuses weights is a mechanism claim. A batch improves goodput
+at a latency target is a workload claim requiring arrivals, lengths and
+an acceptance rule. An experiment should be able to falsify the latter,
+not merely print an attractive throughput.
 
-\section{Machines}
+Measured numbers name hardware, software revision, model bytes, precision,
+workload, warm-up, repetitions and statistic. Derived numbers name inputs
+and assumptions. Illustrative numbers teach without claiming a device
+result. A vendor peak stays a specification when inserted into a formula.
 
-\section{Chapter by chapter}
+\section{An auditable timestamp trace}
+Consider an illustrative request with times in milliseconds from intended
+arrival: client send at 3, admission at 7, first delivered token at 17,
+later tokens at 25 and 40, terminal event at 44.
+TTFT from send is $17-3=14$ ms; from intended arrival it is 17 ms.
+The first definition excludes 3 ms of client queueing.
+
+Inter-token gaps are 8 and 15 ms. Mean time per output token excluding
+the first is $(40-17)/(3-1)=11.5$ ms.
+Terminal latency from send is $44-3=41$ ms. Using terminal time in the
+token-gap formula would charge terminal handling to decode. Neither clock
+is wrong; an unnamed boundary is wrong. A one-token response has no
+inter-token sample under this convention.
+
+The percentile of pooled gaps need not equal the percentile of per-request
+mean gaps. State the population. Excluding failed or timed-out requests
+can improve the reported tail while the service deteriorates.
+Report errors and useful completed output alongside latency.
+
+\section{One home for each kind of evidence}
+\begin{longtable}{@{}p{.28\linewidth}p{.63\linewidth}@{}}
+\toprule Material & Canonical location and purpose\\\midrule
+\endhead
+Chapter 1--13 deepening & \texttt{research/measurements/2026-09-26-m1-pass3.md};
+chapter sections point to raw runs and commands\\
+Part experiments & Dated \texttt{m1-part2} through \texttt{m1-part8} records
+in \texttt{research/measurements}; retain their limitations\\
+Model byte accounting & \texttt{2026-09-23-gguf-tensor-bytes.md}
+in the same directory\\
+Original construction & \texttt{research/benchmarks} and \texttt{labs};
+first-edition lab numbers remain unchanged\\
+Current small labs & \texttt{code/labs/chNN-*}; README instructions for
+prediction, execution, explanation and deliberate breakage\\
+Primary-source facts & \texttt{research/FRONTIER.md}; source, check date
+and implementation maturity\\
+\bottomrule
+\end{longtable}
+
+The M1 records cover CPU and Metal experiments, not independent measurements
+of every accelerator mentioned. Read each record's load and hardware notes.
+An industrial engine's published result is not a locally reproduced result.
+Chapter 14's in-progress lab is separate from this editorial pass; its
+progress transcript is not a substitute for a committed measurement record.
+
+\section{Run cheap checks before expensive measurements}
+From the repository root:
+\begin{verbatim}
+python3 scripts/check-foundations.py
+make textbook-check
+(cd code/mini-engine && cargo test --workspace)
+\end{verbatim}
+These check the worked examples, book contracts and teaching engine.
+They do not establish benchmark performance. For a chapter experiment,
+read its README and record, inspect the arguments, run the oracle, then
+time the workload. Keep raw stdout and stderr including failures.
+Record model content hashes and source revision, not only mutable aliases.
+
+Do not download additional checkpoints, purge shared caches or disable
+system protections as an unannounced part of reproduction. State any
+unavailable hardware or unperformed experiment explicitly.
+
+\section{Control arrivals and machine state}
+A closed-loop client sends its next request after a response. An open-loop
+client schedules arrivals independently. During a stall the first reduces
+load, while the second can build a queue. Capture intended arrival and
+actual send if the client itself can bottleneck. Quietly ceasing arrivals
+during overload tests a different workload.
+
+Compilation, graph capture, caches, thermal limits and competing work
+change results. Separate warm-up, repeat runs and report spread as well
+as a central statistic. Do not remove outliers without a stated rule and
+reason. A cold process does not establish a cold OS file cache.
+
+Preserve negative outcomes: a slower optimization or failed oracle is
+evidence. Reproduction and layout inspection do not promote a chapter to
+VERIFIED; that additionally requires independent technical review.

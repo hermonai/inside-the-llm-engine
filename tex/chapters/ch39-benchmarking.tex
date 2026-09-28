@@ -43,6 +43,17 @@ the spread within one condition; the day moves it by 15\%; a neighbour copying
 memory halves it. A benchmark that reports one of these rows as ``the speed''
 is reporting its conditions without saying so.}{fig:ch39-three-days}
 
+\Foundations{A timer needs a population and a boundary}{
+Latency describes an observation interval for one request; throughput describes
+completed work over an interval for a population. Neither says which requests were
+rejected, timed out or silently omitted. Percentiles describe a declared sample
+population and do not automatically compose across stages. A client that waits for
+each response before sending another reduces offered load during stalls.
+Appendix~\ref{app:reproducing} develops these distinctions with a worked trace. Before
+running the benchmark, specify arrivals, warm-up, stopping rules, error handling and
+whether the timer begins before or after client-side queueing.
+}
+
 \NapkinSection{Napkin math: how many runs are enough}
 
 Three questions decide whether a benchmark can answer the question asked of it.

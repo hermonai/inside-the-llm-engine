@@ -42,6 +42,17 @@ equal, and in each iteration the first decoding slot's settings decide
 server held three adapters and served one at a time. Holding a thousand
 fine-tunes is easy; this chapter is about serving them together.
 
+\Foundations{A low-rank update is two smaller maps}{
+An adapter can represent a weight change as a product of two thin matrices rather than
+a full matrix. With row-vector convention,
+$\mathbf{x}(\mathbf{W}+\mathbf{A}\mathbf{B})=\mathbf{xW}+(\mathbf{xA})\mathbf{B}$. The
+inner width is the rank budget, not the model width. Requests may share the base
+weights while selecting different adapter parameters. Sharing the base therefore does
+not imply their cache entries are interchangeable. Chapter~\ref{ch:forward-pass}
+explains the linear map; Chapter~\ref{ch:prefix-caching} explains the identity a
+reusable prefix must carry.
+}
+
 \NapkinSection{Napkin math: an adapter's bytes and FLOPs}
 
 A LoRA adapter replaces a weight matrix $\mathbf{W}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}$

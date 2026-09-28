@@ -41,6 +41,17 @@ processes to keep Python's tokenizing and detokenizing off the path that feeds
 the GPU; llama.cpp and Hermon keep everything in one process and one decode
 thread.}{fig:ch41-request-paths}
 
+\Foundations{Read the path a request actually executes}{
+A repository contains experiments, libraries, optional backends and default request
+paths. Finding a function does not prove ordinary traffic reaches it. Start at the
+entry point, follow configuration selection and dispatch, then identify state
+ownership and completion. Record the source revision: a moving branch is not a
+reproducible implementation claim. Chapter~\ref{ch:request-lifecycle} gives the
+state-machine vocabulary, while Chapter~\ref{ch:fast-wrong-answers} supplies the
+validation discipline. The labels DEFAULT, PREVIEW, LIBRARY and DESIGN distinguish
+reachability and maturity; they are not a ranking of algorithmic quality.
+}
+
 \NapkinSection{Napkin math: what each engine should achieve on the same machine}
 
 All three measured engines ran the same kernels: ggml's Metal backend, on the

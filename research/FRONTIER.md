@@ -5,6 +5,19 @@ rely on. `AUTHORING.md` §6 makes it mandatory: no frontier claim is written
 from memory. Search, read the primary source, and log the finding here before
 the claim enters a chapter.
 
+## Foundation-reference checks (2026-09-28)
+
+This is an editorial prerequisite pass, not a refresh of every frontier
+claim or a new benchmark. Existing chapter check dates remain unchanged.
+
+| Technique | What was read / used | Primary source | Checked | Maturity | Chapter |
+| --- | --- | --- | --- | --- | --- |
+| CUDA execution model | Programming-model introduction: threads, blocks, grids and execution hierarchy; no new product peak asserted | [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html) | 2026-09-28 | shipped documentation | App B |
+| safetensors container | README Format section: 8-byte header length, JSON metadata, buffer-relative exclusive offsets, row-major layout and nonfinite-value caveat | [format](https://github.com/safetensors/safetensors/blob/main/README.md) | 2026-09-28 | shipped format | App D |
+| GGUF container | Specification structure, tensor descriptors, offsets and alignment; no new quantization encoding claimed | [specification](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) | 2026-09-28 | shipped format | App D |
+| Speculative sampling contract | §2.3: acceptance and residual correction preserve the target distribution; no speedup claim added | [Leviathan et al.](https://arxiv.org/html/2211.17192) | 2026-09-28 | established method | 22 foundation |
+| Build-to-understand pedagogy | Official repository's overview, chapter progression and prerequisites; original prose and examples, no copied figures or code | [Raschka repository](https://github.com/rasbt/LLMs-from-scratch) | 2026-09-28 | teaching reference | Preface |
+
 ## Entry format
 
 | Field | Meaning |

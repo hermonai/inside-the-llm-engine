@@ -62,6 +62,17 @@ multiplications. The problem is a matrix, quadratic in the sequence length,
 that exists only to be summed away. This chapter is about never writing it
 down.
 
+\Foundations{Normalize a row, not the whole matrix}{
+Attention first scores eligible keys for each query, then normalizes that query's
+score row into nonnegative weights summing to one. Multiplying those weights by values
+gives a weighted average, not a lookup of a single winner. Subtracting the row maximum
+before exponentiation changes neither the exact probabilities nor the weighted
+average, while avoiding overflow. A causal mask excludes future positions from that
+normalization. Online softmax must preserve the same row result while processing only
+a tile at a time. Appendix~\ref{app:numerics} supplies the stable-softmax example;
+Chapter~\ref{ch:forward-pass} supplies the attention shapes.
+}
+
 \NapkinSection{Napkin math: counting attention's bytes}
 
 For one head, a sequence of $S$ tokens and head width $d_h$, causal attention

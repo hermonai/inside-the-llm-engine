@@ -42,6 +42,17 @@ about 2.3~GB/s from its NVMe drive with the page cache bypassed
 (\Chref{expert-streaming}) --- and a byte placed on the wrong tier costs as much
 as dozens placed on the right one.
 
+\Foundations{Capacity is purchased with repeated transfers}{
+Offloading places some required state outside the memory where computation runs. The
+critical question is not whether the full model fits somewhere, but which bytes must
+move for each step and whether that movement can overlap useful work. One-time loading
+and repeated weight streaming are different costs. A bandwidth figure is meaningful
+only for the path actually used, including its narrowest link. Appendix~\ref{app:gpu}
+distinguishes local and host-device traffic. Chapter~\ref{ch:roofline} supplies the
+lower-bound model; a transfer-bound machine needs a roof for its transfer path as well
+as its local memory.
+}
+
 \NapkinSection{Napkin math: the slowest link sets the rate}
 
 Let a decode step read $W_i$ bytes from tier $i$, each at the bandwidth

@@ -118,6 +118,16 @@ it pays with. Part I chapters establish the accounting itself.
 
 ## Appendices
 
+The appendices form three reference groups, without renumbering existing
+labels: **build the computation** (A), **execution and representation**
+(B–E), and **notation and evidence** (F–G). A's opener supplies a first
+prediction and explicit reading routes. B–G are concise reference drafts,
+not full chapters or an exhaustive hardware/format catalogue. Planned A.9–A.11
+remain unfinished; Chapters 2 and 42 provide explicit interim bridges.
+Every main chapter has a targeted foundation bridge after its opening
+phenomenon and before its napkin math. Existing chapter depth statuses stay
+unchanged by these additions.
+
 | | Appendix | Intent |
 | --- | --- | --- |
 | A | The Transformer From Scratch | The build-it-yourself path: the first edition's Chapters 2–9 as sections A.1–A.8, lightly edited, with the checked `mini-engine`. Planned A.9 Causal Self-Attention, A.10 The Feed-Forward Network and A.11 The Decoder Stack complete a runnable decoder for the later labs. |
@@ -184,6 +194,7 @@ the same file; a redrawn variant gets a new name.
 
 | Date | Change | Reason |
 | --- | --- | --- |
+| 2026-09-28 | Added contextual foundation bridges to all 42 chapters; grouped appendices by purpose, retaining A.1–A.8 and all file paths | Teach prerequisites at the point of use without another format migration, duplicated evidence, or a new numbering scheme |
 | 2026-09-23 | Adopted the 42-chapter, nine-part plan; first edition's Chapters 2–9 become Appendix A, Chapter 1 moves toward Chapter 14 | The unique inference material arrived around Chapter 19 of 94; production techniques sat under "the future"; strictly linear chapters could not be written or read out of order |
 | 2026-09-23 | Appendix A keeps its eight moved chapters as numbered sections A.1–A.8 rather than one merged chapter | Preserves their history, labels and worked problems with light edits; each remains readable alone |
 | 2026-09-23 | Appendix A gains planned sections A.9–A.11 (attention, FFN, decoder stack) | Later labs need a complete small decoder; the first edition planned these as Chapters 10–13 |

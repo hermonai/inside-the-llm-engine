@@ -42,6 +42,17 @@ numbers are floating point, that the newest tensor cores multiply them
 without converting them first, and that models are now \emph{trained} to be
 served this way. This chapter explains the formats and what each one costs.
 
+\Foundations{Range and resolution are different budgets}{
+A floating-point format spends bits on sign, exponent and significand. Exponent bits
+mostly control range; significand bits control the spacing between nearby normal
+values. A format with fewer bits need not preserve either property of a larger format.
+Block scaling adds another level: a shared scale moves a group's representable values
+into the useful range. The scale is itself encoded, stored and loaded. Read
+Appendix~\ref{app:numerics} before comparing low-bit formats, and distinguish element
+encoding from accumulation precision. This chapter's newer formats change these
+budgets; they do not remove them.
+}
+
 \NapkinSection{Napkin math: bits per value, including the scales}
 
 A block-scaled format stores $k$ elements of $b_e$ bits and one scale of $b_s$

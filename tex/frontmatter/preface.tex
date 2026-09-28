@@ -2,10 +2,11 @@
 \chapter*{How to read this book}
 \addcontentsline{toc}{chapter}{How to read this book}
 
-Run a 7-billion-parameter model on a laptop or a gaming GPU and watch two
+Run a dense 7-billion-parameter model on a laptop or a gaming GPU and watch two
 numbers: tokens per second, and the bytes per second the memory can deliver.
-Multiply the first by the size of the model and you get almost exactly the
-second. Generating one token reads every weight once, and the chip's
+For batch-one, weight-dominated decode, multiplying the first by the active
+weight bytes often approaches the second. The dense matrix products stream
+their weights for each step, and the chip's
 arithmetic units --- the part everyone talks about --- spend most of that time
 waiting. Nearly every idea in a modern inference engine is a way of changing
 that picture: doing more useful work per byte moved, moving fewer bytes, or
@@ -44,7 +45,7 @@ logged, with dates, in the book's frontier ledger.
 
 \section*{How to read it}
 Part~\ref{part:physics} is the foundation: read it first. It explains why
-decode is bound by memory bandwidth, why prefill is bound by compute, why the
+decode is often bound by memory bandwidth, why prefill can become bound by compute, why the
 KV cache is the engine's central data structure, and how to predict the cost
 of serving any model on any machine in five minutes. After that the parts can
 be read in the order your work needs them. Parts~\ref{part:one-request}
@@ -63,6 +64,21 @@ multiplication, normalization, projections and rotary position step by step,
 with a tested Rust engine and independent oracles.
 
 \section*{About this draft}
+Each chapter now includes a short foundation bridge after its opening
+phenomenon and before its napkin math. Read it when the vocabulary is new;
+otherwise continue to the derivation. Appendix A opens with a small
+prediction worked by hand and routes into the detailed construction.
+Appendices B--C explain execution hardware, D--E representation, F notation
+and dimensional checks, and G reproducible evidence. These references are
+working drafts, not a claim that all appendices are finished.
+
+The teaching approach is original, but shares the build-to-understand
+principle of Sebastian Raschka's \emph{Build a Large Language Model
+(From Scratch)} \cite{raschka2024build}: predict a small result, implement
+the mechanism, check it independently, then change an assumption.
+Here the destination is an inference service and its resource trade-offs,
+not a training curriculum.
+
 This is a working draft of the second edition, written breadth first: every
 chapter exists, but many are still outlines or first drafts, and some sections
 carry visible markers for measurements not yet taken. The status of each

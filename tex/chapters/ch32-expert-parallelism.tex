@@ -40,6 +40,17 @@ expert parallelism is the engineering of hiding it
 \todo{measure: dispatch and combine latency and bandwidth on a multi-GPU node,
 for example with DeepEP's test suite or vLLM's all-to-all backends}.
 
+\Foundations{Routing becomes physical movement}{
+When experts live on different devices, a router's logical assignment becomes a
+dispatch of activation rows and a return of expert outputs. An all-to-all exchange
+permits different destinations to receive different data; it is not an all-reduce. The
+slowest destination can govern completion even when average load looks balanced.
+Chapter~\ref{ch:mixture-of-experts} establishes expert selection, and
+Chapter~\ref{ch:model-parallelism} establishes collectives. Distinguish the bytes of
+activations sent to experts from the bytes of expert weights retained on each device;
+balancing one does not automatically balance the other.
+}
+
 \NapkinSection{Napkin math: dispatch bytes per token}
 
 With $k$ experts per token, hidden width $d$, dispatch precision $b_{\text{d}}$

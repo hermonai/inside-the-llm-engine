@@ -34,6 +34,17 @@ chapter reverse both terms. They are built from the target itself --- its
 hidden features, its output head, heads trained alongside it --- so they agree
 with it far more often, and they cost a small fraction of a target step.
 
+\Foundations{A tree contains incompatible histories}{
+Two draft branches can share a prefix and then diverge. Their later states belong to
+different histories even if stored in one tensor. Verification must use a mask and
+position map that allow each node to see only its ancestors, not its siblings. Extra
+prediction heads or hidden features change how candidates are proposed; they do not
+eliminate the need to specify the acceptance contract. Read
+Chapter~\ref{ch:speculative-decoding} before comparing draft architectures. Count
+proposed, verified, accepted and published tokens separately: these quantities answer
+different performance and correctness questions.
+}
+
 \NapkinSection{Napkin math: draft cost against acceptance length}
 
 Let a drafter propose $\gamma$ tokens per verification pass at a cost of $c$

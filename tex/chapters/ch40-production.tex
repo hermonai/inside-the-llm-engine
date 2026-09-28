@@ -39,6 +39,17 @@ server saturates at about 0.52. The numbers are the most requests
 llama.cpp reported deferred at once, waiting for a free slot --- the queue,
 counted by the server itself.}{fig:ch40-knee}
 
+\Foundations{A component target is not an end-to-end promise}{
+A service-level indicator is a measured quantity; an objective is a target for it over
+a population and interval. A fast kernel cannot guarantee a request objective if
+routing, queueing, loading or streaming dominates. Increasing replicas also changes
+cache locality and warm-up behaviour, so capacity does not always scale immediately
+with process count. Chapter~\ref{ch:request-lifecycle} defines completion and failure;
+Chapter~\ref{ch:benchmarking} defines useful measurement. Build operational decisions
+around the request path and explicit failure modes, not only around device
+utilization.
+}
+
 \NapkinSection{Napkin math: cold-start time and headroom}
 
 Queueing theory explains the shape. For the simplest queue, one server with

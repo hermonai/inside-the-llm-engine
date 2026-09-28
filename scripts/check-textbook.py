@@ -213,6 +213,8 @@ def check_executable_and_calculations():
 
 
 def main():
+    subprocess.run([sys.executable, str(ROOT/"scripts/check-foundations.py")],
+                   check=True)
     write_status = "--write-status" in sys.argv[1:]
     main_file = (TEX/"inside-the-llm-engine.tex").read_text()
     assert "\\documentclass[11pt,oneside,openany]{book}" in main_file

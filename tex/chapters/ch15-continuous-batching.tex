@@ -45,6 +45,17 @@ step of a small model costs about the same for one sequence as for thirty-two
 (\Chref{roofline}), it buys both.
 This chapter is about the scheduler that makes the choice at every step.
 
+\Foundations{Batch rows are temporary assignments}{
+A batch is a group of token computations submitted together. A request can outlive
+many batches, and its row number can change between steps. Request identity must
+therefore not be inferred from its current row. Continuous batching rebuilds the
+active group at iteration boundaries as requests arrive or finish. The model weights
+can be shared, but each request retains its own history, position and cache mapping.
+Chapter~\ref{ch:prefill-decode} explains why rows can represent different kinds of
+work; Chapter~\ref{ch:request-lifecycle} explains when a request is eligible to leave
+the group.
+}
+
 \NapkinSection{Napkin math: occupancy of a static batch}
 
 Batch $B$ requests together and run them until all have finished. Request $i$

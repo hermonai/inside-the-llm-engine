@@ -1,15 +1,111 @@
-% status: SKELETON
-% Appendix A opener. The eight sections that follow are the first edition's
-% Chapters 2-9, moved with git mv on 2026-09-23 (docs/STRUCTURE.md).
+% status: ZERO
 \begin{ChapterIntent}
-This appendix is the build-it-yourself path. Its sections, written for the
-book's first edition, construct a language model's inference computation from
-text and tokens through tensors, matrix multiplication, embeddings,
-normalization, projections and rotary position, each with a checked Rust
-implementation in \texttt{code/mini-engine} and an independent Python oracle.
-Read it before Part~\ref{part:physics} if you want to build the computation
-first, or alongside \Chref{forward-pass} when a compressed description is not
-enough. Sections A.9 to A.11 --- causal self-attention, the feed-forward
-network and the decoder stack --- are planned; they complete a runnable
-decoder for the later labs.
+This appendix is a laboratory for understanding the computation an engine
+must preserve. You do not need to train a model before studying inference.
+You do need to know what a token, a tensor, a probability and a cached state
+mean. Begin with the small example below; then choose a route through
+A.1--A.8. The implementations and independent oracles remain in their original
+locations. Nothing in this reading guide changes the main chapters'
+measured results.
 \end{ChapterIntent}
+
+\section*{One prediction, five different objects}
+Imagine a vocabulary containing three tokens: \texttt{red}, \texttt{blue}
+and an end token. This is an illustrative vocabulary, not a real tokenizer.
+For a particular history, suppose the model produces
+\[
+ \mathbf{z}=[\log 2,\;0,\;0]\in\mathbb{R}^{3}.
+\]
+These scores are \emph{logits}, not probabilities. At temperature one,
+softmax exponentiates and normalizes them:
+\[
+ p_i=\frac{\exp(z_i)}{\sum_{j=1}^{3}\exp(z_j)},\qquad
+ \mathbf{p}=[1/2,\;1/4,\;1/4].
+\]
+The entries are nonnegative and sum to one. Greedy selection chooses
+\texttt{red}. Sampling instead draws from this distribution; a fixed uniform
+draw of $0.6$ selects \texttt{blue} when intervals are ordered as written.
+This draw is a test input, not a statement about a production generator.
+The selected token is appended to the history. The next evaluation can
+produce different scores because its input changed, even though every
+learned weight is unchanged.
+
+The five objects are history, weights, logits, probabilities and chosen
+token. Confusing any pair creates a different bug. Token IDs cannot be
+averaged as though they were embeddings. Logits cannot be read as
+probabilities. The highest-probability token is not the only legal sample.
+Output text need not coincide with one token's bytes: detokenization may
+buffer an incomplete character. A model distribution is not a truth
+certificate; confidently predicted text can be false.
+
+\begingroup
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{A.0.\arabic{figure}}
+\EngineFigure{foundation-token-loop}{An illustrative ordinary decode step.
+Solid arrows carry data; the dashed return appends the committed token
+for the next step. Shared weights are read, not updated. KV state belongs
+to the evaluated prefix. The picture omits batching, speculation and
+transport buffering.}{fig:foundation-token-loop}
+\endgroup
+
+\section*{What the model learned, and what the engine does}
+Training adjusts parameters so that correct continuations receive more
+probability under a chosen objective. Inference evaluates those parameters
+on a supplied history. A chat interface adds an input template and role
+conventions before evaluation. A service adds admission, scheduling,
+cancellation and delivery. The chat box is not the mathematical interface.
+
+For tokens $x_1,\ldots,x_T$, an autoregressive model factors sequence
+probability into conditional probabilities:
+\[
+ p(x_1,\ldots,x_T)=\prod_{t=1}^{T}p(x_t\mid x_1,\ldots,x_{t-1}).
+\]
+The first position follows the model's start convention. This is a
+probability factorization, not an implementation schedule. Known prompt
+positions can be evaluated together under a causal mask. Unknown sampled
+tokens ordinarily cannot: each choice becomes part of the next conditional
+input. That is the dependency behind the prefill/decode distinction.
+
+An embedding replaces an ID by a learned vector. Decoder layers transform
+it using permitted context. A final projection produces one score per
+vocabulary entry. Attention mixes value vectors using query--key scores;
+a feed-forward network transforms features at each position. Normalization
+controls scale, residual connections add updates to incoming representations,
+and position information distinguishes order. None of this means the engine
+searches a database of complete sentences.
+
+\section*{Choose a route, not a prerequisite mountain}
+\begin{longtable}{@{}p{.20\linewidth}p{.34\linewidth}p{.38\linewidth}@{}}
+\toprule Question & Read or build & Return to the systems problem\\\midrule
+What is a token? & A.1: text, IDs and byte boundaries & Chapters 2, 14 and 20\\
+What is one prediction? & A.2--A.3: scores, sampling and feedback & Chapters 1, 4 and 22\\
+Where do numbers live? & A.4: shapes, strides and views & Chapters 7, 16 and 35\\
+What does a layer compute? & A.5--A.8: products, normalization, Q/K/V and RoPE & Chapters 2, 8 and 25\\
+How do parts compose? & Chapter 2's full layer; Chapter 42's executable capstone & Chapters 14--19 and 38\\
+\bottomrule
+\end{longtable}
+
+A.1--A.8 preserve the first edition's construction and worked problems.
+Their ENGINE milestones and labs 1--58 belong to that path, not to
+second-edition chapter numbering. Current chapter labs live separately
+under \texttt{code/labs}. Planned A.9--A.11 will develop attention, the
+feed-forward network and decoder composition at the same granularity.
+Until they exist, use the explicit Chapter 2 and Chapter 42 bridges above.
+A capstone does not make missing pedagogical sections complete.
+
+\section*{Predict, compute, challenge}
+Change the first logit from $\log 2$ to $\log 4$. The exponentiated scores
+become $[4,1,1]$, so probabilities become $[2/3,1/6,1/6]$ (derived).
+The same draw $0.6$ now selects \texttt{red}. A deterministic sampler test
+is not a claim that two distributions produce identical samples.
+
+Next ask what a cache may remember. Earlier keys and values can be reused
+for an unchanged causal prefix; the newly sampled token has not yet had
+its own keys and values evaluated. Mark this boundary before implementing
+append. Then change an assumption: use another adapter, reset positions
+or change tokenization. Matching visible text no longer proves matching
+state. These counterexamples lead to cache identity and differential testing.
+
+The arithmetic here and in Appendices B--G has an executable mirror in
+\texttt{scripts/check-foundations.py}. It needs no model download.
+It checks examples, not language quality or industrial performance.

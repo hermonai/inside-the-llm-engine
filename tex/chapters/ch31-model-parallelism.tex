@@ -37,6 +37,17 @@ whole 39-millisecond step (illustrative). Splitting a model is only worth it on 
 per-exchange latency is measured in microseconds, and this chapter is about
 pricing each way of splitting against the links that carry it.
 
+\Foundations{Partitioning creates a communication contract}{
+Splitting a matrix by output columns produces pieces of an output that can be
+concatenated. Splitting its reduction dimension produces partial sums that must be
+added. An all-gather makes distributed pieces available together; an all-reduce
+combines corresponding values and distributes the result. These operations have
+different traffic and synchronization costs. Pipeline parallelism instead passes
+activations between stages holding different layers. Appendix~\ref{app:notation} gives
+the matrix convention. Before applying bandwidth numbers, identify which tensor
+crosses which link, in which direction, and how often per generated token.
+}
+
 \NapkinSection{Napkin math: collective bytes against interconnect bandwidth}
 
 Split a model's matrices across $N$ devices and each device holds $1/N$ of the

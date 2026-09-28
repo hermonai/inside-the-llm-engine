@@ -57,6 +57,17 @@ algorithms for each generation of hardware, and in 2026 they are written in
 more languages than ever. This chapter is about both halves: how engines stop
 paying to launch kernels, and how the kernels are written.
 
+\Foundations{Submission is not completion}{
+A kernel is a device computation; a launch asks a runtime to schedule it. Returning
+from an asynchronous launch usually says little about when the device finishes. To
+measure execution, use a completion event or synchronization at the intended boundary.
+Fusion combines work into fewer kernels, while graph replay reuses a submission plan;
+these are different transformations with different storage and dependency constraints.
+Appendix~\ref{app:gpu} introduces the execution hierarchy.
+Appendix~\ref{app:reproducing} explains why timing only the host call can make an
+expensive computation look almost free.
+}
+
 \NapkinSection{Napkin math: launch overhead against step time}
 
 If a step launches $n_k$ kernels at $t_{\text{launch}}$ each and its useful

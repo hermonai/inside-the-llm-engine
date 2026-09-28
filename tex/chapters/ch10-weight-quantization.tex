@@ -58,15 +58,28 @@ and only 3\% faster. Unpacking the weights has started to cost arithmetic that
 the bandwidth no longer hides. That trade --- bytes saved against work added
 and accuracy lost --- is this chapter's subject.
 
+\Foundations{A stored code is not the weight}{
+Quantization replaces a real-valued weight with a finite code and a reconstruction
+rule. The code may be an integer, but its meaning depends on a scale, sometimes a zero
+point, and a grouping convention. Counting only code bits understates the storage when
+scales and padding are present. Weight-only quantization does not imply that
+activations or accumulators have the same precision. Nor does small weight error
+guarantee small output error: the input determines which errors matter.
+Appendix~\ref{app:numerics} works through rounding and scale overhead;
+Appendix~\ref{app:formats} explains why the file's type is part of the contract.
+}
+
 \NapkinSection{Napkin math: bits per weight to tokens per second}
 
-A weight-quantized model reads $P\,b_w/8$ bytes per decode step, where $b_w$
+A weight-quantized model reads $P\,q_w/8$ bytes per decode step, where $q_w$
 is the average bits per weight \emph{including} scales. So
 \begin{equation}
-r_{\max} = \frac{8\beta}{P\,b_w}\quad[\text{tokens/s}],
+r_{\max} = \frac{8\beta}{P\,q_w}\quad[\text{tokens/s}],
 \label{eq:quant-ceiling}
 \end{equation}
-and halving $b_w$ doubles the ceiling. The averages are larger than format
+and halving $q_w$ doubles the ceiling. Here $q_w=8b_w$: $q_w$ counts bits
+per weight, while the book's canonical $b_w$ counts bytes per weight.
+The averages are larger than format
 names suggest. llama.cpp's ``Q4\_K\_M'' Llama~3.2~3B file averages
 \textbf{5.0 bits per parameter}: its K-quant blocks cost 4.5 bits per weight
 including scales \cite{kawrakow2023kquants}, and the mix keeps the vocabulary

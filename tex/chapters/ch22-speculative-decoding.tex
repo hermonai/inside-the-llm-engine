@@ -43,6 +43,17 @@ this laptop costs about 2.3 ordinary steps. This chapter derives the contract
 that made those outputs identical, the arithmetic that predicts the speedup,
 and the drafters that make it possible.
 
+\Foundations{A proposal is not a commitment}{
+A draft model proposes tokens cheaply. The target model defines the distribution the
+algorithm promises to preserve. Accepting plausible drafts without correction changes
+that distribution; an exact method accounts for both acceptance and the replacement
+distribution after rejection. Agreement of greedy tokens is a narrower property than
+equality of sampling distributions. Cache entries for a rejected suffix are tentative
+work, not committed history. Appendix A.3 establishes autoregressive sampling.
+Chapter~\ref{ch:request-lifecycle} supplies the ownership language needed to
+distinguish internal proposals from tokens already published to the user.
+}
+
 \NapkinSection{Napkin math: acceptance rate and expected speedup}
 
 Suppose a drafter proposes $\gamma$ tokens and the target accepts each one,

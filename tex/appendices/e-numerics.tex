@@ -1,21 +1,89 @@
-% status: SKELETON
-% Appendix of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% status: ZERO
 \chapter{Numerics: Floating Point and Quantization Formats}\label{app:numerics}
-
 \begin{ChapterIntent}
-Every number format in the book, bit by bit: IEEE~754 single and half
-precision, bfloat16, FP8 E4M3 and E5M2, FP6 and FP4 elements, the E8M0 and
-E4M3 scale formats of microscaling and NVFP4, and the integer and K-quant
-block formats, with their ranges, rounding behavior and the accumulation
-precision that kernels use with them.
+Ask which values a format represents, how arithmetic rounds, and which
+equivalence the application requires. These questions precede bit counts.
+Chapters 10--12 provide the detailed low-precision formats and their
+measured trade-offs; this appendix establishes the numerical vocabulary.
 \end{ChapterIntent}
 
-\section{IEEE 754 and bfloat16}
+\section{Finite storage changes arithmetic}
+A normal binary floating-point value has the schematic form
+\[
+ x=(-1)^s\,2^e(1+f),
+\]
+where $s$ is its sign, $e$ its unbiased exponent and $f$ the stored fraction
+interpreted in $[0,1)$. This does not describe zeros, subnormals, infinities
+or NaNs. Their encodings are format-specific.
 
-\section{FP8, FP6 and FP4}
+Range and precision solve different problems. A larger range can avoid
+overflow without resolving small changes near a large value. Flushing
+subnormals matters near zero. Input, multiplication, accumulation and
+output formats can differ within one operator; an FP16 label alone leaves
+those questions unanswered.
 
-\section{Block scales: E8M0 and E4M3}
+\section{Stable softmax without overflow}
+For scores $[1000,999]$, direct exponentiation can overflow. Subtract the
+largest score:
+\[
+ \frac{[e^{1000},e^{999}]}{e^{1000}+e^{999}}
+ =\frac{[1,e^{-1}]}{1+e^{-1}}
+ \approx[0.731059,0.268941].
+\]
+Equality here is a real-arithmetic identity; the decimal values are rounded.
+Adding the same finite constant to every score does not change exact
+probabilities. A masked position contributes no mass. An entirely masked
+row has no distribution under this normalization and needs an explicit
+policy; blindly evaluating its maximum is not a policy.
 
-\section{Integer and K-quant blocks}
+A row summing to one can still be wrong. Compare its entries and downstream
+weighted output, not merely normalization. Chapter~\ref{ch:flashattention}
+uses this contract while changing the evaluation order.
 
-\section{Rounding and accumulation}
+\section{Specify the rounding rule}
+Consider illustrative symmetric quantization with scale $s_q=0.5$:
+\[
+ q=\operatorname{clip}(\operatorname{round}(x/s_q),-7,7),
+ \qquad \widehat{x}=s_q q.
+\]
+For $x=[-1.1,0.2,1.6]$, nearest rounding gives codes $[-2,0,3]$
+and reconstruction $[-1,0,1.5]$. Absolute errors are $[0.1,0.2,0.1]$.
+Without clipping, nearest rounding bounds error by $s_q/2$.
+Clipping removes that bound: $x=10$ reconstructs as $3.5$, with error $6.5$.
+
+At $x=1.25$ the quotient is $2.5$. Ties-to-even gives code 2;
+ties-away-from-zero gives 3. The word round is therefore insufficient to
+reproduce a conversion. The executable example uses ties-to-even and
+tests this boundary. A production encoding must specify saturation,
+nonfinite handling and scale computation too.
+
+\section{Metadata is storage}
+A hypothetical group of 32 four-bit codes and one 16-bit scale occupies
+$32\cdot4+16=144$ bits: 18 bytes, or 4.5 bits per value.
+This is an illustrative encoding, not every format named four-bit.
+Zero points, secondary scales, padding and outlier storage change the count.
+Smaller groups can improve local scaling while increasing metadata cost.
+
+There is a computational bill as well: load and decode metadata, consume
+packed codes, and accumulate products. Reduced payload does not guarantee
+a faster unsupported kernel. Separate storage savings from measured runtime.
+
+\section{Choose the equivalence}
+Floating-point addition is not associative. In an illustrative decimal
+system retaining three significant digits, adding $1000$, $1$, $-1000$
+left-to-right loses the $1$; cancelling the large terms first retains it.
+Binary formats exhibit the same phenomenon at their own spacing boundaries.
+
+A numerical test can require
+\[
+ |\widehat y-y|\leq\epsilon_{\rm abs}+\epsilon_{\rm rel}|y|.
+\]
+Declare both tolerances; the absolute term matters near zero. If two logits
+differ by a margin $\delta$ and each can move by at most $\epsilon$, their
+ordering is guaranteed only when $\delta>2\epsilon$. Small tensor error,
+the same greedy token and task quality are thus different tests.
+
+A seed controls random draws, not rounding or reduction order. Quantization
+also changes the model's numerical function. Report the intended contract
+before deciding that a speedup preserves correctness; Chapter
+\ref{ch:fast-wrong-answers} develops this hierarchy.

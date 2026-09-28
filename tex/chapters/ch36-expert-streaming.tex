@@ -40,6 +40,17 @@ benchmark's routing trace from its seed and reproduces every hit rate the
 developers published, to the printed digit (derived by simulation; record
 \texttt{2026-09-24-m1-part7}).
 
+\Foundations{Hit rate is a workload property}{
+A cache hit avoids fetching an expert only if the needed bytes are resident and
+usable. Repeated routing can create temporal locality, but skewed popularity alone
+does not specify the order of accesses or their reuse distance. Synthetic uniform
+routing and a real request trace test different hypotheses. Cache capacity,
+replacement policy and batch composition all affect misses.
+Chapter~\ref{ch:mixture-of-experts} explains the union of selected experts, and
+Chapter~\ref{ch:offloading} prices a miss. Preserve the routing trace when comparing
+caches so that a policy improvement is not confused with an easier workload.
+}
+
 \NapkinSection{Napkin math: hit rate, bytes per miss, tokens per second}
 
 An MoE layer routes each token to $k$ of its experts. If an expert's weights

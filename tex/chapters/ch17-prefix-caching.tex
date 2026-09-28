@@ -39,6 +39,17 @@ switched documents the server had copied the old one's cache, 331~MiB for
 it found the stored prefix and copied it back, taking about 190~ms. Prefix
 caching is a trade of memory for compute, and this chapter prices it.
 
+\Foundations{Reuse requires identical computation}{
+A cache hit asserts that stored state is the state this request would have computed.
+Equal visible text alone is insufficient: tokenization, preceding tokens, model
+weights, adapter selection and position conventions can change that state. For a
+causal model, an equal prefix can be reusable even when the future suffix differs. A
+similar passage appearing after different preceding text generally cannot.
+Chapter~\ref{ch:paged-kv} explains physical block sharing. When reading a prefix-cache
+key, ask which dependencies it represents and which isolation boundary it enforces,
+rather than treating a hash match as a proof by itself.
+}
+
 \NapkinSection{Napkin math: memory kept against compute saved}
 
 Prefill costs about $2P$ FLOPs per token (\Chref{prefill-decode}); keeping a

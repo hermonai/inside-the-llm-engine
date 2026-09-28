@@ -42,6 +42,17 @@ This chapter derives the recurrence behind that fixed state, prices it against
 a growing cache, and follows what it breaks in engines built on the assumption
 that the past is kept, token by token, in pages.
 
+\Foundations{A state is a summary, not a transcript}{
+A recurrent layer updates a fixed-size state from its previous state and the new
+token. Unlike a list of historical keys and values, that state need not retain
+separately addressable entries for every position. Forking a request requires a copy
+or snapshot of the state at the branch point; deleting a suffix does not generally
+invert the recurrence. Hybrid models combine different state contracts in one stack.
+Chapter~\ref{ch:kv-cache} establishes the attention case. Ask what can be appended,
+copied, restored and rolled back before adapting a KV-centric cache manager to
+recurrence.
+}
+
 \NapkinSection{Napkin math: fixed state against growing cache}
 
 A recurrent layer with $H_v$ value heads keeps, per sequence, a state matrix of

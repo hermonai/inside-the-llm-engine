@@ -44,6 +44,17 @@ point where this figure stops describing a healthy machine.}{fig:ch34-load-recom
 and covers what it takes to run a cache that outlives its requests: an index,
 placement policies, routing, and keys that change whenever the cache must.
 
+\Foundations{A cache is a derived object with an identity}{
+A stored KV entry is a result of a particular model computation. It can be
+reconstructed, but that does not make any stale or mismatched copy acceptable. A
+storage tier needs identity, integrity, ownership, eviction and a
+load-versus-recompute policy. Moving an entry to a slower tier saves scarce resident
+capacity while spending transfer time later. Chapter~\ref{ch:prefix-caching} defines
+semantic reuse; Chapter~\ref{ch:disaggregated-serving} defines handoff. Distinguish a
+cache miss, a corrupt entry and an incompatible entry: all may trigger recomputation,
+but they require different operational responses.
+}
+
 \NapkinSection{Napkin math: the break-even for each tier}
 
 Prefill produces cache at a rate: tokens per second times bytes per token. A

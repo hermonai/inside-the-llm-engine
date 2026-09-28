@@ -1,21 +1,79 @@
-% status: SKELETON
-% Appendix of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% status: ZERO
 \chapter{CPU and SIMD}\label{app:cpu}
-
 \begin{ChapterIntent}
-CPUs run a large share of the world's local inference and every
-engine's scheduler. This appendix covers what matters for inference: cores and
-caches, memory bandwidth per socket, SIMD from NEON and AVX2 to AVX-512, AMX
-and SME, threading and NUMA, and why a well-vectorized CPU matrix--vector
-product still stops at the memory bus.
+A CPU is both a numerical target and the controller of an accelerator
+service. This reference connects loops to cache lines, vector lanes and
+threads. Use it with Appendix A.5 and Chapters 3 and 7; instruction-specific
+performance belongs to those chapters' measurement records.
 \end{ChapterIntent}
 
-\section{Cores, caches and bandwidth}
+\section{Elements are addressed; lines are transferred}
+An array access names an element, but memory hardware commonly transfers
+a cache line. Sequential access can use most of it. A large stride may
+transfer many bytes for each useful element. On an illustrative machine
+with 64-byte lines and four-byte elements, a line holds sixteen elements.
+Reading one element per distinct line uses one sixteenth of its payload
+before reuse. This is not the actual M1 line size.
 
-\section{SIMD: NEON, AVX2 and AVX-512}
+Row-major traversal works well because neighbouring column indices name
+neighbouring elements. Transposing a view changes strides without
+necessarily moving data. A loop that ignores those strides can be wrong;
+one that respects them can still be slow. Appendix A.4 separates these
+failures. Neither a contiguous allocation nor a matrix-shaped API proves
+that a chosen traversal has locality.
 
-\section{Matrix extensions: AMX and SME}
+\section{Vector lanes and the tail}
+Single instruction, multiple data (SIMD) applies an operation across
+several lanes. It helps when data can feed those lanes and the compiler
+can establish safe accesses. Branching, aliasing, strides and reductions
+can complicate that proof. An intrinsic makes an operation explicit but
+does not make the surrounding memory access efficient.
 
-\section{Threads and NUMA}
+For an illustrative eight-lane vector processing nineteen elements, two
+full vectors leave three elements. A scalar cleanup or correctly masked
+operation handles that tail. Loading eight elements from a three-element
+region without a valid memory contract is not an optimization. Test
+lengths just below and above vector boundaries, and test misaligned views
+if the interface allows them.
 
-\section{The CPU as an inference target}
+NEON, AVX and matrix extensions differ in width, operations and dispatch
+requirements. Check the actual target and runtime support rather than
+inferring support from the operating system. A portable scalar reference
+is valuable even when the optimized path is architecture-specific.
+
+\section{Reduction order is part of the result}
+Several independent accumulators can expose instruction-level parallelism.
+Combining them changes summation order. Real-number algebra allows this;
+floating-point arithmetic need not produce identical bits. A random seed
+does not repair an altered arithmetic result. Appendix~\ref{app:numerics}
+explains the numerical contract.
+
+First compare the output against an independent reference. Then inspect
+vectorization reports or generated instructions. Finally measure the
+intended data size and thread count. A tiny array in cache answers a
+different question from a checkpoint larger than the last-level cache.
+
+\section{Threads share resources}
+Threads may share caches and a memory interface. Once aggregate traffic
+saturates the interface, more threads can add overhead without increasing
+throughput. False sharing occurs when threads write different values in
+the same coherence line: logically independent updates still trigger
+ownership transfers. Separate per-thread accumulators and combine them
+deliberately.
+
+Record affinity, the cores actually used, and nested library thread counts.
+Giving every nested layer all available cores can oversubscribe the
+machine. On a NUMA system, page placement and the accessing core determine
+which memory path is used. Establish locality before calling one result
+the machine's memory bandwidth.
+
+\section{The CPU also runs the service}
+A CPU path can win for tiny operations whose accelerator submission costs
+more than their execution. The same CPU may tokenize, enforce grammars,
+schedule batches and service streams. A faster isolated matrix kernel can
+therefore worsen a server if it occupies control-plane cores.
+
+Predict the shared resource, measure a thread-count sweep, and retain a
+one-thread baseline. Never multiply a vector-width ratio by a core-count
+ratio and present the product as measured speedup. The roofline and
+launch-overhead chapters demonstrate how to test that hypothesis.

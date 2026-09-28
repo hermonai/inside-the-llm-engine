@@ -44,6 +44,18 @@ that fell further at 16,384 tokens, and \Chref{roofline}'s 21 tokens per
 second came from a busier session than this one. The record keeps every run
 with its conditions; this chapter quotes the quietest.)
 
+\Foundations{Parallelize the history, then reunite it}{
+Decode attention has one new query per active sequence and head, but potentially many
+historical keys. Splitting that history creates independent partial computations, not
+independent final answers. Each split has its own normalization constant. Averaging
+the splits' normalized outputs equally is wrong when their score masses differ. A
+correct merge carries enough information to restore the full row's weights. This
+distinction explains why a second reduction stage is necessary. Read
+Chapter~\ref{ch:flashattention}'s online-softmax state before the split-kernel
+derivation, and Appendix~\ref{app:gpu} if the terms block and occupancy are
+unfamiliar.
+}
+
 \NapkinSection{Napkin math: parallelism in one query}
 
 For one sequence, one layer and one key/value head, decode attention reads

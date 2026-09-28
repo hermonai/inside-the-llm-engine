@@ -45,6 +45,17 @@ chapter makes long context free. Each technique buys memory or arithmetic by
 changing which tokens a query can see, and the price is paid in correctness,
 which is why the chapter ends with how to measure it.
 
+\Foundations{Addressable length versus usable evidence}{
+A model's supported position range, an engine's allocation limit and a task's reliable
+retrieval range are different quantities. Extending positions or allocating a larger
+cache does not prove the model can use distant evidence. A sliding window changes
+which historical positions are visible; a sparse selector chooses a subset by another
+rule. Both differ from storing all positions in fewer bits. Appendix A.8 explains
+position-dependent scores. Chapter~\ref{ch:kv-cache} explains their storage cost.
+Evaluate a long-context optimization with tasks that require the information it might
+discard, not only with an allocation test.
+}
+
 \NapkinSection{Napkin math: attention's cost at a million tokens}
 
 For a context of $S$ tokens, a model with $L$ layers and $H_q$ query heads of

@@ -10,6 +10,9 @@
 - `check-textbook.py` — the book source: chapter and appendix files, figures,
   worked problems, the executable request trace used by Chapter 14, and the
   independent worked calculations.
+- `check-foundations.py` — all 42 prerequisite bridges and 13 test cases
+  covering illustrative arithmetic, appendix substance and the corrected
+  Chapter 2 softmax figure; called by `check-textbook.py`, so CI runs it too.
 - `check-links.py` — repository-relative Markdown links. `archive/` mirrors
   original paths; links to an archived file resolve through that mirror, and an
   archived document's links resolve from its original directory.

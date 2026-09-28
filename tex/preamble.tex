@@ -79,6 +79,8 @@
 % math and the ledger.
 \newenvironment{ChapterIntent}{\par\begingroup\itshape\color{BookBlue!85!black}\noindent\ignorespaces}{\par\endgroup\bigskip}
 \newcommand{\OpeningSection}[1]{\section{#1}}
+% Reserve room for a short bridge rather than strand its opening at a page foot.
+\newcommand{\Foundations}[2]{\Needspace{14\baselineskip}\subsection*{Foundation: #1}#2\par\medskip}
 \newcommand{\NapkinSection}[1]{\section{#1}}
 \newcommand{\LedgerSection}{\section{The constraint ledger}}
 \newcommand{\LabSection}[1]{\section{Build it small: #1}}

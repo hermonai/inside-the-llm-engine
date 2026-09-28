@@ -53,6 +53,18 @@ what each one computes, and what state it keeps. That list is short. This
 chapter writes it down, one operator at a time, and checks every entry against
 a real file.
 
+\Foundations{Read shapes as contracts}{
+A vector is an ordered list of numbers; a matrix is a table implementing a linear map.
+With row-vector convention, $\mathbf{x}\in\mathbb{R}^{1\times d}$ and
+$\mathbf{W}\in\mathbb{R}^{d\times m}$ produce $\mathbf{xW}\in\mathbb{R}^{1\times m}$.
+The shared dimension is summed, not copied to the output. Weights are learned
+constants during inference; activations are intermediate results for this input. Keys
+and values are activations retained for future steps, not another set of trained
+weights. Before counting FLOPs, identify which dimensions describe tokens, features
+and heads. Appendix~\ref{app:notation} supplies the shape convention; Appendix A.4
+develops storage separately from shape.
+}
+
 \NapkinSection{Napkin math: parameters, FLOPs and bytes per layer}
 
 A decoder layer has two blocks. The attention block holds four projection
