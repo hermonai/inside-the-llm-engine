@@ -6,17 +6,17 @@
 \chapter{Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4}\label{ch:low-precision-float}
 
 \begin{ChapterIntent}
-Blackwell-class tensor cores multiply four-bit floating-point numbers
-directly, provided each small block of values carries a scale. This chapter
-explains the formats that make this work --- FP8's E4M3 and E5M2, the OCP
-microscaling family with a shared power-of-two exponent per 32 values, and
-NVFP4 with an FP8 scale per 16 values and a per-tensor scale --- encodes numbers
-in each by hand, and measures what each does to one real layer of a real
-model. It separates the tolerances of weights, activations and the KV cache,
-and follows the shift from quantizing trained models to training them in low
-precision, as in DeepSeek-V3's FP8 blocks and the MXFP4 checkpoints of gpt-oss
-and Kimi~K3.
+Floating-point formats divide a limited bit budget between range and precision. Modern
+block-scaled formats add metadata shared by groups of values. This chapter explains
+those encodings before comparing the hardware and kernels that can use them.
 \end{ChapterIntent}
+
+\section*{Low-bit floating point still needs a scale}
+Recall the widening gaps between representable values in Part I. Now ask how an exponent
+range and a block scale place a group's values on that grid. Read one format completely
+before comparing several acronyms. Storage type, multiplication type and accumulator
+type can differ; a device's advertised peak is meaningful only with those choices and
+the actual operation stated.
 
 \OpeningSection{117 billion parameters in 65 gigabytes}
 
@@ -48,7 +48,7 @@ mostly control range; significand bits control the spacing between nearby normal
 values. A format with fewer bits need not preserve either property of a larger format.
 Block scaling adds another level: a shared scale moves a group's representable values
 into the useful range. The scale is itself encoded, stored and loaded. Read
-Appendix~\ref{app:numerics} before comparing low-bit formats, and distinguish element
+Chapter~\ref{app:numerics} before comparing low-bit formats, and distinguish element
 encoding from accumulation precision. This chapter's newer formats change these
 budgets; they do not remove them.
 }

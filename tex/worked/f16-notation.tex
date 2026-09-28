@@ -1,0 +1,16 @@
+\section{Worked problems}
+\subsection*{1. A packed batch}
+\textbf{Problem.} Five rows of width four multiply a $4\times3$ matrix.
+Give the output shape and weight count.
+\textbf{Solution.} Output shape is $5\times3$ and there are twelve
+matrix weights. The batch does not duplicate model parameters.
+\subsection*{2. Wasted reservation}
+\textbf{Problem.} Reproduce the unused KV capacity for three five-token
+requests, four-token blocks and 64 bytes per token.
+\textbf{Solution.} Each reserves eight slots and wastes three.
+Total unused capacity is $3\cdot3\cdot64=576$ bytes.
+\subsection*{3. Two rates}
+\textbf{Problem.} Four requests each emit one token every 20 ms.
+What are the aggregate and per-request rates?
+\textbf{Solution.} Aggregate rate is $4/0.02=200$ tokens/s.
+Each request sees $1/0.02=50$ tokens/s, excluding other delays.

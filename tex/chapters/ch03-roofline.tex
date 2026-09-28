@@ -6,19 +6,18 @@
 \chapter{The Roofline: Why Decode Leaves Your GPU Idle}\label{ch:roofline}
 
 \begin{ChapterIntent}
-A laptop generating text with a 3-billion-parameter model pulls nearly as many
-bytes per second from memory as its GPU can stream, while its arithmetic units
-do a twentieth of what they could. This chapter explains why with the roofline
-model: arithmetic intensity, the two ceilings of memory bandwidth and peak
-compute, and the ridge point where they meet. It measures both ceilings on the
-reader's own machine, works the intensity of every decode operator by hand,
-and places decode, batched decode and prefill on the chart. Decode, at a few
-FLOPs per byte, sits far down the bandwidth slope; prefill, at hundreds or
-thousands, sits under the compute roof. Batch size is the lever that moves
-decode along the slope, and the chapter measures it --- including where the
-lever sticks. It ends with what the roofline leaves out, because the best
-kernels in later chapters live in that gap.
+A matrix product needs both numbers and arithmetic. If memory cannot deliver the numbers
+quickly enough, faster multiplication alone will not finish it sooner. We will estimate
+these two limits, draw them on a roofline plot and test which one explains the measured
+workload.
 \end{ChapterIntent}
+
+\section*{Two limits on the same computation}
+Imagine a calculation needing 20 ms to obtain its data but only 8 ms to perform its
+arithmetic. Even with ideal overlap it cannot finish in less than 20 ms. The roofline is
+a graphical form of that comparison. First learn what each axis counts. Then follow the
+batch sweep: additional rows can reuse weight bytes and change which limit matters.
+Hardware comparisons come after the model is understandable.
 
 \OpeningSection{Nearly all of the memory bus, a twentieth of the arithmetic}
 
@@ -66,8 +65,8 @@ rate gives time. Arithmetic intensity $I=F/D$ divides an operation count $F$ by 
 $D$ crossing a \emph{named} memory boundary. An operand reused in cache still
 contributes arithmetic but may avoid another DRAM transfer. Therefore intensity
 belongs to an algorithm, shape and memory level, not to a model name alone.
-Appendix~\ref{app:notation} shows a complete dimensional calculation;
-Appendix~\ref{app:gpu} explains the physical boundaries.
+Chapter~\ref{app:notation} shows a complete dimensional calculation;
+Chapter~\ref{app:gpu} explains the physical boundaries.
 }
 
 \NapkinSection{Napkin math: bytes per token, tokens per second}
@@ -180,7 +179,7 @@ I_{\text{decode}} \approx \frac{2}{b_w}.
 BF16 weights give 1~FLOP/byte; the M1 run's weights average 0.63 bytes per
 parameter, giving 3.2~FLOP/byte. Either way the number is small, and it is a
 property of the product itself: a vector touches each weight once.
-Appendix~\ref{app:matmul} derives the same result for the scalar kernels of the
+Chapter~\ref{app:matmul} derives the same result for the scalar kernels of the
 book's teaching engine.
 
 It pays to work the intensity of every operator in one step by hand, because

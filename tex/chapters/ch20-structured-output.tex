@@ -50,7 +50,7 @@ that a generated statement is true, useful or safe. Tokenization complicates gra
 enforcement because one token can contain several characters or only part of a byte
 sequence. A mask must test how a token's entire contribution changes parser state,
 including whether a valid completion remains possible. Renormalizing after masking
-changes probabilities. Appendix A.1 develops text and token boundaries; Appendix A.3
+changes probabilities. Chapter~\ref{app:tokens} develops text and token boundaries; Chapter~\ref{app:sampling}
 develops sampling. Keep syntactic validity separate from semantic validation when
 deciding what the engine has guaranteed.
 }
@@ -81,7 +81,7 @@ grammar's state with the chosen token. The output is valid by construction:
 not \emph{likely} to parse, but guaranteed to, provided the mask is computed
 correctly and generation ends only where the grammar allows. The model's
 weights and forward pass are untouched; everything happens between the logits
-and the sampler (Appendix~\ref{app:sampling}).
+and the sampler (Chapter~\ref{app:sampling}).
 
 \section{From grammar to automaton}
 

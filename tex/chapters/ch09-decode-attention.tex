@@ -6,16 +6,17 @@
 \chapter{Decode Attention: FlashDecoding, Split-K and Paged Kernels}\label{ch:decode-attention}
 
 \begin{ChapterIntent}
-At decode each sequence contributes a single query, so a prefill-style
-attention kernel leaves most of the GPU idle while one block walks a long
-cache. This chapter shows how decode attention restores parallelism by
-splitting the key/value sequence and merging partial softmaxes through their
-log-sum-exp, how grouped-query attention changes what can be shared, and what
-a paged cache costs the kernel. Its central lesson is measured: a
-decode-attention kernel can be limited by occupancy rather than bandwidth, and
-then an optimization that saves bytes by sacrificing parallelism makes it
-slower.
+Ordinary decode has few new query rows but may have a long key/value history. A device
+can have many workers and too little work per query to keep them useful. We split the
+history into pieces, compute partial attention results and merge them correctly.
 \end{ChapterIntent}
+
+\section*{Give one query enough parallel work}
+Do not average two partial attention outputs directly: their normalization masses can
+differ. Carry the maximum and denominator alongside each partial result, as in the
+previous chapter. First understand that merge, then ask whether extra workers save
+enough time to pay for the merge and workspace. Paging changes where keys live, not
+which logical keys the query is allowed to read.
 
 \OpeningSection{Twice the bytes, twice the time}
 
@@ -52,7 +53,7 @@ the splits' normalized outputs equally is wrong when their score masses differ. 
 correct merge carries enough information to restore the full row's weights. This
 distinction explains why a second reduction stage is necessary. Read
 Chapter~\ref{ch:flashattention}'s online-softmax state before the split-kernel
-derivation, and Appendix~\ref{app:gpu} if the terms block and occupancy are
+derivation, and Chapter~\ref{app:gpu} if the terms block and occupancy are
 unfamiliar.
 }
 

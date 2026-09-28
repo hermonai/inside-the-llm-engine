@@ -1,0 +1,16 @@
+\section{Worked problems}
+\subsection*{1. A residency bound}
+\textbf{Problem.} An illustrative processor has 64 KiB available shared
+storage and an eight-block ceiling. A block needs 24 KiB. How many fit?
+\textbf{Solution.} At most $\min(8,\lfloor64/24\rfloor)=2$ by these limits.
+Registers or threads can reduce that count.
+\subsection*{2. Transfer time}
+\textbf{Problem.} Derive the lower bound for moving 64 MiB at 16 GiB/s.
+\textbf{Solution.} The ratio is $64/(16\cdot1024)$ seconds, or 3.90625 ms.
+Queueing, setup and other traffic can make the observed time larger.
+\subsection*{3. The wrong timer}
+\textbf{Problem.} A host call returns before device work completes. What
+does a timer around that call establish?
+\textbf{Solution.} Submission duration, not completed device execution.
+To measure completion, wait for the relevant work or use an appropriate
+device timing mechanism with a declared scope.

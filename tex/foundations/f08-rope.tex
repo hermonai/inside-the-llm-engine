@@ -1,3 +1,4 @@
+% status: FULL
 % Authoritative LaTeX; edit this file, not the historical Markdown.
 \chapter{Position: RoPE From First Principles}\label{chapter-9---position-rope-from-first-principles}\label{app:rope}
 A decoder produces sensible output for a short prompt, then becomes
@@ -812,7 +813,7 @@ and ownership transition. The implementation handles one token's heads;
 it cannot silently substitute batching or cache placement for position
 because neither exists inside the operator.
 
-The planned Appendix A.9 consumes positioned Q and K to construct causal
+Chapter~\ref{ch:causal-attention} consumes positioned Q and K to construct causal
 attention; \Chref{flashattention} and \Chref{decode-attention} treat attention
 as an engine problem. It must explain score scaling, visibility, stable softmax,
 and value mixing without weakening the layout or precision contracts
@@ -844,4 +845,4 @@ evidence}\label{primary-references-and-executable-evidence}
   \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/scripts/check-rope-visual-parity.py}{Rust/visual
   parity gate}.
 \end{itemize}
-\input{worked/a8-rope.tex}
+\input{worked/f08-rope.tex}

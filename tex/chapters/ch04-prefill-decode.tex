@@ -6,20 +6,18 @@
 \chapter{Prefill and Decode: Two Workloads, One Model}\label{ch:prefill-decode}
 
 \begin{ChapterIntent}
-Processing a prompt and generating a reply use the same weights and almost
-nothing else in common. Prefill multiplies the weights by a matrix of prompt
-tokens and is limited by compute; decode multiplies them by one vector per
-sequence and is limited by memory bandwidth. This chapter measures both phases
-on one machine --- prefill across prompt lengths from one token to four
-thousand, decode across contexts from empty to eight thousand tokens ---
-derives time to first token and time per output token from the roofline, and
-proves on a small engine that the two phases compute exactly the same numbers
-at very different costs. It then shows why each phase wants a different batch
-size, a different kernel, a different scheduler and --- at scale --- different
-hardware. The tension between them drives chunked prefill
-(\Chref{chunked-prefill}) and disaggregated serving
-(\Chref{disaggregated-serving}).
+A prompt contains tokens we already know. Generation adds tokens that have not been
+chosen yet. That difference permits broad parallel work in prompt processing but creates
+a dependency between ordinary generation steps. This chapter connects that dependency to
+two different workloads and two different waiting times.
 \end{ChapterIntent}
+
+\section*{Known inputs and unknown continuations}
+Use the three-token prompt from Part I. All three input IDs can enter one causal forward
+pass. The next ID cannot be fed back until the model and sampler have selected it. Call
+the first work prefill and the repeated work decode. Read the measurements to answer
+when each shape benefits from parallelism, rather than memorizing that either phase is
+always bound by one resource.
 
 \OpeningSection{The same model reads twelve times faster than it writes}
 
@@ -53,7 +51,7 @@ within each layer. During ordinary generation, the next input token depends on t
 previous sampling result. That dependency, not the causal mask by itself, serializes
 decode steps. A prompt of length $S$ does not require $S$ separate model invocations
 in a normal prefill. Conversely, batching different requests does not let one request
-skip its own dependency. Appendix A.3 develops the feedback loop;
+skip its own dependency. Chapter~\ref{app:sampling} develops the feedback loop;
 Chapter~\ref{ch:forward-pass} identifies the operators inside one invocation.
 }
 

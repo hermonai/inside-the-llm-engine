@@ -6,17 +6,18 @@
 \chapter{Attention as a Memory Problem: From Online Softmax to FlashAttention}\label{ch:flashattention}
 
 \begin{ChapterIntent}
-Standard attention materializes a score matrix that grows with the square of
-the sequence length and moves it through slow memory several times.
-FlashAttention's insight is that attention's cost is memory traffic: with an
-online softmax, attention can be computed tile by tile in on-chip memory
-without ever writing the score matrix. This chapter derives the online
-softmax by hand, builds a tiled attention and checks it against a naive
-oracle, measures what the fused kernel saves inside llama.cpp, then follows
-FlashAttention's four generations as each adapted to a new GPU --- better
-parallelism, asynchrony and FP8 on Hopper, and on Blackwell a software
-exponential because the tensor cores outran everything else.
+The attention equation describes a matrix of scores, but a correct program need not
+store that entire matrix. We will first derive how to update a normalized weighted sum
+in pieces. Then we will see how tiled attention uses that identity to reduce memory
+traffic.
 \end{ChapterIntent}
+
+\section*{Avoid writing what you can reduce immediately}
+For one query, the final output is a weighted sum of values. If we process keys in
+chunks, each chunk needs a maximum, a normalization sum and a weighted value sum. Those
+summaries must be rescaled before merging. Follow the two-chunk numerical example before
+reading the kernel generations. FlashAttention is easier to understand as a storage and
+reduction strategy for the attention row you already know.
 
 \OpeningSection{Attention that runs out of memory before it runs out of time}
 
@@ -69,7 +70,7 @@ gives a weighted average, not a lookup of a single winner. Subtracting the row m
 before exponentiation changes neither the exact probabilities nor the weighted
 average, while avoiding overflow. A causal mask excludes future positions from that
 normalization. Online softmax must preserve the same row result while processing only
-a tile at a time. Appendix~\ref{app:numerics} supplies the stable-softmax example;
+a tile at a time. Chapter~\ref{app:numerics} supplies the stable-softmax example;
 Chapter~\ref{ch:forward-pass} supplies the attention shapes.
 }
 
@@ -131,7 +132,7 @@ llama.cpp the second.
 
 The softmax of a row of scores $x_1,\dots,x_n$ is
 $e^{x_j-m}/\sum_i e^{x_i-m}$, where subtracting the row maximum $m$ keeps the
-exponentials from overflowing (Appendix~\ref{app:sampling}). Written that way
+exponentials from overflowing (Chapter~\ref{app:sampling}). Written that way
 it seems to need the whole row before any output can be produced, and the
 textbook implementation takes three passes over it: one to find $m$, one to
 compute and store the exponentials and their sum, and one to divide every

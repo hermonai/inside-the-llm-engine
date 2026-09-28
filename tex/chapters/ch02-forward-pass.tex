@@ -5,20 +5,18 @@
 \chapter{The Forward Pass, Compressed}\label{ch:forward-pass}
 
 \begin{ChapterIntent}
-Before we can price a technique we need to know what one decode step
-computes, in the terms an engine sees: operators, shapes, bytes and state.
-This chapter reads a real model's file to find its shape, then walks a token
-through a modern decoder --- embedding, normalization, attention over the
-cache, rotary position, the feed-forward network or its mixture of experts,
-the output projection and sampling --- working each operator by hand on
-numbers small enough to check, and counting, for each, the parameters it
-reads, the FLOPs it performs and the state it touches. The result is the two
-rules the rest of the book leans on --- a forward pass costs about two FLOPs
-per active parameter per token, and batch-one decode reads about every weight
-once per token --- and a list of the places where each rule breaks.
-Appendix~\ref{app:qkv} and its neighbours build the same computation from
-scratch.
+We already know the decoder's operations. This chapter revisits them with a real
+checkpoint and asks three questions at each step: what is the shape, how much arithmetic
+is done, and which bytes must be read or retained? Start with the dense model; the
+expert-model comparison then shows which counts change.
 \end{ChapterIntent}
+
+\section*{Put costs on the decoder you built}
+An embedding lookup, an attention row and an FFN are no longer names inside a diagram:
+you built them in Part I. Keep that small computation beside the real layer. Large
+dimensions make the arithmetic longer, not conceptually different. On a first reading,
+follow the residual from input to output and identify the persistent K/V. Return to
+architecture-specific details after that path is clear.
 
 \OpeningSection{The bytes a token actually touches}
 
@@ -61,7 +59,7 @@ The shared dimension is summed, not copied to the output. Weights are learned
 constants during inference; activations are intermediate results for this input. Keys
 and values are activations retained for future steps, not another set of trained
 weights. Before counting FLOPs, identify which dimensions describe tokens, features
-and heads. Appendix~\ref{app:notation} supplies the shape convention; Appendix A.4
+and heads. Chapter~\ref{app:notation} supplies the shape convention; Chapter~\ref{app:tensors}
 develops storage separately from shape.
 }
 
@@ -176,12 +174,12 @@ in the section on position.
 
 A request enters as text and leaves as text, but the model sees neither.
 A tokenizer turns text into a sequence of integer token IDs from a fixed
-vocabulary (Appendix~\ref{app:tokens} builds one). The first operator gathers
+vocabulary (Chapter~\ref{app:tokens} builds one). The first operator gathers
 one row of the input table per token: a $d$-vector of numbers, the token's
 starting hidden state. Then $L$ identical layers transform the hidden state.
 A final normalization and the output projection turn the last position's
 hidden state into $V$ scores, the \Term{logits}: one per vocabulary entry. A
-sampler turns logits into one chosen token ID (Appendix~\ref{app:sampling}),
+sampler turns logits into one chosen token ID (Chapter~\ref{app:sampling}),
 which is appended to the sequence and becomes the next step's input.
 
 \Chref{why-inference} traced the prompt \texttt{"The capital of France is"}
@@ -300,7 +298,7 @@ operation where they can, to avoid writing the normalized vector to memory and
 reading it back (\Chref{kernel-languages}). The $\epsilon$ is not decoration:
 a model trained with $10^{-5}$ and run with $10^{-6}$ produces slightly
 different numbers everywhere, and a mismatch in this one metadata value is a
-real class of conversion bug (Appendix~\ref{app:embeddings-norm}).
+real class of conversion bug (Chapter~\ref{app:embeddings-norm}).
 
 \section{Attention during decode: one query, many keys}
 
@@ -434,7 +432,7 @@ elements $(0, 1), (2, 3), \ldots$ and rotating halves $(0, 64), (1, 65), \ldots$
 are the same operation on differently ordered weights; an engine that loads one
 model's weights and applies the other model's pairing produces fluent-looking
 text from a wrong computation. The ``What actually happened'' section below
-shows how llama.cpp deals with it; Appendix~\ref{app:rope} derives both and
+shows how llama.cpp deals with it; Chapter~\ref{app:rope} derives both and
 shows the failure.
 
 \section{The feed-forward network and its gate}
@@ -552,7 +550,7 @@ decode. Its critical path includes everything between two forward passes:
 sampling, detokenizing, streaming and scheduling (\Chref{request-lifecycle}).
 For the engine, the sampler's cost is small but serial: a softmax and a sort or
 a partial selection over 128,256 numbers, on the path of every token, often on
-the CPU while the GPU waits. Appendix~\ref{app:sampling} builds the sampler and
+the CPU while the GPU waits. Chapter~\ref{app:sampling} builds the sampler and
 the loop in full.
 
 \section{A shape-annotated map of one step}
@@ -741,7 +739,7 @@ layouts in two families of files, and the choice of kernel is metadata, not
 code. An engine that reads one family's weights with the other's pairing
 produces text that is fluent for a few tokens and then wrong --- the kind of
 failure no shape check catches, and the reason
-Appendix~\ref{app:rope} tests rotary embedding against a complex-number oracle
+Chapter~\ref{app:rope} tests rotary embedding against a complex-number oracle
 rather than by eye.
 
 \FrontierSection{2026-09-27}

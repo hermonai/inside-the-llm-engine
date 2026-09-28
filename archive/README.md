@@ -47,3 +47,15 @@ Archived on 2026-09-23 when the book adopted the second-edition plan.
 | `scripts/check-math-style.py` | Math-structure check of the Markdown edition against `MATH_INDEX.md` | Retired; the Markdown edition is frozen |
 | `scripts/migrate-textbook-once.py` | One-time Markdown→LaTeX import | History only |
 | `scripts/finish-textbook-import.py` | One-time import clean-up | History only |
+
+## Foundations-first revision, 2026-09-28
+
+The superseded 42-chapter plan is preserved at
+`docs/STRUCTURE-2026-09-28-before-foundations.md`, and the old preface at
+`tex/frontmatter/preface-before-foundations.tex`. They are historical records,
+not current instructions. The pre-restructure progress ledger is preserved
+at `docs/STATUS-2026-09-28-before-foundations.md`, including its old numbering,
+measurements, outstanding hardware questions and editorial decisions.
+The former appendix chapters moved into
+`tex/foundations/` in the live manuscript; no chapter content or lab was
+discarded.

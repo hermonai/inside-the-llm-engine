@@ -5,12 +5,14 @@
 An open technical book about how large-language-model inference engines work —
 and why every modern engine is built the way it is.
 
-A 7-billion-parameter model on a consumer GPU generates a token by reading all
-of its weights from memory, once, while the chip's arithmetic units sit mostly
-idle. Nearly everything in a modern engine — batching, paged KV memory, prefix
-caching, quantization, FlashAttention, speculative decoding, disaggregated
-serving — is a way of spending one scarce resource to relieve another. This
-book is organised around that accounting:
+Start with a token, build a numerical model and assemble a decoder you can
+inspect. Then follow its weights, intermediate values and cached state into
+real hardware and a multi-user service. The book teaches the computation
+before asking the reader to optimize it.
+
+Later chapters explain batching, paged KV memory, prefix caching,
+quantization, FlashAttention, speculative decoding and distributed serving
+as ways of spending one resource to relieve another:
 
 | Resource | Where it binds |
 | --- | --- |
@@ -26,8 +28,12 @@ slots into the same ledger.
 
 ## What is in it
 
-42 chapters in nine parts — see [BOOK.md](BOOK.md):
+59 chapters in ten parts — see [BOOK.md](BOOK.md):
 
+- **Build and understand a language model:** the former appendices now form
+  Part I, with detailed token/tensor construction, causal attention, the FFN,
+  a complete small decoder, checkpoint formats, numerics, hardware and
+  measurement. Native LaTeX illustrations and worked answers throughout.
 - **The physics of inference:** the roofline, prefill versus decode, the KV
   cache, and napkin math for latency, throughput and cost.
 - **Making one request fast:** GEMM on real hardware, FlashAttention and decode
@@ -48,19 +54,23 @@ slots into the same ledger.
 - **Correctness and measurement**, **production**, real-engine anatomies and a
   capstone mini engine.
 
-Each chapter opens with a real measurement, does the napkin math before the
+Part I works from small examples to executable checks. Systems chapters
+introduce their question in plain language, then examine a real measurement, do the napkin math before the
 code, derives the mechanism, charges it in a constraint ledger, runs a small
 self-contained lab, tells what actually happened in a production engine —
 failures included — and ends with a dated frontier watch and exercises.
 
-Appendix A, *The Transformer From Scratch*, is the build-it-yourself path: a
-dependency-free Rust engine with 220 tests and independent Python oracles.
+The construction path uses the dependency-free Rust engine and independent
+oracles, plus a standard-library Python decoder for the attention-to-generation
+bridge. No model download or GPU is required for its small examples.
 
 ## Status
 
 The second edition began on 2026-09-23. It restructures a first edition whose
-nine written chapters become Appendix A and Chapter 14. The chapters are
-being drafted breadth-first; [docs/STATUS.md](docs/STATUS.md) says exactly what
+nine written chapters were initially moved behind the systems material.
+The author's 2026-09-28 revision brings that construction to the front.
+The later systems chapters continue their depth pass;
+[docs/STATUS.md](docs/STATUS.md) says exactly what
 exists and what has been verified. Frontier claims are checked against primary
 sources and logged with dates in [research/FRONTIER.md](research/FRONTIER.md).
 
@@ -70,13 +80,14 @@ sources and logged with dates in [research/FRONTIER.md](research/FRONTIER.md).
 make textbook-check     # structure and consistency checks
 make textbook           # PDF: XeLaTeX, latexmk and biber (TeX Live 2025)
 (cd code/mini-engine && cargo test --workspace)
+python3 -m unittest discover -s code/foundations -p 'test_*.py'
 ```
 
 ## Repository
 
 | Path | Contents |
 | --- | --- |
-| `tex/` | The book: chapters, appendices, TikZ figures, worked problems |
+| `tex/` | The book: foundations, systems chapters, TikZ figures, worked problems |
 | `code/` | `mini-engine` (Rust), reference oracles (Python), labs |
 | `research/` | Frontier ledger, measurement records, first-edition research notes |
 | `docs/` | The chapter plan and status |
@@ -84,6 +95,10 @@ make textbook           # PDF: XeLaTeX, latexmk and biber (TeX Live 2025)
 
 Authors and AI agents start with [AGENTS.md](AGENTS.md) and
 [AUTHORING.md](AUTHORING.md).
+
+Printed chapter numbers follow the reading order. Lab and source IDs remain
+stable: the old `ch14-request-lifecycle` is now printed Chapter 31.
+The complete mapping is in [docs/STRUCTURE.md](docs/STRUCTURE.md).
 
 ## Hermon
 

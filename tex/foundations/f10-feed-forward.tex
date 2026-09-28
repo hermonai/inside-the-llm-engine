@@ -1,0 +1,226 @@
+% status: FULL
+\chapter{The Feed-Forward Network and the Residual Stream}\label{ch:feed-forward}
+\begin{ChapterIntent}
+Attention moves information between positions. A feed-forward network
+changes the features at one position. We will build that second operation
+with small matrices, see why the nonlinear step matters, and connect it
+to the vector that carries information through the whole decoder.
+\end{ChapterIntent}
+
+\section{Start with one token vector}
+Take an illustrative token representation $\mathbf x=[1,-1]$. Its two
+coordinates are features, not probabilities. We want a transformation that
+can react differently to positive and negative combinations of those
+features. Start by expanding two coordinates into three:
+\[
+ \mathbf h=[x_0,\ x_1,\ x_0-x_1]=[1,-1,2].
+\]
+This is a linear projection. It has a matrix representation, but the
+coordinate expressions already tell us every multiplication. Apply ReLU,
+which keeps positive values and replaces negative values by zero:
+\[
+ \operatorname{ReLU}(\mathbf h)=[1,0,2].
+\]
+Then combine the first two activated coordinates into one output and the
+last two into another. Writing $\mathbf a=\operatorname{ReLU}(\mathbf h)$,
+\[
+ \Delta\mathbf x=[a_0+a_1,\ a_1+a_2]=[1,2].
+\]
+The output width is again two. The wider intermediate representation has
+done its job and can be discarded after the output is calculated.
+
+A dense feed-forward network applies the same learned matrices separately
+to every token row. It does not select another token or read its value
+vector. If one row changes, this operator alone cannot change the outputs
+of the other rows. Attention in a later layer can spread that change.
+Keeping the two roles separate is the easiest way to read a decoder diagram.
+
+\section{Why not use a single matrix?}
+Two linear maps without an intervening nonlinearity can be combined into
+one linear map. If row-vector activations are the convention, then
+$(\mathbf x\mathbf W_1)\mathbf W_2=\mathbf x(\mathbf W_1\mathbf W_2)$.
+Changing the intermediate width would not change this fact. The activation
+prevents us from collapsing the general transformation into one fixed
+matrix.
+
+Try changing the input to $[-1,1]$. Before activation the hidden vector
+becomes $[-1,1,-2]$; after ReLU it is $[0,1,0]$. The update becomes
+$[1,1]$, not the negative of $[1,2]$. A linear transformation would have
+obeyed $f(-\mathbf x)=-f(\mathbf x)$. This small counterexample shows
+exactly where additional expressive power enters.
+
+For a sequence matrix $\mathbf X\in\mathbb R^{S\times d}$, a conventional
+two-matrix feed-forward sublayer is
+\[
+ \operatorname{FFN}(\mathbf X)=
+ \phi(\mathbf X\mathbf W_{\rm up}+\mathbf b_{\rm up})
+ \mathbf W_{\rm down}+\mathbf b_{\rm down}.
+\]
+The up matrix has shape $d\times d_{\rm ff}$ and the down matrix
+$d_{\rm ff}\times d$. Biases broadcast over token rows. The activation
+$\phi$ acts element by element. These shapes are part of the definition;
+the word \emph{linear} in a library API may include a bias.
+
+\section{Follow the residual, not only the update}
+The feed-forward output usually does not replace the incoming vector.
+It is added to a \emph{residual stream}: the model-width vector passed
+from one sublayer to the next. In our first example,
+\[
+ \mathbf x_{\rm next}=\mathbf x+\Delta\mathbf x
+                    =[1,-1]+[1,2]=[2,1].
+\]
+The input, update and result are three different objects. Overwriting the
+input with a normalized copy before saving the residual can quietly change
+the model even though every array has the right shape.
+
+In the pre-normalized decoder used in this book, the two additions are
+\[
+ \mathbf r=\mathbf x+
+   \operatorname{Attention}(\operatorname{Norm}(\mathbf x)),\qquad
+ \mathbf x_{\rm next}=\mathbf r+
+   \operatorname{FFN}(\operatorname{Norm}(\mathbf r)).
+\]
+The attention expression includes its Q/K/V and output projections.
+The second normalization reads $\mathbf r$, not the original $\mathbf x$.
+Each sublayer reads a normalized view of the current residual but adds
+its update to the unnormalized residual.
+
+Other architectures put normalization elsewhere. That is not a cosmetic
+difference: changing the order changes the numerical function. We choose
+one convention explicitly so that the implementation has one answer to
+test. A checkpoint loader must select the convention required by its model.
+
+\EngineFigure{foundation-residual-ffn}{The pre-normalized residual block
+built here. The vertical path carries the model-width representation.
+Each side branch computes an update; a plus sign adds it to the unchanged
+input of that sublayer. Attention mixes positions; the FFN mixes features
+within each position.}{fig:foundation-residual-ffn}
+
+\section{Build a gate with two projections}
+Many decoder models use a gated feed-forward network instead of the
+two-matrix ReLU construction. It has two input projections and one output
+projection. One branch supplies features; the other modulates them.
+For the bias-free SwiGLU variant \cite{shazeer2020glu},
+\[
+ \mathbf g=\operatorname{SiLU}(\mathbf x\mathbf W_g),\quad
+ \mathbf u=\mathbf x\mathbf W_u,\quad
+ \Delta\mathbf x=(\mathbf g\odot\mathbf u)\mathbf W_d,
+ \qquad \operatorname{SiLU}(z)=\frac{z}{1+e^{-z}}.
+\]
+The symbol $\odot$ means coordinatewise multiplication, not a dot
+product. Both intermediate branches have width $d_{\rm ff}$. The down
+projection returns to width $d$, making residual addition possible.
+The gate is not a probability. SiLU can be negative, and its positive
+output is not bounded by one. It changes the strength and sign of
+features; it does not make a yes/no choice of which token to attend to.
+Nor is this a mixture-of-experts router. Every hidden coordinate in this
+dense FFN is computed.
+
+Use the same input $[1,-1]$ with projections chosen to produce
+gate preactivations $[0,1]$ and up values $[2,3]$. SiLU gives
+$[0,1/(1+e^{-1})]$. Multiplying branches yields
+$[0,3/(1+e^{-1})]\approx[0,2.193176]$.
+Let the down projection produce $[h_0-h_1,\ 0.5h_0+h_1]$. The update is
+$[-2.193176,2.193176]$ and, if added directly to our original illustrative
+input, the result is approximately $[-1.193176,1.193176]$.
+This arithmetic omits normalization to isolate the FFN; the complete
+decoder will normalize its FFN input.
+
+\section{Count weights and work before optimizing}
+Without biases, an ordinary two-matrix FFN has $2dd_{\rm ff}$ weights.
+A three-matrix gated FFN has $3dd_{\rm ff}$ weights. With $d=4$ and
+$d_{\rm ff}=6$, the gated version has $3\cdot4\cdot6=72$ weights.
+At four bytes each, its matrix payload is 288 bytes.
+
+Using the convention that a multiply--add counts as two floating-point
+operations, those projections perform about $6dd_{\rm ff}$ FLOPs per
+token, or 144 in the example. That estimate excludes the activation,
+elementwise product, normalization and residual addition. It is a useful
+matrix-work count, not the exact instruction count.
+
+A sequence of $S$ tokens applies the same matrices to $S$ rows.
+The tokens do not communicate within the FFN, so an implementation can
+batch those rows into a matrix product. The parameter count stays fixed
+while activation storage and arithmetic grow with the number of rows.
+This is one of the first places where model structure creates an engine
+optimization: the same weight can serve several token rows.
+
+The hidden width need not equal four times model width. Architectures
+choose it along with the activation and projection count. Comparing a
+gated FFN and a two-matrix FFN at the same hidden width therefore compares
+different parameter budgets. Read the model configuration rather than
+inferring one width from a familiar architecture name.
+
+\section{Implement a scalar reference}
+Run the example:
+\begin{verbatim}
+python3 code/foundations/lesson.py ffn
+\end{verbatim}
+It prints the ReLU hidden row, its down-projected update and the SwiGLU
+update. The returned vectors are updates, not residual sums. Add the
+input by hand to check that distinction.
+
+The \texttt{swiglu} function in \texttt{code/foundations/model.py}
+performs two calls to \texttt{linear}, activates the gate, multiplies
+matching coordinates and performs the third projection. Weight matrices
+in this program store \emph{output rows}: \texttt{weights[j][i]}
+multiplies input coordinate $i$ into output coordinate $j$. This is the
+transpose of the row-vector mathematical storage convention above.
+The function's scalar definition, not the printed orientation of an
+array, determines whether a transpose is needed.
+
+SiLU also needs a numerically sensible sigmoid evaluation. For a large
+negative input, directly evaluating $e^{-z}$ can overflow. The teaching
+function uses $z e^z/(1+e^z)$ for negative $z$, the algebraically
+equivalent form whose exponential is bounded. The test suite includes
+$z=-1000$ and requires a finite result.
+
+\section{Test a transformation, not a name}
+A useful FFN test suite asks several separate questions. Does the up
+projection produce the expected coordinates? Does the activation handle
+negative, zero and positive inputs? Do gate and up branches have equal
+width? Does the down projection return model width? Is the residual
+added exactly once?
+
+Our hand examples answer the first three numerical questions with fixed
+expected values. The full decoder tests answer the composition question
+by comparing execution paths. In a production kernel, compare optimized
+outputs to a scalar reference under an explicit tolerance. Merely
+observing that both implementations are named SwiGLU establishes nothing.
+
+One especially useful deliberate break is to add the original input
+twice. The output remains finite and shape-correct. The small residual
+example immediately exposes it: $[1,-1]+[1,2]=[2,1]$, whereas the double
+addition gives $[3,0]$. Another break is swapping the gate and up
+projections. Since SiLU is nonlinear, the two branches are not generally
+interchangeable.
+
+\section{Make a branch disappear on purpose}
+There is a useful boundary test for the bias-free gated network.
+Set every gate-projection weight to zero. Every gate preactivation
+becomes zero, SiLU of zero is zero, and the coordinatewise product
+is zero regardless of the up branch. The down projection therefore
+returns a zero update. With residual addition, the incoming residual
+passes through unchanged.
+
+This test checks more than a convenient special case. A nonzero
+result indicates an unexpected bias, a stale intermediate buffer,
+a wrong branch or an extra operation. The expected answer does not
+depend on a second implementation of SwiGLU. It follows directly
+from zero multiplied by any finite value.
+
+Now restore the gate and set the down matrix to zero. Again the
+update must vanish. In a complete layer, this removes the FFN
+update but leaves the earlier attention update intact. It is a
+controlled way to isolate one sublayer while debugging composition,
+not a proposal to remove learned FFNs from a real model.
+
+\section{Where this goes next}
+We now have the two sublayers of a decoder block and their residual
+connections. Attention brings context into each position. The FFN
+transforms the resulting features. Normalization supplies the scale
+convention, while the residual carries the representation forward.
+The next chapter stacks these blocks, projects the final representation
+to vocabulary logits, and runs the first complete generation loop.
+Nothing about that assembly requires a large model or a GPU.
+\input{worked/f10-feed-forward.tex}

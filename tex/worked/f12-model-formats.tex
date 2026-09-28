@@ -1,0 +1,15 @@
+\section{Worked problems}
+\subsection*{1. Locate a value}
+\textbf{Problem.} Where does element $(1,1)$ of the example F32 tensor begin?
+\textbf{Solution.} Its row-major index is $1\cdot3+1=4$.
+The absolute byte position is $128+4\cdot4=144$; the stored value is 5.
+\subsection*{2. Include the scale}
+\textbf{Problem.} Store 64 values in blocks of 32 four-bit codes plus a
+16-bit scale per block. How many bytes are needed?
+\textbf{Solution.} Each block needs $(32\cdot4+16)/8=18$ bytes.
+Two blocks require 36 bytes, not 32.
+\subsection*{3. Reject before interpreting}
+\textbf{Problem.} Design a truncation test for the teaching fixture.
+\textbf{Solution sketch.} Remove its last byte and require the inspector
+to reject the payload interval. It must not return a shorter tensor or
+silently fill the missing byte with zero.

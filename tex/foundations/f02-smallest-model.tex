@@ -1,3 +1,4 @@
+% status: FULL
 % Authoritative LaTeX; edit this file, not the historical Markdown.
 \chapter{The Smallest Possible Language Model}\label{chapter-3-the-smallest-possible-language-model}\label{app:smallest-model}
 \section{A token ID is still not an
@@ -8,8 +9,8 @@ model-specific tokenizer turned those bytes into token IDs. The request
 owned the resulting sequence, and generated IDs could travel back
 through token bytes and a strict UTF-8 framer to become streamed text.
 
-\Chref{request-lifecycle} treated the numerical function as opaque, but recorded its output
-for the prompt \texttt{I like}. We will now derive that output from the
+The teaching executable can already return scores for the prompt
+\texttt{I like}. We will derive that output from the
 actual 28-parameter fixture. Nothing in the model consults an answer table:
 the four scores follow from a row lookup, a matrix-vector product and a bias.
 
@@ -603,7 +604,7 @@ owner}\label{follow-the-token-byte-and-owner}
 
 The
 \href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/diagrams/model/token-id-to-logits.txt}{complete
-Appendix A.2 path} extends our first recurring journey:
+Chapter~\ref{app:smallest-model} path} extends our first recurring journey:
 
 \EngineFigure{model-path}{A token selects an embedding; the activation and independent projection parameters produce one score per vocabulary row.}{fig:model-path}
 
@@ -1204,7 +1205,7 @@ We need a mechanism that makes the representation at the current position
 depend on context.
 \end{verbatim}
 
-Then stop. Appendices A.4--A.8 build that mechanism progressively. Jumping
+Then stop. Chapters~\ref{app:tensors}--\ref{app:rope} build that mechanism progressively. Jumping
 directly to attention here would skip the tensor, multiplication,
 normalization, projection, position, and ownership foundations needed to
 implement it correctly.
@@ -1399,4 +1400,4 @@ PyTorch,
 \end{itemize}
 
 
-\input{worked/a2-smallest-model.tex}
+\input{worked/f02-smallest-model.tex}

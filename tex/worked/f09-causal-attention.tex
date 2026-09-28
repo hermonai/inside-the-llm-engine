@@ -1,0 +1,18 @@
+\section{Worked problems}
+\subsection*{1. Equal scores}
+\textbf{Problem.} Two permitted values are $[2,0]$ and $[0,4]$, and their
+scores are equal. Find the output.
+\textbf{Solution.} Equal exponentials give weights $[1/2,1/2]$ and output
+$[1,2]$. Equality of scores matters; their common finite value does not.
+\subsection*{2. A mask applied too late}
+\textbf{Problem.} A first-position query has unmasked probabilities
+$[1/4,3/4]$. Why is zeroing the second probability insufficient?
+\textbf{Solution.} The retained mass is $1/4$, not one. Multiplying values
+gives $[0.5,0]$ instead of $[2,0]$. Exclude the future score before softmax,
+or renormalize the permitted distribution.
+\subsection*{3. Test the causal claim}
+\textbf{Problem.} Write a test that changes only the last token's value
+and checks every earlier output row.
+\textbf{Solution sketch.} Compute the original outputs, change that value
+to a large vector, recompute, and compare rows before the last. None may
+change. Also demonstrate that removing the prefix slice makes the test fail.

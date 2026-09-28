@@ -1,0 +1,20 @@
+\section{Worked problems}
+\subsection*{1. The cache boundary}
+\textbf{Problem.} A prompt has three tokens. The model has selected its
+first continuation but has not evaluated that selection. How many positions
+are cached?
+\textbf{Solution.} Three, at positions zero through two. Evaluating the
+selected token adds position three and advances the count to four.
+\subsection*{2. Payload versus allocation}
+\textbf{Problem.} Count the default teaching model's KV payload for five
+evaluated tokens if stored as packed F32.
+\textbf{Solution.} $2\cdot2\cdot1\cdot2\cdot4=32$ bytes per token,
+so five tokens require 160 payload bytes. Python object overhead,
+allocator metadata and any unused capacity are excluded.
+\subsection*{3. A stronger oracle}
+\textbf{Problem.} Why is agreement on the greedy token weaker than
+agreement on every logit?
+\textbf{Solution.} Many different score vectors have the same largest
+entry. A faulty cache can change nonwinning scores while preserving that
+winner. Compare complete rows at every prefix and include cases with
+different token histories and head sharing.

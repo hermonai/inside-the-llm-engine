@@ -103,7 +103,7 @@ and a prefix that no longer matches what was computed.
 
 A chat request with a 2,000-token prompt and a 300-token answer spends most of
 its tokens in prefill; a reasoning request with a 100-token question and 4,000
-tokens of thought spends 98\% of them in decode (derived). Everything Part~III
+tokens of thought spends 98\% of them in decode (derived). Everything Part~\ref{part:serving}
 built around prefill changes weight. Chunked prefill (\Chref{chunked-prefill})
 matters less when prompts are short; continuous batching
 (\Chref{continuous-batching}) matters more, because long outputs finish at

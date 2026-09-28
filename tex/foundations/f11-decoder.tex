@@ -1,0 +1,202 @@
+% status: FULL
+\chapter{Assembling a Decoder That Generates Tokens}\label{ch:decoder}
+\begin{ChapterIntent}
+All the pieces now exist. We will connect them into a small decoder whose
+entire computation fits in a readable program. It will produce logits,
+choose a token and continue from that choice. Then we will add a cache and
+prove that the cache changes the work, not the intended prediction.
+\end{ChapterIntent}
+
+\section{Choose a model small enough to inspect}
+Our teaching model has a vocabulary of five token IDs, model width four,
+two query heads, one key/value head, two layers and an FFN width of six.
+Each head has width two. The weights are deterministic values generated
+from a sine function, not values learned from language.
+
+That last sentence matters. The program is a complete numerical decoder
+for the stated architecture, but its output is not meaningful language.
+A random or hand-filled decoder can test shapes, causal dependencies,
+position conventions and state handling. It cannot demonstrate the
+language quality of a trained model.
+
+We keep the vocabulary as IDs $0$ through $4$ so that tokenization is not
+another moving part in this experiment. The prompt is $[0,1,2]$. A
+trained application would obtain IDs using the tokenizer bound to its
+checkpoint, then decode selected IDs with the same vocabulary. The text
+boundary from Chapter~\ref{app:tokens} still applies.
+
+The program uses pre-normalized residual blocks, full-width split-half
+RoPE, grouped-query causal attention and a bias-free SwiGLU FFN.
+Normalization gains are fixed to one. The output matrix is separate from
+the embedding matrix. These choices define this teaching model; they are
+not defaults that a loader may impose on an arbitrary checkpoint.
+
+\section{Walk through the shapes}
+Embedding lookup turns three IDs into three rows of width four:
+$\mathbf X\in\mathbb R^{3\times4}$. Each layer reads this residual
+matrix and emits another matrix of the same shape.
+
+The query projection produces four coordinates per row, interpreted as
+two heads of width two. Key and value projections each produce two
+coordinates per row, interpreted as one head. Thus both query heads
+share the same key/value head, but they can produce different scores.
+RoPE rotates each Q and K head using the row's logical position:
+zero, one or two. It does not rotate the value.
+
+Each head returns two attention-output coordinates. Concatenating the
+two heads restores four coordinates. The output projection maps those
+four back to model width four. Add that update to the incoming residual.
+Normalize the result for the FFN, expand along gate and up branches to
+width six, multiply them after activation, project back to four and add
+the second update.
+
+After the second layer, normalize the final residual. The vocabulary
+projection maps each width-four row to five logits. For next-token
+generation we need the last row, the one associated with input token 2.
+Earlier rows describe predictions at earlier prefix boundaries. They are
+useful for tests, but they are not extra newly generated tokens.
+
+\EngineFigure{foundation-decoder-cache}{Two executions of the same
+illustrative prefix. Full-prefix evaluation rebuilds earlier intermediate
+values. Cached evaluation keeps each layer's positioned K/V and processes
+one newly supplied token. A selected token lies beyond the evaluated
+frontier until feedback evaluates it.}{fig:foundation-decoder-cache}
+
+\section{A complete prediction is not a complete generation}
+Run the program from the repository root:
+\begin{verbatim}
+python3 code/foundations/lesson.py decoder
+\end{verbatim}
+The last logit row for $[0,1,2]$ is approximately
+\[
+ [0.093927,\ -0.204837,\ -0.450096,\ -0.577788,\ -0.554559].
+\]
+These are illustrative computations from the committed weights, rounded
+for printing. Greedy selection chooses ID 0, whose score is largest.
+It does not choose the coordinate with the largest absolute magnitude.
+The logits can instead be passed to the sampling policy developed earlier.
+
+Now append ID 0 to the token history and evaluate $[0,1,2,0]$. The
+weights remain fixed. The input history and positions changed, so the
+new final logit row can differ. Repeat this process until a token budget,
+end token or another stopping condition ends generation.
+
+The model function does not own the policy for when to stop. The
+generation loop owns it. Our demonstration has no designated end token;
+the tests use a fixed number of steps. Giving every toy vocabulary an
+end token without defining how its parameters treat that token would
+obscure the boundary we are trying to teach.
+
+\section{First implement the expensive version}
+The \texttt{Decoder.full} method embeds every input token, runs every
+layer over every row, and returns a logit row for every position.
+For each layer it constructs projections for the whole sequence, then
+uses only the permitted prefix for each attention row.
+
+This version has no persistent state. Calling it twice with the same
+tokens and unchanged weights computes the same function. Its inefficiency
+is a virtue while learning: there is no hidden cache to explain a wrong
+answer. We can inspect all positions at every layer.
+
+If we generate several tokens this way, each new call repeats work for
+old positions. Causality tells us those earlier representations have not
+changed. The earlier position cannot depend on the newly appended token.
+We can exploit that fact, but we first need to identify exactly which
+values a later query needs.
+
+\section{Then keep only the reusable state}
+A future query needs the earlier keys and values at each layer.
+It does not need earlier query vectors. The \texttt{Cache} object
+therefore owns one key history and one value history per layer, together
+with the number of tokens already evaluated.
+
+To append a new token, embed it and process one row through the stack.
+At layer zero, normalize the row, calculate Q/K/V, rotate Q and K at
+the current logical position, and append the new K/V to layer zero's
+history. Attention reads that entire permitted history, including the
+new entry. Apply the output projection, residual, normalized FFN and
+second residual. Repeat at the next layer using its own cache.
+
+The layers cannot share a K/V array merely because their shapes match.
+Their weights differ, and each layer receives a different representation.
+Likewise, two requests cannot share mutable cache histories merely
+because their current lengths match. The state describes a particular
+evaluated prefix under a particular model.
+
+For the default model, each token adds two layers times two objects
+(K and V) times one KV head times two coordinates: eight cached scalar
+values. A packed F32 implementation would use 32 payload bytes per token.
+Python lists and Python float objects take additional memory, so this
+payload count is not a measurement of our program's resident size.
+
+\section{Name the evaluated frontier}
+After evaluating the three-token prompt, the cache position is three.
+It contains representations for positions zero through two. Selecting
+ID 0 does not change the cache position. Only evaluating that selected
+ID advances the cache to four.
+
+This distinction is easy to lose when a generation API returns a token
+and a state object together. Ask whether the returned state includes
+the returned token or only the prefix that predicted it. Either interface
+can be designed consistently; an engine must not mix the two conventions.
+Our interface is explicit: \texttt{append(token)} evaluates its argument,
+then returns logits for the next selection.
+
+RoPE uses this evaluated position, not the token ID, batch row or
+number of calls to an unrelated request. Interleaving two requests must
+not advance either one's position on behalf of the other. The tests
+create two caches for the same model, interleave appends and compare
+each result to its own full-prefix reference.
+
+\section{Prove that reuse preserved the computation}
+At every prefix length, compare the cached result with
+\texttt{model.full(prefix)[-1]}. Compare all five logits, not only the
+selected token. Two erroneous rows can still have the same maximum.
+Use a stated tolerance; this example uses Python float arithmetic and
+the tests allow an absolute difference of $10^{-12}$.
+
+Run that comparison across different numbers of layers, different
+histories, ordinary multi-head attention and grouped-query attention.
+The committed tests do this for several small configurations. They
+also change a future token and verify that earlier full-prefix rows
+remain unchanged. Generation tests feed back the selected token for
+several steps and compare both paths each time.
+
+These are strong state and composition checks, but the paths share
+scalar primitives. If both call a wrong softmax, their agreement will
+not reveal it. That is why the previous chapters have hand-worked
+attention and FFN fixtures, and why the test suite includes separate
+normalization, linear-map and rotation checks.
+
+Deliberately break the cached position by resetting it before each
+append in a scratch copy. The first token still works, because its
+correct position is zero. Later comparisons fail. A test containing
+only singleton prompts would have missed the defect.
+
+\section{What this decoder does not yet promise}
+There is no checkpoint importer, training loop, optimized kernel,
+scheduler or network server here. The cache is a growing Python list,
+not paged device memory. It is bound to the decoder instance, whose
+weights must remain unchanged during use. A general service would
+need stronger lifecycle and mutation controls.
+
+The existing Rust capstone implements a related decoder with paging,
+batch scheduling and terminal events. It is useful later, after those
+concepts have their own chapters. We do not make a beginner learn a
+block allocator merely to understand a next-token prediction.
+The small Python decoder is a transparent reference, not a new claim
+that the early Rust ENGINE milestones already include these features.
+
+\section{A model is now a concrete program}
+You can now trace an ID into an embedding, through normalized residual
+blocks, into logits, through selection and back into the next input.
+You can also point to the state whose reuse makes incremental generation
+possible. That is enough model knowledge to ask systems questions without
+treating the Transformer as a black box.
+
+The remaining chapters of Part I connect this computation to bytes,
+numerical formats, hardware and experiments. They prepare the reader
+to understand a roofline plot or a cache-capacity calculation as a
+consequence of a program they already know, rather than a formula to
+memorize.
+\input{worked/f11-decoder.tex}

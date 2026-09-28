@@ -6,15 +6,18 @@
 \chapter{How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture}\label{ch:kernel-languages}
 
 \begin{ChapterIntent}
-A decode step launches hundreds of small kernels, and at small batch the time
-spent launching them can rival the time spent running them. This chapter
-measures what a launch costs, piece by piece, on a real GPU; follows how
-llama.cpp and vLLM stop paying for it --- few submissions, CUDA graphs captured
-per batch size, fusion, compilers, megakernels; and surveys how production
-kernels are written now: CUDA C++ with CUTLASS and CuTe, Triton, Python DSLs
-such as CuTe DSL and TileLang, and NVIDIA's tile-level CUDA, with what each
-abstraction hides and what it exposes.
+A fast arithmetic operation can still arrive through a slow execution path. The CPU must
+prepare and submit device work, and the device must observe its dependencies. This
+chapter separates that overhead from computation before introducing kernel languages,
+fusion and graph replay.
 \end{ChapterIntent}
+
+\section*{Submission is work too}
+Imagine six tiny kernels whose arithmetic is cheap compared with six host round trips.
+Combining their work or replaying a prepared graph may help, but neither removes true
+data dependencies. Follow one operation from submission to completion first. The
+language survey then asks how each tool expresses the same tiles, layouts and
+synchronization, rather than treating a new syntax as an automatic speedup.
 
 \OpeningSection{Five hundred kernels per token}
 
@@ -63,8 +66,8 @@ from an asynchronous launch usually says little about when the device finishes. 
 measure execution, use a completion event or synchronization at the intended boundary.
 Fusion combines work into fewer kernels, while graph replay reuses a submission plan;
 these are different transformations with different storage and dependency constraints.
-Appendix~\ref{app:gpu} introduces the execution hierarchy.
-Appendix~\ref{app:reproducing} explains why timing only the host call can make an
+Chapter~\ref{app:gpu} introduces the execution hierarchy.
+Chapter~\ref{app:reproducing} explains why timing only the host call can make an
 expensive computation look almost free.
 }
 
@@ -553,7 +556,7 @@ CUTLASS kernel is typically rewritten per architecture.
 The same layering exists elsewhere, with different names: Metal shaders on
 Apple silicon, used by llama.cpp; HIP and ROCm on AMD, where vLLM has its own
 attention backends; and portable CPU kernels, which ggml provides for every
-major instruction set (Appendix~\ref{app:cpu}). An engine that serves more
+major instruction set (Chapter~\ref{app:cpu}). An engine that serves more
 than one vendor's hardware carries a kernel set per backend, and the sets are
 large: at commit \texttt{d006858} llama.cpp's Metal shader library defines 109
 kernel functions, instantiated as 560 named kernels for different types and

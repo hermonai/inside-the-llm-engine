@@ -1,0 +1,19 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[block,text width=28mm] (x) at (0,0) {Residual $\mathbf x$};
+\node[block,text width=48mm] (a) at (5,-1.25) {Normalize\\Q/K/V, causal attention\\output projection};
+\node[circle,draw=BookBlue,thick,fill=BookGreen,minimum size=8mm] (p) at (0,-2.5) {$+$};
+\node[block,text width=28mm] (r) at (0,-3.65) {Residual $\mathbf r$};
+\node[block,text width=48mm] (f) at (5,-4.8) {Normalize\\SiLU(gate) $\odot$ up\\down projection};
+\node[circle,draw=BookBlue,thick,fill=BookGreen,minimum size=8mm] (p2) at (0,-6) {$+$};
+\node[block,text width=28mm] (out) at (0,-7.15) {Next residual};
+\draw[flow] (x)--(p);
+\draw[flow] (x.east)-|(a.north);
+\draw[flow] (a.south)|-node[pos=.25,right,font=\scriptsize]{attention update}(p.east);
+\draw[flow] (p)--(r);
+\draw[flow] (r)--(p2);
+\draw[flow] (r.east)-|(f.north);
+\draw[flow] (f.south)|-node[pos=.25,right,font=\scriptsize]{FFN update}(p2.east);
+\draw[flow] (p2)--(out);
+\node[note,text width=38mm,anchor=west] at (8,-1.25) {Mixes information\\across permitted\\positions};
+\node[note,text width=38mm,anchor=west] at (8,-4.8) {Transforms features\\within each\\position};
+\end{tikzpicture}

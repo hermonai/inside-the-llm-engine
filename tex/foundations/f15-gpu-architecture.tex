@@ -1,0 +1,211 @@
+% status: FULL
+\chapter{GPU Architecture for Inference Engineers}\label{app:gpu}
+\begin{ChapterIntent}
+A GPU is not one very fast arithmetic unit. Its useful abstraction is many
+workers sharing several finite storage levels. This chapter prepares the
+kernel chapters; generation-specific specifications remain in the dated
+frontier ledger and chapters that use them.
+\end{ChapterIntent}
+
+\section{Workers, groups and scheduled work}
+A kernel launch describes logical workers. In CUDA, threads form blocks
+and blocks form a grid; an SM executes resident blocks. Threads in a block
+can cooperate through shared memory and synchronization. A CUDA warp
+groups 32 threads; other GPU models may use different widths and names
+\cite{nvidia2026programmingmodel}. Do not transplant a warp-specific
+assumption into portable code without checking it.
+
+The grid describes available work. Occupancy describes resident work
+relative to a hardware limit. Neither equals achieved utilization: a
+resident worker can wait on memory, a dependency or a barrier. More
+occupancy can hide latency but leave less local storage for each useful tile.
+
+\section{Capacity before throughput}
+Consider an illustrative SM with 64 KiB of shared memory available to a
+kernel and a ceiling of eight resident blocks. If each block needs 24 KiB,
+shared memory alone permits
+\[
+ \left\lfloor 64/24\right\rfloor=2\text{ resident blocks}.
+\]
+At 16 KiB per block it permits four. Registers, threads and other limits
+can reduce either result. This is not a prediction of a twofold speedup:
+a smaller tile may require more transfers or less efficient instructions.
+Chapter~\ref{ch:matmul-hardware} measures that trade.
+
+\EngineFigure{foundation-memory-levels}{Schematic storage levels, not a
+specification or scale drawing. Reusing a local tile avoids device-memory
+traffic; keeping weights resident avoids host transfers. Each boundary
+needs its own traffic count and bandwidth.}{fig:foundation-memory-levels}
+
+\section{Follow one tile}
+Registers hold local values and partial sums. Explicit shared storage holds
+reusable tiles for cooperating workers. Caches exploit repeated accesses
+without making every reuse explicit in code. Device memory holds large
+weight and KV arrays. Spilling registers can add memory traffic; caching
+can make repeated source-level loads cheaper than their count suggests.
+
+A matrix tile is loaded, synchronized where required, reused across
+products, accumulated and finally stored. The optimization is to replace
+expensive repeated movement by cheaper reuse while preserving ordering.
+Overwriting a tile before its last reader finishes is a correctness bug,
+even if one timing run happens to complete.
+
+Matrix-specialized units accelerate supported matrix operations and
+precisions. They do not make exponentials, address translation or tiny
+reductions run at the advertised matrix peak. A kernel can hit another
+instruction bottleneck while using only a small fraction of matrix FLOP/s.
+A useful roofline needs an operation mix as well as a memory boundary.
+
+\section{Capacity, bandwidth and latency}
+Capacity says whether an allocation fits. Bandwidth says how many bytes
+cross a boundary per second. Latency says how long an individual transfer
+or dependency takes. A large device can still have too little bandwidth
+for a desired token rate. Many outstanding transfers can hide latency,
+but only until another capacity or bandwidth limit binds.
+
+Discrete accelerators add a host-to-device path. An illustrative 64 MiB
+transfer at an achieved one-way rate of 16 GiB/s costs at least
+\[
+ \frac{64\cdot2^{20}}{16\cdot2^{30}}\text{ s}=3.90625\text{ ms}.
+\]
+Setup and queueing add time. A bidirectional aggregate specification is
+not the correct one-way denominator. Overlap hides transfer time only
+when dependencies and competing resource demands permit it.
+
+\section{The completion boundary}
+A host timer around an asynchronous launch measures submission unless it
+waits for the relevant completion. Conversely, synchronizing after every
+small kernel can destroy normal overlap. Choose the measurement boundary
+before choosing the timer. Chapter~\ref{app:reproducing} supplies a trace.
+
+For AMD and Apple, keep the questions about cooperation, local storage,
+residency and completion, but obtain concrete limits from the appropriate
+platform documentation. Shared physical memory may remove a host copy;
+it does not remove synchronization or make the shared fabric unlimited.
+Chapter~\ref{ch:unified-memory} makes that distinction explicit.
+
+\section{Assign work before choosing instructions}
+Consider multiplying two small matrices. Each output element is a dot
+product of one input row and one input column. A first mapping assigns
+one logical worker to each output element. The mapping is easy to explain:
+the worker computes its row and column indices, walks the reduction axis,
+and writes one result.
+
+This first version can be correct and inefficient. Neighbouring workers
+may load many of the same values. A second mapping lets a group cooperate
+on a tile of outputs. It loads corresponding input tiles once into
+cooperative storage, reuses them for several products, and accumulates
+the output tile. The mathematical result has not changed.
+
+There are now two separate shapes to understand. The matrix shape
+describes the numerical problem. The launch shape describes how workers
+cover that problem. Changing the launch shape must not leave outputs
+unwritten or compute boundary elements from invalid memory. Odd
+dimensions are useful tests because they expose partially filled tiles.
+
+\section{A barrier protects a dependency}
+If one worker loads a value that another worker will use, the consumer
+must not read it before the load is available. A group synchronization
+can establish that boundary. If the same storage is reused for the
+next tile, another dependency prevents overwriting values still being read.
+
+These are correctness requirements, not performance decorations.
+Removing a barrier because one small run happened to pass is not an
+optimization argument. The execution order may change with input size,
+compiler decisions or competing work.
+
+Conversely, unnecessary barriers can force workers to wait when their
+work is independent. The useful question is not how many barriers to
+remove, but which producer--consumer relationships require ordering.
+Draw those relationships for one tile, then choose the synchronization
+that the programming model guarantees.
+
+\section{Why more workers can fail to help}
+Suppose only a few output tiles are available. Some processors can
+have no work even if the kernel is well written. A longer prompt or
+a larger batch may create more tiles, allowing more parallelism.
+This is a property of the workload shape as well as of the kernel.
+
+At the other extreme, launching many workers does not create more
+memory bandwidth. Once useful traffic saturates a shared interface,
+additional work can add queueing without increasing the delivered
+bytes per second. A memory-bound kernel needs less traffic or better
+reuse, not only a larger launch.
+
+Local resource use also matters. A large tile can improve reuse but
+consume enough registers or shared memory to reduce the number of
+resident groups. The 64 KiB example earlier gives a concrete capacity
+calculation. It is only one limit: thread count, registers and other
+architecture-specific constraints can bind first.
+
+Run the arithmetic lesson:
+\begin{verbatim}
+python3 code/foundations/lesson.py gpu
+\end{verbatim}
+It reports the two storage-limited block counts and the 3.90625 ms
+transfer bound. It does not measure a GPU or claim that four resident
+blocks run twice as fast as two. Distinguishing a capacity calculation
+from a performance result is part of learning the machine.
+
+\section{Matrix units do a particular kind of work}
+Matrix-specialized instructions consume tiles in supported layouts and
+formats. To benefit, a kernel must supply the right data at the right
+time and have enough useful matrix work. A theoretical peak is achieved
+under stated assumptions; it is not the rate of every instruction in
+the decoder.
+
+Attention also performs reductions, exponentials and address
+calculations. Quantized matrix products decode packed values and scales.
+A paged cache adds table lookups. These operations can limit a kernel
+even when its main matrix instruction is very fast.
+
+Therefore count both the principal arithmetic and the work needed to
+feed it. A faster matrix unit can make another part of the same kernel
+more visible. This is why later chapters separate an algorithm's FLOP
+count from its achieved execution time.
+
+\section{Follow the host and the device separately}
+The host prepares arguments and submits work. The device executes that
+work later, after any earlier dependencies. The host may return from
+submission before the result is ready to read.
+
+A timer stopped at that return answers how long submission took.
+A timer stopped after the relevant completion answers a larger
+question. Neither measurement is automatically wrong, but labelling
+the first as kernel execution time is wrong. State the event that
+ends the measurement.
+
+Repeatedly waiting after every small operation can change the workload
+by preventing overlap. To time a normal sequence, preserve its
+dependency graph and wait at the boundary whose result you actually
+need. The launch-overhead chapter measures the cost of different
+submission styles on the available hardware.
+
+Graph replay and fusion address different parts of this path.
+Replay can reuse a prepared submission structure. Fusion can remove
+intermediate launches or data transfers by combining operations.
+Both require that the new execution preserve dependencies and
+numerical semantics. Neither is a substitute for identifying the
+actual bottleneck.
+
+\section{The first GPU experiment should be small}
+Before running a model, copy a small known array, execute one operation
+and check every result. Increase to an odd-sized array to test the
+boundary. Then test the normal synchronization boundary. Only after
+those checks should a timing loop run.
+
+Keep the CPU reference even when it is much slower. It can express
+the intended computation without the launch geometry or shared-memory
+machinery. Compare results before comparing times, and record input
+sizes, precision, warm-up and exactly which costs the timer includes.
+
+No GPU is required to complete Part I. The diagrams and arithmetic
+explain the execution model, while the existing optional device labs
+provide hardware-specific measurements. If the hardware is unavailable,
+leave its speed unmeasured. A fabricated peak-to-runtime conversion
+would teach the wrong habit.
+
+The important outcome is that you can now point to a worker, a group,
+a reusable tile, a memory boundary and a completion event. The
+optimized kernel chapters will put real values on those objects.
+\input{worked/f15-gpu-architecture.tex}

@@ -18,7 +18,7 @@ structural ones in your end-of-session report.
 3. [`AUTHORING.md`](AUTHORING.md) — the only policy: the constraint ledger,
    chapter anatomy, voice, evidence and freshness rules, figures, labs,
    workflow. Under 3,000 words; read all of it.
-4. [`docs/STRUCTURE.md`](docs/STRUCTURE.md) — the 42-chapter plan, one-line
+4. [`docs/STRUCTURE.md`](docs/STRUCTURE.md) — the 59-chapter foundations-first plan, one-line
    intent per chapter, and where the first edition's work went.
 5. [`research/FRONTIER.md`](research/FRONTIER.md) — dated, sourced state of the
    art. Check dates before relying on an entry.
@@ -26,16 +26,20 @@ structural ones in your end-of-session report.
 Everything in `archive/` is superseded history. Do not follow its rules; the
 first edition's `AGENTS.md`, `docs/OUTLINE.md` and `docs/STATUS.md` are there.
 
-## The direction, in five lines
+## The direction
 
 - The spine is four scarce resources — memory bandwidth, memory capacity,
   compute, latency — and two outcomes, correctness and cost. Every technique
   is a response to a measured constraint, charged for what it spends.
-- 42 chapters in nine parts; the first unique chapter is Chapter 3, the
-  roofline. Frontier techniques are core chapters, not "the future".
-- Every chapter follows one anatomy: opening measurement, napkin math,
-  mechanism, constraint ledger, lab, what actually happened, frontier watch,
-  exercises.
+- 59 chapters in ten parts: Part I promotes all former appendices into the
+  main path, completes the small decoder, then teaches bytes, hardware and
+  measurement. Frontier techniques remain core chapters, not "the future".
+- Construction chapters teach one concrete question through worked examples,
+  native figures and executable checks. Systems chapters retain the measured
+  anatomy, but explain the question before the numbers. Keep the writing
+  straightforward; do not make the introduction assume its own lesson.
+- Printed chapter numbers differ from stable source/lab IDs. Read the map in
+  `docs/STRUCTURE.md`; do not rename evidence or infer numbers from paths.
 - Breadth first: skeleton → zero draft of every chapter → deepen → verify.
   Never polish one chapter while others lack drafts.
 - Never write a frontier claim from memory: search, read the primary source,

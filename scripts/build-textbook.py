@@ -32,6 +32,7 @@ def main():
     sources += [ROOT/"tex/references.bib", ROOT/"Makefile", ROOT/"AUTHORING.md",
                 ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py",
                 ROOT/"scripts/check-foundations.py"]
+    sources += sorted((ROOT/"code/foundations").glob("*.py"))
     record = {"edition": "second edition; breadth-first working draft",
               "pdf": str(output.relative_to(ROOT)),
               "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),

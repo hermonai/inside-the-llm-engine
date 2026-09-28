@@ -5,18 +5,19 @@
 \chapter{Why Inference Is Its Own Discipline}\label{ch:why-inference}
 
 \begin{ChapterIntent}
-Training produces a model once; inference runs it billions of times, one
-token after another, for people who are waiting. That changes what matters:
-the work is sequential rather than parallel, stateful rather than stateless,
-bounded by memory rather than arithmetic, and priced per token rather than per
-run. This chapter measures the difference on an ordinary machine, follows one
-token through a real model from text to text, introduces the four scarce
-resources --- memory bandwidth, memory capacity, compute and latency --- and
-the two outcomes the book cares about, correctness and cost. It then
-introduces the constraint ledger, the accounting every later chapter uses to
-charge a technique for what it spends, and shows how a single 2026 model
-configuration file already names most of the book.
+Part I showed how to compute a token. Now imagine several people waiting for that
+computation at once. We need to distinguish how fast one answer advances from how much
+total work the machine completes. The chapter introduces those two rates, follows one
+real prediction, and explains why serving a model is a separate engineering problem.
 \end{ChapterIntent}
+
+\section*{From a model to a service}
+If one user receives 20 tokens each second, thirty-two users do not automatically
+receive 640 in total. They share a machine. Conversely, grouping their work can reuse
+the same weights and raise total output while slowing each conversation. Read the first
+chart as two different views of the same run: the operator's total output and one
+person's waiting time. The later model-configuration survey is a preview; you do not
+need to memorize its architecture names.
 
 \OpeningSection{Thirty-two conversations for less than the price of four}
 
@@ -27,8 +28,10 @@ machine produces \textbf{176 tokens per second} in total --- 8.8 times as many
 --- while each step of the computation takes only 3.7 times as long (measured;
 the record is \texttt{research/measurements/2026-09-23-m1-llama32-3b.md}).
 
-Nothing about the model changed. The weights, the arithmetic per token, the
-answers --- all identical. What changed is how the engine grouped the work. At
+The model definition and weights did not change. What changed is how the
+engine grouped the work. Grouping can change floating-point reduction order,
+so output equivalence still needs testing; it is not guaranteed by unchanged
+weights. At
 one conversation, every step streams all two gigabytes of weights from memory
 to produce a single token. At thirty-two, the same stream of weights produces
 thirty-two tokens, one per conversation. The cost of a token fell by almost a
@@ -65,7 +68,7 @@ its memory. Training changes the weights. Ordinary inference changes the history
 request state while keeping the weights fixed. Consequently, two engines can implement
 the same model while having different latency, memory use and failure behaviour. Keep
 these three objects separate when reading a speed comparison.
-Appendix~\ref{app:transformer} builds the numerical computation; this chapter begins
+Part~\ref{part:foundations} builds the numerical computation; this chapter begins
 the resource accounting.
 }
 
@@ -136,7 +139,7 @@ text), then \texttt{791} for \texttt{The}, \texttt{6864} for \texttt{\ capital},
 \texttt{315} for \texttt{\ of}, \texttt{9822} for \texttt{\ France} and
 \texttt{374} for \texttt{\ is}. The spaces belong to the tokens that follow
 them. The model never sees characters; it sees these six numbers, and
-everything the engine later does is indexed by them (Appendix~\ref{app:transformer}
+everything the engine later does is indexed by them (Part~\ref{part:foundations}
 builds a tokenizer from scratch).
 
 \paragraph{Tokens to vectors.} Each ID selects one row of the embedding
@@ -201,7 +204,7 @@ the prompt as \texttt{" Paris. The capital of Italy is Rome"}: eight tokens at
 tokens (measured). The first step processed six tokens in three times the time
 of a later step that processed one: the prompt is processed in parallel, the
 answer one token at a time. \Chref{prefill-decode} makes those two phases the
-subject of their own chapter, and Appendix~\ref{app:transformer} builds every
+subject of their own chapter, and Part~\ref{part:foundations} builds every
 operation above from scratch.
 
 \paragraph{The step in numbers.} The walk above hides the accounting that the
@@ -243,7 +246,7 @@ and raising it is the purpose of batching.
 \section{What an engine does that a model does not}
 
 A trained model is a function: weights and the arithmetic that maps a sequence
-of tokens to a distribution over the next one. Appendix~\ref{app:transformer}
+of tokens to a distribution over the next one. Part~\ref{part:foundations}
 builds that function from scratch. An \Term{inference engine} is everything
 around it that turns the function into a service:
 
@@ -596,7 +599,7 @@ the model architectures that reshape engines. Part~\ref{part:scaling-out}
 scales across GPUs and nodes; Part~\ref{part:hardware-you-have} runs models
 larger than the hardware. Part~\ref{part:correctness} keeps answers correct
 and measurements honest, and Part~\ref{part:production} operates, compares and
-finally builds an engine. Appendix~\ref{app:transformer} builds the model's
+finally builds an engine. Part~\ref{part:foundations} builds the model's
 computation from scratch, from bytes to a decoder, for readers who want to
 write every line themselves; the capstone engine of \Chref{capstone} serves it.
 

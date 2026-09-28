@@ -1,3 +1,4 @@
+% status: FULL
 % Authoritative LaTeX; edit this file, not the historical Markdown.
 \chapter{Embeddings and Normalization}\label{chapter-7-embeddings-and-normalization}\label{app:embeddings-norm}
 \Appref{tokens} ended with integers. A tokenizer transformed UTF-8 bytes into
@@ -1407,7 +1408,7 @@ That is the level at which later kernels must be understood. The
 equation, memory, ownership, and production mapping agree. Short code is
 no excuse for a vague system contract.
 
-\section{The boundary to Appendix A.7}\label{the-boundary-to-chapter-8}
+\section{The boundary to Chapter~\ref{app:qkv}}\label{the-boundary-to-chapter-8}
 
 We now have model-space vectors, normalization, and matrix
 multiplication. How does a Transformer turn one residual vector into
@@ -1415,7 +1416,7 @@ three different representations that determine what information it asks
 for, what information it offers, and what information is ultimately
 transported?
 
-That is the bounded question for \textbf{Appendix A.7 --- Queries, Keys,
+That is the bounded question for \textbf{Chapter~\ref{app:qkv} --- Queries, Keys,
 and Values}. \Appref{qkv} may build the three linear projections and their
 shape/ownership contracts. It must not smuggle in attention, position
 rotation, or KV caching: those remain separate later chapters.
@@ -1463,4 +1464,4 @@ rotation, or KV caching: those remain separate later chapters.
 \end{itemize}
 
 
-\input{worked/a6-embeddings-norm.tex}
+\input{worked/f06-embeddings-norm.tex}

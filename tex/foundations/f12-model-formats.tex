@@ -1,0 +1,200 @@
+% status: FULL
+\chapter{Model File Formats: GGUF and safetensors}\label{app:formats}
+\begin{ChapterIntent}
+Loading a checkpoint is an interpretation. A loader must agree with the
+model on names, shapes, encodings and ordering. This chapter separates a
+valid container from a compatible model and supplies an address calculation
+to audit by hand.
+\end{ChapterIntent}
+
+\section{Three contracts}
+The container locates bytes. The tensor contract interprets them as shaped
+elements. The architecture assigns tensors to operations, including the
+tokenizer and position convention. Passing the first contract does not
+establish the other two. A correctly bounded array can still be the wrong
+projection matrix.
+
+Inspect metadata, validate sizes and required names, check encodings,
+construct the model, and run a known-input comparison before timing.
+Record the checkpoint's content hash and configuration with the engine
+revision. A mutable model alias does not identify immutable bytes.
+
+\section{safetensors offsets by hand}
+The format starts with an eight-byte little-endian header length, followed
+by a UTF-8 JSON header and a data buffer. Tensor offsets are relative to
+the buffer, with an exclusive end. Entries declare dtype and shape;
+ordering is row-major. The format avoids pickle's arbitrary object
+execution, but numerical values can still be nonfinite
+\cite{safetensors2026format}.
+
+For an illustrative 120-byte header, data begins at byte 128.
+An F32 tensor of shape $[2,3]$ and offsets $[0,24)$ occupies absolute
+bytes $[128,152)$. Six four-byte elements account for that interval.
+Element $(1,2)$ has linear index $1\cdot3+2=5$ and begins at byte
+$128+5\cdot4=148$ (derived).
+
+\EngineFigure{foundation-file-offsets}{Illustrative byte intervals with
+exclusive ends. The data origin must be added exactly once. The declared
+header length includes its padding, not the eight-byte length field.
+The drawing is schematic, not proportional to byte counts.}{fig:foundation-file-offsets}
+
+\section{GGUF and quantized blocks}
+GGUF carries a versioned header, key--value metadata, tensor descriptors,
+alignment padding and tensor data. Descriptors specify dimensions, type
+and an offset relative to the tensor-data region. Alignment is part of
+the format, not permission to round an invalid interval back into bounds
+\cite{ggml2026gguf}.
+
+A quantized type describes packed blocks and their metadata. Its size is
+not generally element count times an integer bytes-per-element value.
+Use the declared block geometry and byte size, check required divisibility,
+and account for mixed tensor types. A four-bit checkpoint label is not
+an exact file-size formula. Chapter~\ref{app:numerics} shows why scales
+change the effective bit count.
+
+\section{Validate before allocating}
+Metadata can claim enormous dimensions or offsets near integer limits.
+Use checked arithmetic for products, additions and conversions. Validate
+intervals against actual buffer length before constructing views. Reject
+duplicate names and unsupported types; apply the format's overlap and
+coverage rules. One parser silently overriding an entry another parser
+uses is not a safe interpretation contract.
+
+Shape checks should name axes. Equal element counts do not make
+$[d,m]$ and $[m,d]$ interchangeable. Also check tied versus untied output
+weights, normalization parameters, head counts and position conventions.
+A well-formed file can still generate entirely wrong answers.
+
+Configuration and preprocessing are part of identity. Two containers
+holding equal tensor bytes do not prove equal inference when tokenization,
+special tokens, chat templates or positional scaling differs. Keep these
+dependencies in the reproduction record, not only in a filename.
+
+\section{Mapped is not resident}
+Memory mapping associates contents with virtual addresses. It does not
+prove pages are resident, on an accelerator, or free from first-touch
+faults. A warm run may benefit from the OS cache after a model process
+exits. A mapping can retain its address while physical pages are reclaimed.
+
+Distinguish file bytes, mapped address space, resident host bytes and device
+allocations. Include repacking and conversion buffers in peak memory.
+Do not mutate a shared checkpoint to make a benchmark easier.
+Chapter~\ref{ch:offloading} follows these transfers; Chapter
+\ref{app:reproducing} explains how to state warm and cold conditions
+without claiming a cache flush that was never performed.
+
+\section{Build a file whose every byte has a job}
+The worked offset example is not only a drawing. The format lesson constructs
+the file in memory and reads it back:
+\begin{verbatim}
+python3 code/foundations/lesson.py formats
+\end{verbatim}
+Its six F32 elements are the numbers one through six. The program creates
+a JSON descriptor for a tensor named \texttt{toy}, pads the header with
+spaces to 120 bytes, prefixes its eight-byte length and appends the six
+little-endian values. It does not save or modify any model file.
+
+Before running it, write down three predictions: the data origin is 128,
+the absolute interval ends at 152, and element $(1,2)$ is 6. The output
+confirms all three. The third prediction tests interpretation, not only
+arithmetic: a wrong origin or wrong element width can produce an in-bounds
+read of the wrong value.
+
+Open \texttt{tensor\_file} and \texttt{inspect\_tensor} in
+\texttt{code/foundations/lesson.py}. The inspector deliberately supports
+only this one-tensor fixture. It rejects another shape, another dtype,
+truncated data and unexplained trailing bytes. A small teaching parser
+with explicit limitations is easier to audit than a supposedly general
+loader whose untested branches accept arbitrary inputs.
+
+Notice the order of checks. It checks that the length field exists before
+reading it. It checks the declared header length against both a policy
+limit and the actual file length before parsing JSON. Only then does it
+read shape and interval metadata. Finally it checks the payload size before
+interpreting floats. Each step establishes the precondition of the next.
+
+\section{A shape is more than an element count}
+Suppose a projection expects four input features and three output
+features. The mathematical row-vector matrix has shape $[4,3]$.
+A library that stores one row per output may store the same map as
+$[3,4]$. Both contain twelve values. Reinterpreting one layout as the
+other does not transpose the values; it changes which values multiply
+which input features.
+
+Test the loader with an input whose coordinates are deliberately
+different, such as $[1,2,4,8]$. A row of identical inputs can hide a
+permutation. Compare the loaded projection to a hand-defined map before
+trying an entire model. The smaller boundary tells you whether the
+error lies in tensor interpretation or later computation.
+
+The same principle applies to fused projections. A checkpoint may store
+Q, K and V separately, or concatenate them along a declared axis.
+The engine must know where each region begins and how heads are ordered.
+Dividing the total element count by three is wrong for grouped-query
+attention when query width differs from key and value width.
+The model configuration and the tensor names jointly determine the split.
+
+An embedding table and an output matrix may be tied. In that case one
+underlying parameter array plays two roles. Duplicating it can waste
+memory; independently modifying one copy changes the model. Conversely,
+assuming a tie where the checkpoint stores distinct arrays substitutes
+different parameters. The loader is where that distinction becomes
+an executable ownership decision.
+
+\section{Read a quantized tensor as blocks, not small floats}
+A packed integer code does not have its own universal real value.
+Decoding usually needs a scale and sometimes a zero point or other
+metadata associated with its block. The shape describes the logical
+array after decoding; the byte interval describes the representation
+before decoding. These are different coordinate systems.
+
+For a hypothetical block of 32 four-bit codes and one 16-bit scale,
+the representation occupies 18 bytes. Two such blocks encode 64
+logical values in 36 bytes. Multiplying 64 by half a byte predicts
+only the 32-byte code payload and omits the scales. This is a teaching
+format, not a definition of any named GGUF quantization type.
+For a real type, use its exact block structure.
+
+Conversion also has a peak-memory cost. If a loader retains packed
+weights while creating a second, unpacked array, both can be live at
+once. A model that fits after conversion can fail during conversion.
+Write the lifetime of the source, temporary workspace and destination
+before computing the peak. Memory mapping does not automatically
+eliminate that overlap.
+
+\section{What counts as the same model?}
+A checksum answers whether bytes match the recorded artifact. It does
+not answer whether the runtime interpreted those bytes correctly.
+A useful acceptance sequence therefore has more than one level.
+First validate container structure. Then validate tensor names, shapes
+and encodings against the architecture. Next compare selected numerical
+operations. Finally run a known token sequence and compare logits under
+the intended tolerance.
+
+Only after the numerical path passes should a text-level test combine
+tokenization, templating, model evaluation, sampling and detokenization.
+If the combined test fails, retain the smaller tests so you can find
+which boundary broke. Looking only at plausible-looking generated text
+is a weak test: the wrong model configuration can still produce words.
+
+The same token IDs and weights do not guarantee the same output under
+a different sampler or stop policy. Conversely, a sampled string can
+change even when the model function is unchanged. Record the numerical
+model contract separately from the request's generation policy.
+That separation will matter again when caches are shared between requests.
+
+\section{A useful failure is a rejected file}
+Run the test suite, which truncates the fixture and gives it an absurd
+header length. Both must fail before tensor values are read. Then make
+a scratch variant that adds the data origin twice. Predict that element
+$(1,2)$ would be read beyond this tiny file rather than at byte 148.
+Bounds checks catch this mistake before a language-model test can.
+
+A production loader needs more than this fixture: the complete format
+rules, supported versions, duplicate-key handling, resource limits and
+tests against maintained implementations. The point of the exercise
+is to learn the questions a loader must answer, not to replace a
+well-tested format library with a few lines of demonstration code.
+You should now be able to draw the byte interval behind a tensor and
+explain why loading succeeds or fails before any kernel runs.
+\input{worked/f12-model-formats.tex}

@@ -1,0 +1,21 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[note,anchor=west] at (0,0.7) {Full-prefix recomputation};
+\node[note,anchor=west] at (7.2,0.7) {Incremental execution};
+\foreach \i/\t in {0/0,1/1,2/2} {
+ \node[cell,fill=BookPale] (full\i) at (\i*1.35,0) {\t};
+ \node[cell,fill=BookGreen] at (7.2+\i*1.35,0) {\t};
+}
+\node[block,text width=45mm] (full) at (1.35,-1.65) {Recompute all three rows\\through both layers};
+\node[block,text width=45mm] (cache) at (8.55,-1.65) {Reuse positioned K/V\\for positions 0, 1, 2};
+\draw[flow] (full1)--(full);
+\draw[flow] (8.55,-.45)--(cache);
+\node[block,text width=45mm,fill=BookGold] (new) at (8.55,-3.5)
+ {Selected ID 0\\not evaluated yet};
+\node[block,text width=45mm] (again) at (1.35,-3.5)
+ {Next call evaluates\\$[0,1,2,0]$};
+\draw[flow] (full)--node[left,font=\scriptsize]{choose}(again);
+\draw[flow] (cache)--node[right,font=\scriptsize]{choose}(new);
+\draw[flow] (new.south)--++(0,-.7)--node[below,font=\scriptsize]{evaluate at position 3}++(3.4,0)|-(cache.east);
+\node[note,text width=49mm,anchor=north] at (1.35,-4.4)
+ {No persistent state.\\Earlier work is repeated.};
+\end{tikzpicture}

@@ -1,0 +1,19 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[block,text width=28mm] (q) at (0,0) {Query\\$[1,0]$};
+\node[block,text width=39mm] (s) at (4.2,0) {Scaled dot products\\$[0,\log3]$};
+\node[block,text width=34mm,fill=BookGreen] (p) at (9.0,0) {Mixing weights\\$[1/4,3/4]$};
+\node[block,text width=39mm] (k) at (4.2,1.65)
+ {Keys\\$[0,0]$\\$[\sqrt{2}\log3,0]$};
+\draw[flow] (q)--(s);
+\draw[flow] (k)--(s);
+\draw[flow] (s)--(p);
+\node[block,text width=40mm,fill=BookGold] (v) at (4.2,-2.2)
+ {Values\\$[2,0]$ and $[0,4]$};
+\node[block,text width=34mm,fill=BookGreen] (y) at (9.0,-2.2)
+ {Output\\$[0.5,3]$};
+\draw[flow] (p)--node[right]{weight}(y);
+\draw[flow] (v)--(y);
+\node[note,text width=112mm,anchor=north west] at (-1.4,-3.3)
+ {At the first position, exclude the future key \emph{before} softmax.\\
+ One permitted value gives weight 1 and output $[2,0]$.};
+\end{tikzpicture}

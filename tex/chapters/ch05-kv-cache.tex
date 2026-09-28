@@ -6,18 +6,18 @@
 \chapter{The KV Cache: Inference's Central Data Structure}\label{ch:kv-cache}
 
 \begin{ChapterIntent}
-Every token a model generates attends to every token before it. Recomputing
-their keys and values at each step would make generation quadratic; caching
-them makes it linear, and turns the engine into a memory manager. This chapter
-derives what is cached and when, checks the formula for its size against the
-allocations a real engine makes --- from half a megabyte to a few tens of
-kilobytes per token, depending on the architecture --- proves on a small engine
-that a cache reproduces recomputation bit for bit, and measures what one wrong
-entry does. It then shows how the cache, not the weights, comes to dominate
-memory capacity at long context and large batch, and the bytes read per step at
-long context. Nearly every chapter in Part~\ref{part:serving} manages this one
-data structure.
+The small decoder already keeps keys and values for an evaluated prefix. We now count
+that state in a real model and follow its lifetime through a request. Caching saves
+repeated computation, but the retained bytes grow with history and compete with other
+requests.
 \end{ChapterIntent}
+
+\section*{Remember what the next query needs}
+For one layer and one token, point to the key vector and the value vector. Multiply
+their size by heads and layers before multiplying by tokens and requests. That order
+explains the cache formula. On your first reading, keep logical payload separate from
+reserved storage, and keep a selected token separate from an evaluated token. More
+elaborate cache policies are applications of these two distinctions.
 
 \OpeningSection{At 32K tokens the cache outweighs the model}
 
@@ -47,7 +47,7 @@ arrive, provided the weights, position convention and preceding history remain
 unchanged. The new query is different, so the old attention output is not the item to
 reuse. The cache boundary separates positions already evaluated from tokens that exist
 in the history but have not yet been processed. Drawing that boundary prevents
-off-by-one errors after sampling. Appendix A.7 distinguishes query, key and value;
+off-by-one errors after sampling. Chapter~\ref{app:qkv} distinguishes query, key and value;
 Chapter~\ref{ch:prefill-decode} explains when each is computed.
 }
 
@@ -169,7 +169,7 @@ thing it replaced.
 
 For each layer and each token, the cache holds that token's key vector for
 every key/value head --- after rotary position embedding has been applied
-(Appendix~\ref{app:rope}) --- and its value vector. Queries are not cached; each is
+(Chapter~\ref{app:rope}) --- and its value vector. Queries are not cached; each is
 used once, in the step that computes it.
 
 It is worth seeing why keys and values are \emph{enough}. Look back at the layer

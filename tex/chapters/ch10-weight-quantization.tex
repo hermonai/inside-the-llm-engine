@@ -6,18 +6,17 @@
 \chapter{Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants}\label{ch:weight-quantization}
 
 \begin{ChapterIntent}
-Batch-one decode reads every weight once per token, so storing weights in
-four bits instead of sixteen makes decode almost four times faster and lets a
-model four times larger fit. This chapter builds weight quantization from
-scales and groups upward: round-to-nearest and its failure, GPTQ's
-error-correcting updates, AWQ's protection of salient channels,
-weight--activation schemes such as SmoothQuant, and the K-quant formats of
-llama.cpp, taken apart byte by byte. It quantizes one real projection of a real
-model every way it describes and measures the error where it matters, in the
-layer's output. It then puts dequantization inside a kernel, where bandwidth
-savings can be lost to arithmetic, and shows how to measure what quantization
-costs in accuracy.
+A quantized weight is a code interpreted using a scale and possibly other metadata. We
+will connect the small encoding from Part I to real packed formats, then measure whether
+reduced storage saves time after conversion work and accuracy changes are included.
 \end{ChapterIntent}
+
+\section*{Store fewer bytes per weight}
+Begin with the scale, code and reconstructed value for one block. Count metadata before
+converting a four-bit label into bytes per parameter. Only then compare quantization
+methods and kernels. A smaller file need not run faster if the chosen hardware cannot
+consume its representation efficiently. Keep storage reduction, numerical error and
+measured speed as three separate outcomes.
 
 \OpeningSection{Fewer bits, more tokens}
 
@@ -65,8 +64,8 @@ point, and a grouping convention. Counting only code bits understates the storag
 scales and padding are present. Weight-only quantization does not imply that
 activations or accumulators have the same precision. Nor does small weight error
 guarantee small output error: the input determines which errors matter.
-Appendix~\ref{app:numerics} works through rounding and scale overhead;
-Appendix~\ref{app:formats} explains why the file's type is part of the contract.
+Chapter~\ref{app:numerics} works through rounding and scale overhead;
+Chapter~\ref{app:formats} explains why the file's type is part of the contract.
 }
 
 \NapkinSection{Napkin math: bits per weight to tokens per second}

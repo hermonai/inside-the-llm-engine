@@ -4,15 +4,17 @@
 
 - `check-structure.sh` — required files; `AUTHORING.md` under its 3,000-word
   cap; `docs/` holding only the plan and status; the chapter plan numbered in
-  sequence, at most 45 chapters, with identical titles in `docs/STRUCTURE.md`
+  sequence, 59 chapters, with identical titles in `docs/STRUCTURE.md`
   and `BOOK.md`; first-edition artifacts still present; and a guard that fails
   on IP addresses, credential paths, private keys or tokens in tracked files.
-- `check-textbook.py` — the book source: chapter and appendix files, figures,
-  worked problems, the executable request trace used by Chapter 14, and the
-  independent worked calculations.
+- `check-textbook.py` — 17 construction and 42 systems chapters under their
+  respective authoring contracts; native figures, worked problems, the
+  executable request trace (`ch14`, printed Chapter 31), independent worked
+  calculations and the standard-library Python foundation tests.
 - `check-foundations.py` — all 42 prerequisite bridges and 13 test cases
-  covering illustrative arithmetic, appendix substance and the corrected
-  Chapter 2 softmax figure; called by `check-textbook.py`, so CI runs it too.
+  covering illustrative arithmetic, the leading Part I learning path and the
+  corrected systems forward-pass softmax figure; called by `check-textbook.py`,
+  so CI runs it too.
 - `check-links.py` — repository-relative Markdown links. `archive/` mirrors
   original paths; links to an archived file resolve through that mirror, and an
   archived document's links resolve from its original directory.
@@ -32,6 +34,6 @@ These still run in CI; the material they check is frozen, not edited.
 - `check-tensor-visual-parity.py`, `check-linear-visual-parity.py`,
   `check-normalization-visual-parity.py`, `check-qkv-visual-parity.py`,
   `check-rope-visual-parity.py` — run the real `mini-engine` examples and
-  compare them with independent Python oracles (Appendix A's evidence).
+  compare them with independent Python oracles (Part I's construction evidence).
 
 Retired scripts are in `archive/scripts/`; see `archive/README.md`.

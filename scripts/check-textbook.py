@@ -1,15 +1,17 @@
 """Book source checks for the second edition (AUTHORING.md sections 3, 11, 12).
 
-- The main file's chapter inputs match docs/STRUCTURE.md: 42 chapters, in
-  order, with the same titles and a ch:<slug> label each.
-- Every chapter and new appendix declares its status on its first line.
-- Every chapter carries the eight-part anatomy, each part once and in order,
+- The main file's chapter inputs match docs/STRUCTURE.md in reading order.
+- Part I construction chapters have their own learning-outcome gates.
+- Every chapter declares its status on its first line.
+- Every systems chapter carries the eight-part anatomy, each part once and in order,
   with at least one mechanism section between the napkin math and the ledger.
-- Status gates: ZERO >= 1,500 prose words; FULL and VERIFIED >= 5,000 words,
+- Systems status gates: ZERO >= 1,500 prose words; FULL and VERIFIED >= 5,000 words,
   no draft markers, a filled constraint ledger and worked problems.
+- Construction FULL/VERIFIED gates: >= 1,500 words, developed sections,
+  native figure, executable learning route and worked problems.
 - Every referenced figure exists as native TikZ, and every figure file is used.
-- The request trace that Chapter 14 prints matches the real executable, and
-  the worked calculations of Chapter 14 and Appendix A are recomputed here.
+- The stable ch14 request trace matches the real executable, and the
+  construction worked calculations are recomputed here.
 - docs/STATUS.md's generated chapter table is current. Regenerate it with
   `python3 scripts/check-textbook.py --write-status` (or `make status`).
 """
@@ -61,8 +63,9 @@ def status_of(path):
 
 
 def planned_chapters():
-    rows = re.findall(r"^\| (\d+) \| ([^|]+?) \|", (ROOT/"docs/STRUCTURE.md").read_text(), re.M)
-    return [(int(n), title.strip()) for n, title in rows]
+    rows = re.findall(r"^\| (\d+) \| ([^|]+?) \| ([^|]+?) \|",
+                      (ROOT/"docs/STRUCTURE.md").read_text(), re.M)
+    return [(int(n), title.strip(), source.strip()) for n, title, source in rows]
 
 
 def check_common(path, text):
@@ -84,8 +87,8 @@ def check_chapter(number, title, path):
     heading, label = chapters[0]
     if plain_title(heading) != title:
         fail(f"{rel}: title {plain_title(heading)!r} differs from docs/STRUCTURE.md {title!r}")
-    if path.stem != f"ch{number:02d}-{label}":
-        fail(f"{rel}: file name must be ch{number:02d}-{label}.tex")
+    if not re.fullmatch(rf"ch\d\d-{re.escape(label)}", path.stem):
+        fail(f"{rel}: stable source ID must be chNN-{label}.tex")
     if text.count(r"\begin{ChapterIntent}") != 1:
         fail(f"{rel}: needs one ChapterIntent")
     positions = []
@@ -119,6 +122,32 @@ def check_chapter(number, title, path):
             "words": words, "todos": todos}
 
 
+def check_construction(number, title, path):
+    """A complete introductory lesson is not a compressed systems chapter."""
+    text = path.read_text()
+    check_common(path, text)
+    status = status_of(path)
+    headings = re.findall(r"\\chapter\{(.+?)\}", text)
+    if len(headings) != 1 or plain_title(headings[0]) != title:
+        fail(f"{path}: construction title differs from plan")
+    if not re.search(r"\\label\{(?:app|ch):[a-z0-9-]+\}", text):
+        fail(f"{path}: missing stable chapter label")
+    words = prose_words(text)
+    if status in ("FULL", "VERIFIED"):
+        if words < 1500:
+            fail(f"{path}: complete construction needs 1,500+ prose words, has {words}")
+        if any(marker in text for marker in DRAFT_MARKERS):
+            fail(f"{path}: complete construction has a draft marker")
+        if text.count(r"\section{") < 5 or r"\EngineFigure{" not in text:
+            fail(f"{path}: construction needs developed sections and a native figure")
+        if f"\\input{{worked/{path.stem}.tex}}" not in text:
+            fail(f"{path}: construction needs worked problems")
+        if not any(term in text for term in ("python3", "cargo", "lab-", "Labs")):
+            fail(f"{path}: construction needs an executable learning route")
+    return {"number": number, "title": title, "file": str(path.relative_to(ROOT)),
+            "status": status, "words": words, "todos": text.count(r"\todo{")}
+
+
 def worked_problem_count(path, text):
     count = 0
     for name in re.findall(r"\\input\{worked/([^}]+?)(?:\.tex)?\}", text):
@@ -135,15 +164,12 @@ def worked_problem_count(path, text):
     return count
 
 
-def status_table(rows, appendix_rows):
+def status_table(rows):
     lines = [STATUS_BEGIN,
-             "| # | Chapter | Status | Words | TODOs |",
-             "| ---: | --- | --- | ---: | ---: |"]
+             "| # | Chapter | Source ID | Status | Words | TODOs |",
+             "| ---: | --- | --- | --- | ---: | ---: |"]
     for row in rows:
-        lines.append(f"| {row['number']} | {row['title']} | {row['status']} | {row['words']:,} | {row['todos']} |")
-    lines += ["", "| Appendix | File | Status | Words |", "| --- | --- | --- | ---: |"]
-    for row in appendix_rows:
-        lines.append(f"| {row['name']} | `{row['file']}` | {row['status']} | {row['words']:,} |")
+        lines.append(f"| {row['number']} | {row['title']} | {Path(row['file']).stem} | {row['status']} | {row['words']:,} | {row['todos']} |")
     lines.append(STATUS_END)
     return "\n".join(lines)
 
@@ -215,50 +241,40 @@ def check_executable_and_calculations():
 def main():
     subprocess.run([sys.executable, str(ROOT/"scripts/check-foundations.py")],
                    check=True)
+    subprocess.run([sys.executable, "-m", "unittest", "discover", "-s",
+                    str(ROOT/"code/foundations"), "-p", "test_*.py"], check=True)
     write_status = "--write-status" in sys.argv[1:]
     main_file = (TEX/"inside-the-llm-engine.tex").read_text()
     assert "\\documentclass[11pt,oneside,openany]{book}" in main_file
-    inputs = re.findall(r"\\input\{((?:chapters|appendices)/[^}]+?)(?:\.tex)?\}", main_file)
-    chapter_inputs = [TEX/(i+".tex") for i in inputs if i.startswith("chapters/")]
-    appendix_inputs = [TEX/(i+".tex") for i in inputs if i.startswith("appendices/")]
-    for path in chapter_inputs + appendix_inputs:
+    inputs = re.findall(r"\\input\{((?:chapters|foundations)/[^}]+?)(?:\.tex)?\}", main_file)
+    chapter_inputs = [TEX/(i+".tex") for i in inputs if i != "foundations/introduction"]
+    introduction = TEX/"foundations/introduction.tex"
+    for path in chapter_inputs + [introduction]:
         if not path.is_file():
             fail(f"main file inputs missing {path.relative_to(ROOT)}")
     plan = planned_chapters()
     if len(plan) != len(chapter_inputs):
         fail(f"docs/STRUCTURE.md plans {len(plan)} chapters; the main file inputs {len(chapter_inputs)}")
-    if len(re.findall(r"\\part\{", main_file)) != 9:
-        fail("the main file must declare nine parts")
+    if len(re.findall(r"\\part\{", main_file)) != 10 or r"\appendix" in main_file:
+        fail("the main file must declare ten parts and no appendix detour")
+    if [p.parent.name for p in chapter_inputs[:17]] != ["foundations"] * 17:
+        fail("the seventeen construction chapters must lead the book")
+    if len(plan) != 59 or [row[0] for row in plan] != list(range(1,60)):
+        fail("expected the approved 59-chapter sequence")
 
-    rows = [check_chapter(n, title, path) for (n, title), path in zip(plan, chapter_inputs)]
+    rows = []
+    for (n, title, source), path in zip(plan, chapter_inputs):
+        if source != path.stem:
+            fail(f"planned source {source} differs from input {path.stem}")
+        check = check_construction if path.parent.name == "foundations" else check_chapter
+        rows.append(check(n, title, path))
 
-    appendix_rows = []
     worked_problems = 0
-    for path in appendix_inputs:
-        text = path.read_text()
-        check_common(path, text)
-        rel = path.relative_to(ROOT)
-        if re.match(r"a[1-9]-", path.name):
-            # First-edition chapters, lightly edited: one chapter, three problems.
-            if text.count("\\chapter{") != 1:
-                fail(f"{rel}: needs exactly one \\chapter")
-            status = "FIRST EDITION"
-            name = "A." + path.name[1]
-        else:
-            status = status_of(path)
-            name = "A (opener)" if path.name.startswith("a0-") else path.name[0].upper()
-            if not path.name.startswith("a0-") and not re.search(r"\\chapter\{.+?\}\\label\{app:[a-z-]+\}", text):
-                fail(f"{rel}: needs \\chapter{{...}}\\label{{app:<name>}}")
-            if text.count(r"\begin{ChapterIntent}") != 1:
-                fail(f"{rel}: needs one ChapterIntent")
-        worked_problems += worked_problem_count(path, text)
-        appendix_rows.append({"name": name, "file": str(rel), "status": status,
-                              "words": prose_words(text)})
     for path in chapter_inputs:
         worked_problems += worked_problem_count(path, path.read_text())
 
     used = set()
-    for path in chapter_inputs + appendix_inputs:
+    for path in chapter_inputs + [introduction]:
         for figure in re.findall(r"\\EngineFigure\{([^}]+)\}", path.read_text()):
             source = TEX/"figures"/(figure+".tex")
             if not source.is_file():
@@ -275,7 +291,7 @@ def main():
     builder = (ROOT/"scripts/build-textbook.py").read_text()
     assert '"pandoc"' not in builder and "book-print.md" not in builder
 
-    table = status_table(rows, appendix_rows)
+    table = status_table(rows)
     status_path = ROOT/"docs/STATUS.md"
     status_text = status_path.read_text()
     pattern = re.compile(re.escape(STATUS_BEGIN) + r".*?" + re.escape(STATUS_END), re.S)
@@ -289,7 +305,8 @@ def main():
     results = check_executable_and_calculations()
     by_status = {s: sum(r["status"] == s for r in rows) for s in STATUSES}
     record = {"chapters": len(rows), "by_status": by_status,
-              "appendix_files": len(appendix_inputs), "native_figures": len(used),
+              "construction_chapters": 17, "systems_chapters": 42,
+              "appendix_files": 0, "native_figures": len(used),
               "worked_problems": worked_problems,
               "chapter_words": sum(r["words"] for r in rows),
               "todos": sum(r["todos"] for r in rows), "cli_cases": results,

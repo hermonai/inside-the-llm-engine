@@ -7,18 +7,18 @@
 \chapter{Napkin Math: Latency, Throughput and Cost per Token}\label{ch:napkin-math}
 
 \begin{ChapterIntent}
-The previous chapters give three numbers for any model on any machine: bytes
-per token, FLOPs per token and cache bytes per token. This chapter turns them
-into a five-minute model of an inference deployment --- step time, the batch
-size at which decode stops being bandwidth-bound, tokens per second per user
-and in aggregate, time to first token, memory headroom and dollars per million
-tokens at a latency target. It shows how to calibrate the model's two
-efficiencies on the reader's own machine, checks its predictions against
-measurements on the laptop, reconstructs a published data-center deployment
-from its configuration, and catalogues where napkin math goes wrong: kernel
-efficiency, launch and scheduling overhead, communication, and real workload
-mixes.
+We have separate models for weight traffic, arithmetic and KV storage. This chapter
+combines them to estimate step time, request capacity, throughput and cost. The aim is
+not a perfectly precise answer; it is a prediction with visible assumptions that a
+measurement can test.
 \end{ChapterIntent}
+
+\section*{Combine the counts into a prediction}
+Begin with one model, one workload and one machine. Write their units before entering
+numbers. A capacity calculation answers what fits; a time bound answers how fast
+unavoidable work could finish. Neither alone predicts a service's tail latency. Work the
+first example end to end, then use the larger tables as comparisons rather than as a
+list of numbers to memorize.
 
 \OpeningSection{Predicting a benchmark before running it}
 
@@ -54,7 +54,7 @@ from bytes transferred per step, and separate per-request latency from aggregate
 tokens per second. A service can improve the second while worsening the first. Use the
 resource equation to identify a lower bound, then add the queueing and software costs
 it omits; do not silently call a lower bound a prediction. Decimal GB and binary GiB
-differ, as Appendix~\ref{app:notation} explains. Before using the chapter's equations,
+differ, as Chapter~\ref{app:notation} explains. Before using the chapter's equations,
 write down batch size, context length, precision and the boundary at which time is
 measured.
 }

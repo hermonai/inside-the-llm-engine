@@ -1,0 +1,217 @@
+% status: FULL
+\chapter{Reading Shapes, Bytes and Performance Bounds}\label{app:notation}
+\begin{ChapterIntent}
+Equations are easier to read when every symbol has a job. This chapter
+turns the notation used so far into a practical method: identify the
+object, write its shape, attach units, then calculate. We will use that
+method to count cache bytes and estimate a step's minimum time.
+\end{ChapterIntent}
+
+\section{Dimensions and rates}
+\begin{longtable}{@{}p{.19\linewidth}p{.48\linewidth}p{.24\linewidth}@{}}
+\toprule Symbol & Meaning & Unit\\\midrule
+$L,d,d_{\rm ff}$ & Layers, model width, feed-forward width & Counts\\
+$H_q,H_{kv},d_h$ & Query heads, KV heads, head width & Counts\\
+$V$ & Vocabulary size & Vocabulary entries\\
+$B,S$ & Concurrent sequences; context length & Sequences; tokens\\
+$P,P_{\rm act}$ & Total and active parameters & Parameters\\
+$b_w,b_{kv}$ & Effective weight and cache element size & Bytes/element\\
+$q_w=8b_w$ & Effective weight precision & Bits/weight\\
+$\beta$ & Bandwidth across a named boundary & Bytes/s\\
+$\pi$ & Rate for a named precision and operation & FLOP/s\\
+$I$ & Intensity at that boundary & FLOP/byte\\
+\bottomrule
+\end{longtable}
+Four-bit codes have half a byte of payload per element, but effective
+$b_w$ includes relevant metadata and mixed types. The early construction writes
+$V_{\rm vocab}$ for vocabulary size to distinguish it from the value
+matrix $\mathbf{V}$. A locally defined paging block size is not batch $B$.
+
+\section{Shape conventions}
+With row-vector activations,
+$\mathbf{X}\in\mathbb{R}^{M\times d}$ and
+$\mathbf{W}\in\mathbb{R}^{d\times m}$ produce
+$\mathbf{XW}\in\mathbb{R}^{M\times m}$. Here $M$ counts work rows, not
+necessarily requests: a packed batch may contain several prompt positions
+from one request. A bias broadcasts over rows. A transpose changes
+orientation; strides describe storage.
+
+For one attention head with $T_q$ query and $T_k$ key positions,
+\[
+ \mathbf{Q}\in\mathbb{R}^{T_q\times d_h},\quad
+ \mathbf{K},\mathbf{V}\in\mathbb{R}^{T_k\times d_h},\quad
+ \mathbf{QK}^{\mathsf T}\in\mathbb{R}^{T_q\times T_k}.
+\]
+Value width is chosen equal to head width here; architectures can differ.
+Batch and head dimensions can be explicit or packed. State the kernel's
+layout instead of assuming all tensors are contiguous.
+
+\section{A complete cache unit check}
+Take an illustrative two-layer model, two KV heads per layer, head width
+four and two bytes per cached element. Keys and values together cost
+\[
+ c_{kv}=2LH_{kv}d_hb_{kv}
+       =2\cdot2\cdot2\cdot4\cdot2=64\text{ bytes/token}.
+\]
+For three requests with five cached tokens each, logical payload is
+$3\cdot5\cdot64=960$ bytes. It excludes rounding, tables and workspace.
+If blocks hold four tokens, each request needs two blocks, reserving
+$3\cdot2\cdot4\cdot64=1536$ bytes. The difference, 576 bytes, is internal
+fragmentation, not additional model state.
+
+Zero-based position 5 divided by block size 4 gives quotient and remainder
+$(1,1)$. A block table $[7,2]$ selects physical block 2 and token offset 1.
+Logical order need not follow physical addresses. Chapter
+\ref{ch:paged-kv} builds the translation.
+
+\section{Units and bounds}
+GB means $10^9$ bytes and GiB means $2^{30}$ bytes. GB/s is not Gbit/s.
+For an illustrative step with $D=2\cdot10^9$ bytes,
+$F=8\cdot10^9$ FLOPs, $\beta=100\cdot10^9$ bytes/s and
+$\pi=10^{12}$ FLOP/s, an ideal overlapped lower bound is
+\[
+ t_{\rm step}\geq\max(D/\beta,F/\pi)
+              =\max(20,8)\text{ ms}=20\text{ ms}.
+\]
+Intensity is 4 FLOP/byte; ridge intensity is $\pi/\beta=10$ FLOP/byte.
+Four useful output tokens per step imply a ceiling of 200 output tokens/s,
+not a measured rate. Additional traffic, launch cost and imperfect overlap
+make the actual result slower when the counted work is unavoidable.
+
+TTFT starts at a declared boundary and ends at the first delivered token.
+Inter-token latency measures gaps between delivered tokens. Mean time per
+output token commonly excludes the first-token interval and is undefined
+for a one-token response under that convention. Chapter
+\ref{app:reproducing} gives explicit timestamps.
+
+\section{Read an equation aloud}
+Start with $\mathbf y=\mathbf x\mathbf W$. Read it as: one row of input
+features is transformed into one row of output features by a matrix.
+Then write the shapes. If $\mathbf x$ has four entries and
+$\mathbf W$ has four rows and three columns, $\mathbf y$ has three
+entries. The four input entries are the dimension being reduced.
+
+The component form exposes the calculation:
+\[
+ y_j=\sum_{i=0}^{3}x_iW_{ij},\qquad j\in\{0,1,2\}.
+\]
+The index $i$ disappears because it is summed over. The index $j$
+remains because it identifies each output coordinate. This is a
+practical way to catch a transpose mistake before running code.
+
+Now stack five input rows into $\mathbf X\in\mathbb R^{5\times4}$.
+The result has shape $5\times3$. We reused the same transformation
+five times. There are still twelve matrix parameters, not sixty.
+Parameters belong to the model; rows belong to the current work.
+Confusing those counts leads to incorrect memory estimates.
+
+\section{A tensor axis needs a meaning}
+An array of shape $[2,3,4]$ contains 24 values, but that fact alone
+does not tell us what it represents. The axes might mean batch,
+sequence and features, or sequence, heads and head width. An operator
+can accept the same physical shape and apply a different computation
+if the semantic axes are wrong.
+
+Write the axis names beside the shape when designing an interface.
+For attention, distinguish query positions from key positions. During
+full prompt evaluation they may have the same count. During ordinary
+incremental decode there is one new query position but many key
+positions. Reusing a single ambiguous sequence-length variable can
+hide that difference.
+
+Shape also does not specify layout. Strides tell us how coordinate
+changes map to addresses. A transpose can exchange logical axes
+without rearranging storage. Chapter~\ref{app:tensors} established
+that distinction; the same discipline applies to a GPU kernel's
+layout contract.
+
+\section{Count one object before multiplying by the fleet}
+The cache equation is easiest to derive one factor at a time.
+One layer stores keys and values, giving a factor of two. Each has
+$H_{kv}$ heads, each head has $d_h$ elements, and each element uses
+$b_{kv}$ bytes. Multiplying by $L$ layers gives bytes for one
+evaluated token in one request.
+
+Only then multiply by the number of cached tokens across requests.
+If lengths differ, use $\sum_r S_r$, not the maximum length times
+request count unless you explicitly mean a reservation. The logical
+payload and the allocated capacity can be different even before
+workspace and allocator metadata are included.
+
+\EngineFigure{foundation-cache-accounting}{Three illustrative requests
+each need five token slots. With blocks of four, each reserves eight
+slots: five used and three unused. The same model state costs 960
+logical bytes or 1536 reserved bytes when each token uses 64 bytes.}
+{fig:foundation-cache-accounting}
+
+The figure's unused slots are internal fragmentation. They do not
+contain additional context and do not improve the answer. Smaller
+blocks can reduce this waste while increasing block-table entries
+and management work. The paged-cache chapter will measure that trade;
+here the diagram makes the two byte counts visible.
+
+Logical position and physical placement are another pair of distinct
+coordinates. Position five is the sixth token. With blocks of four,
+it lies in logical block one at offset one. A block table translates
+that logical block to whichever physical block the allocator supplied.
+Never use physical block order as a position for RoPE.
+
+\section{Turn a traffic count into a time bound}
+Suppose an operation must read two billion bytes from a named memory
+interface. At an achieved ceiling of one hundred billion bytes per
+second, those reads alone need at least 0.02 seconds. Units cancel:
+bytes divided by bytes per second gives seconds.
+
+If the same operation needs eight billion FLOPs on an arithmetic path
+capable of one trillion FLOPs per second, arithmetic alone needs at
+least 0.008 seconds. With ideal overlap, the larger bound dominates.
+Adding the two gives a serial model; taking the maximum gives an
+ideal-overlap lower bound. They describe different scheduling assumptions.
+
+Neither bound includes every cost automatically. Extra reads, writes,
+launches, dependencies and queueing must be counted or acknowledged.
+Do not replace a measured time by the bound and call the result a
+benchmark. A model is useful because it makes a prediction that an
+experiment can challenge.
+
+Arithmetic intensity divides work by traffic at the same boundary.
+Eight billion FLOPs divided by two billion bytes gives four FLOP
+per byte. If a tile reuses values from local storage, traffic at the
+external-memory boundary can fall even though the arithmetic count
+stays fixed. Intensity is therefore not a property of the equation
+alone; it also depends on how and where it is evaluated.
+
+\section{A rate must name its population}
+A batch may produce four output tokens in a 20 ms step. Its aggregate
+rate is 200 tokens per second. If those tokens belong to four
+independent requests, each request advances by one token in that
+step, or 50 tokens per second while the pattern persists.
+The aggregate rate is not what one user sees.
+
+Likewise, time per output token is not the same as time to first
+token. Prompt processing, queueing and setup contribute differently
+to those quantities. Write the start and end events before computing
+a rate or an average. The next chapter supplies an explicit trace
+and asks which population each statistic summarizes.
+
+Run the arithmetic checks:
+\begin{verbatim}
+python3 code/foundations/lesson.py units
+\end{verbatim}
+The output includes 64 bytes per cached token, 960 logical bytes,
+1536 reserved bytes and a 20 ms lower bound. These are derived from
+illustrative inputs. They are deliberately small enough to recompute
+without trusting the program.
+
+\section{Use notation as a debugging tool}
+Before accepting an equation, ask four questions. What objects are
+being counted? Which axes remain after each operation? What units
+cancel? Which assumptions make an equality, approximation or bound
+valid? A failed answer usually identifies a missing definition or
+a wrong model before it becomes a wrong implementation.
+
+The symbol table is a reference, not a vocabulary test. Return to
+it when a later chapter combines weights, KV state and concurrent
+requests. The purpose is to make the argument easier to inspect,
+not to compress explanations into unexplained letters.
+\input{worked/f16-notation.tex}

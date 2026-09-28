@@ -1,0 +1,17 @@
+\section{Worked problems}
+\subsection*{1. Rounding a tie}
+\textbf{Problem.} With scale $0.5$, quantize 1.25 using ties-to-even.
+\textbf{Solution.} The unrounded code is 2.5. The even code is 2,
+which reconstructs to 1.0. Ties-away-from-zero would instead produce 1.5.
+\subsection*{2. Preserve the winner}
+\textbf{Problem.} The top-two logit margin is 0.03 and every logit changes
+by at most 0.01. Can the winner swap?
+\textbf{Solution.} No. The margin can shrink by at most 0.02 and remains
+positive. At a margin of exactly 0.02 a tie could occur, so the strict
+inequality matters.
+\subsection*{3. Distinguish two errors}
+\textbf{Problem.} Why does the half-step bound not cover the input 10
+with scale 0.5 and codes limited to $[-7,7]$?
+\textbf{Solution.} The nearest unbounded code would be 20, but clipping
+forces code 7 and reconstruction 3.5. The 6.5 error comes mainly from
+clipping, not from rounding to a neighbouring representable code.

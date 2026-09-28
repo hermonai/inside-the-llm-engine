@@ -7,18 +7,18 @@
 \chapter{Matrix Multiplication on Real Hardware}\label{ch:matmul-hardware}
 
 \begin{ChapterIntent}
-The same multiply--adds can run forty times faster or slower in the same
-library on the same GPU, and a thousand times across the ladder from scalar
-loops to matrix units, depending on how they are ordered. This chapter follows
-matrix multiplication from the scalar loops of Appendix~A onto real hardware,
-climbing the ladder rung by rung in a lab on the reader's own CPU: loop order,
-cache blocks, register tiles, threads. It then moves to the GPU --- tiles that
-live in shared memory, tensor cores that multiply small matrices per
-instruction, Hopper's asynchronous warpgroup MMA and Blackwell's tensor memory
---- and shows why the shape of a product, especially the skinny products of
-decode, decides which roof binds and how much of the machine a kernel can use,
-and when split-K or a specialized matrix--vector kernel beats a general GEMM.
+The scalar matrix loops in Part I were correct. Real hardware rewards a different
+arrangement of the same arithmetic: keep useful values close and reuse them. We will
+follow a tile through registers and shared storage, then measure why different matrix
+shapes need different implementations.
 \end{ChapterIntent}
+
+\section*{Reuse one weight across several products}
+Draw four input rows that all multiply the same weight row. Loading one weight and using
+it four times saves movement without changing any dot product. A tile applies that idea
+to a larger region. Its size is limited by local storage and available parallel work.
+Start with that reuse picture; specialized matrix instructions and dispatch thresholds
+explain how particular machines realize it.
 
 \OpeningSection{Same FLOPs, forty times apart}
 
@@ -62,8 +62,8 @@ Splitting output rows or columns gives independent results; splitting the reduct
 dimension creates partial sums that must be combined. A tile is a small rectangular
 region assigned to a cooperating group of workers. Keeping its operands nearby can
 reduce repeated transfers, but consumes local storage and limits how many groups can
-run together. More workers therefore need not mean more throughput. Appendix A.5
-derives the scalar loop; Appendices~\ref{app:gpu} and~\ref{app:cpu} connect those
+run together. More workers therefore need not mean more throughput. Chapter~\ref{app:matmul}
+derives the scalar loop; Chapters~\ref{app:gpu} and~\ref{app:cpu} connect those
 loops to GPU and CPU storage.
 }
 
@@ -104,7 +104,7 @@ the scarcest capacity on the chip.
 
 \section{From loops to tiles, measured}
 
-Appendix~\ref{app:matmul} builds the product as three nested loops. The lab of
+Chapter~\ref{app:matmul} builds the product as three nested loops. The lab of
 this chapter takes them up the first five rungs of the ladder on the M1's CPU,
 each rung computing the same multiply--adds in a different order, each checked
 against a 64-bit product before it is timed. Figure~\ref{fig:ch07-ladder}
@@ -169,13 +169,13 @@ A well-written kernel stages each operand tile down this hierarchy once and
 reuses it as many times as the output tile allows. The CPU lab has the same
 shape at smaller scale: the 12~MiB shared second-level cache, the 128~KiB
 first-level data cache of each performance core, and the vector registers that
-hold the $4 \times 16$ tile. Appendix~\ref{app:gpu} gives the numbers for each
+hold the $4 \times 16$ tile. Chapter~\ref{app:gpu} gives the numbers for each
 GPU generation.
 
 \EngineFigure{ch06-hardware}{The same tiled product on two kinds of hardware:
 vector lanes of one CPU core working through a tile, and a GPU's cooperating
 thread groups each owning part of an output tile. First drawn for
-Appendix~\ref{app:matmul}, where the book's scalar kernels stop short of
+Chapter~\ref{app:matmul}, where the book's scalar kernels stop short of
 either.}{fig:ch07-hardware}
 
 \section{Tensor cores: matrix units}

@@ -1,0 +1,237 @@
+% status: FULL
+\chapter{Reproducing the Book's Measurements}\label{app:reproducing}
+\begin{ChapterIntent}
+Reproduction executes the stated experiment and compares observations;
+it does not demand identical speed from different hardware. This chapter
+routes readers to canonical evidence rather than copying raw logs.
+The foundational arithmetic runs without a model download.
+\end{ChapterIntent}
+
+\section{Begin with a question that can be wrong}
+Suppose you believe caching should make the decoder faster. That
+sentence leaves several questions open. Faster for which prompt
+length? Does the timer include setup? Are the cached and uncached
+paths producing equivalent logits? How many tokens are generated?
+An experiment becomes useful when those questions have answers.
+
+For the Part I decoder, first test the semantic claim: at each
+prefix, cached and full-prefix execution produce matching logits.
+Only then ask the performance question. This ordering prevents an
+incorrect shortcut from winning a benchmark by doing less than the
+required computation.
+
+A good record states the prediction before the result. For example:
+as the prefix grows, reusing earlier layer state should avoid
+increasing amounts of recomputation. That prediction can fail to
+produce a practical speedup if bookkeeping overhead dominates at
+tiny sizes. Keeping the negative result teaches something about
+the implementation and workload.
+
+\section{State the hypothesis}
+Batching reuses weights is a mechanism claim. A batch improves goodput
+at a latency target is a workload claim requiring arrivals, lengths and
+an acceptance rule. An experiment should be able to falsify the latter,
+not merely print an attractive throughput.
+
+Measured numbers name hardware, software revision, model bytes, precision,
+workload, warm-up, repetitions and statistic. Derived numbers name inputs
+and assumptions. Illustrative numbers teach without claiming a device
+result. A vendor peak stays a specification when inserted into a formula.
+
+\section{An auditable timestamp trace}
+Consider an illustrative request with times in milliseconds from intended
+arrival: client send at 3, admission at 7, first delivered token at 17,
+later tokens at 25 and 40, terminal event at 44.
+TTFT from send is $17-3=14$ ms; from intended arrival it is 17 ms.
+The first definition excludes 3 ms of client queueing.
+
+Inter-token gaps are 8 and 15 ms. Mean time per output token excluding
+the first is $(40-17)/(3-1)=11.5$ ms.
+Terminal latency from send is $44-3=41$ ms. Using terminal time in the
+token-gap formula would charge terminal handling to decode. Neither clock
+is wrong; an unnamed boundary is wrong. A one-token response has no
+inter-token sample under this convention.
+
+The percentile of pooled gaps need not equal the percentile of per-request
+mean gaps. State the population. Excluding failed or timed-out requests
+can improve the reported tail while the service deteriorates.
+Report errors and useful completed output alongside latency.
+
+\section{Draw the clock before calculating latency}
+The illustrative trace earlier names seven different events. Put them
+on one line before reducing them to a statistic.
+\EngineFigure{foundation-measurement-clock}{Illustrative client and
+request timestamps in milliseconds. TTFT from send is 14 ms, while
+the two delivered-token gaps are 8 and 15 ms. The terminal event
+occurs after the last token and is not another token arrival.}
+{fig:foundation-measurement-clock}
+
+The intended arrival at zero expresses the workload schedule.
+The actual send at three reveals a client-side delay. Admission at
+seven describes a server boundary. The first token at seventeen
+describes an observed delivery. These timestamps should not be
+substituted for one another because they happen to be close in a
+particular run.
+
+Run the trace arithmetic:
+\begin{verbatim}
+python3 code/foundations/lesson.py measurement
+\end{verbatim}
+The program reports TTFT 14 ms, gaps 8 and 15 ms, mean gap 11.5 ms
+and terminal latency 41 ms. Now deliberately use the terminal event
+as the last token: $(44-17)/2=13.5$ ms. The arithmetic is valid,
+but it answers a different question and mislabels the result if
+reported as mean delivered-token gap.
+
+Avoid subtracting timestamps from unsynchronized machines as though
+they share one clock. End-to-end duration can be measured on the
+client's monotonic clock. Internal stage durations can be measured
+within their own clock domain. Combining them requires an explicit
+clock and synchronization method.
+
+\section{One run is an observation, not a distribution}
+Repeated runs reveal variation from scheduling, caches, temperature,
+background work and the workload itself. Report a central value and
+a measure of spread appropriate to the question. Keep the raw
+observations so another reader can recompute the summary.
+
+For the illustrative times $[9,10,10,11,60]$ ms, the median is 10 ms
+and the mean is 20 ms. The slow run is part of the data. Removing it
+because it makes the chart unattractive changes the claim. If an
+external interruption invalidated a run, state the exclusion rule
+and retain the excluded observation with its reason.
+
+Do not infer a reliable extreme-tail percentile from a handful of
+samples. Percentile conventions also differ in interpolation and
+rounding. State the method when exact reproduction matters. For a
+service, retain failures and timeouts in the workload accounting;
+otherwise the system can appear faster by failing its slowest requests.
+
+\section{Warm means something specific}
+A process can be new while the operating system still holds its
+checkpoint pages in memory. A model can be loaded while its kernels
+are not yet compiled. A kernel can be compiled while a particular
+graph shape has not been captured. These are different warm states.
+
+Describe which work has already happened before starting the timer.
+For an isolated kernel experiment, preallocated buffers and compiled
+kernels may be appropriate. For startup latency, excluding them
+would remove the very cost being studied.
+
+Do not flush shared caches, change system protections or download
+large checkpoints merely to make an experiment look more controlled.
+Use the available environment, document its limits, and separate
+the question you can answer from the one that needs another setup.
+A reproducible limitation is better evidence than an undocumented
+intervention.
+
+\section{A load generator can change the workload}
+In a closed-loop test, a client sends new work only after earlier work
+finishes. A slow service therefore receives fewer new requests.
+In an open-loop test, arrivals follow an external schedule, so a
+slowdown can build a queue. Both are useful, but they model different
+users and produce different latency distributions.
+
+The load generator can also fall behind. Record intended arrival,
+actual send and observed completion so that client delay is visible.
+If the client stops creating work during a server stall, measuring
+only sent requests can hide the waiting that a real arrival stream
+would experience.
+
+For the same reason, report both throughput and useful completed
+work under a latency target. A larger batch can raise aggregate
+tokens per second while making each user wait longer. The systems
+chapters will call useful work meeting the target \emph{goodput}.
+The definition includes the acceptance rule; it is not another name
+for the largest throughput number on a chart.
+
+\section{Control arrivals and machine state}
+A closed-loop client sends its next request after a response. An open-loop
+client schedules arrivals independently. During a stall the first reduces
+load, while the second can build a queue. Capture intended arrival and
+actual send if the client itself can bottleneck. Quietly ceasing arrivals
+during overload tests a different workload.
+
+Compilation, graph capture, caches, thermal limits and competing work
+change results. Separate warm-up, repeat runs and report spread as well
+as a central statistic. Do not remove outliers without a stated rule and
+reason. A cold process does not establish a cold OS file cache.
+
+Preserve negative outcomes: a slower optimization or failed oracle is
+evidence. Reproduction and layout inspection do not promote a chapter to
+VERIFIED; that additionally requires independent technical review.
+
+\section{Leave a record another reader can follow}
+A compact record should let someone reconstruct the experiment
+without guessing. Include the code revision, model identity,
+hardware and software versions, command, input construction,
+timer boundaries, warm-up, repetitions, summary method and raw
+outputs. Separate facts you measured from specifications and
+derived estimates used to interpret them.
+
+When a command has several modes, record the arguments actually
+used. A source file containing a GPU variant does not prove the
+reported run used it. Similarly, a passing unit test does not prove
+a production request reaches the tested code path.
+
+Preserve the result when an optimization loses. Explain the initial
+hypothesis, the changed variable and the observed outcome. That
+record can be more valuable than a successful benchmark because it
+shows where an apparently sensible cost model was incomplete.
+
+\section{One home for each kind of evidence}
+\begin{longtable}{@{}p{.28\linewidth}p{.63\linewidth}@{}}
+\toprule Material & Canonical location and purpose\\\midrule
+\endhead
+Systems deepening & \texttt{research/measurements/2026-09-26-m1-pass3.md};
+sections use stable source IDs, not the new printed numbering\\
+Part experiments & Dated \texttt{m1-part2} through \texttt{m1-part8} records
+in \texttt{research/measurements}; retain their limitations\\
+Model byte accounting & \texttt{2026-09-23-gguf-tensor-bytes.md}
+in the same directory\\
+Original construction & \texttt{research/benchmarks} and \texttt{labs};
+first-edition lab numbers remain unchanged\\
+Current small labs & \texttt{code/labs/chNN-*}; README instructions for
+prediction, execution, explanation and deliberate breakage\\
+Primary-source facts & \texttt{research/FRONTIER.md}; source, check date
+and implementation maturity\\
+\bottomrule
+\end{longtable}
+
+The M1 records cover CPU and Metal experiments, not independent measurements
+of every accelerator mentioned. Read each record's load and hardware notes.
+An industrial engine's published result is not a locally reproduced result.
+A progress transcript is not a substitute for a committed measurement
+record. Lab directory numbers are stable identifiers, not printed chapter
+numbers in the restructured edition.
+
+\Needspace{10\baselineskip}
+\section{Run cheap checks before expensive measurements}
+From the repository root:
+\begin{verbatim}
+python3 scripts/check-foundations.py
+make textbook-check
+(cd code/mini-engine && cargo test --workspace)
+\end{verbatim}
+These check the worked examples, book contracts and teaching engine.
+They do not establish benchmark performance. For a chapter experiment,
+read its README and record, inspect the arguments, run the oracle, then
+time the workload. Keep raw stdout and stderr including failures.
+Record model content hashes and source revision, not only mutable aliases.
+
+Do not download additional checkpoints, purge shared caches or disable
+system protections as an unannounced part of reproduction. State any
+unavailable hardware or unperformed experiment explicitly.
+
+\section{From building a model to explaining an engine}
+Part I has now connected the model's computation to its numerical
+representation, hardware execution and evidence. You can follow
+a token through the decoder, count its state, read its stored
+weights and design a test of a claimed improvement.
+
+The next part asks why a correct decoder is not yet an efficient
+inference engine. Its measurements will be easier to read now:
+every byte, operation and timestamp belongs to an object already
+introduced. Keep the small model and its tests nearby. They remain
+the reference when the implementation becomes more sophisticated.
+\input{worked/f17-measurements.tex}

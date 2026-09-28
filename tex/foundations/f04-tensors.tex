@@ -1,3 +1,4 @@
+% status: FULL
 % Authoritative LaTeX; edit this file, not the historical Markdown.
 \chapter{Tensors Without Magic}\label{chapter-5-tensors-without-magic}\label{app:tensors}
 \Appref{sampling} ended with a complete loop. Text became token IDs. A tiny
@@ -16,7 +17,7 @@ could still compute the wrong answer.
 
 This chapter gives those bytes a contract. It does not build a tensor
 framework or perform matrix multiplication. It builds the smallest
-substrate on which the rest of Appendix~A can reason honestly about memory.
+substrate on which the rest of Chapter~A can reason honestly about memory.
 
 \begin{quote}
 \textbf{FIRST PRINCIPLE} Mathematics tells us \emph{what} value we need.
@@ -1128,7 +1129,9 @@ mutated and the source is proven unchanged. Compile-time borrow failures
 belong in Lab 21 rather than normal test sources, because committed test
 targets must compile.
 
-\textbf{Regression tests} retain every earlier contract (\Chref{request-lifecycle} and Appendices A.1--A.3): tokenizer
+\textbf{Regression tests} retain the token and sampling contracts from
+Chapters~\ref{app:tokens}--\ref{app:sampling}, and the existing runtime contract
+explained later in \Chref{request-lifecycle}: tokenizer
 boundaries, strict UTF-8 streaming, full numerical logits, sampling
 distributions, seeded state, token feedback, cancellation, EOS, budgets,
 failure paths, and exactly one terminal outcome. The tensor refactor is
@@ -1533,4 +1536,4 @@ The Rust Project.
 \end{itemize}
 
 
-\input{worked/a4-tensors.tex}
+\input{worked/f04-tensors.tex}

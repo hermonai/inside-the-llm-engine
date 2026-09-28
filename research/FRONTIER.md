@@ -435,3 +435,22 @@ Not yet read at a primary source; do not cite until they are.
   its backend order at `bcdacfc` on 2026-09-27). FlashAttention-4's forward-pass
   numbers beyond the abstract were read on 2026-09-27 (update row); Chapter 25's
   uses remain to check.
+
+## Foundations-first teaching pass (checked 2026-09-28)
+
+The new Part I chapters develop durable mechanisms, not new state-of-the-art
+performance claims. Existing dated systems entries retain their
+historical chapter IDs; printed numbers are mapped in `docs/STRUCTURE.md`.
+
+| Topic | Scope checked | Primary source | Maturity | New printed chapter |
+| --- | --- | --- | --- | --- |
+| Scaled dot-product attention | Score scaling, row softmax, weighted values; new hand examples are independently derived | [Vaswani et al.](https://arxiv.org/abs/1706.03762) | established construction | 9 |
+| Gated FFN | SwiGLU's gated projection form; no new quality or speed claim | [Shazeer](https://arxiv.org/abs/2002.05202) | established construction | 10 |
+| CUDA programming model | Threads, blocks, cooperative shared storage and the distinction between logical work and residency | [NVIDIA programming model](https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html) | documented programming model, platform-specific | 15 |
+| safetensors | Header-relative offsets, typed shapes and payload interpretation | [Format specification](https://github.com/safetensors/safetensors/blob/main/README.md) | shipped format | 12 |
+
+The small Python decoder uses deterministic illustrative weights, not a
+trained checkpoint. Its full-prefix/cached comparisons test state semantics;
+both paths share scalar primitives, which have separate hand-computed tests.
+The format parser supports only its one-tensor F32 fixture. GPU, SIMD and
+timestamp lesson outputs are derived arithmetic, not hardware benchmarks.

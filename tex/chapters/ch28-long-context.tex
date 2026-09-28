@@ -50,7 +50,7 @@ A model's supported position range, an engine's allocation limit and a task's re
 retrieval range are different quantities. Extending positions or allocating a larger
 cache does not prove the model can use distant evidence. A sliding window changes
 which historical positions are visible; a sparse selector chooses a subset by another
-rule. Both differ from storing all positions in fewer bits. Appendix A.8 explains
+rule. Both differ from storing all positions in fewer bits. Chapter~\ref{app:rope} explains
 position-dependent scores. Chapter~\ref{ch:kv-cache} explains their storage cost.
 Evaluate a long-context optimization with tasks that require the information it might
 discard, not only with an allocation test.
@@ -111,7 +111,7 @@ A model trained on sequences of 32K tokens has never seen rotary angles
 beyond them, and nothing in its training constrains how its attention behaves
 there (\Appref{rope}). Position scaling rescales the rotary frequencies so a longer
 sequence maps into angles the model knows; Figure~\ref{fig:ch09-scaling} in
-Appendix~A.8 compares the schemes. YaRN, the most used, scales different
+Chapter~\ref{app:rope} compares the schemes. YaRN, the most used, scales different
 frequency bands differently and needs, in its authors' comparison, ten times
 fewer tokens and two and a half times fewer training steps than earlier
 methods to extend a context \cite{peng2024yarn}. It is how Qwen3-30B-A3B goes

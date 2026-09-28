@@ -9,12 +9,12 @@ chapter plan is [`docs/STRUCTURE.md`](docs/STRUCTURE.md); progress is
 ## 1. What the book is
 
 *Inside the LLM Engine: The Systems Engineering of Large Language Model
-Inference* is the book an engineer reads to understand why every modern
-inference engine is built the way it is, and that stays useful as techniques
-change. The model is *Designing Data-Intensive Applications*: durable
-principles, real systems as evidence, honest trade-offs. The book does not
-teach training, and it does not re-derive the Transformer in the main text —
-Appendix A does that for readers who want to build one.
+Inference* builds understanding from a small numerical model to an industrial
+service. Part I constructs tokens, operators and a complete decoder, then
+teaches representation, hardware and measurement. The remaining parts explain
+engine design through durable principles, real systems and honest trade-offs.
+The book does not teach a training curriculum. No appendix detour is required.
+The author explicitly promoted the former appendices on 2026-09-28.
 
 ## 2. The spine: the constraint ledger
 
@@ -41,8 +41,18 @@ A chapter whose technique appears to spend nothing has not found its cost yet.
 
 ## 3. Chapter anatomy
 
-Every chapter has the same eight parts, in this order. Headings may be
-specific ("Eighty-five tokens per second"), but the parts must be recognisable.
+There are two chapter contracts. **Part I construction** starts with a
+concrete question, works a small example, derives the mechanism, shows a
+native illustration, runs a checked implementation and ends with worked
+problems. FULL means a developed lesson (at least 1,500 prose words), not an
+outline: no draft markers, at least five sections, a figure, an executable
+route and three worked problems. Existing longer construction chapters keep
+their depth. Do not pad a clear lesson to a systems chapter's word count.
+
+**Systems chapters** retain the eight parts below. Introduce the question and
+necessary vocabulary in plain language before asking the reader to interpret
+a measurement. A first-reading route may distinguish the core argument from
+an advanced implementation detail; it must not replace the explanation.
 
 1. **Opening measurement** — a real, surprising, reproducible number, with its
    setup in a measurement record. Lead with the phenomenon.
@@ -61,13 +71,16 @@ specific ("Eighty-five tokens per second"), but the parts must be recognisable.
 8. **Exercises** — prediction, derivation, implementation and falsification
    problems, with worked answers for the closed ones in `tex/worked/`.
 
-Target 5,000–8,000 words. A chapter that needs more is two chapters; a chapter
+For systems chapters, target 5,000–8,000 words. A chapter that needs more is two chapters; a chapter
 that needs much less may be a section of its neighbour.
 
 ## 4. Voice
 
 - Lead with the phenomenon, not the caveat. Put a qualification exactly where
   it changes what the reader should believe — once — not in every paragraph.
+- One idea at a time. Explain what a number means before giving several more.
+  Define throughput, occupancy, arithmetic intensity and other terms before
+  using them to explain a result. An opening must not assume its own lesson.
 - Concrete before abstract; numbers before notation; mechanism before
   optimization. Name real models, real hardware and real engines.
 - Short declarative sentences for claims; derivations may take their time.
@@ -105,7 +118,8 @@ a failed optimization is evidence.
 
 Training data has a cutoff and inference moves month to month. **Never write a
 frontier claim from memory.** Before drafting or deepening any chapter in
-Parts II, IV, V or VI — and before any frontier-watch section anywhere:
+the optimized-kernel, speculation, architecture or scale-out parts — and
+before any frontier-watch section anywhere:
 
 1. Search for the current state of the chapter's techniques, then read primary
    sources: papers, official documentation, source code at a pinned commit.
@@ -150,14 +164,14 @@ their own primary sources.
   shapes by membership: $\mathbf{W}\in\mathbb{R}^{d\times d_{\mathrm{ff}}}$.
 - Scalars italic ($x$), vectors bold lowercase ($\mathbf{x}$), matrices and
   tensors bold uppercase ($\mathbf{W}$).
-- Canonical symbols, used the same way in every chapter (Appendix F keeps the
-  full table): $L$ layers; $d$ model width; $d_{\mathrm{ff}}$ FFN width;
+- Canonical symbols, used the same way in every chapter (the Part I dimensional
+  reasoning chapter keeps the table): $L$ layers; $d$ model width; $d_{\mathrm{ff}}$ FFN width;
   $H_q$, $H_{kv}$ query and key/value heads; $d_h$ head width; $V$ vocabulary
   size; $B$ concurrent sequences; $S$ context length in tokens; $P$
   parameters and $P_{\mathrm{act}}$ active parameters; $b$ bytes per element
   (with a subscript: $b_w$ weights, $b_{kv}$ cache); $\beta$ memory bandwidth
   (bytes/s); $\pi$ peak compute (FLOP/s); $I$ arithmetic intensity
-  (FLOP/byte). Appendix A predates this table and writes $V_{\mathrm{vocab}}$.
+  (FLOP/byte). Early construction chapters also use $V_{\mathrm{vocab}}$.
 - Units on every byte, bandwidth, time and throughput quantity. GB is
   $10^9$ bytes and GiB is $2^{30}$; tools disagree, so say which.
 - Use $\approx$ for estimates and $\le$ for bounds; equality only for exact
@@ -180,8 +194,12 @@ their own primary sources.
 
 ## 10. Labs
 
-Each chapter has one lab in `code/labs/chNN-<slug>/`: a README (predict, run,
-explain, break) and the smallest code that shows the mechanism.
+Systems chapters have one lab in `code/labs/chNN-<slug>/`: a README (predict,
+run, explain, break) and the smallest code that shows the mechanism. These
+are stable source IDs, not printed chapter numbers. Part I keeps historical
+Rust labs and adds the standard-library Python lessons in `code/foundations/`;
+its format, hardware and measurement lessons check derived examples, not
+unperformed benchmarks.
 
 - **Self-contained.** It may depend on `code/mini-engine` as a library, but it
   must not require having built any previous chapter's lab.
@@ -203,10 +221,11 @@ next and stalled. This edition works in passes over the whole book:
 | --- | --- | --- |
 | 1 | a file with its section headings and a one-paragraph intent | SKELETON |
 | 2 | 1,500–3,000 words: core argument, key numbers (`\todo{measure}` where unmeasured), figure and lab intents | ZERO |
-| 3 | full length with figures, lab, exercises, verified frontier watch | FULL |
+| 3 | meets its construction or systems contract, with figures, executable route and exercises | FULL |
 | 4 | reproduced, technically reviewed and edited | VERIFIED |
 
-Work part by part, Part I first. Deepen the frontier-heavy chapters first
+Work part by part, Part I first. Preserve the foundations-first reading path.
+Deepen the frontier-heavy systems chapters next
 because they date fastest. Keep moving between passes; do not gold-plate one
 chapter. VERIFIED requires a review by someone other than the drafting agent;
 one agent's repeated passes are not independent review.
@@ -224,8 +243,8 @@ make textbook           # full PDF with XeLaTeX + latexmk + biber (TeX Live)
 ```
 
 `scripts/check-textbook.py` reads the chapter list from the main file, checks
-that every chapter exists and has the eight anatomy parts once it leaves
-SKELETON, that every referenced figure exists as TikZ, and it reports the
+stable source IDs against the printed outline and enforces the appropriate
+construction or systems contract. It checks native TikZ figures and reports the
 `\todo` count. `make textbook` fails on overfull boxes, missing glyphs and
 unresolved references. CI (`.github/workflows/ci.yml`) also runs the
 mini-engine tests, its Rust/Python parity checks, and the frozen-history
@@ -238,14 +257,15 @@ primary sources.
 
 | Path | Role |
 | --- | --- |
-| `tex/` | The book: `chapters/`, `appendices/`, `figures/`, `worked/`, `references.bib` |
-| `code/mini-engine/` | Dependency-free Rust teaching engine (Appendix A, lab substrate) |
+| `tex/` | The book: `foundations/`, `chapters/`, `figures/`, `worked/`, `references.bib` |
+| `code/mini-engine/` | Dependency-free Rust teaching engine and later capstone |
+| `code/foundations/` | Small Python decoder and Part I arithmetic/format lessons |
 | `code/reference/` | Independent Python oracles |
 | `code/labs/` | One self-contained lab per chapter |
 | `research/FRONTIER.md` | Dated, sourced frontier ledger |
 | `research/measurements/` | Records behind measured numbers |
 | `research/` (other) | First-edition research notes and benchmark records |
-| `labs/` | First-edition labs 1–58 (Appendix A) |
+| `labs/` | First-edition construction labs 1–58 (Part I) |
 | `manuscript/`, `diagrams/`, `figures/`, `publication/` | Frozen first-edition formats; checked by CI, not edited |
 | `archive/` | Superseded governance and plans, mirroring original paths |
 

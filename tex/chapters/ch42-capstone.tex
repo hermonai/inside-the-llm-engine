@@ -40,7 +40,7 @@ A correct sampler and a correct cache do not prove a correct server. Their inter
 must agree on which token has been committed, which positions are computed, and who
 can release memory. The capstone joins numerical computation with scheduling and
 lifecycle state; those boundaries are where local assumptions can conflict.
-Appendix~\ref{app:transformer} is the build path for numerical components.
+Part~\ref{part:foundations} is the build path for numerical components.
 Chapters~\ref{ch:paged-kv}, \ref{ch:continuous-batching} and
 \ref{ch:request-lifecycle} supply the systems contracts. Test the smallest end-to-end
 history before adding throughput optimizations or calling the result production-ready.

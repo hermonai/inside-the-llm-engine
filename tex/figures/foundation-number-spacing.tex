@@ -1,0 +1,13 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\draw[flow] (0,0)--(13,0);
+\foreach \x/\t in {0/1,1/1.25,2/1.5,3/1.75,4/2,6/2.5,8/3,10/3.5,12/4}{
+ \draw[BookBlue,thick] (\x,-.14)--(\x,.14);
+ \fill[BookBlue] (\x,0) circle (2pt);
+ \node[below=5pt] at (\x,0) {\t};
+}
+\draw[BookBlue,{Stealth}-{Stealth}] (0,.9)--node[above]{gap $0.25$}(1,.9);
+\draw[BookBlue,{Stealth}-{Stealth}] (4,.9)--node[above]{gap $0.5$}(6,.9);
+\node[note,anchor=north,text width=110mm] at (6,-1)
+ {Three significant bits: spacing doubles when the exponent increases.\\
+ More range is not the same as more precision.};
+\end{tikzpicture}

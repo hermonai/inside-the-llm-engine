@@ -1,0 +1,206 @@
+% status: FULL
+\chapter{Causal Attention, One Row at a Time}\label{ch:causal-attention}
+\begin{ChapterIntent}
+A query, a key and a value are useful only when we connect them. This chapter
+does that with two tokens and two-dimensional vectors. We will calculate
+one attention output by hand, prevent it from reading the future, and turn
+the calculation into a small program. Only after the result is clear will
+we write the compact matrix equation used in papers.
+\end{ChapterIntent}
+
+\section{The missing operation is a weighted sum}
+Imagine that two earlier positions contain information useful to the current
+token. One carries a value vector $[2,0]$; the other carries $[0,4]$. These
+are illustrative numbers, not representations extracted from a trained
+model. If the current position gives the first value one quarter of its
+attention and the second three quarters, its output is
+\[
+ \tfrac14[2,0]+\tfrac34[0,4]=[0.5,3].
+\]
+Notice what happened. We did not choose one value and discard the other.
+We formed a new vector from both. Its first coordinate came from the first
+position and its second mostly from the second position. Attention is a
+learned way to produce the weights for this mixture.
+
+The query says what the current position is looking for. Each key supplies
+the information against which that query is compared. Each value supplies
+the information that can be carried forward. These descriptions are useful
+roles, not a claim that a vector coordinate has a human-readable meaning.
+The previous chapters constructed Q, K and V using learned projections.
+This chapter consumes their numerical outputs.
+
+For now, use one head and one sequence. Each query and key has two
+coordinates, so the head width is $d_h=2$. Values also have two coordinates
+in this example. A real architecture may choose another value width, but
+every value in this one mixture must have the same width.
+
+\section{Turn comparisons into probabilities}
+Take the positioned query and keys
+\[
+ \mathbf q=[1,0],\quad
+ \mathbf k_0=[0,0],\quad
+ \mathbf k_1=[\sqrt2\log3,0].
+\]
+The dot product multiplies corresponding coordinates and adds them.
+Attention divides that result by $\sqrt{d_h}$. Our two scores are therefore
+\[
+ s_0=\frac{1\cdot0+0\cdot0}{\sqrt2}=0,\qquad
+ s_1=\frac{1\cdot\sqrt2\log3+0\cdot0}{\sqrt2}=\log3.
+\]
+Scores are not yet weights: they may be negative and need not sum to one.
+Softmax exponentiates and normalizes them. Exponentiating $[0,\log3]$
+gives $[1,3]$. Dividing by their sum, four, gives $[1/4,3/4]$.
+We have recovered the mixture at the start of the chapter.
+
+Why divide by the square root of the head width? Under an illustrative
+assumption of independent, zero-mean query and key coordinates with unit
+variance, the dot product has variance $d_h$. Scaling by $1/\sqrt{d_h}$
+keeps its variance near one. Learned activations need not satisfy those
+assumptions exactly. The argument explains the design motivation; the model
+definition specifies the actual scale. Omitting it silently changes the
+model's computation.
+
+\EngineFigure{foundation-attention-row}{An illustrative attention row. The
+query produces scores, softmax converts scores to mixing weights, and those
+weights combine values. The arrows carry the displayed numerical objects;
+they do not represent a hard search or a retrieved text passage.}
+{fig:foundation-attention-row}
+
+The compact formula now has a concrete interpretation:
+\[
+ a_j=\frac{\exp(s_j)}{\sum_t\exp(s_t)},\qquad
+ \mathbf y=\sum_j a_j\mathbf v_j.
+\]
+The index $j$ ranges over permitted key positions. A query produces one
+row of weights, then one output vector. It does not produce a probability
+distribution over vocabulary tokens. That later distribution is produced
+by the model's final output projection.
+
+\section{Do not let a token read its future}
+When predicting text, position zero must not use a value from position one.
+The later token would reveal information not available when the earlier
+prediction was made. A \emph{causal mask} enforces this rule.
+
+Suppose both example tokens are in a known prompt. We can compute their
+projections together, but the first query may read only the first key and
+value. Its permitted score row has one entry. Softmax of a singleton is
+$[1]$, regardless of the finite score, so its attention output is exactly
+$[2,0]$. The second query can read both positions and produces $[0.5,3]$.
+Known input is not permission to leak future information into earlier rows.
+
+There are two common ways to express the mask. A dense implementation sets
+forbidden scores to negative infinity before softmax; their exponentials
+contribute zero. Our small program avoids constructing forbidden scores at
+all: query $i$ receives only keys and values through position $i$.
+These approaches represent the same permitted set.
+
+Masking \emph{after} normalization is wrong unless you renormalize the
+remaining probabilities. In our two-entry example, zeroing the second
+weight after softmax leaves $[1/4,0]$. The first query would output
+$[0.5,0]$, not $[2,0]$. The output is finite, has the right shape, and is
+still incorrect. This is why a shape test alone cannot validate attention.
+
+Every row in ordinary causal self-attention can attend to itself, so its
+permitted set is nonempty. Padding, custom masks or a programming error can
+produce a row with no permitted keys. There is no normalized distribution
+over an empty set. Our teaching routine rejects that input rather than
+pretending the output is an ordinary attention result.
+
+\section{Evaluate softmax without overflowing}
+An exponential grows quickly. Directly computing $\exp(1000)$ can overflow
+even when the desired probability is perfectly ordinary. Subtract the
+largest permitted score $m$ before exponentiating:
+\[
+ a_j=\frac{\exp(s_j-m)}{\sum_t\exp(s_t-m)}.
+\]
+The common factor cancels in real arithmetic. At least one exponent is
+zero, and the others are nonpositive. For $[1000,999]$, the routine
+evaluates $[1,e^{-1}]$ and normalizes it, giving approximately
+$[0.731059,0.268941]$. The computation becomes numerically practical
+without changing the intended distribution.
+
+This fixes one numerical problem, not every problem. Nonfinite inputs,
+rounding in the score reduction and underflow of very small probabilities
+still need a contract. Our routine accepts a nonempty row of finite,
+already-permitted scores. Masking belongs to its caller. This narrow
+interface makes its tests easy to understand.
+
+\section{The matrix equation is many copies of this row}
+For $S$ positions, put queries, keys and values in matrices
+$\mathbf Q,\mathbf K,\mathbf V\in\mathbb R^{S\times d_h}$. Then
+$\mathbf Q\mathbf K^{\mathsf T}$ contains every query--key dot product.
+Entry $(i,j)$ compares query $i$ with key $j$. Apply the causal mask
+$M_{ij}=0$ for $j\le i$ and $M_{ij}=-\infty$ otherwise:
+\[
+ \mathbf A=\operatorname{softmax}_{\rm row}
+ \left(\frac{\mathbf Q\mathbf K^{\mathsf T}}{\sqrt{d_h}}+\mathbf M\right),
+ \qquad \mathbf Y=\mathbf A\mathbf V.
+\]
+Softmax acts across each row, not down each column. The output has shape
+$S\times d_h$. This is the scaled dot-product construction associated with
+the Transformer \cite{vaswani2017attention}; the causal choice of permitted
+keys makes it suitable for this decoder.
+
+Several heads repeat the operation on different projected coordinates.
+With grouped-query attention, more than one query head uses the same key
+and value head. For $H_q=4$ and $H_{kv}=2$, consecutive query heads map to
+KV heads $[0,0,1,1]$. Sharing keys does not make the queries equal, so their
+attention rows can still differ. Concatenating head outputs and applying an
+output projection returns to model width; it does not add the heads' query
+scores together.
+
+\Needspace{10\baselineskip}
+\section{Build the row, then build the mask}
+The executable lesson uses ordinary Python lists:
+\begin{verbatim}
+python3 code/foundations/lesson.py attention
+python3 -m unittest discover -s code/foundations -p 'test_*.py'
+\end{verbatim}
+It prints probabilities near $[0.25,0.75]$ and output near $[0.5,3]$.
+The small floating-point difference from an exact fraction is expected.
+Read \texttt{attention\_row} in \texttt{code/foundations/model.py}.
+It checks widths, calculates scores, applies stable softmax and accumulates
+one output coordinate at a time. Then read \texttt{causal\_attention}.
+Its prefix slice is the entire causal policy.
+
+Before running a change, predict which output row should move. Replacing
+the second value changes the second output, but must not change the first.
+Giving the future key an enormous score is an even stronger test: an
+unmasked implementation will attend almost entirely to it. The committed
+test includes this deliberately tempting future and checks that the first
+row remains exactly its own value.
+
+Uniform probabilities provide another oracle. If all permitted scores
+are equal, attention returns the arithmetic mean of their values. A
+single permitted value must pass through unchanged. These are independent
+facts about the operation, not a comparison against another copy of the
+same implementation.
+
+\section{What caching can change, and what it cannot}
+When one more token arrives, old positioned keys and values need not be
+recomputed for an unchanged causal prefix and fixed model configuration.
+The new query still compares against all permitted cached keys. Caching
+removes repeated projection and earlier-layer work; it does not remove
+the weighted sum over the history.
+
+Our complete decoder will keep a separate history for every layer.
+The current token's key and value must join that layer's history before
+its own attention is evaluated, because ordinary causal attention includes
+the current position. A sampled output token is different: it has not
+been evaluated yet. Sampling an ID does not create its K/V vectors.
+
+For this chapter, storing an $S\times S$ score matrix is acceptable as a
+description of the operation. It becomes expensive at long context.
+\Chref{flashattention} later changes the evaluation order to avoid writing
+that entire matrix. The mathematical result remains the reference we have
+just built. Understanding the row first makes that optimization a question
+about storage and reduction, rather than a new kind of attention.
+
+\section{What we have built}
+We can now turn positioned Q, K and V into a contextual vector, explain
+every weight in a small example, and prove that a future token cannot
+affect an earlier row. Attention mixes information across positions.
+The next chapter supplies a different operation: transforming the features
+of each position without mixing positions at all.
+\Needspace{10\baselineskip}
+\input{worked/f09-causal-attention.tex}

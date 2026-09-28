@@ -1,3 +1,4 @@
+% status: FULL
 % Authoritative LaTeX; edit this file, not the historical Markdown.
 \chapter{Logits, Sampling, and the Autoregressive Loop}\label{chapter-4-logits-sampling-and-the-autoregressive-loop}\label{app:sampling}
 \Appref{smallest-model} ended with a vector:
@@ -1374,7 +1375,8 @@ deliberately inject failure rather than proving only the happy path.
 
 \section{What the build has produced so far}\label{what-part-i-has-built}
 
-\Chref{request-lifecycle} defined the machine and its request-to-terminal lifecycle.
+\Chref{request-lifecycle} later develops the supplied runtime's complete
+request-to-terminal lifecycle.
 \Appref{tokens} crossed the text/token/byte boundary. \Appref{smallest-model} opened the
 numerical function and derived every score. \Appref{sampling} turns numerical
 prediction into generation.
@@ -1439,7 +1441,7 @@ explicit state and termination ownership.
   One lifecycle owner emits exactly one completed, cancelled, or failed
   terminal outcome.
 \item
-  Appendices A.1--A.3, with \Chref{request-lifecycle}, now contain the smallest
+  Chapters~\ref{app:tokens}--\ref{app:sampling}, with \Chref{request-lifecycle}, now contain the smallest
   complete inference engine.
 \end{itemize}
 
@@ -1502,4 +1504,4 @@ can survive it.
 \end{itemize}
 
 
-\input{worked/a3-sampling.tex}
+\input{worked/f03-sampling.tex}

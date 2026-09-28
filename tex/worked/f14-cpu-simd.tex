@@ -1,0 +1,16 @@
+\section{Worked problems}
+\subsection*{1. The missing tail}
+\textbf{Problem.} An eight-lane loop sums only the first sixteen of the
+values one through nineteen. How wrong is its answer?
+\textbf{Solution.} It returns 136 instead of 190, omitting $17+18+19=54$.
+\subsection*{2. Useful bytes}
+\textbf{Problem.} With illustrative 64-byte cache lines and F32 values,
+what payload fraction is used by one value per distinct line before reuse?
+\textbf{Solution.} $4/64=1/16$, or 6.25 percent. This is useful payload
+per transferred line, not a universal cache-miss or speedup prediction.
+\subsection*{3. Choose the split}
+\textbf{Problem.} Why begin by splitting a matrix product across output
+rows rather than splitting every dot-product reduction?
+\textbf{Solution.} Distinct output rows admit independent writers without
+a partial-sum merge. Splitting a reduction adds coordination and changes
+summation order; it can help at large sizes but needs separate evidence.

@@ -26,7 +26,7 @@ words=$(wc -w < AUTHORING.md | tr -d " ")
 extra=$(ls docs | grep -v -x -e STRUCTURE.md -e STATUS.md || true)
 [ -z "$extra" ] || fail "unexpected files in docs/ (policy belongs in AUTHORING.md): $extra"
 
-# --- The plan: 42 chapters, numbered in sequence, same titles everywhere ------
+# --- Approved foundations-first plan; printed numbers differ from lab IDs ----
 plan=$(mktemp)
 book=$(mktemp)
 trap 'rm -f "$plan" "$book"' EXIT
@@ -36,7 +36,7 @@ sed -n -E 's/^([0-9]+)\. (.+)$/\1. \2/p' BOOK.md | sed -E 's/ +$//' > "$book"
 
 count=$(wc -l < "$plan" | tr -d ' ')
 [ "$count" -ge 1 ] || fail "no chapter rows found in docs/STRUCTURE.md"
-[ "$count" -le 45 ] || fail "the plan has $count chapters; merge instead of growing past 45"
+[ "$count" -eq 59 ] || fail "the approved foundations-first plan has 59 chapters, found $count"
 
 expected=1
 while IFS= read -r line; do

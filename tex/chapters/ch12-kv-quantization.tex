@@ -6,17 +6,18 @@
 \chapter{Quantizing the KV Cache}\label{ch:kv-quantization}
 
 \begin{ChapterIntent}
-At long context and large batch the KV cache, rather than the weights,
-dominates both memory and the bytes read per step, and quantizing it is the
-most direct relief. Its errors behave differently from weight errors: they
-enter every attention score of every later token, and keys carry outlier
-channels that per-token scaling handles badly. This chapter derives
-per-channel key and per-token value quantization, FP8 caches with calibrated
-scales, four-bit and lower schemes, and pre-RoPE and rotated variants; it
-measures all of them on the real keys and values of a real model's first
-layer, and shows how to measure long-context damage rather than trusting
-short-context perplexity.
+Weight quantization approximates fixed model parameters. KV quantization approximates
+the growing state produced by a particular request. We will follow one cached key and
+value through encoding and reuse, then test the capacity, latency and numerical effects
+at different history lengths.
 \end{ChapterIntent}
+
+\section*{Approximate the remembered state}
+The cache saves work by being read again. Any approximation stored there may influence
+many later queries, and key errors affect mixing weights while value errors affect what
+is mixed. Start with that distinction. A smaller cache can admit longer or more
+concurrent requests even when one request is not faster. The experiments therefore
+measure capacity and speed separately.
 
 \OpeningSection{Twice the context in the same memory}
 
@@ -53,7 +54,7 @@ weights, whereas value error changes what is mixed; treating them as interchange
 arrays hides a useful distinction. Both effects can propagate through later layers and
 generated positions. The cache is produced from the actual request, unlike a fixed
 weight tensor. Chapter~\ref{ch:kv-cache} establishes its lifetime and
-Appendix~\ref{app:numerics} separates representation error from task-level quality
+Chapter~\ref{app:numerics} separates representation error from task-level quality
 loss.
 }
 
@@ -271,7 +272,7 @@ per coordinate, and reports quality neutrality at 3.5 bits per channel
 \section{Before or after RoPE; rotations}
 
 Rotary position embedding rotates pairs of key channels by angles that depend
-on position (Appendix~\ref{app:rope}), which mixes the outlier channels with
+on position (Chapter~\ref{app:rope}), which mixes the outlier channels with
 their partners and makes their statistics depend on position. Quantizing keys
 \emph{before} RoPE preserves the channel structure that per-channel scales
 exploit, at the price of applying RoPE when the key is read rather than when it

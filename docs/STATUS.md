@@ -1,418 +1,144 @@
 # Status
 
-Second edition, begun 2026-09-23 on branch `second-edition`. The first
-edition's status ledger, with its dated milestone entries, is
-`archive/docs/STATUS.md`.
+## Current reading path — 2026-09-28
 
-## Where the book is
+The author requested that all former appendices become the main learning path.
+The book now has **59 chapters in ten parts**, with no appendix detour:
 
-**All 42 chapters have drafts; Chapters 1–13 are FULL and Chapters 14–42
-remain ZERO.** Passes 1 and 2 are complete; pass 3 is in progress.
-Every chapter and appendix exists under the new numbering with its
-intent and section headings in the chapter anatomy, and every chapter is built
-on measurements taken for it, derivations, or primary sources (Part VI's
-multi-device numbers are derived from specifications and operators' reports
-until a multi-GPU host is available; Part VII's discrete-GPU numbers are
-Hermon's records and derivations until the GPU host is back; Part IX reads vLLM
-and SGLang at pinned commits rather than running them). The first edition's Chapters 2–9 are Appendix
-A.1–A.8, and its Chapter 1 is now the mechanism of Chapter 14, with the
-anatomy built around it. The plan is [`STRUCTURE.md`](STRUCTURE.md); the
-policy is [`../AUTHORING.md`](../AUTHORING.md); superseded governance is in
-`archive/`.
+- Part I, printed Chapters 1–17: build the model, then understand its bytes,
+  numerics, hardware and measurements.
+- Parts II–X, printed Chapters 18–59: the existing 42 systems chapters.
 
-"What actually happened" headings in SKELETON chapters name *planned* cases.
-Each must be verified against source or a measurement record before it is
-written; drop or replace it if the evidence does not hold.
+Printed numbers follow reading order. Stable source and lab IDs do not.
+For example, `ch14-request-lifecycle` is now printed Chapter 31.
+[STRUCTURE.md](STRUCTURE.md) gives the complete mapping.
 
-## Foundation and appendix pass — 2026-09-28
+## What this revision changes
 
-Added a topic-specific foundation bridge to each of the 42 chapters, connecting
-the opening phenomenon to the prerequisite ideas and the relevant appendix.
-These are original explanations, with a predict, calculate, inspect and change
-approach; they do not replace the chapters' measured engineering work.
+The eight substantial construction chapters moved into `tex/foundations/`
+with their figures, worked problems and compatibility labels intact. New
+chapters complete causal attention, the FFN/residual block and a runnable
+cached decoder. The former B–G references are developed teaching chapters,
+not outline shells. Part I has 17 FULL construction chapters under the
+construction contract in [AUTHORING.md](../AUTHORING.md); FULL is not VERIFIED.
 
-Appendix A now has an explicit reading route and a hand-worked first prediction.
-Appendices B–G now provide substantive GPU, CPU, file-format, numerical,
-notation and reproducibility references, grouped without renumbering the book.
-Three new native TikZ plates bring the figure count to 119. The new reference
-drafts remain ZERO: this pass does not claim they meet the FULL chapter gates.
-Planned Appendix A.9–A.11 construction steps remain outstanding.
+New small examples use `code/foundations/` with only the Python standard
+library. Its decoder uses illustrative, untrained weights. Scalar hand
+fixtures and full-prefix/cached comparisons test different levels of the
+computation; shared scalar primitives are explicitly not independent oracles
+for themselves. Hardware lesson outputs are derived arithmetic, not benchmarks.
 
-Corrected the shifted-softmax denominator explanation in Chapter 2's worked
-attention figure and Chapter 10's bits-versus-bytes notation. Thirteen new
-foundation checks cover the printed examples, boundary cases and chapter
-bridges, and run as part of the textbook checker.
+The first 14 systems chapter introductions now explain their question and
+offer a first-reading route before the measurements. This is an entry-point
+clarity pass, not a claim that every paragraph of the systems manuscript has
+been rewritten. Existing measured results and dated frontier claims remain.
+The book contains 126 native figures and 93 worked problems.
 
-Validation for this pass:
+## Validation of this revision
 
-- XeLaTeX and biber build: 586 pages, no overfull boxes, missing glyphs or
-  unresolved references. All pages rendered and checked for text bounds;
-  all 42 foundation blocks and the changed appendix figures and tables
-  inspected visually, including grayscale checks. This is author QA, not
-  independent technical review.
-- Textbook checks: 42 chapters, 13 FULL and 29 ZERO; 15 appendix files,
-  119 native figures, 66 worked problems and five remaining TODOs.
-- Structure/secrets, links, diagram style/width, figure rebuild/parity and
-  industrial visual fixture checks passed, as did tensor, linear,
-  normalization, Q/K/V and RoPE parity checks.
-- Mini-engine and lab workspace tests, formatting and strict Clippy checks
-  passed; the two Python lab suites passed all 11 tests.
+The 622-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
+or unresolved references. All pages were rendered and their text bounds
+audited. Visual inspection covered the front matter, all nine new/expanded
+construction lessons, their figures in colour and grayscale, and the fourteen
+revised systems openers. Attention-label collisions, a contents/preface page
+collision and split command blocks were corrected. After the final pagination
+edits, all 622 pages passed the bounds audit again; the nine changed pages
+were re-rendered and inspected. This is author QA, not independent review.
 
-No new model benchmark was measured in this editorial pass. The existing
-uncommitted Chapter 14 lab and its workspace manifest/lock changes were
-preserved and are not part of this commit. Next: complete Chapter 14 using its
-own reproducible measurement record, then continue the FULL-depth pass.
-
-## Chapter status
-
-Generated by `make status` from the chapter files; `make textbook-check` fails
-if this table is stale. Words are approximate prose words.
-
-<!-- chapter-status:begin (generated by scripts/check-textbook.py --write-status) -->
-| # | Chapter | Status | Words | TODOs |
-| ---: | --- | --- | ---: | ---: |
-| 1 | Why Inference Is Its Own Discipline | FULL | 6,856 | 0 |
-| 2 | The Forward Pass, Compressed | FULL | 7,032 | 0 |
-| 3 | The Roofline: Why Decode Leaves Your GPU Idle | FULL | 5,209 | 0 |
-| 4 | Prefill and Decode: Two Workloads, One Model | FULL | 5,123 | 0 |
-| 5 | The KV Cache: Inference's Central Data Structure | FULL | 5,191 | 0 |
-| 6 | Napkin Math: Latency, Throughput and Cost per Token | FULL | 5,243 | 0 |
-| 7 | Matrix Multiplication on Real Hardware | FULL | 5,121 | 0 |
-| 8 | Attention as a Memory Problem: From Online Softmax to FlashAttention | FULL | 6,210 | 0 |
-| 9 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | FULL | 5,170 | 0 |
-| 10 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | FULL | 5,202 | 0 |
-| 11 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | FULL | 5,171 | 0 |
-| 12 | Quantizing the KV Cache | FULL | 5,102 | 0 |
-| 13 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | FULL | 6,309 | 0 |
-| 14 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ZERO | 3,396 | 0 |
-| 15 | Continuous Batching | ZERO | 2,098 | 0 |
-| 16 | Paged KV Memory | ZERO | 1,906 | 0 |
-| 17 | Prefix Caching and RadixAttention | ZERO | 2,117 | 0 |
-| 18 | Chunked Prefill and Phase Interference | ZERO | 1,894 | 0 |
-| 19 | Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission | ZERO | 1,941 | 0 |
-| 20 | Structured Output at Engine Speed | ZERO | 1,815 | 0 |
-| 21 | One Server, Many Models: LoRA, Adapters and Routing | ZERO | 1,855 | 0 |
-| 22 | Speculative Decoding: The Draft–Verify Contract | ZERO | 2,320 | 0 |
-| 23 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ZERO | 2,052 | 0 |
-| 24 | When Speculation Loses | ZERO | 1,860 | 0 |
-| 25 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | ZERO | 3,193 | 0 |
-| 26 | Mixture of Experts | ZERO | 2,980 | 0 |
-| 27 | Hybrid Models: State Spaces and Linear Attention | ZERO | 2,761 | 0 |
-| 28 | Long Context: Windows, Sinks and Sparse Attention | ZERO | 2,618 | 0 |
-| 29 | Reasoning Models and Test-Time Compute | ZERO | 2,134 | 0 |
-| 30 | Multimodal Inference | ZERO | 2,028 | 0 |
-| 31 | Tensor, Pipeline and Context Parallelism | ZERO | 2,420 | 1 |
-| 32 | Expert Parallelism at Scale | ZERO | 2,175 | 1 |
-| 33 | Disaggregated Serving | ZERO | 2,010 | 0 |
-| 34 | The KV Cache as a Distributed Storage Tier | ZERO | 2,298 | 1 |
-| 35 | Offloading Across VRAM, RAM and NVMe | ZERO | 3,495 | 2 |
-| 36 | Streaming Experts From Disk: A Measured Case Study | ZERO | 4,240 | 0 |
-| 37 | Unified Inference Memory | ZERO | 3,116 | 0 |
-| 38 | Fast Wrong Answers: Oracles, Differential Testing and Determinism | ZERO | 2,945 | 0 |
-| 39 | Benchmarking Without Lying to Yourself | ZERO | 3,276 | 0 |
-| 40 | Operating Inference in Production | ZERO | 2,831 | 0 |
-| 41 | Anatomy of Real Engines: vLLM, SGLang, llama.cpp and Hermon | ZERO | 2,629 | 0 |
-| 42 | Capstone: Build a Mini Engine End to End | ZERO | 3,372 | 0 |
-
-| Appendix | File | Status | Words |
-| --- | --- | --- | ---: |
-| A (opener) | `tex/appendices/a0-transformer-from-scratch.tex` | ZERO | 856 |
-| A.1 | `tex/appendices/a1-text-to-tokens.tex` | FIRST EDITION | 7,495 |
-| A.2 | `tex/appendices/a2-smallest-model.tex` | FIRST EDITION | 6,385 |
-| A.3 | `tex/appendices/a3-sampling.tex` | FIRST EDITION | 6,387 |
-| A.4 | `tex/appendices/a4-tensors.tex` | FIRST EDITION | 8,068 |
-| A.5 | `tex/appendices/a5-matmul.tex` | FIRST EDITION | 10,829 |
-| A.6 | `tex/appendices/a6-embeddings-norm.tex` | FIRST EDITION | 7,398 |
-| A.7 | `tex/appendices/a7-qkv.tex` | FIRST EDITION | 5,819 |
-| A.8 | `tex/appendices/a8-rope.tex` | FIRST EDITION | 5,316 |
-| B | `tex/appendices/b-gpu-architecture.tex` | ZERO | 643 |
-| C | `tex/appendices/c-cpu-simd.tex` | ZERO | 613 |
-| D | `tex/appendices/d-model-formats.tex` | ZERO | 613 |
-| E | `tex/appendices/e-numerics.tex` | ZERO | 549 |
-| F | `tex/appendices/f-notation.tex` | ZERO | 509 |
-| G | `tex/appendices/g-reproducing-measurements.tex` | ZERO | 645 |
-<!-- chapter-status:end -->
-
-## Verified at the end of session 8 (2026-09-26; runs 09:10–14:29 UTC)
-
-| Check | Result |
-| --- | --- |
-| `make textbook-check` | pass: 42 chapters (42 ZERO), 15 appendix files, 90 native figures (all used), 27 worked problems, CLI trace and worked calculations |
-| `make textbook` | pass: XeLaTeX + biber, no overfull boxes or unresolved references; the pages of all eleven new Part VIII–IX figures inspected as images, and their overlaps fixed |
-| `cargo test --workspace` in `code/mini-engine` | 235 pass (capstone 15: 7 unit, 8 differential); `cargo fmt --check` and `clippy --workspace --all-targets -D warnings` clean |
-| All CI script steps run locally | pass (13 steps), with the new files staged |
-| Secrets guard | `scripts/check-structure.sh` passes with the Part VIII–IX raw outputs staged; paths redacted to `<scratch>`, `<ollama-blobs>`, `<home>`, `<repo>`, `<tmp>`; the routing trace (2.3 MB) is identified by SHA-256, and long server logs keep head and tail |
-
-**Correction to session 3.** Session 3 ran the CI steps before committing its
-raw measurement outputs, so the secrets guard never saw them; once committed,
-the guard failed on the IPv4 loopback address in server logs and probe
-scripts. Session 4 redacted them (`<loopback>` in logs, `localhost` in
-scripts) and now runs the guard after staging.
-
-Measurement records: `research/measurements/2026-09-23-m1-llama32-3b.md`,
-`2026-09-23-gguf-tensor-bytes.md`, `2026-09-23-m1-part2.md` (Chapters 7–13),
-`2026-09-24-m1-part3.md` (Chapters 14–21), `2026-09-24-m1-part4.md`
-(Chapters 22–24: verification cost, prompt-lookup and draft-model speculation,
-greedy exactness, concurrency), `2026-09-24-m1-part5.md` (Chapters 25–30:
-KV-cache and recurrent-state allocations, decode speed against context for two
-GQA ratios and for a hybrid, thinking budgets, Gemma 4's sliding windows and
-image tokens in Ollama, prefix reuse with recurrent state, and llama.cpp's
-expert matrix product) and `2026-09-24-m1-part6.md` (Chapters 31–34: a model
-split across two llama.cpp processes through the RPC backend, SSD bandwidth,
-restoring a KV cache from files and host memory against recomputing it, and
-prefill and decode on two servers with the cache moved through a file) and
-`2026-09-24-m1-part7.md` (Chapters 35–37: layers, feed-forward tensors and the
-KV cache moved between the M1's GPU and CPU, the memory cost of llama.cpp's
-repacked CPU weights, CPU memory traffic against GPU decode and a GPU copy,
-zero-copy model loading, Hermon's self-test and Metal benchmark re-run at
-`2a3fd52`, and a replay of Hermon's expert-pager trace) and
-`2026-09-26-m1-part8.md` (Chapters 35–36 and 38–42: batch-dependent logits in
-llama.cpp for a dense and an MoE model, a recorded MoE routing trace and its
-cache replay, repeated benchmarks and a flash-attention A/B, closed and open
-load generators through a stall, a saturation sweep with server counters, cold
-starts, KL divergence of runtime choices, three engines on one file, the
-capstone on the roofline in four versions, and expert placement with
-`--cpu-moe`). All were taken on the Apple M1 during an ordinary desktop session,
-Parts IV–IX under load from other work. Re-measure on a quiet machine before any chapter
-is FULL.
-
-## Open markers
-
-Eighteen `\todo` markers remain, all visible in the PDF.
-
-**Part I (9).**
-
-- **GPU measurements** (Chapters 3, 6): the RTX 5060 Ti re-measurement of the
-  prompt's example, and the H100 validation of Chapter 6's table. The GPU
-  development host was unreachable in sessions 1 and 2.
-- **Sources** (Chapters 3, 4): the M1's memory type; Rubin-class
-  specifications; engine adoption of disaggregation.
-- **Chapter 3** needs the same kernel selection confirmed in the measured
-  llama.cpp build, and worked solutions; **Chapter 6** needs DeepSeek's decode
-  step reconstructed with expert-parallel communication (FULL pass).
-
-**Part II (4).**
-
-- **Chapter 7:** name the kernels behind the M1's step between 8 and 16
-  columns (a Metal GPU trace); which split-K or stream-K schedules CUTLASS and
-  cuBLAS choose by default for decode-shaped products.
-- **Chapter 11:** Rubin-class FP4 specifications from NVIDIA.
-- **Chapter 12:** NVFP4 KV-cache support in NVIDIA's serving stack from a
-  primary source.
-
-Resolved in session 3: the Hermon status markers of Chapters 1, 4 and 5
-(continuous batching DEFAULT, prompt-lookup speculation and the CUDA cache
-arena PREVIEW, at `2a3fd52`), and chunked-prefill adoption in Chapter 4.
-Resolved in session 5: Chapter 5's Kimi Delta Attention marker, from the Kimi
-Linear paper (arXiv:2510.26692).
-
-**Part VI (3).** Measurements that need hardware this session did not have:
-NCCL all-reduce latency on an 8-GPU NVLink node (Chapter 31); dispatch and
-combine latency and bandwidth on a multi-GPU node (Chapter 32); and, on a
-discrete-GPU host such as the RTX 5060 Ti, PCIe host-to-device bandwidth,
-uncached NVMe reads and an 8B model's prefill rate (Chapter 34). Every other
-Part VI claim is measured, derived, or read from a primary source or pinned
-source code; the sources are in `research/FRONTIER.md`, "Part VI additions".
-
-**Part VII (2).** Chapter 35: host-to-device bandwidth with the PCIe
-generation and link width recorded, and the `-ngl` sweep, on the RTX 5060 Ti
-host (Hermon's 17.8 GB/s record does not state the link). Resolved in session
-8 with IBM's Granite 3.1 3B-A800M: expert placement with `--cpu-moe` and
-`--n-cpu-moe` (Chapter 35) and a recorded routing trace replayed against the
-cache policies (Chapter 36); Qwen3-30B-A3B itself does not fit this machine.
-Every other Part VII claim is measured on the M1, derived, read from Hermon's
-records at `2a3fd52` (labelled as the developers' measurements), or read from a
-primary source or pinned source; the sources are in `research/FRONTIER.md`,
-"Part VII additions".
-
-**Parts VIII–IX (0).** Every claim is measured on the M1, derived, or read from
-a primary source or pinned source (vLLM `bcdacfc`, SGLang `3ed56a3`, llama.cpp
-`d006858`, Hermon `2a3fd52`); the sources are in `research/FRONTIER.md`, "Part
-VIII–IX additions".
-
-**Part V (0).** Every Part V claim is measured, derived, or read from a
-primary source or pinned source code (llama.cpp `d006858`, vLLM `bcdacfc`,
-Hermon `2a3fd52`); the sources are in `research/FRONTIER.md`, "Part V
-additions", and the model rows added to its configuration table.
-
-**Part IV (0).** Every Part IV claim is measured, derived, or read from a
-primary source or pinned source (llama.cpp `d006858`, Hermon `2a3fd52`); the
-sources are in `research/FRONTIER.md`, "Part IV additions".
-
-**Part III (0).** Every Part III claim is measured, derived, or read from a
-primary source or pinned source code (llama.cpp `d006858`, vLLM `bcdacfc`,
-Hermon `2a3fd52`); the new sources are in `research/FRONTIER.md`,
-"Part III additions".
-
-Resolved in session 2 from primary sources: AMD MI355X peaks (datasheet),
-ForgeMegakernel (arXiv 2609.12379), llama.cpp i-quant sizes (source at
-`389ff61d`), and the Hermon claims in Chapters 8, 10 and 13 (source at
-`2a3fd52`).
+Local CI checks pass: structure/preservation/secrets, relative links, textbook
+contracts and CLI trace, the 13 foundation arithmetic/structure tests, the
+15 small-decoder/lesson tests, frozen diagram and native-figure parity,
+industrial mutation guards, tensor/linear/norm/QKV/RoPE parity, Rust fmt,
+workspace tests and clippy, and both Python lab suites. The existing
+uncommitted lifecycle lab also passes its five tests but remains outside
+this revision's commit. No new hardware performance measurement is claimed.
 
 ## Next
 
-Current continuation after the 2026-09-28 foundation pass: finish Chapter
-14's existing lifecycle lab, measurement record and full chapter without
-discarding its in-flight work. Then continue the established deepening pass.
-Appendices B–G now contain concise reference drafts; A.9–A.11 still need
-their detailed construction. The priorities below are retained from the
-earlier breadth-first pass, not a claim that Chapters 1–13 remain unfinished.
+1. Complete the existing lifecycle lab and full chapter, now Chapter 31
+   (`ch14-request-lifecycle`). Its uncommitted lab and workspace changes
+   were present at entry and are not silently included in this editorial work.
+2. Continue the straightforward, concrete-first edit through the bodies of
+   systems chapters, then deepen the remaining 29 ZERO chapters. Keep
+   the original measurements and failure cases; explain them more gradually.
+3. Resolve the five remaining hardware-measurement TODOs when the required
+   machines are available. Do not replace missing measurements with predictions.
+4. Obtain independent technical review before assigning VERIFIED.
 
-1. Pass 3: deepen, frontier-heavy parts (II, IV, V, VI) first, building each
-   chapter's lab in `code/labs/`. The labs promised by Chapters 38–42 (a
-   batch-regime probe, the load generator, a prefix-aware router, a request
-   trace, the capstone's extensions) are specified in their `\LabIntent`s.
-2. Clear the Part II source markers; they need documentation, not hardware.
-3. When the GPU host is available, clear the single-GPU measurement markers
-   (Chapters 3, 34, 35), repeat the Part II–IX probes on it, and run vLLM and
-   SGLang for Chapters 39–41; the multi-GPU markers (Chapters 6, 31, 32) need a
-   multi-GPU node.
-4. Re-measure the Part VIII–IX load tests on a quiet machine before any of
-   those chapters is FULL (the record gives their conditions).
+## Historical evidence
 
-## Decisions for the author
+The complete pre-restructure status ledger, including measurement sources,
+outstanding hardware issues and editorial decisions, is preserved in
+`archive/docs/STATUS-2026-09-28-before-foundations.md`. Its numbers refer
+to the former chapter order. The earlier first-edition ledger remains at
+`archive/docs/STATUS.md`. Research records and lab directory names remain
+unchanged so their provenance is not rewritten.
 
-- **Appendix A.** The first edition's nine chapters became Appendix A and
-  Chapter 14. This is the plan's largest editorial call; see `STRUCTURE.md`.
-- **Order of tasks 4 and 5.** The chapters were moved before the skeleton was
-  created, because the new Chapter 14 file *is* the moved Chapter 1 and history
-  should follow it. The result is the one the plan specified.
-- **The opening machine.** Part I's opening measurements use an Apple M1
-  laptop, measured in this session, instead of the RTX 5060 Ti example: the
-  GPU host was down. The laptop makes the point more relatable; the RTX figure
-  remains a marked item.
-- **Part II openings that contradict expectations.** Three openings report
-  results a reader may not expect, all from the confirmation pass: on the M1,
-  llama.cpp's 8- and 4-bit KV caches were *slower* than 16-bit at every depth
-  up to 16,384 tokens (Chapter 12 frames the gain as capacity); PyTorch 2.10's
-  fused attention on MPS materialized its scores (4.1 GiB at 8,192 tokens) and
-  a two-dozen-line blockwise version ran where it could not (Chapter 8); and
-  llama.cpp's decode attention read the cache at the same 48–52 GB/s as the
-  weights (Chapter 9, whose planned occupancy story now rests on Hermon's
-  measured kernel instead). Each is labelled as this engine on this machine.
-- **The attention probe's memory cap.** Chapter 8 caps PyTorch's allocator at
-  6 GiB as a stand-in for a smaller GPU, so failures are clean rather than a
-  swapping laptop. The chapter says so; a CUDA re-run without a cap would be a
-  stronger opening.
-- **Two llama.cpp behaviours worth reporting upstream.** Measured and traced
-  to source at `d006858`: (1) a non-streamed request whose client disconnects
-  is not cancelled while any other request is producing results, because each
-  result restarts every waiting thread's one-second disconnect check (Chapter
-  14; 490 orphaned tokens in the measurement); (2) when the KV cache is
-  exhausted, every in-flight request fails, which the source's own TODO
-  already notes (Chapter 19). Nothing has been reported; that is an
-  outward-facing step for the author to decide.
-- **A matched draft model for Part IV.** Chapters 23–24 measure a draft model
-  that is a poor match for its target (Qwen2.5-Coder-3B for
-  DeepSeek-R1-0528-Qwen3-8B, vocabularies translated): it halved decoding
-  speed. That is a true and useful result, but a same-family drafter (Llama
-  3.2 1B for the 3B, about 1.3 GB through Ollama) would show the winning case
-  too. It was not downloaded, because downloads need your permission.
-- **Part VI on one laptop.** Chapters 31–34 measure what one machine can
-  show honestly: a model split across two llama.cpp processes (a pipeline
-  boundary with no network in it), and a KV cache moved through files and host
-  memory instead of recomputed, including an emulated prefill/decode split
-  whose output matched a single server's. Tensor-parallel collectives, expert
-  all-to-alls and network transfers are derived from datasheets, papers and
-  operators' reports, and marked for measurement on a multi-GPU node. A first
-  pass of the split ran through load spikes (the one-minute load reached 81)
-  and showed 13–35% costs; the interleaved repeat showed 1.5–1.7 ms per token,
-  and the chapter reports both.
-- **Part VII on a unified-memory laptop.** The M1 has no PCIe link, so
-  Chapter 35's discrete-GPU costs rest on Hermon's recorded 448 and 17.8 GB/s
-  and on derivations, with markers for the RTX 5060 Ti host. The M1 instead
-  showed the unified-memory side, which Chapters 35 and 37 report as this
-  machine's behaviour: llama.cpp's default repacking of CPU-resident weights
-  keeps a second copy (2.9–4.3 GiB here), and on this overcommitted 16 GB
-  machine it turned CPU/GPU splits that should interpolate into collapses —
-  0.42–1.4 tokens/s with 9 GPU layers against 5.7–9.1 with `--no-repack`, and
-  0.09 tokens/s for the feed-forward split while 130 GiB were swapped out.
-  After that run no further repacking runs were made, to spare the SSD. It may
-  be worth reporting upstream (a split could skip repacking under memory
-  pressure); that is your call, like the other llama.cpp observations.
-- **Corrections for Hermon's documents, applied at your request (session 8).**
-  Hermon commits `811f88d` (adds `crates/hermon-kernels/replay_experts.py`,
-  which reproduces the K6.1 hit rates with `--check`) and `5459c84` (recounts
-  the K6.1 bytes, 7.0–7.1% lower; fixes the GiB/GB mix in the summaries; adds
-  "K6.3 — cache policy: LRU and the layer cycle" with the replay's finding).
-  They are local commits in the Hermon repository and have not been pushed. The
-  book's recorded Granite trace (Chapter 36) confirms the finding on a real
-  router; Hermon's documents do not mention it.
-- **A defect in Hermon's batched runtime (code reading, not measured).** At
-  `2a3fd52` the default runtime sends each piece with `blocking_send` into a
-  per-sequence channel of 32 from its single worker thread, so a client that
-  stops reading blocks every sequence of that model, contrary to the module's
-  own comment (Chapter 41). The fix is `try_send` with a policy for a full
-  channel. Chapter 41's exercise 4 describes the measurement that would
-  confirm it; neither the fix nor the measurement has been made.
-- **Hermon's public documents name a development host.** Two lines of Hermon's
-  `docs/STORAGE_ARCHITECTURE.md` name one of the development machines. The book
-  describes hardware by model only; the Hermon documents may want the same
-  treatment. Not changed.
-- **Two storage-tier caveats (Chapter 34).** A copy written with caching
-  disabled still restored faster than the SSD's measured uncached reads, so
-  the chapter treats the two file measurements as one tier; and llama.cpp's
-  host-memory prompt cache took 67 seconds to return a 2.3 GiB cache while the
-  machine was deep in swap. The chapter makes the second a point about tiers
-  rather than a claim about llama.cpp.
-- **A mixture-of-experts model.** `granite3.1-moe:3b` (2.0 GB) was downloaded
-  with your permission in session 8 and is used in Chapters 35, 36 and 38.
-  Chapter 26's opening still measures llama.cpp's expert product with synthetic
-  weights; its recorded routing (union of experts across a batch: 32.8, 51.9,
-  69.8% at 2, 4, 8 sequences, against 36, 59, 83% for uniform routing) is in the
-  Part VIII record for the FULL pass.
-- **The Llama 3.2 3B file was removed and restored.** It was removed from the
-  Ollama store at 13:07 UTC on 2026-09-26 and, with your permission, pulled
-  again at 14:02 UTC; the file's SHA-256 is unchanged, so every record still
-  refers to the same bytes. One load sweep failed in between and is kept.
-- **Chapter 40's opening.** The skeleton's opening was a cold start measured
-  in minutes; the chapter now opens on a measured saturation knee ("Past the
-  knee") and treats cold starts in its napkin math, because the M1 starts a 2 GB
-  model in about a second and the minutes are a data-center derivation.
-- **The Qwen3.5-9B file.** Chapters 25 and 27 measure the Qwen3.5-9B
-  architecture with a community fine-tune found in the local Ollama store (its
-  GGUF name contains "Uncensored"); only architecture-dependent numbers are
-  used, and the record says so. Qwen's own weights in the same 4-bit form
-  would remove the caveat; that download also needs your permission.
-- **Gemma 4 through Ollama.** llama.cpp build 8660 cannot load the Gemma 4
-  GGUF, so Chapters 28 and 30 measure Gemma 4 in Ollama's own engine, which
-  does not report its cache layout: doubling the context grew memory by 42 MB
-  where the model's metadata implies 134 MB, and Chapter 28 says the gap is
-  unexplained. A newer llama.cpp would allow a same-engine comparison.
-- **Two more llama.cpp observations.** Measured in session 5 and not
-  reported: `--checkpoint-every-n-tokens` creates recurrent-state snapshots
-  only at logical-batch boundaries (2,048 tokens by default), so a smaller
-  interval has no effect unless `-b` is lowered too (Chapter 27); and
-  `test-backend-ops --output csv` omits the timing columns in perf mode (the
-  Part V record). Like the Part III behaviours, reporting them is your call.
-- **The reasoning measurement's scoring.** Chapter 29 reports two correctness
-  counts: answers in the requested "Answer: N" format, and correct values
-  anywhere (two runs gave the right number only as `\boxed{N}`). Eight easy
-  problems are presented as a cost measurement, not an accuracy benchmark.
-- **A third llama.cpp accounting quirk.** At `d006858` the server counts a
-  speculative pass's accepted tokens before emitting them, so identical texts
-  report 2–4% more tokens under speculation and a request can stop short of its
-  length limit (Chapter 22's record). Like the two Part III behaviours, it is
-  unreported upstream.
-- **Part III's evidence engine.** Most Part III openings measure llama.cpp's
-  server on the M1, because it is the engine this machine runs and its source
-  can be read at the exact commit measured. The chapters compare it with vLLM
-  (source at `bcdacfc`) and SGLang (documentation and papers) rather than
-  presenting llama.cpp as the reference design. A CUDA re-run with vLLM would
-  let the openings show both.
-- **Chapter 14 keeps the first edition's text.** Its first-edition sections are
-  the mechanism, as planned; the ZERO pass added the anatomy around them. The
-  FULL pass should knit the two (the opening measures llama.cpp, the
-  mechanism traces the mini-engine).
-- **Record dates are UTC.** The Part II record is `2026-09-23-m1-part2` because
-  the runs were 18:32–19:22 UTC on 2026-09-23 (2026-09-24 local time).
-- **Hermon's compound claim.** Chapter 1 notes that Hermon's
-  `docs/PERFORMANCE.md` multiplies three separately measured speedups into an
-  estimate; the book treats it as a hypothesis. Hermon's document may want the
-  same wording.
-- **Frozen first-edition formats.** `manuscript/`, `diagrams/`, `figures/` and
-  `publication/` are untouched and their checks still run in CI. They could be
-  archived once their Rust/oracle parity checks are folded into lab tests.
-- **Branch.** Work is on `second-edition`, created from `astra-visual-rewrite`
-  at `c8b8158`. Nothing has been pushed or merged.
-- **Licence.** Still unselected (unchanged from the first edition).
+## Chapter status
+
+Generated from the manuscript. Source IDs distinguish preserved lab names
+from the current printed chapter numbers. Prose word counts are approximate.
+
+<!-- chapter-status:begin (generated by scripts/check-textbook.py --write-status) -->
+| # | Chapter | Source ID | Status | Words | TODOs |
+| ---: | --- | --- | --- | ---: | ---: |
+| 1 | From Text to Tokens | f01-text-to-tokens | FULL | 7,523 | 0 |
+| 2 | The Smallest Possible Language Model | f02-smallest-model | FULL | 6,381 | 0 |
+| 3 | Logits, Sampling, and the Autoregressive Loop | f03-sampling | FULL | 6,389 | 0 |
+| 4 | Tensors Without Magic | f04-tensors | FULL | 8,079 | 0 |
+| 5 | Matrix Multiplication: The Engine Room | f05-matmul | FULL | 10,829 | 0 |
+| 6 | Embeddings and Normalization | f06-embeddings-norm | FULL | 7,398 | 0 |
+| 7 | Queries, Keys, and Values | f07-qkv | FULL | 5,819 | 0 |
+| 8 | Position: RoPE From First Principles | f08-rope | FULL | 5,314 | 0 |
+| 9 | Causal Attention, One Row at a Time | f09-causal-attention | FULL | 1,519 | 0 |
+| 10 | The Feed-Forward Network and the Residual Stream | f10-feed-forward | FULL | 1,567 | 0 |
+| 11 | Assembling a Decoder That Generates Tokens | f11-decoder | FULL | 1,644 | 0 |
+| 12 | Model File Formats: GGUF and safetensors | f12-model-formats | FULL | 1,590 | 0 |
+| 13 | Numerics: Floating Point and Quantization Formats | f13-numerics | FULL | 1,564 | 0 |
+| 14 | CPU and SIMD | f14-cpu-simd | FULL | 1,603 | 0 |
+| 15 | GPU Architecture for Inference Engineers | f15-gpu-architecture | FULL | 1,617 | 0 |
+| 16 | Reading Shapes, Bytes and Performance Bounds | f16-notation | FULL | 1,537 | 0 |
+| 17 | Reproducing the Book's Measurements | f17-measurements | FULL | 1,704 | 0 |
+| 18 | Why Inference Is Its Own Discipline | ch01-why-inference | FULL | 6,878 | 0 |
+| 19 | The Forward Pass, Compressed | ch02-forward-pass | FULL | 7,004 | 0 |
+| 20 | The Roofline: Why Decode Leaves Your GPU Idle | ch03-roofline | FULL | 5,178 | 0 |
+| 21 | Prefill and Decode: Two Workloads, One Model | ch04-prefill-decode | FULL | 5,101 | 0 |
+| 22 | The KV Cache: Inference's Central Data Structure | ch05-kv-cache | FULL | 5,172 | 0 |
+| 23 | Napkin Math: Latency, Throughput and Cost per Token | ch06-napkin-math | FULL | 5,237 | 0 |
+| 24 | Matrix Multiplication on Real Hardware | ch07-matmul-hardware | FULL | 5,094 | 0 |
+| 25 | Attention as a Memory Problem: From Online Softmax to FlashAttention | ch08-flashattention | FULL | 6,216 | 0 |
+| 26 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | ch09-decode-attention | FULL | 5,190 | 0 |
+| 27 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | ch10-weight-quantization | FULL | 5,187 | 0 |
+| 28 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | ch11-low-precision-float | FULL | 5,160 | 0 |
+| 29 | Quantizing the KV Cache | ch12-kv-quantization | FULL | 5,098 | 0 |
+| 30 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | ch13-kernel-languages | FULL | 6,323 | 0 |
+| 31 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ch14-request-lifecycle | ZERO | 3,418 | 0 |
+| 32 | Continuous Batching | ch15-continuous-batching | ZERO | 2,098 | 0 |
+| 33 | Paged KV Memory | ch16-paged-kv | ZERO | 1,906 | 0 |
+| 34 | Prefix Caching and RadixAttention | ch17-prefix-caching | ZERO | 2,117 | 0 |
+| 35 | Chunked Prefill and Phase Interference | ch18-chunked-prefill | ZERO | 1,894 | 0 |
+| 36 | Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission | ch19-scheduling | ZERO | 1,941 | 0 |
+| 37 | Structured Output at Engine Speed | ch20-structured-output | ZERO | 1,815 | 0 |
+| 38 | One Server, Many Models: LoRA, Adapters and Routing | ch21-multi-model-serving | ZERO | 1,855 | 0 |
+| 39 | Speculative Decoding: The Draft–Verify Contract | ch22-speculative-decoding | ZERO | 2,320 | 0 |
+| 40 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ch23-modern-speculation | ZERO | 2,052 | 0 |
+| 41 | When Speculation Loses | ch24-when-speculation-loses | ZERO | 1,860 | 0 |
+| 42 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | ch25-shrinking-kv | ZERO | 3,193 | 0 |
+| 43 | Mixture of Experts | ch26-mixture-of-experts | ZERO | 2,980 | 0 |
+| 44 | Hybrid Models: State Spaces and Linear Attention | ch27-hybrid-models | ZERO | 2,761 | 0 |
+| 45 | Long Context: Windows, Sinks and Sparse Attention | ch28-long-context | ZERO | 2,618 | 0 |
+| 46 | Reasoning Models and Test-Time Compute | ch29-reasoning-workloads | ZERO | 2,135 | 0 |
+| 47 | Multimodal Inference | ch30-multimodal | ZERO | 2,028 | 0 |
+| 48 | Tensor, Pipeline and Context Parallelism | ch31-model-parallelism | ZERO | 2,420 | 1 |
+| 49 | Expert Parallelism at Scale | ch32-expert-parallelism | ZERO | 2,175 | 1 |
+| 50 | Disaggregated Serving | ch33-disaggregated-serving | ZERO | 2,010 | 0 |
+| 51 | The KV Cache as a Distributed Storage Tier | ch34-kv-storage-tier | ZERO | 2,298 | 1 |
+| 52 | Offloading Across VRAM, RAM and NVMe | ch35-offloading | ZERO | 3,495 | 2 |
+| 53 | Streaming Experts From Disk: A Measured Case Study | ch36-expert-streaming | ZERO | 4,240 | 0 |
+| 54 | Unified Inference Memory | ch37-unified-memory | ZERO | 3,116 | 0 |
+| 55 | Fast Wrong Answers: Oracles, Differential Testing and Determinism | ch38-fast-wrong-answers | ZERO | 2,945 | 0 |
+| 56 | Benchmarking Without Lying to Yourself | ch39-benchmarking | ZERO | 3,276 | 0 |
+| 57 | Operating Inference in Production | ch40-production | ZERO | 2,831 | 0 |
+| 58 | Anatomy of Real Engines: vLLM, SGLang, llama.cpp and Hermon | ch41-real-engines | ZERO | 2,629 | 0 |
+| 59 | Capstone: Build a Mini Engine End to End | ch42-capstone | ZERO | 3,372 | 0 |
+<!-- chapter-status:end -->

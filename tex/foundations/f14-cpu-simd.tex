@@ -1,0 +1,206 @@
+% status: FULL
+\chapter{CPU and SIMD}\label{app:cpu}
+\begin{ChapterIntent}
+A CPU is both a numerical target and the controller of an accelerator
+service. We will follow one array through a scalar loop, vector lanes and
+several threads. The matrix products of Chapter~\ref{app:matmul} are our
+starting point; instruction-specific performance belongs to the later
+systems chapters' measurement records.
+\end{ChapterIntent}
+
+\section{Elements are addressed; lines are transferred}
+An array access names an element, but memory hardware commonly transfers
+a cache line. Sequential access can use most of it. A large stride may
+transfer many bytes for each useful element. On an illustrative machine
+with 64-byte lines and four-byte elements, a line holds sixteen elements.
+Reading one element per distinct line uses one sixteenth of its payload
+before reuse. This is not the actual M1 line size.
+
+Row-major traversal works well because neighbouring column indices name
+neighbouring elements. Transposing a view changes strides without
+necessarily moving data. A loop that ignores those strides can be wrong;
+one that respects them can still be slow. Chapter~\ref{app:tensors} separates these
+failures. Neither a contiguous allocation nor a matrix-shaped API proves
+that a chosen traversal has locality.
+
+\section{Vector lanes and the tail}
+Single instruction, multiple data (SIMD) applies an operation across
+several lanes. It helps when data can feed those lanes and the compiler
+can establish safe accesses. Branching, aliasing, strides and reductions
+can complicate that proof. An intrinsic makes an operation explicit but
+does not make the surrounding memory access efficient.
+
+For an illustrative eight-lane vector processing nineteen elements, two
+full vectors leave three elements. A scalar cleanup or correctly masked
+operation handles that tail. Loading eight elements from a three-element
+region without a valid memory contract is not an optimization. Test
+lengths just below and above vector boundaries, and test misaligned views
+if the interface allows them.
+
+NEON, AVX and matrix extensions differ in width, operations and dispatch
+requirements. Check the actual target and runtime support rather than
+inferring support from the operating system. A portable scalar reference
+is valuable even when the optimized path is architecture-specific.
+
+\section{Reduction order is part of the result}
+Several independent accumulators can expose instruction-level parallelism.
+Combining them changes summation order. Real-number algebra allows this;
+floating-point arithmetic need not produce identical bits. A random seed
+does not repair an altered arithmetic result. Chapter~\ref{app:numerics}
+explains the numerical contract.
+
+First compare the output against an independent reference. Then inspect
+vectorization reports or generated instructions. Finally measure the
+intended data size and thread count. A tiny array in cache answers a
+different question from a checkpoint larger than the last-level cache.
+
+\section{Threads share resources}
+Threads may share caches and a memory interface. Once aggregate traffic
+saturates the interface, more threads can add overhead without increasing
+throughput. False sharing occurs when threads write different values in
+the same coherence line: logically independent updates still trigger
+ownership transfers. Separate per-thread accumulators and combine them
+deliberately.
+
+Record affinity, the cores actually used, and nested library thread counts.
+Giving every nested layer all available cores can oversubscribe the
+machine. On a NUMA system, page placement and the accessing core determine
+which memory path is used. Establish locality before calling one result
+the machine's memory bandwidth.
+
+\section{The CPU also runs the service}
+A CPU path can win for tiny operations whose accelerator submission costs
+more than their execution. The same CPU may tokenize, enforce grammars,
+schedule batches and service streams. A faster isolated matrix kernel can
+therefore worsen a server if it occupies control-plane cores.
+
+Predict the shared resource, measure a thread-count sweep, and retain a
+one-thread baseline. Never multiply a vector-width ratio by a core-count
+ratio and present the product as measured speedup. The roofline and
+launch-overhead chapters demonstrate how to test that hypothesis.
+
+\section{Walk through a nineteen-element loop}
+Take the integers one through nineteen, stored here as numerical values
+whose exact sum is easy to check. A scalar loop starts at zero and adds
+one value on each iteration. Its answer is
+$19\cdot20/2=190$. This is our oracle before considering vectorization.
+
+An illustrative eight-lane implementation reads values one through eight,
+then nine through sixteen. Each lane accumulates two values. Reducing
+the eight lane sums produces 136, the sum of one through sixteen.
+The remaining three values are 17, 18 and 19, which contribute 54.
+Adding the tail restores 190.
+
+\EngineFigure{foundation-simd-tail}{Nineteen elements processed with an
+illustrative eight-lane vector width. Two complete groups are followed by
+a three-element tail. The grouping changes how work is issued, not which
+elements belong to the sum.}{fig:foundation-simd-tail}
+
+The arithmetic exposes a common defect. A loop bounded by the number of
+complete vectors can produce 136 without any crash or invalid number.
+An input size divisible by eight would hide it. Test lengths seven,
+eight, nine, fifteen, sixteen, seventeen and nineteen, as well as zero
+when the interface permits an empty input.
+
+Run the small arithmetic lesson:
+\begin{verbatim}
+python3 code/foundations/lesson.py cpu
+\end{verbatim}
+It reports two complete groups, three tail elements and sum 190.
+It does not claim that Python executed SIMD instructions. The lesson
+checks the indexing contract; the Rust matrix kernels and their
+benchmarks are where we inspect actual execution.
+
+\section{A dependency can keep lanes waiting}
+In a scalar reduction, each new sum depends on the previous sum.
+Even if the processor can issue several arithmetic instructions,
+that dependency chain can limit progress. Independent accumulators
+allow work to proceed before earlier additions complete.
+
+For example, accumulate alternating elements into two partial sums,
+then add the partial sums at the end. Integer examples can make this
+look identical to the scalar loop. With floating-point values, the
+different grouping can change rounding. The optimization therefore
+needs both a performance test and a numerical contract.
+
+This distinction helps when reading compiler output. Finding a vector
+instruction confirms that some work was vectorized. It does not show
+that the complete loop is fast, that memory supplies enough values,
+or that its numerical result meets the application contract.
+Inspecting generated code and timing the intended workload answer
+different questions.
+
+\section{Data reuse is often more valuable than wider lanes}
+Suppose several input rows are multiplied by the same weight row.
+A loop that finishes one input at a time may reload that weight row
+for every input. A loop that keeps the weight row available while
+updating several outputs can reuse each fetched value.
+The scalar products are the same; the data movement changes.
+
+This is the bridge from a vector operation to a small matrix tile.
+The tile size must fit useful values and accumulators into available
+registers or caches. Making it larger without limit eventually causes
+spills, extra loads or capacity misses. A tile is a trade between
+reuse and local storage, not a synonym for maximum size.
+
+A useful experiment varies the number of input rows while keeping the
+weight matrix fixed. First predict whether reuse should improve.
+Then measure under controlled cache and thread conditions. If the
+curve changes abruptly, inspect dispatch thresholds or blocking choices
+before concluding that the hardware itself has a discontinuity.
+The later matrix-multiplication chapter performs that investigation.
+
+\section{Threads need independent outputs}
+Parallelizing matrix multiplication over output rows gives workers
+different destinations. Each worker can read the shared input and
+weights while writing its own output region. The program still needs
+to ensure those regions do not overlap.
+
+Parallelizing one reduction is harder. Workers produce partial sums
+that must be combined, introducing synchronization and a new reduction
+order. For a very small reduction the coordination can cost more
+than the work it distributes. Begin with the simpler ownership split
+and measure whether the problem is large enough to pay for threads.
+
+Even disjoint scalar outputs can share a cache line. Repeated writes
+to that line by different cores can trigger coherence traffic.
+Padding or rearranging per-thread state can help, but padding increases
+memory footprint. Do not pad everything by habit. Identify the shared
+line, show the update pattern and measure the changed layout.
+
+Thread count is not the same as useful core count. A program can
+launch more runnable threads than available execution resources.
+Nested parallel libraries can amplify this problem: several outer
+tasks each launch their own full team of inner workers. Record both
+levels when interpreting a speedup or slowdown.
+
+\section{Read a CPU benchmark in layers}
+Ask first whether the answers are correct. Next ask what data was
+timed: a tiny array in cache, a large streaming matrix, or an entire
+request including allocation and tokenization. Then ask how many
+threads ran and what else used the machine.
+
+If a measured kernel time excludes allocation, say so. If its inputs
+were reused repeatedly, say that too. A warm in-cache result can be a
+valid measurement, but it is not a direct estimate of checkpoint
+streaming. The later roofline chapter measures more than one boundary
+precisely because a single bandwidth number cannot explain every loop.
+
+For a server, add the control work back into the picture. A numerical
+kernel that uses every core can delay token delivery, admission or
+cancellation. End-to-end latency can worsen while the isolated kernel
+benchmark improves. This is not a contradiction: the two experiments
+measure different scopes.
+
+\section{A practical first optimization}
+Start from the checked scalar loop. Make the indexing and ownership
+obvious. Reuse data before adding architecture-specific instructions.
+Handle tails explicitly. Measure one thread before many. After each
+change, rerun correctness tests and retain the earlier result.
+
+This sequence is intentionally modest. It lets a reader explain why a
+change helped or failed. Later chapters introduce larger tiles and
+specialized kernels, but the questions remain the same: which values
+are reused, where they live, which operations can proceed together,
+and what numerical result must survive the transformation?
+\input{worked/f14-cpu-simd.tex}

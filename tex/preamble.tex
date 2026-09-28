@@ -71,10 +71,11 @@
 
 % --- Second edition: cross-references ----------------------------------------
 \newcommand{\Chref}[1]{Chapter~\ref{ch:#1}}
-\newcommand{\Appref}[1]{Appendix~\ref{app:#1}}
+% Historical label namespace retained after promotion into Part I.
+\newcommand{\Appref}[1]{Chapter~\ref{app:#1}}
 
 % --- Second edition: chapter anatomy (AUTHORING.md section 3) ------------------
-% scripts/check-textbook.py checks that each chapter uses every anatomy macro
+% scripts/check-textbook.py checks that each systems chapter uses every anatomy macro
 % exactly once and in this order, with mechanism sections between the napkin
 % math and the ledger.
 \newenvironment{ChapterIntent}{\par\begingroup\itshape\color{BookBlue!85!black}\noindent\ignorespaces}{\par\endgroup\bigskip}

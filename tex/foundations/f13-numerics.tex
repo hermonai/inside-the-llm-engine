@@ -1,0 +1,217 @@
+% status: FULL
+\chapter{Numerics: Floating Point and Quantization Formats}\label{app:numerics}
+\begin{ChapterIntent}
+Ask which values a format represents, how arithmetic rounds, and which
+equivalence the application requires. These questions precede bit counts.
+Chapters~\ref{ch:weight-quantization}--\ref{ch:kv-quantization} provide the detailed low-precision formats and their
+measured trade-offs; this chapter establishes the numerical vocabulary.
+\end{ChapterIntent}
+
+\section{Start with the gaps between numbers}
+A stored floating-point value is not an arbitrary real number. At a
+given magnitude, only a finite set of values is available. An arithmetic
+result between two representable values must be rounded. A useful way
+to understand precision is therefore to look at the gap between nearby
+values, not only at the largest value a format can store.
+
+Consider an illustrative binary format with three significant bits,
+including the leading bit. Between one and two its values are
+$1,\ 1.25,\ 1.5,\ 1.75$. At two, the exponent increases and the
+spacing becomes one half. Adding a sufficiently small increment to
+a large number can leave the stored value unchanged. No error message
+is required; rounding is part of the arithmetic contract.
+
+\EngineFigure{foundation-number-spacing}{An illustrative three-significant-bit
+binary format. Equal relative precision produces larger absolute gaps at
+larger magnitudes. The marked values are examples, not an FP8 encoding
+table. Rounding maps an exact result to one representable point.}
+{fig:foundation-number-spacing}
+
+More exponent bits extend the available range. More significand bits
+make values denser within a range. A format with fewer total bits can
+trade one property for the other. This is why a datatype name must
+identify a specific encoding, and why two low-precision formats with
+the same bit count can behave differently.
+
+Subnormal values, signed zero, infinity and NaN add boundary behaviour
+outside the normal-number expression developed next. Some low-precision
+encodings omit or reinterpret special values. A kernel must follow its
+actual format, not a generic picture of floating point. The later
+low-precision chapter reads concrete encodings and their scaling rules.
+
+\section{Finite storage changes arithmetic}
+A normal binary floating-point value has the schematic form
+\[
+ x=(-1)^s\,2^e(1+f),
+\]
+where $s$ is its sign, $e$ its unbiased exponent and $f$ the stored fraction
+interpreted in $[0,1)$. This does not describe zeros, subnormals, infinities
+or NaNs. Their encodings are format-specific.
+
+Range and precision solve different problems. A larger range can avoid
+overflow without resolving small changes near a large value. Flushing
+subnormals matters near zero. Input, multiplication, accumulation and
+output formats can differ within one operator; an FP16 label alone leaves
+those questions unanswered.
+
+\section{Separate storage, multiplication and accumulation}
+A matrix product combines many products into each output element.
+The weights can be stored in one format, multiplication can use another
+representation and the accumulator can use a wider format. Saying
+that a model is sixteen-bit does not fully describe that computation.
+
+Imagine adding a thousand small positive products to a partial sum.
+If the partial sum is repeatedly rounded in a coarse format, individual
+increments may disappear. A wider accumulator can preserve more of
+those increments, even when inputs remain low precision. The final
+result may still be cast back to a smaller output type.
+
+This does not make the operation exact. Input rounding occurred before
+accumulation, and the accumulator has finite precision too. State what
+each stage does. A comparison against a higher-precision reference
+then has an interpretable meaning: it measures the combined effect
+of the chosen numerical path.
+
+Operation order also matters. Summing a row sequentially, in a tree,
+or through several vector accumulators groups additions differently.
+All can be mathematically valid and produce slightly different
+floating-point results. Reproducibility requires a declared reduction
+policy or a tolerance, not only a random seed.
+
+\section{Stable softmax without overflow}
+For scores $[1000,999]$, direct exponentiation can overflow. Subtract the
+largest score:
+\[
+ \frac{[e^{1000},e^{999}]}{e^{1000}+e^{999}}
+ =\frac{[1,e^{-1}]}{1+e^{-1}}
+ \approx[0.731059,0.268941].
+\]
+Equality here is a real-arithmetic identity; the decimal values are rounded.
+Adding the same finite constant to every score does not change exact
+probabilities. A masked position contributes no mass. An entirely masked
+row has no distribution under this normalization and needs an explicit
+policy; blindly evaluating its maximum is not a policy.
+
+A row summing to one can still be wrong. Compare its entries and downstream
+weighted output, not merely normalization. Chapter~\ref{ch:flashattention}
+uses this contract while changing the evaluation order.
+
+\section{Specify the rounding rule}
+Consider illustrative symmetric quantization with scale $s_q=0.5$:
+\[
+ q=\operatorname{clip}(\operatorname{round}(x/s_q),-7,7),
+ \qquad \widehat{x}=s_q q.
+\]
+For $x=[-1.1,0.2,1.6]$, nearest rounding gives codes $[-2,0,3]$
+and reconstruction $[-1,0,1.5]$. Absolute errors are $[0.1,0.2,0.1]$.
+Without clipping, nearest rounding bounds error by $s_q/2$.
+Clipping removes that bound: $x=10$ reconstructs as $3.5$, with error $6.5$.
+
+At $x=1.25$ the quotient is $2.5$. Ties-to-even gives code 2;
+ties-away-from-zero gives 3. The word round is therefore insufficient to
+reproduce a conversion. The executable example uses ties-to-even and
+tests this boundary. A production encoding must specify saturation,
+nonfinite handling and scale computation too.
+
+\section{Quantization is an encoding and a decoder}
+Return to the scale-$0.5$ example. The code 3 reconstructs to 1.5
+only because that scale is known. If another block uses scale 2,
+the same code reconstructs to 6. A quantized weight therefore consists
+of a code and the metadata needed to interpret it.
+
+Run the committed arithmetic:
+\begin{verbatim}
+python3 code/foundations/lesson.py numerics
+\end{verbatim}
+The program prints codes $[-2,0,3]$, their reconstructions and the
+block size, whose 18 bytes we account for in the next section.
+Predict the output before running it. Then change
+the illustrative input 1.6 to 10 in a scratch copy. The scale is
+unchanged, so the code saturates at 7. This experiment separates
+rounding error from clipping error with one visible number.
+
+How should a scale be chosen? A simple symmetric choice covers the
+largest absolute value in a group. An outlier then makes the step
+coarser for every other element in that group. Smaller groups can
+reduce this effect but require more scales. More elaborate methods
+use calibration data or different error objectives; they are
+introduced only after this basic encoding is clear.
+
+Do not describe an integer code as a truncated float. Quantization
+usually rescales and rounds the real value into a finite codebook.
+Dequantization maps that code back to an approximation. Bit casting
+would reinterpret an encoding without that numerical transformation.
+The two operations are not interchangeable.
+
+\section{Metadata is storage}
+A hypothetical group of 32 four-bit codes and one 16-bit scale occupies
+$32\cdot4+16=144$ bits: 18 bytes, or 4.5 bits per value.
+This is an illustrative encoding, not every format named four-bit.
+Zero points, secondary scales, padding and outlier storage change the count.
+Smaller groups can improve local scaling while increasing metadata cost.
+
+There is a computational bill as well: load and decode metadata, consume
+packed codes, and accumulate products. Reduced payload does not guarantee
+a faster unsupported kernel. Separate storage savings from measured runtime.
+
+\section{Choose the equivalence}
+Floating-point addition is not associative. In an illustrative decimal
+system retaining three significant digits, adding $1000$, $1$, $-1000$
+left-to-right loses the $1$; cancelling the large terms first retains it.
+Binary formats exhibit the same phenomenon at their own spacing boundaries.
+
+A numerical test can require
+\[
+ |\widehat y-y|\leq\epsilon_{\rm abs}+\epsilon_{\rm rel}|y|.
+\]
+Declare both tolerances; the absolute term matters near zero. If two logits
+differ by a margin $\delta$ and each can move by at most $\epsilon$, their
+ordering is guaranteed only when $\delta>2\epsilon$. Small tensor error,
+the same greedy token and task quality are thus different tests.
+
+A seed controls random draws, not rounding or reduction order. Quantization
+also changes the model's numerical function. Report the intended contract
+before deciding that a speedup preserves correctness; Chapter
+\ref{ch:fast-wrong-answers} develops this hierarchy.
+
+\section{Choose a test that answers your question}
+Suppose reference logits are $[1.000,0.999]$. Moving the first down by
+0.001 and the second up by 0.001 swaps the greedy winner. Each
+coordinate changed only slightly, but generation can now follow a
+different history. Once histories differ, later logits are evaluated
+on different inputs, so they are no longer a direct kernel comparison.
+
+A numerical test should therefore keep inputs fixed while comparing
+operators. A generation test checks the accumulated effect on a
+sequence. A task evaluation checks usefulness for a particular
+workload. All three are valuable; none replaces the others.
+The statement that a kernel passes a tolerance test does not establish
+that a quantized model preserves task quality.
+
+Relative error alone behaves badly near zero. If the true value is
+zero, dividing by its magnitude is undefined. The combined absolute
+and relative rule given earlier supplies a floor. Choose those
+tolerances from the precision, operation and application, then record
+them before judging the result. Increasing a tolerance only after
+seeing a failure needs a reason, not an optimistic label.
+
+\section{Use adversarially small examples}
+Large random tests are useful, but a tiny structured example often
+explains a failure faster. Use all-equal softmax scores to test
+normalization, very large scores to test overflow handling, halfway
+quantization values to test ties, out-of-range values to test clipping,
+and cancellation between positive and negative terms to expose
+reduction sensitivity.
+
+Keep these examples when an optimized implementation arrives.
+The optimized path might pack values, fuse operators or use a different
+accumulation order. The examples still specify what it must preserve
+and where approximation is allowed. An optimization is easier to
+review when the expected numerical contract predates it.
+
+At this point, fewer bits should no longer sound like a free speed
+switch. They change storage, arithmetic support, conversion work and
+error. The later quantization chapters will measure those trade-offs
+on real implementations. Here we have built the vocabulary and the
+small tests needed to read those measurements critically.
+\input{worked/f13-numerics.tex}

@@ -1,12 +1,11 @@
-% status: ZERO
+% Part I introduction; not a numbered chapter.
 \begin{ChapterIntent}
-This appendix is a laboratory for understanding the computation an engine
+This part builds the computation an engine
 must preserve. You do not need to train a model before studying inference.
 You do need to know what a token, a tensor, a probability and a cached state
-mean. Begin with the small example below; then choose a route through
-A.1--A.8. The implementations and independent oracles remain in their original
-locations. Nothing in this reading guide changes the main chapters'
-measured results.
+mean. Begin with the small example below, then follow the chapters in order.
+The first complete prediction is deliberately tiny. The decoder and its
+engineering consequences grow from that same idea.
 \end{ChapterIntent}
 
 \section*{One prediction, five different objects}
@@ -40,7 +39,7 @@ certificate; confidently predicted text can be false.
 
 \begingroup
 \setcounter{figure}{0}
-\renewcommand{\thefigure}{A.0.\arabic{figure}}
+\renewcommand{\thefigure}{I.\arabic{figure}}
 \EngineFigure{foundation-token-loop}{An illustrative ordinary decode step.
 Solid arrows carry data; the dashed return appends the committed token
 for the next step. Shared weights are read, not updated. KV state belongs
@@ -74,24 +73,29 @@ controls scale, residual connections add updates to incoming representations,
 and position information distinguishes order. None of this means the engine
 searches a database of complete sentences.
 
-\section*{Choose a route, not a prerequisite mountain}
+\section*{A path from one prediction to a working decoder}
 \begin{longtable}{@{}p{.20\linewidth}p{.34\linewidth}p{.38\linewidth}@{}}
 \toprule Question & Read or build & Return to the systems problem\\\midrule
-What is a token? & A.1: text, IDs and byte boundaries & Chapters 2, 14 and 20\\
-What is one prediction? & A.2--A.3: scores, sampling and feedback & Chapters 1, 4 and 22\\
-Where do numbers live? & A.4: shapes, strides and views & Chapters 7, 16 and 35\\
-What does a layer compute? & A.5--A.8: products, normalization, Q/K/V and RoPE & Chapters 2, 8 and 25\\
-How do parts compose? & Chapter 2's full layer; Chapter 42's executable capstone & Chapters 14--19 and 38\\
+What is a token? & Chapter~\ref{app:tokens}: text, IDs and byte boundaries & Correct model input and output\\
+What is one prediction? & Chapters~\ref{app:smallest-model}--\ref{app:sampling}: scores, selection and feedback & The generation loop\\
+Where do numbers live? & Chapters~\ref{app:tensors}--\ref{app:matmul}: storage and products & Correct and efficient operators\\
+What does a layer compute? & Chapters~\ref{app:embeddings-norm}--\ref{ch:feed-forward}: normalization, attention and features & A readable decoder block\\
+How do parts compose? & Chapter~\ref{ch:decoder}: full-prefix and cached execution & State reuse with a reference\\
 \bottomrule
 \end{longtable}
 
-A.1--A.8 preserve the first edition's construction and worked problems.
-Their ENGINE milestones and labs 1--58 belong to that path, not to
-second-edition chapter numbering. Current chapter labs live separately
-under \texttt{code/labs}. Planned A.9--A.11 will develop attention, the
-feed-forward network and decoder composition at the same granularity.
-Until they exist, use the explicit Chapter 2 and Chapter 42 bridges above.
-A capstone does not make missing pedagogical sections complete.
+The construction chapters preserve the first edition's detailed examples,
+figures and worked problems. Their ENGINE milestones and labs 1--58
+retain their historical identifiers. The new attention, feed-forward
+and decoder lessons live in \texttt{code/foundations}; systems labs
+remain under \texttt{code/labs}. Their READMEs tell you exactly what
+to run. A command's historical number is not a prerequisite.
+
+After constructing the decoder, continue through checkpoint files,
+numerical formats, CPU and GPU execution, dimensional reasoning and
+measurement. These chapters connect the computation to the physical
+objects an engine manages. No accelerator or downloaded model is
+required for the small Part I examples.
 
 \section*{Predict, compute, challenge}
 Change the first logit from $\log 2$ to $\log 4$. The exponentiated scores
@@ -106,6 +110,6 @@ append. Then change an assumption: use another adapter, reset positions
 or change tokenization. Matching visible text no longer proves matching
 state. These counterexamples lead to cache identity and differential testing.
 
-The arithmetic here and in Appendices B--G has an executable mirror in
+The arithmetic here and in the hardware and measurement chapters of Part I has an executable mirror in
 \texttt{scripts/check-foundations.py}. It needs no model download.
 It checks examples, not language quality or industrial performance.

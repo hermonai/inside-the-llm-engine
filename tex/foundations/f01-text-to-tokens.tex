@@ -1,3 +1,4 @@
+% status: FULL
 % Authoritative LaTeX; edit this file, not the historical Markdown.
 \chapter{From Text to Tokens}\label{chapter-2-from-text-to-tokens}\label{app:tokens}
 \section{The model does not receive your
@@ -31,8 +32,7 @@ This boundary is part of model semantics. If it is wrong, the numerical
 model can execute every matrix multiplication correctly and still
 receive the wrong sequence.
 
-\Chref{request-lifecycle} made request ownership real while treating the prompt as
-opaque. This chapter opens that first black box. We will distinguish
+Our first task is to understand what enters the numerical model. We will distinguish
 text, Unicode scalar values, bytes, and token IDs; derive byte-pair
 encoding (BPE) by hand; separate BPE from SentencePiece's Unigram
 algorithm; make special-token insertion explicit; serialize a tiny chat
@@ -42,8 +42,10 @@ executable's generation command uses the four-token model vocabulary, while
 its tokenization demonstration uses a separate teaching BPE vocabulary.
 An ID from one must never be silently passed to the other.
 
-\Appref{smallest-model} will open the numerical function already observed in \Chref{request-lifecycle}.
-We do not derive that function here.
+\Appref{smallest-model} will open the numerical function behind a prediction.
+We do not derive that function here. The teaching executable also contains
+request-handling code; its full lifecycle is explained later in
+\Chref{request-lifecycle}, not assumed as a prerequisite.
 
 \section{Four sequences can describe one visible
 input}\label{four-sequences-can-describe-one-visible-input}
@@ -756,8 +758,9 @@ Rust's UTF-8 validator for the status:
 \subsection{Token latency and text latency can
 differ}\label{token-latency-and-text-latency-can-differ}
 
-\Chref{request-lifecycle} defined time to first token at an observable output boundary.
-Now we can name two lower-level events:
+Time to first token ends at a declared, observable output event.
+The service treatment in \Chref{request-lifecycle} will formalize that
+boundary. For now, distinguish two lower-level events:
 
 \begin{verbatim}
 first selected token ready
@@ -780,7 +783,8 @@ definite malformed sequence, and an incomplete terminal suffix.
 \section{Evolve ENGINE-0 without building a second
 runtime}\label{evolve-engine-0-without-building-a-second-runtime}
 
-The \Chref{request-lifecycle} lifecycle remains:
+The supplied teaching runtime uses the following lifecycle, developed
+fully in \Chref{request-lifecycle}:
 
 \begin{quote}
 \begin{enumerate}
@@ -1159,7 +1163,7 @@ path}\label{inside-hermon-pinned-llama.cpp-owns-the-current-path}
 The following account is \textbf{CURRENT} for Hermon commit
 \href{https://github.com/hermonai/hermon/commit/472a44cdb511b2dae6c9569e59543db8f8350b25}{\texttt{472a44c}},
 inspected on 2026-09-02. The detailed evidence is in the
-\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-01/chapter-02-from-text-to-tokens.md}{Appendix A.1 research note}.
+\href{https://github.com/hermonai/inside-the-llm-engine/blob/astra-visual-rewrite/research/part-01/chapter-02-from-text-to-tokens.md}{Chapter~\ref{app:tokens} research note}.
 
 The Hermon repository pins llama.cpp submodule commit
 \href{https://github.com/ggml-org/llama.cpp/commit/389ff61d77b5c71cec0cf92fe4e5d01ace80b797}{\texttt{389ff61}}.
@@ -1517,4 +1521,4 @@ oracle.
 \end{itemize}
 
 
-\input{worked/a1-text-to-tokens.tex}
+\input{worked/f01-text-to-tokens.tex}

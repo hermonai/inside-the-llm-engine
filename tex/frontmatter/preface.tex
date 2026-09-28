@@ -1,87 +1,85 @@
-% Preface to the second edition.
+% Preface to the foundations-first second edition.
 \chapter*{How to read this book}
 \addcontentsline{toc}{chapter}{How to read this book}
 
-Run a dense 7-billion-parameter model on a laptop or a gaming GPU and watch two
-numbers: tokens per second, and the bytes per second the memory can deliver.
-For batch-one, weight-dominated decode, multiplying the first by the active
-weight bytes often approaches the second. The dense matrix products stream
-their weights for each step, and the chip's
-arithmetic units --- the part everyone talks about --- spend most of that time
-waiting. Nearly every idea in a modern inference engine is a way of changing
-that picture: doing more useful work per byte moved, moving fewer bytes, or
-hiding the wait.
+You type a sentence. A model returns another token. Between those two
+events, software turns text into integers, reads learned numbers,
+evaluates a decoder, chooses an output and keeps enough state to do it
+again. This book opens those steps one at a time.
 
-This book is organized around that accounting. Every inference engine
-negotiates four scarce resources: \textbf{memory bandwidth}, the bytes moved
-per token; \textbf{memory capacity}, the bytes that must stay resident;
-\textbf{compute}, the floating-point operations; and \textbf{latency}, the time
-a person waits for the first token and for each one after it. It does so for
-two outcomes: a \textbf{correct} answer, and a low \textbf{cost} --- tokens per
-dollar at a latency target. Each technique in the book enters as a response to
-a measured constraint and is charged, in a small table we call the
-\emph{constraint ledger}, for what it spends of the other resources. Batching
-buys throughput with latency and memory. Quantization buys bandwidth and
-capacity with accuracy. Speculative decoding buys latency with compute that
-would otherwise sit idle --- and loses when it would not. When a new technique
-appears next year, it will slot into the same ledger.
+The destination is an inference service that is correct, fast and
+affordable. We will get there by building understanding before adding
+scale. You do not need to know a serving framework, a GPU programming
+language or the vocabulary of performance engineering before beginning.
+Ordinary programming experience and a willingness to work through
+small arrays are enough to start.
 
-\section*{How each chapter works}
-Every chapter has the same anatomy. It opens with a \emph{measurement} ---
-a real, reproducible number that should surprise you. It then does the
-\emph{napkin math}: the back-of-the-envelope cost model, with real model and
-hardware numbers, before any code. It derives the \emph{mechanism}, charges it
-in the \emph{constraint ledger}, and asks you to \emph{build it small} in a
-self-contained lab that runs on a laptop. It tells \emph{what actually
-happened} when real engines tried the idea, including the attempts that failed.
-It ends with a dated \emph{frontier watch}, because this field changes every
-month, and with exercises.
+\section*{Part I is the main path}
+Part~\ref{part:foundations} begins with text and tokens, builds a small
+numerical language model, and then constructs the Transformer operators
+and a complete decoder. You will calculate attention weights, trace
+residual additions and compare cached generation with recomputation.
+After that, we examine model files, numerical precision, CPUs, GPUs,
+units and reproducible measurements.
 
-Numbers carry their provenance. A \emph{measured} number comes with a record
-of the hardware, software, model file and command that produced it. A
-\emph{derived} number shows its arithmetic. An \emph{illustrative} number says
-so. Claims about the state of the art are checked against primary sources and
-logged, with dates, in the book's frontier ledger.
+These chapters were previously placed in appendices. They now lead the
+book because they explain the objects whose cost the later chapters
+measure. Their slower, concrete style is the model for the rest of the
+manuscript: ask one question, work a small example, draw what changes,
+run the code, then test what could go wrong.
 
-\section*{How to read it}
-Part~\ref{part:physics} is the foundation: read it first. It explains why
-decode is often bound by memory bandwidth, why prefill can become bound by compute, why the
-KV cache is the engine's central data structure, and how to predict the cost
-of serving any model on any machine in five minutes. After that the parts can
-be read in the order your work needs them. Parts~\ref{part:one-request}
-and~\ref{part:serving} make one request fast and then serve many;
-Parts~\ref{part:beyond-one-token} and~\ref{part:architectures} cover
-speculation and the model architectures that reshape engines;
-Parts~\ref{part:scaling-out} and~\ref{part:hardware-you-have} cover many GPUs
-and too few; the last two parts cover correctness, measurement, production
-and a capstone engine.
+Experienced readers can skim the construction and begin with
+Part~\ref{part:physics}. The foundation references in later chapters
+point back to the relevant explanation; they are not prerequisites
+hidden at the back of the book.
 
-You need ordinary programming experience and basic linear algebra. The labs
-are in Rust, with Python for independent checks. If you want to build the
-Transformer computation from scratch before reading about engines, start with
-Appendix~\ref{app:transformer}: it constructs tokens, tensors, matrix
-multiplication, normalization, projections and rotary position step by step,
-with a tested Rust engine and independent oracles.
+\section*{Then make the model an engine}
+The remaining parts ask what happens when a correct decoder must
+answer quickly, share hardware with other requests and survive failures.
+We study memory traffic, prefill and decode, KV storage, optimized
+kernels, batching and scheduling. We then examine speculation, changing
+model architectures, distributed execution, constrained hardware,
+correctness, measurement and production operation.
 
-\section*{About this draft}
-Each chapter now includes a short foundation bridge after its opening
-phenomenon and before its napkin math. Read it when the vocabulary is new;
-otherwise continue to the derivation. Appendix A opens with a small
-prediction worked by hand and routes into the detailed construction.
-Appendices B--C explain execution hardware, D--E representation, F notation
-and dimensional checks, and G reproducible evidence. These references are
-working drafts, not a claim that all appendices are finished.
+Four resources organize those engineering choices: memory bandwidth,
+memory capacity, computation and latency. A small table records what
+each technique saves and what it costs. The table comes after the
+mechanism, not in place of it. Correct answers and useful work at an
+acceptable cost remain the goals.
 
-The teaching approach is original, but shares the build-to-understand
+\section*{Build, predict and check}
+The teaching approach is original, while sharing the build-to-understand
 principle of Sebastian Raschka's \emph{Build a Large Language Model
-(From Scratch)} \cite{raschka2024build}: predict a small result, implement
-the mechanism, check it independently, then change an assumption.
-Here the destination is an inference service and its resource trade-offs,
-not a training curriculum.
+(From Scratch)} \cite{raschka2024build}. The examples here lead to
+inference execution and serving, not a training curriculum.
 
-This is a working draft of the second edition, written breadth first: every
-chapter exists, but many are still outlines or first drafts, and some sections
-carry visible markers for measurements not yet taken. The status of each
-chapter is recorded in the repository. Appendix~\ref{app:transformer} and
-\Chref{request-lifecycle} contain the first edition's reviewed text, lightly
-edited.
+Early chapters use the existing Rust teaching engine and independent
+oracles. The new attention, FFN and decoder lessons use standard-library
+Python so the arithmetic and state transitions remain visible. Their
+weights are illustrative, not trained; passing their tests establishes
+computation, not language quality. Later labs return to realistic model
+files, kernels and request workloads.
+
+Try to predict each small result before running it. Then change one
+assumption: a tensor stride, a future token, a scale, a block size or
+a timing endpoint. A useful explanation lets you predict not only
+what works but why a nearby version fails.
+
+\section*{Numbers, identifiers and draft status}
+Measured numbers come with setup and raw records. Derived numbers show
+their arithmetic. Illustrative numbers are chosen to teach, not to
+advertise performance. Current industrial claims cite primary sources
+and carry a date; a paper's result is not a measurement made by this book.
+
+Printed chapter numbers follow the new reading order. Code directories
+and historical records retain stable identifiers. For example,
+\texttt{ch14-request-lifecycle} now accompanies
+\Chref{request-lifecycle}; do not infer a printed number from its path.
+The source-to-chapter map is in \texttt{docs/STRUCTURE.md}.
+
+The foundational chapters form a complete construction and orientation
+path. Many later systems chapters still need their full-depth pass.
+The repository status table distinguishes developed chapters from
+drafts and independent review from the author's own checks. Read the
+book as a working textbook whose claims should remain inspectable
+as both the manuscript and the industry evolve.

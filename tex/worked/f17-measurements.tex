@@ -1,0 +1,15 @@
+\section{Worked problems}
+\subsection*{1. Name the endpoints}
+\textbf{Problem.} Send is at 3 ms, first token at 17 ms, last token at
+40 ms and terminal at 44 ms. There are three tokens. Find TTFT and mean gap.
+\textbf{Solution.} TTFT is 14 ms. Mean delivered-token gap is
+$(40-17)/(3-1)=11.5$ ms. The terminal event is excluded from that mean.
+\subsection*{2. Summarize without deleting}
+\textbf{Problem.} Find the mean and median of $[9,10,10,11,60]$ ms.
+\textbf{Solution.} The sum is 100 ms, so the mean is 20 ms.
+The middle observation is 10 ms. Retain the 60 ms observation unless
+a declared exclusion rule invalidates it.
+\subsection*{3. A fresh process}
+\textbf{Problem.} Does restarting the model process prove a cold file cache?
+\textbf{Solution.} No. File pages can remain in the operating system's
+cache after the process exits. State process and cache conditions separately.

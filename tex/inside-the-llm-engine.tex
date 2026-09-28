@@ -9,16 +9,36 @@
 \vspace{12mm}
 {\Large The Systems Engineering of\\Large Language Model Inference\par}
 \vspace{14mm}\rule{\linewidth}{.8pt}\par
-\vspace{7mm}{\large Four scarce resources, two outcomes,\\and every technique charged for what it spends.\par}
+\vspace{7mm}{\large Build the model. Understand the machine.\\Engineer the service.\par}
 \vfill
 {\large Second edition --- working draft\par}
 \vspace{5mm}September 2026\par
-Chapters are written breadth first; each chapter's status is recorded in\\
+From first principles to industrial inference; chapter status is recorded in\\
 \texttt{docs/STATUS.md} in the book's repository.
 \end{titlepage}
 \input{frontmatter/preface.tex}
+\clearpage
 \tableofcontents
 \mainmatter
+\part{Build and Understand a Language Model}\label{part:foundations}\label{app:transformer}
+\input{foundations/introduction.tex}
+\input{foundations/f01-text-to-tokens.tex}
+\input{foundations/f02-smallest-model.tex}
+\input{foundations/f03-sampling.tex}
+\input{foundations/f04-tensors.tex}
+\input{foundations/f05-matmul.tex}
+\input{foundations/f06-embeddings-norm.tex}
+\input{foundations/f07-qkv.tex}
+\input{foundations/f08-rope.tex}
+\input{foundations/f09-causal-attention.tex}
+\input{foundations/f10-feed-forward.tex}
+\input{foundations/f11-decoder.tex}
+\input{foundations/f12-model-formats.tex}
+\input{foundations/f13-numerics.tex}
+\input{foundations/f14-cpu-simd.tex}
+\input{foundations/f15-gpu-architecture.tex}
+\input{foundations/f16-notation.tex}
+\input{foundations/f17-measurements.tex}
 \part{The Physics of Inference}\label{part:physics}
 \input{chapters/ch01-why-inference.tex}
 \input{chapters/ch02-forward-pass.tex}
@@ -70,25 +90,6 @@ Chapters are written breadth first; each chapter's status is recorded in\\
 \input{chapters/ch40-production.tex}
 \input{chapters/ch41-real-engines.tex}
 \input{chapters/ch42-capstone.tex}
-\appendix
-\AppendixGroup{A}{The Transformer From Scratch}\label{app:transformer}
-\input{appendices/a0-transformer-from-scratch.tex}
-\BeginAppendixGroup{A}
-\input{appendices/a1-text-to-tokens.tex}
-\input{appendices/a2-smallest-model.tex}
-\input{appendices/a3-sampling.tex}
-\input{appendices/a4-tensors.tex}
-\input{appendices/a5-matmul.tex}
-\input{appendices/a6-embeddings-norm.tex}
-\input{appendices/a7-qkv.tex}
-\input{appendices/a8-rope.tex}
-\EndAppendixGroup{1}
-\input{appendices/b-gpu-architecture.tex}
-\input{appendices/c-cpu-simd.tex}
-\input{appendices/d-model-formats.tex}
-\input{appendices/e-numerics.tex}
-\input{appendices/f-notation.tex}
-\input{appendices/g-reproducing-measurements.tex}
 \backmatter
 \input{backmatter/glossary.tex}
 \printbibliography[heading=bibintoc,title={References}]

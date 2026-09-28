@@ -10,15 +10,17 @@
 \chapter{The Request Lifecycle: Streaming, Cancellation and Terminal Ownership}\label{ch:request-lifecycle}\label{chapter-1-the-missing-half-of-ai}
 
 \begin{ChapterIntent}
-A request is not a function call. It is a state machine that receives tokens
-from a model, turns them into bytes a client can read, honours cancellation
-and budgets, survives failures part-way through a stream, and ends with
-exactly one terminal outcome. This chapter makes that contract explicit,
-proves the single-owner property that keeps it true, and defines the
-timestamps --- arrival, first token, first text, completion --- from which
-time to first token and inter-token latency are measured. It builds on the
-first edition's executable request trace.
+The decoder returns scores. A service must deliver text, react when a client leaves and
+release the request's state. We will follow one reply through those events and define
+the rule that it ends exactly once, even when completion, cancellation and failure race.
 \end{ChapterIntent}
+
+\section*{A reply has an owner and an ending}
+Imagine two clients sharing the engine. One keeps reading; the other disconnects. The
+departed client must not keep consuming model work indefinitely merely because its
+neighbour is active. Start with the single-request event trace, then read the measured
+cancellation case. Keep noticing a disconnect, deciding to stop, publishing the terminal
+event and safely reclaiming memory as distinct steps.
 
 \OpeningSection{Time to first token, measured}
 

@@ -34,7 +34,7 @@ def choose(probabilities, draw):
 
 class Foundations(unittest.TestCase):
     def printed(self, name, *anchors):
-        text = (TEX / "appendices" / name).read_text()
+        text = (TEX / "foundations" / name).read_text()
         for anchor in anchors:
             self.assertIn(anchor, text, f"{name}: printed contract changed")
 
@@ -56,17 +56,19 @@ class Foundations(unittest.TestCase):
             self.assertRegex(explanation, r"\\ref\{|Appendix A\.[1-8]", chapter)
         self.assertEqual(len(titles), 42)
 
-    def test_reference_appendices_are_not_empty_shells(self):
-        for letter in "bcdefg":
-            path, = (TEX / "appendices").glob(f"{letter}-*.tex")
+    def test_foundations_lead_the_reading_path(self):
+        main = (TEX / "inside-the-llm-engine.tex").read_text()
+        self.assertNotIn(r"\appendix", main)
+        self.assertLess(main.index("foundations/f01"), main.index("chapters/ch01"))
+        paths = sorted((TEX / "foundations").glob("f[0-9][0-9]-*.tex"))
+        self.assertEqual(len(paths), 17)
+        for path in paths:
             text = path.read_text()
-            self.assertRegex(text.splitlines()[0],
-                             r"^% status: (ZERO|FULL|VERIFIED)$", path.name)
-            self.assertGreater(len(text.split()), 400, path.name)
-            self.assertGreaterEqual(text.count(r"\section{"), 4, path.name)
+            self.assertRegex(text, r"^% status: (FULL|VERIFIED)\n", path.name)
+            self.assertTrue(r"\input{worked/" + path.stem in text, path.name)
 
     def test_prediction_and_sampling(self):
-        self.printed("a0-transformer-from-scratch.tex",
+        self.printed("introduction.tex",
                      r"\mathbf{p}=[1/2,\;1/4,\;1/4]",
                      r"$[2/3,1/6,1/6]$", "$0.6$")
         p = softmax([math.log(2), 0, 0])
@@ -83,14 +85,14 @@ class Foundations(unittest.TestCase):
             choose(p, 1)
 
     def test_gpu_capacity_and_transfer(self):
-        self.printed("b-gpu-architecture.tex", "64 KiB", "24 KiB",
+        self.printed("f15-gpu-architecture.tex", "64 KiB", "24 KiB",
                      "16 KiB", "3.90625", "16 GiB/s")
         self.assertEqual(min(8, 64 // 24), 2)
         self.assertEqual(min(8, 64 // 16), 4)
         self.assertEqual(64 * 2**20 / (16 * 2**30) * 1000, 3.90625)
 
     def test_cpu_lines_and_tails(self):
-        self.printed("c-cpu-simd.tex", "64-byte", "four-byte",
+        self.printed("f14-cpu-simd.tex", "64-byte", "four-byte",
                      "eight-lane", "nineteen", "three elements")
         self.assertEqual(64 // 4, 16)
         self.assertEqual(divmod(19, 8), (2, 3))
@@ -100,7 +102,7 @@ class Foundations(unittest.TestCase):
             self.assertLess(tail, 8)
 
     def test_file_coordinates(self):
-        self.printed("d-model-formats.tex", "120-byte", "$[2,3]$",
+        self.printed("f12-model-formats.tex", "120-byte", "$[2,3]$",
                      "$[0,24)$", "$[128,152)$", "148$")
         origin = 8 + 120
         elements = 2 * 3
@@ -111,14 +113,14 @@ class Foundations(unittest.TestCase):
         self.assertIn("absolute interval $[128,152)$", figure)
 
     def test_stable_softmax(self):
-        self.printed("e-numerics.tex", "[1000,999]", "[0.731059,0.268941]")
+        self.printed("f13-numerics.tex", "[1000,999]", "[0.731059,0.268941]")
         probabilities = softmax([1000, 999])
         self.assertAlmostEqual(probabilities[0], .731059, places=6)
         self.assertAlmostEqual(math.fsum(probabilities), 1)
         self.assertEqual(probabilities, softmax([1, 0]))
 
     def test_quantization_and_metadata(self):
-        self.printed("e-numerics.tex", "$s_q=0.5$", "$[-2,0,3]$",
+        self.printed("f13-numerics.tex", "$s_q=0.5$", "$[-2,0,3]$",
                      "$[-1,0,1.5]$", "4.5 bits", "$6.5$")
         values = [-1.1, .2, 1.6]
         codes = [max(-7, min(7, round(v/.5))) for v in values]
@@ -133,7 +135,7 @@ class Foundations(unittest.TestCase):
         self.assertEqual((32 * 4 + 16) / 32, 4.5)
 
     def test_nonassociative_reduction(self):
-        self.printed("e-numerics.tex", "three significant digits",
+        self.printed("f13-numerics.tex", "three significant digits",
                      "$1000$, $1$, $-1000$")
         with localcontext() as context:
             context.prec = 3
@@ -142,7 +144,7 @@ class Foundations(unittest.TestCase):
             self.assertEqual((a + c) + b, 1)
 
     def test_cache_payload_and_translation(self):
-        self.printed("f-notation.tex", "64", "960", "1536", "576",
+        self.printed("f16-notation.tex", "64", "960", "1536", "576",
                      "$(1,1)$", "$[7,2]$")
         per_token = 2 * 2 * 2 * 4 * 2
         logical = 3 * 5 * per_token
@@ -160,7 +162,7 @@ class Foundations(unittest.TestCase):
         self.assertIn(r"P\,q_w/8", quantization)
         self.assertIn(r"$q_w=8b_w$", quantization)
         self.assertNotIn(r"P\,b_w/8", quantization)
-        self.printed("f-notation.tex", r"\max(20,8)", "200 output tokens/s",
+        self.printed("f16-notation.tex", r"\max(20,8)", "200 output tokens/s",
                      "4 FLOP/byte", "10$ FLOP/byte")
         data, flops, bandwidth, compute = 2e9, 8e9, 100e9, 1e12
         bound = max(data/bandwidth, flops/compute)
@@ -170,7 +172,7 @@ class Foundations(unittest.TestCase):
         self.assertEqual(4/bound, 200)
 
     def test_delivery_timestamps(self):
-        self.printed("g-reproducing-measurements.tex",
+        self.printed("f17-measurements.tex",
                      "$17-3=14$", "$(40-17)/(3-1)=11.5$", "$44-3=41$")
         intended, send, admission, terminal = 0, 3, 7, 44
         delivered = [17, 25, 40]

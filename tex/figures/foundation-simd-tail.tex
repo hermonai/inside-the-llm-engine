@@ -1,0 +1,16 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\foreach \i in {1,...,8}{
+ \node[cell,minimum width=11mm,fill=BookPale] at (\i*1.25,0) {\i};
+ \pgfmathtruncatemacro{\n}{\i+8}
+ \node[cell,minimum width=11mm,fill=BookPale] at (\i*1.25,-1.1) {\n};
+}
+\foreach \i in {1,...,3}{
+ \pgfmathtruncatemacro{\n}{\i+16}
+ \node[cell,minimum width=11mm,fill=BookGold] at (\i*1.25,-2.2) {\n};
+}
+\node[note,anchor=west] at (11,0) {group 1};
+\node[note,anchor=west] at (11,-1.1) {group 2};
+\node[note,anchor=west] at (5.3,-2.2) {tail: three valid elements};
+\node[note,anchor=west] at (.7,-3.3)
+ {Two full groups: sum 136 \qquad Tail: sum 54 \qquad Total: 190};
+\end{tikzpicture}

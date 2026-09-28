@@ -1,0 +1,16 @@
+\section{Worked problems}
+\subsection*{1. Reverse the input}
+\textbf{Problem.} Apply the chapter's ReLU FFN to $[-1,1]$.
+\textbf{Solution.} The expanded row is $[-1,1,-2]$, activation gives
+$[0,1,0]$, the update is $[1,1]$ and the residual result is $[0,2]$.
+\subsection*{2. Price the projections}
+\textbf{Problem.} Count bias-free SwiGLU weights and matrix FLOPs for
+$d=4$, $d_{\rm ff}=6$, and three input tokens.
+\textbf{Solution.} There are 72 weights and 288 F32 bytes.
+Matrix work is approximately $3\cdot6\cdot4\cdot6=432$ FLOPs.
+Weights are shared, so the three-token batch does not triple parameter storage.
+\subsection*{3. A local operator}
+\textbf{Problem.} How can you test that an FFN does not mix token positions?
+\textbf{Solution sketch.} Run two rows, change only one row, and rerun.
+The untouched row's output must be unchanged. Also compare the batched
+operation with separate row calls under the intended numerical tolerance.
