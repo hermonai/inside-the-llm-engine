@@ -206,9 +206,11 @@ decoration on this loop: it determines which observable traces are legal.
 An informal flag named \texttt{done} cannot explain whether a request succeeded,
 was cancelled or failed. We need a state machine whose transitions are events.
 
-\EngineFigure{request-states}{The request has one terminal owner. The loop can
-emit zero or more ordered text events; its outgoing terminal transitions are
-mutually exclusive. A failed request may already have emitted a prefix.}{fig:request-states}
+\EngineFigure{request-states}{UML state-machine view of an admitted request in
+the teaching runtime. The filled circle starts the lifecycle; the bullseye
+ends it. Transition labels name events, guards in brackets and actions after
+a slash. One finalizer resolves the outcome and sends one terminal event.
+A failed request may already have emitted a prefix.}{fig:request-states}
 
 Call the terminal outcome $o$. For a completed run with a working, non-panicking
 in-process sink, our observable contract is

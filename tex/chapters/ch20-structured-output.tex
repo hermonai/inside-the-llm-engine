@@ -162,6 +162,10 @@ the model wants to say produces valid output that says little. Constraints
 belong on format; content the model must reason about should stay in fields it
 can fill freely.
 
+The grammar is state carried beside the model, not a second language model. The next mask depends on the prefix actually committed. Sampling from an old mask and updating the grammar afterward is not an equivalent ordering.
+
+\EngineFigure{sys-grammar-sequence}{UML sequence view of grammar-constrained decoding (conceptual). Selection uses the intersection of the model distribution and the currently allowed set; the constraint state advances with the committed token. No particular CPU/GPU placement or parallel schedule is implied.}{fig:sys-grammar-sequence}
+
 \LedgerSection
 
 Masking invalid tokens against a compiled grammar at every step:

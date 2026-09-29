@@ -1,0 +1,28 @@
+% diagram-kind: memory
+\begin{tikzpicture}[font=\small\sffamily]
+\node[anchor=west,font=\bfseries\sffamily] at (-.6,.8) {(a) MHA: one pair per query head};
+\foreach \i in {0,...,3}{
+ \node[block,minimum width=13mm] (q\i) at (\i*1.6,0) {$q_{\i}$};
+ \node[block,minimum width=13mm,fill=BookGold] (k\i) at (\i*1.6,-1.5) {$K_{\i},V_{\i}$};
+ \draw[flow] (q\i)--(k\i);
+}
+\node[align=left,anchor=west] at (7,-.7) {$2H_qd_h$ elements\\equal key and value widths};
+\node[anchor=west,font=\bfseries\sffamily] at (-.6,-2.6) {(b) GQA: two queries share each pair};
+\foreach \i in {0,...,3}{
+ \node[block,minimum width=13mm] (g\i) at (\i*1.6,-3.4) {$q_{\i}$};
+}
+\node[block,fill=BookGold] (gk0) at (.8,-4.9) {$K_0,V_0$};
+\node[block,fill=BookGold] (gk1) at (4,-4.9) {$K_1,V_1$};
+\draw[flow] (g0)--(gk0); \draw[flow] (g1)--(gk0);
+\draw[flow] (g2)--(gk1); \draw[flow] (g3)--(gk1);
+\node[align=left,anchor=west] at (7,-4.1) {$2H_{kv}d_h$ elements\\here $H_{kv}=H_q/2$};
+\node[anchor=west,font=\bfseries\sffamily] at (-.6,-6) {(c) MLA: cache the latent and rotary key};
+\node[sysbox] (latent) at (1.3,-7.2) {Shared KV latent\\$\mathbf c^{KV}\in\mathbb R^{d_c}$};
+\node[sysbox] (rotary) at (6.4,-7.2) {Rotary key\\$\mathbf k^R\in\mathbb R^{d_R}$};
+\node[sysbox,text width=65mm] (attention) at (3.8,-9.3) {Attention using absorbed projections\\weighted latent, then output projection};
+\draw[flow] (latent)--node[syslabel,left]{read}(attention);
+\draw[flow] (rotary)--node[syslabel,right]{read}(attention);
+\node[align=left,anchor=west] at (9,-7.2) {$d_c+d_R$\\elements};
+\node[sysnote,anchor=north west] at (-.6,-10.3) {Top arrows select which cached head a query reads. Bottom arrows carry stored values into computation.};
+\end{tikzpicture}
+

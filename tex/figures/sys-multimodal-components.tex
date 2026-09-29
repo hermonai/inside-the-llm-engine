@@ -1,0 +1,19 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (m) at (0,0) {Image, audio or video input};
+\node[sysbox] (p) at (0,-1.65) {Model-specific preprocessing};
+\node[sysbox] (e) at (0,-3.3) {Modality encoder};
+\node[sysbox] (j) at (0,-4.95) {Project features\\to the decoder interface};
+\node[sysbox] (t) at (6,0) {Text and special tokens};
+\node[sysbox] (te) at (6,-1.65) {Text embedding lookup};
+\node[sysbox] (mix) at (6,-4.95) {Assemble ordered input rows\\and positional metadata};
+\node[sysbox] (d) at (6,-6.6) {Decoder and generation state};
+\draw[flow] (m)--(p);
+\draw[flow] (p)--(e);
+\draw[flow] (e)--(j);
+\draw[flow] (t)--(te);
+\draw[flow] (te)--(mix);
+\draw[flow] (j)--(mix);
+\draw[flow] (mix)--(d);
+\node[sysnote,anchor=north west] at (-1.8,-7.8999999999999995) {Validate the modality contract before interpreting a faster encoder as an equivalent model.};
+\end{tikzpicture}

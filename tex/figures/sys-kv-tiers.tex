@@ -1,0 +1,15 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (g) at (0,0) {Device KV working set};
+\node[sysbox] (h) at (5.5,0) {Host-memory KV tier};
+\node[sysbox] (s) at (11,0) {Local storage tier};
+\node[sysbox] (i) at (5.5,-2.2) {Directory and policy\\identity, locations, readiness};
+\node[sysbox] (r) at (11,-2.2) {Remote KV tier};
+\draw[flow] [<->] (g)--(h);
+\draw[flow] [<->] (h)--(s);
+\draw[flow] [<->] (s)--(r);
+\draw[flow] [dashed] (i)--(g);
+\draw[flow] [dashed] (i)--(h);
+\draw[flow] [dashed] (i)--(r);
+\node[sysnote,anchor=north west] at (-1.8,-3.5) {Include model revision, prefix, positions and format; enforce tenant sharing policy separately.};
+\end{tikzpicture}

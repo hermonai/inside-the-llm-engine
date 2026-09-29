@@ -467,6 +467,10 @@ quantized model whose perplexity barely moves can still change the answers to
 the questions a particular application asks; a divergence measured token by
 token shows how often it does.
 
+Freeze the reference, evaluation workload and acceptance criteria before packing. A failed quality test sends the encoding back for revision even if the resulting model fits more easily in memory.
+
+\EngineFigure{sys-weight-quantization}{A flowchart for evaluating a weight encoding. Fewer packed bytes and faster arithmetic are separate claims. Quality criteria are declared before inspecting the result.}{fig:sys-weight-quantization}
+
 \LedgerSection
 
 Weight-only quantization from 16 bits to llama.cpp's Q4\_K\_M mix, 5.0 bits per weight on average:

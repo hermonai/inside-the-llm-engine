@@ -247,6 +247,10 @@ contexts of 32K tokens or more, only half remained satisfactory at 32K
 policy, a compressed cache, a quantized one --- is a change to the model, and
 deserves the same differential testing as any other (\Chref{fast-wrong-answers}).
 
+Cache retention and attention permission are separate decisions. A value can remain in memory without being allowed into this query's softmax, and an evicted value cannot be used merely because the model would have allowed it. Keep the position map explicit while evaluating the quality cost of the policy.
+
+\EngineFigure{sys-long-context-window}{An illustrative retention layout for a query at absolute position eleven: two sink tokens and a four-token recent window. The policy is not equivalent to dense attention unless the model and intended approximation permit it. Physical compaction must preserve logical positions.}{fig:sys-long-context-window}
+
 \LedgerSection
 
 Serving contexts far beyond a few thousand tokens:

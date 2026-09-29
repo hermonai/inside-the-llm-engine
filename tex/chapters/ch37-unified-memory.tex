@@ -222,6 +222,10 @@ load --- and
 work an engine moves to the CPU to relieve the GPU competes with the GPU for
 the one resource decode needs most.
 
+A common address does not imply that two processors may read and write without coordination. The useful change in this design is that weights and state can reside in one physical pool. The allocator still tracks last use, and concurrent readers still compete for memory bandwidth.
+
+\EngineFigure{sys-shared-memory}{Component layout of a physically shared-memory system, not merely a unified virtual address space. CPU and GPU retain distinct execution and caching behavior while sharing a capacity and traffic budget. Synchronization is still required at producer/consumer boundaries.}{fig:sys-shared-memory}
+
 \LedgerSection
 
 Running inference on one memory shared by CPU and GPU:

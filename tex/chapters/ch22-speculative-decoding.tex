@@ -113,16 +113,16 @@ $x_1,\dots,x_\gamma$ continuing the accepted text. The target runs once on the
 last accepted token and the $\gamma$ drafts, producing distributions
 $p_1,\dots,p_{\gamma+1}$ for every position. The engine then walks the drafts
 in order, accepting each by the rule of the next section; at the first
-rejection it replaces the rejected token with one drawn from the target and
-discards the rest. If every draft is accepted, $p_{\gamma+1}$ supplies one more
+rejection it samples a correction from the residual distribution defined
+below and discards the remaining drafts. Sampling directly from the
+unadjusted target at this point would not preserve its distribution.
+If every draft is accepted, $p_{\gamma+1}$ supplies one more
 token for free. Each pass therefore emits between one and $\gamma+1$ tokens, and
 never fewer than ordinary decoding would.
 
-\FigureIntent{One verification pass as a timeline: the drafter's $\gamma$
-small steps, the target's single pass over $\gamma+1$ positions, the accepted
-prefix, the rejected tail discarded from the cache, and the correction or bonus
-token; beside it, the same tokens produced by ordinary decoding, one pass
-each.}
+Separate three frontiers: proposed tokens, verified tokens and evaluated cache positions. Only a contiguous accepted prefix survives verification. The correction or bonus token can be visible to the caller before either model has evaluated it; the next iteration must reconcile that boundary.
+
+\EngineFigure{sys-speculative-sequence}{UML sequence view of one speculative iteration. The controller tests drafts in order and stops at the first rejection. A rejection uses the normalized positive residual of target minus proposal; all accepted drafts permit a bonus sample from the target. Rollback removes tentative rejected state, not the committed prefix.}{fig:sys-speculative-sequence}
 
 \section{The acceptance rule that preserves the distribution}
 

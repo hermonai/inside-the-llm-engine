@@ -1,11 +1,15 @@
+% diagram-kind: state
 \begin{tikzpicture}[font=\sffamily\small]
-\node[block] (new) at (0,0) {validate};
-\node[block] (loop) at (4,0) {running\\predict / select / emit};
-\node[block,fill=BookGold] (end) at (11,0) {one finalizer\\one terminal event};
-\draw[flow] (new)--node[above]{valid}(loop);
-\draw[control] (new.south)--++(0,-2)-|node[pos=.25,below]{invalid request}(end.south);
-\draw[flow] (loop.north west)--++(0,1)-|(loop.north east);
-\node[note] at (4,1.35) {next token};
-\draw[control] (loop)--node[above,align=center]{EOS / budget\\cancel / error}(end);
-\node[note,anchor=north] at (4,-.9) {A prefix may exist before any terminal outcome.};
+\node[circle,fill=BookBlue,inner sep=2.4pt] (initial) at (0,1.3) {};
+\node[sysbox,rounded corners=6pt] (running) at (0,-.5) {Running\\predict / select / emit};
+\node[sysbox,rounded corners=6pt,fill=BookGold] (finishing) at (7,-.5) {Finalizing\\resolve outcome and bytes};
+\node[sysbox,rounded corners=6pt] (terminal) at (7,-3) {Terminal\\no more output events};
+\node[circle,draw=BookBlue,minimum size=6mm,inner sep=0pt] (final) at (7,-4.5) {};
+\fill[BookBlue] (final.center) circle (1.7mm);
+\draw[flow] (initial)--node[right,syslabel]{request admitted}(running);
+\draw[flow] (running)--node[above,syslabel,text width=25mm]{stop condition\\EOS / budget\\cancel / error}(finishing);
+\draw[flow] (finishing)--node[right,syslabel]{/ emit one terminal event}(terminal);
+\draw[flow] (terminal)--(final);
+\draw[flow] (running.south west)--++(-.4,-1.7)-|node[pos=.65,below,syslabel]{[continue] / next token}(running.south east);
+\node[sysnote,anchor=north west] at (-2.2,-5.4) {Scope: the teaching runtime's in-process event stream. Network delivery and asynchronous resource reclamation need additional contracts.};
 \end{tikzpicture}

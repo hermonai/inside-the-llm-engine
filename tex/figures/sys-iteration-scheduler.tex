@@ -1,0 +1,14 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Incorporate completed work;\\retire terminal requests};
+\node[sysbox] (b) at (0,-1.7) {Admit eligible queued work\\within memory policy};
+\node[sysbox] (c) at (0,-3.4) {Build token budget and\\request-to-row mapping};
+\node[sysbox] (d) at (6,-3.4) {Execute one model step\\using each request's KV};
+\node[sysbox] (e) at (6,-1.7) {Collect results; select tokens;\\record terminal decisions};
+\draw[flow] (a)--(b);
+\draw[flow] (b)--(c);
+\draw[flow] (c)--(d);
+\draw[flow] (d)--(e);
+\draw[flow] (e.north)|-(a.east);
+\node[sysnote,anchor=north west] at (-1.8,-4.7) {New arrivals join at an iteration boundary, subject to capacity and fairness.};
+\end{tikzpicture}

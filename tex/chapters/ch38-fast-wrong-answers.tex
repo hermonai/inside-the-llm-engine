@@ -264,6 +264,10 @@ request (\Chref{capstone}). Production adds what no test suite has: real
 traffic. The incidents that matter most are the ones evaluations miss, and the
 case below is one.
 
+An oracle comparison is most informative before histories diverge. Hold inputs, positions and model identity fixed. On failure, shrink the case and find the first differing value instead of comparing two increasingly different generated stories.
+
+\EngineFigure{sys-correctness-gate}{Differential-testing flowchart. Identical inputs and a declared tolerance precede performance measurement. This gate does not replace sequence-level or task-level evaluation.}{fig:sys-correctness-gate}
+
 \LedgerSection
 
 Keeping an inference engine's answers honest:

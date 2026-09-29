@@ -1,0 +1,16 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Receive selected expert IDs};
+\node[sysdecision] (d) at (0,-1.9) {Resident and\\valid?};
+\node[sysbox] (b) at (0,-4) {Pin the resident expert};
+\node[sysbox] (n) at (6,-1.9) {Choose unpinned space;\\load and validate bytes};
+\node[sysbox] (c) at (6,-4) {Publish ready entry;\\pin for this consumer};
+\node[sysbox] (z) at (3,-5.7) {Compute contribution;\\release pin after last use};
+\draw[flow] (a)--(d);
+\draw[flow] (d)--node[left,syslabel]{yes}(b);
+\draw[flow] (d)--node[above,syslabel]{no}(n);
+\draw[flow] (n)--(c);
+\draw[flow] (b)--(z);
+\draw[flow] (c)--(z);
+\node[sysnote,anchor=north west] at (-1.8,-7) {No safe destination means wait or change policy; never overwrite a live reader.};
+\end{tikzpicture}

@@ -1,0 +1,8 @@
+[package]
+name = "ch14-request-lifecycle"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Chapter 14 lab: the terminal contract, and cancellation that does or does not reach the model"
+
+[dependencies]

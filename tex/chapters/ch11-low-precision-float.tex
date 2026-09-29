@@ -471,6 +471,10 @@ comparison in this chapter was decided by the layer's output error, and in two
 cases --- AWQ in \Chref{weight-quantization}, MXFP4 against INT4 here --- the
 output reversed the verdict of the weight error.
 
+Read this as a representation path rather than a promise of tensor-core speed. The two operands may use different encodings and scaling rules. A format is useful only when a supported kernel can consume that complete representation and produce the required output.
+
+\EngineFigure{sys-scaled-matrix-path}{Component layout of a conceptual block-scaled matrix operation. Codes alone are not the operand. Scale interpretation, supported multiplication, accumulation and output conversion all contribute to the numerical contract; their exact placement depends on the format and kernel.}{fig:sys-scaled-matrix-path}
+
 \LedgerSection
 
 Serving a model's large matrices in a four-bit block-scaled format (MXFP4 or

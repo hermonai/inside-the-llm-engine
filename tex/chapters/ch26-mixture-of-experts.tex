@@ -259,6 +259,10 @@ large one --- is paid in memory, and the three ways to pay are more devices
 Kimi~K3 store experts in MXFP4), or slower tiers of memory for the experts that
 are not needed this step (\Chref{offloading}, \Chref{expert-streaming}).
 
+Follow one token even when it is copied to several destinations. The packed expert batches are an execution layout, not a new logical sequence. Retaining the routing weights and inverse row map is what lets the combine stage reconstruct the correct per-token output.
+
+\EngineFigure{sys-moe-routing}{Component layout of a sparse expert layer (illustrative two-destination example). Routing assigns token copies and weights; grouped expert execution changes physical row order; the combine operation restores token identity and sums weighted contributions. Unselected experts need not execute.}{fig:sys-moe-routing}
+
 \LedgerSection
 
 Replacing a dense FFN with $E$ experts of which $k$ are active:

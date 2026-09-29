@@ -566,6 +566,10 @@ the engine; llama.cpp's fused kernel already takes attention sinks and a
 soft-capping value as arguments. That is why engines ship several attention backends and choose
 among them by request shape and hardware (\Chref{decode-attention}).
 
+The tile is temporary; the running summary persists within the row. After every iteration that summary represents all permitted keys processed so far. Preserving this invariant makes a different evaluation order an optimization of the same attention calculation.
+
+\EngineFigure{sys-online-softmax}{Activity view of online attention for one query row. Each tile contributes a local maximum, normalization sum and weighted-value numerator. Rescaling puts old and new contributions on the same scale before merging.}{fig:sys-online-softmax}
+
 \LedgerSection
 
 Tiled attention with an online softmax, against the naive three-kernel version:

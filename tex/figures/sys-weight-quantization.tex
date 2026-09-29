@@ -1,0 +1,16 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Fix reference outputs\\and evaluation workload};
+\node[sysbox] (b) at (0,-1.6) {Choose encoding; calibrate\\where required; pack weights};
+\node[sysdecision] (d) at (0,-3.5) {Quality contract\\passes?};
+\node[sysbox] (y) at (0,-5.55) {Measure kernels,\\payload and metadata};
+\node[sysbox] (n) at (6,-3.5) {Revise precision, groups\\or calibration method};
+\node[sysbox] (z) at (6,-5.55) {Report benefit and error\\under stated conditions};
+\draw[flow] (a)--(b);
+\draw[flow] (b)--(d);
+\draw[flow] (d)--node[left,syslabel]{yes}(y);
+\draw[flow] (d)--node[above,syslabel]{no}(n);
+\draw[flow] (y)--(z);
+\draw[flow] (n.north)--++(0,1.9)--(b.east);
+\node[sysnote,anchor=north west] at (-1.8,-6.8) {Do not replace a failed quality gate with a more flattering throughput metric.};
+\end{tikzpicture}

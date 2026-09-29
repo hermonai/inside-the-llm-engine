@@ -91,10 +91,9 @@ allocated when a sequence crosses a block boundary, so no memory is reserved
 for tokens not yet generated and no sequence needs contiguous space. vLLM's
 default block size was 16 tokens.
 
-\FigureIntent{Two sequences' logical token positions mapped through their
-block tables into a shared physical pool: blocks scattered, one physical block
-shared by both sequences' identical prefix with reference count two, and the
-unused tail of each sequence's last block shaded as internal fragmentation.}
+Trace logical position four through each table. The offset within its block is zero for both requests, but A reaches physical block two and B reaches block nine. Sharing the prefix is safe because neither continuation writes into the other's tail.
+
+\EngineFigure{sys-paged-pool}{An illustrative paged-cache layout with four slots per block. A and B share a complete immutable prefix block, then diverge into separate tails. Arrows map table entries to physical blocks; unused tail slots are allocated capacity, not valid tokens.}{fig:sys-paged-pool}
 
 \section{The block pool and its allocator}
 

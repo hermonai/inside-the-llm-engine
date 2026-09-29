@@ -1,0 +1,13 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Attention layer};
+\node[sysbox] (k) at (6,0) {Its attention state\\growing or windowed KV};
+\node[sysbox] (r) at (0,-2) {Recurrent layer};
+\node[sysbox] (s) at (6,-2) {Its recurrent state\\fixed shape at a boundary};
+\node[sysbox] (o) at (0,-4) {Next layer representation};
+\draw[flow] (a)--(r);
+\draw[flow] (r)--(o);
+\draw[flow] [<->] (a)--node[above,syslabel]{read / append}(k);
+\draw[flow] [<->] (r)--node[above,syslabel]{read / update}(s);
+\node[sysnote,anchor=north west] at (-1.8,-5.3) {A fork needs both the correct attention history and the corresponding recurrent snapshot.};
+\end{tikzpicture}

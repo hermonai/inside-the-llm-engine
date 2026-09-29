@@ -205,6 +205,10 @@ InfiniBand ports, 50~GB/s each, are typical of the last generation
 network, per direction. Every layout decision is a decision about which of these
 links each byte crosses.
 
+Start by naming the object being divided. Tensor-parallel ranks must combine partial layer results. Pipeline stages send activations between different layers and keep the state for their own layers. In the illustrated context-parallel arrangement, each rank owns query rows but needs keys and values from other sequence partitions. These communication edges explain why adding devices does not by itself predict a speedup.
+
+\EngineFigure{sys-parallelism-layouts}{Three conceptual partition axes. Tensor parallelism splits a layer's arithmetic; pipeline parallelism splits layers; context parallelism splits sequence work and its state. The context panel illustrates query partitions with exchanged KV tiles, one strategy rather than a universal implementation.}{fig:sys-parallelism-layouts}
+
 \LedgerSection
 
 Splitting one model across $N$ devices:

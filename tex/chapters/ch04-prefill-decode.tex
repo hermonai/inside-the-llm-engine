@@ -450,6 +450,10 @@ KV cache between them, is disaggregated serving
 more requests within latency targets by separating the phases onto different
 GPUs \cite{zhong2024distserve} (reported by the authors; not reproduced here).
 
+Follow the boundary between prediction and feedback in the sequence below. Returning a selected ID does not mean the decoder has already stored its K/V. This is the same evaluated-frontier distinction introduced in Part I, now expressed as an interaction between components.
+
+\EngineFigure{sys-phase-sequence}{UML sequence view of ordinary autoregressive generation (illustrative). Prefill evaluates the prompt; a selected token is evaluated only on feedback. The loop owns selection and stopping. Solid open arrows are messages, dashed arrows responses; vertical spacing is not elapsed time.}{fig:sys-phase-sequence}
+
 \LedgerSection
 
 This chapter's technique is the simplest one an engine can apply to the two

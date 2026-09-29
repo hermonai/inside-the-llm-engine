@@ -240,6 +240,10 @@ per second at 70\% of capacity and 25 when saturated: running it saturated buys
 seven. That trade is the cost decision in production: how much latency headroom
 a service buys, and how much it pays for each unit.
 
+The control plane changes capacity more slowly than the token loop produces output. Keep those responsibilities separate. A latency incident can originate in admission, routing, initialization or streaming even when the matrix kernels are behaving normally.
+
+\EngineFigure{sys-production-components}{Conceptual service component layout. The data path crosses authentication, admission and routing before reaching workers. Telemetry informs control-plane decisions; scaling a pool does not make a new replica ready before model loading and checks finish.}{fig:sys-production-components}
+
 \LedgerSection
 
 What operating a fleet buys and spends:

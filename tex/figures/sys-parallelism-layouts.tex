@@ -1,0 +1,21 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[anchor=west,font=\bfseries\sffamily] at (-1.8,.8) {(a) Tensor parallelism: partition one layer};
+\node[sysbox] (input) at (0,-.8) {Same input rows};
+\node[sysbox] (w0) at (5.1,0) {Device 0\\weight shard 0};
+\node[sysbox] (w1) at (5.1,-1.7) {Device 1\\weight shard 1};
+\node[sysbox] (reduce) at (10.2,-.8) {Combine partial\\layer results};
+\draw[flow] (input)--(w0); \draw[flow] (input)--(w1);
+\draw[flow] (w0)--(reduce); \draw[flow] (w1)--(reduce);
+\node[anchor=west,font=\bfseries\sffamily] at (-1.8,-3) {(b) Pipeline parallelism: partition layer groups};
+\node[sysbox] (stage0) at (1,-4.2) {Device 0\\early layers + their KV};
+\node[sysbox] (stage1) at (8,-4.2) {Device 1\\later layers + their KV};
+\draw[flow] (stage0)--node[above,syslabel]{activations}(stage1);
+\node[anchor=west,font=\bfseries\sffamily] at (-1.8,-5.6) {(c) Context parallelism: partition sequence positions};
+\node[sysbox] (context0) at (1,-7) {Device 0\\local query / KV rows};
+\node[sysbox] (context1) at (8,-7) {Device 1\\local query / KV rows};
+\draw[flow] (context0.north east)--++(0,.45)-|node[pos=.25,above,syslabel]{KV tiles}(context1.north west);
+\draw[flow] (context1.south west)--++(0,-.45)-|node[pos=.25,below,syslabel]{KV tiles}(context0.south east);
+\node[sysnote,anchor=north west] at (-1.8,-8.8) {Local attention outputs remain aligned to local query rows. Hybrid deployments can combine all three axes.};
+\end{tikzpicture}
+

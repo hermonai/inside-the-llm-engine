@@ -509,6 +509,10 @@ much again (\Chref{roofline}'s lab kept every run); compare a prediction with th
 best of several runs, and report the spread with it (\Chref{benchmarking}).
 \end{itemize}
 
+A fast kernel does not by itself establish a cheap service. Follow the cost model through a declared arrival pattern and latency objective. Only after counting work that meets that objective does a price per useful token have a clear denominator.
+
+\EngineFigure{sys-cost-model}{A flowchart for evaluating service cost. Charge cost to accepted useful work, not all tokens regardless of deadlines. A failed latency target sends the design back for revision.}{fig:sys-cost-model}
+
 \LedgerSection
 
 Napkin math can charge a technique before it is built. Quantizing Qwen3-8B's

@@ -1,0 +1,15 @@
+% diagram-kind: memory
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Request A\\5 logical tokens\\table: $[7,2]$};
+\node[sysbox] (b) at (0,-2.6) {Request B\\6 logical tokens\\table: $[7,9]$};
+\node[block,text width=57mm,fill=BookGreen] (shared) at (6,0) {Physical block 7: references 2\\positions $[0,1,2,3]$\\shared immutable prefix};
+\node[block,text width=57mm] (at) at (6,-2.1) {Physical block 2: reference 1\\A: $[4,\text{unused},\text{unused},\text{unused}]$};
+\node[block,text width=57mm] (bt) at (6,-4.2) {Physical block 9: reference 1\\B: $[4,5,\text{unused},\text{unused}]$};
+\draw[flow] (a)--(shared);
+\draw[flow] (a.south)--++(0,-.4)-|(at.west);
+\draw[flow] (b.east)--++(1,0)|-([yshift=-3mm]shared.west);
+\draw[flow] (b.south)|-(bt.west);
+\node[sysnote,anchor=north west] at (-1.8,-5.45)
+ {Four slots per block. Logical token 4 is not physical block 4.\\
+ A shared writable tail would require copy-on-write before modification.};
+\end{tikzpicture}

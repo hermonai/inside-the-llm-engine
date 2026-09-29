@@ -181,6 +181,15 @@ their own primary sources.
 
 ## 9. Figures
 
+- Every systems chapter needs a mechanism diagram, not only a performance
+  plot. Use UML sequence diagrams for interactions, state machines for
+  lifecycle rules, component layouts for ownership and deployment, and
+  activity diagrams/flowcharts for algorithms. Foundation chapters keep
+  tensor, numerical and memory drawings where these teach more directly.
+- State the diagram's scope: conceptual design, executable teaching model or
+  named implementation at a recorded revision. Label messages, guards and
+  ownership boundaries. Explain its decisive path in the surrounding prose.
+  A diagram does not establish that an implementation exists or runs by default.
 - Native TikZ (or pgfplots for data), in `tex/figures/<name>.tex`, placed with
   `\EngineFigure{name}{caption}{label}`.
 - Draw the thing that changes: tensor cells, memory addresses, timelines, state

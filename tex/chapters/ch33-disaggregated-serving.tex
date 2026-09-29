@@ -170,6 +170,10 @@ decode pool cannot absorb wastes the prefill spent on it, which is why Mooncake
 rejects some requests at arrival, before prefill, on a prediction of decode
 load (\cite{qin2024mooncake}; the case below).
 
+The handoff is a state transfer, not just a byte copy. The destination must know what the bytes mean and when they are safe to read. The source must know when it may release its copy. The successful-path sequence makes those two obligations visible before failure handling is added.
+
+\EngineFigure{sys-prefill-handoff}{UML sequence view of a conceptual prefill-to-decode handoff. Readiness means matching model identity, positions, representation and destination capacity, not merely that a send call returned. Transfers may pipeline by layer; this schematic does not mandate whole-request serialization or a named connector.}{fig:sys-prefill-handoff}
+
 \LedgerSection
 
 Running prefill and decode on separate pools:

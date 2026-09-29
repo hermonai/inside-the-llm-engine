@@ -189,6 +189,10 @@ target's own distribution --- EAGLE-style heads and multi-token-prediction
 modules (\Chref{modern-speculation}); whether they pay on a given reasoning
 model is an acceptance rate to measure, not assume.
 
+The answer returned to the user may be short while the engine has evaluated several long candidates. Follow each branch's state separately, and charge the budget for every evaluated branch, including those discarded. Sharing a prefix does not permit branches to share mutable continuation state.
+
+\EngineFigure{sys-reasoning-branches}{Component layout of an illustrative parallel-candidate workload. A common evaluated prefix may be shared read-only, but each branch needs its own mutable continuation state and random stream. Verification or selection is an additional stage; it is not free model work.}{fig:sys-reasoning-branches}
+
 \LedgerSection
 
 Answering with hidden reasoning, or with many sampled candidates:

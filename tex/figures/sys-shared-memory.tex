@@ -1,0 +1,11 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (c) at (0,0) {CPU execution\\local caches and workers};
+\node[sysbox] (g) at (6,0) {GPU execution\\local caches and thread groups};
+\node[sysbox] (m) at (3,-2.1) {Shared physical memory\\weights, KV and other state};
+\node[sysbox] (a) at (3,-4.2) {Allocation and residency policy\\owners, last use, pressure};
+\draw[flow] [<->] (c)--(m);
+\draw[flow] [<->] (g)--(m);
+\draw[flow] [dashed] (a)--(m);
+\node[sysnote,anchor=north west] at (-1.8,-5.550000000000001) {Unified addressing on a discrete-memory machine is a different placement problem.};
+\end{tikzpicture}

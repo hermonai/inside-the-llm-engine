@@ -1,0 +1,13 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (w) at (0,0) {Encoded weights\\codes plus scale metadata};
+\node[sysbox] (x) at (6,0) {Encoded activations\\scales when required};
+\node[sysbox] (m) at (3,-1.8) {Supported matrix operation\\interpret each operand format};
+\node[sysbox] (a) at (3,-3.5) {Specified accumulation\\precision and rounding};
+\node[sysbox] (o) at (3,-5.2) {Rescale or cast output\\destination representation};
+\draw[flow] (w)--(m);
+\draw[flow] (x)--(m);
+\draw[flow] (m)--(a);
+\draw[flow] (a)--(o);
+\node[sysnote,anchor=north west] at (-1.8,-6.5) {A storage encoding does not establish that this machine has a native arithmetic path.};
+\end{tikzpicture}

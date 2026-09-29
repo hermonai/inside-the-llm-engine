@@ -163,6 +163,10 @@ serverless baselines \cite{fu2024serverlessllm} (their measurement). Adapters
 are the extreme case of the same idea: make the part that differs between
 models small enough that switching costs almost nothing.
 
+Sharing base weights does not erase the identity of a fine-tuned model. The selected adapter controls which update is added, and that identity must follow the request through scheduling and cache lookup. An adapter miss is therefore not permission to serve the base result silently.
+
+\EngineFigure{sys-adapter-components}{Component layout of one adapter-aware linear operation. Routing chooses the adapter identity before evaluating its low-rank update. The shared base contribution and the selected update are added for the same token rows. This is not the entire decoder.}{fig:sys-adapter-components}
+
 \LedgerSection
 
 Serving many fine-tunes from one base model with batched low-rank adapters:

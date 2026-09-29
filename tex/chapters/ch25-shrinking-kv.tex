@@ -314,6 +314,10 @@ the engine's:
   of the model.
 \end{itemize}
 
+The question is what one past token must leave behind. MHA stores a distinct key and value for each head; GQA lets several queries read the same pair. In the illustrated MLA form, the cache keeps a learned latent of width $d_c$ and a separate rotary key of width $d_R$. Projection absorption lets attention use that representation without permanently storing expanded per-head K/V \cite{deepseek2024v2}. These are learned architecture choices, not conversions an allocator can apply to any checkpoint.
+
+\EngineFigure{sys-kv-architectures}{Architectural cache layouts, not interchangeable storage options. Four illustrative query heads use four K/V pairs in MHA or two shared pairs in GQA. The MLA panel shows the compressed inference representation with decoupled rotary keys. Counts are logical elements per layer per cached token, before quantization and allocation overhead.}{fig:sys-kv-architectures}
+
 \LedgerSection
 
 Sharing or compressing the key/value heads, for a fixed model size:

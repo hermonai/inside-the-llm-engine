@@ -1,0 +1,16 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Freeze inputs, model identity\\and numerical contract};
+\node[sysbox] (b) at (0,-1.6) {Run independent reference\\and candidate implementation};
+\node[sysdecision] (d) at (0,-3.5) {Declared checks\\pass?};
+\node[sysbox] (y) at (0,-5.55) {Benchmark validated path;\\test sequences and tasks};
+\node[sysbox] (n) at (6,-3.5) {Minimize failing case;\\locate first divergence};
+\node[sysbox] (z) at (6,-5.55) {Keep evidence; report\\scope of correctness};
+\draw[flow] (a)--(b);
+\draw[flow] (b)--(d);
+\draw[flow] (d)--node[left,syslabel]{yes}(y);
+\draw[flow] (d)--node[above,syslabel]{no}(n);
+\draw[flow] (y)--(z);
+\draw[flow] (n.north)--++(0,1.9)--(b.east);
+\node[sysnote,anchor=north west] at (-1.8,-6.8) {A fixed seed does not guarantee identical reduction order or numerical output.};
+\end{tikzpicture}

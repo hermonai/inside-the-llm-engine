@@ -1,0 +1,16 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Begin an iteration with\\token budget $T$};
+\node[sysbox] (b) at (0,-1.6) {Assign eligible decodes;\\decrement remaining budget};
+\node[sysdecision] (d) at (0,-3.5) {Budget and KV\\space remain?};
+\node[sysbox] (y) at (0,-5.55) {Add a bounded\\prompt chunk};
+\node[sysbox] (n) at (6,-3.5) {Defer prompt work\\to a later iteration};
+\node[sysbox] (z) at (6,-5.55) {Execute selected rows;\\advance each prefix};
+\draw[flow] (a)--(b);
+\draw[flow] (b)--(d);
+\draw[flow] (d)--node[left,syslabel]{yes}(y);
+\draw[flow] (d)--node[above,syslabel]{no}(n);
+\draw[flow] (y)--(z);
+\draw[flow] (n)--(z);
+\node[sysnote,anchor=north west] at (-1.8,-6.8) {Fairness still matters: continuous decode demand must not hide prompt starvation.};
+\end{tikzpicture}

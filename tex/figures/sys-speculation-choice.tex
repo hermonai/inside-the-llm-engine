@@ -1,0 +1,16 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Measure ordinary decoding\\at the target workload};
+\node[sysbox] (b) at (0,-1.6) {Measure draft, verify, rollback\\and committed-token count};
+\node[sysdecision] (d) at (0,-3.5) {Better time per\\useful token?};
+\node[sysbox] (y) at (0,-5.55) {Enable within the\\validated workload};
+\node[sysbox] (n) at (6,-3.5) {Use ordinary decoding\\or a smaller draft budget};
+\node[sysbox] (z) at (6,-5.55) {Re-evaluate when load\\or acceptance changes};
+\draw[flow] (a)--(b);
+\draw[flow] (b)--(d);
+\draw[flow] (d)--node[left,syslabel]{yes}(y);
+\draw[flow] (d)--node[above,syslabel]{no}(n);
+\draw[flow] (y)--(z);
+\draw[flow] (n)--(z);
+\node[sysnote,anchor=north west] at (-1.8,-6.8) {Preserve the target sampling contract on both branches.};
+\end{tikzpicture}

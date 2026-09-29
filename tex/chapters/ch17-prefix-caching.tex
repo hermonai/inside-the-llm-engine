@@ -111,10 +111,9 @@ prefix together raises the hit rate. The SGLang authors reported up to 6.4
 times the throughput of other systems on workloads built from multiple
 generation calls (their measurement).
 
-\FigureIntent{A radix tree built from four requests: a shared system prompt at
-the root, two few-shot branches, and conversation leaves; each node labeled
-with its token span and reference count, least-recently-used leaves shaded as
-eviction candidates.}
+Read from the shared root until the token sequences diverge. A reference to a descendant relies on the prefix above it, so eviction cannot be based only on a leaf's byte count. The picture distinguishes cached content from content currently pinned by active computation.
+
+\EngineFigure{sys-prefix-tree}{An illustrative compressed prefix tree for four requests. Intervals identify logical token spans, not equal token contents across different branches. Two active requests pin their paths; the other leaves have no active readers and are eviction candidates. Actual pin counters and eviction policies are implementation-specific.}{fig:sys-prefix-tree}
 
 \section{Eviction over a tree}
 

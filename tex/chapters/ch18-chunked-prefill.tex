@@ -158,6 +158,10 @@ serving \cite{zhong2024distserve} (their measurement). Separation costs cache
 transfers and more complex deployment; \Chref{disaggregated-serving} weighs
 them.
 
+Chunking changes when the scheduler may make another decision. It does not make the prompt disappear. Follow the remaining budget after decodes are assigned, then observe how an unfinished prompt returns as work for a later iteration.
+
+\EngineFigure{sys-chunk-budget}{An illustrative decode-first token budget, not a universal scheduler policy. Chunking creates more scheduling opportunities. A token budget alone does not bound wall-clock latency.}{fig:sys-chunk-budget}
+
 \LedgerSection
 
 Splitting long prompts into token-budgeted chunks that share steps with decodes:

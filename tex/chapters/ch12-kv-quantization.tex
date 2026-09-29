@@ -410,6 +410,10 @@ keys}, because their errors never change which tokens a query attends to, only w
 tasks it serves, with a token-by-token comparison of distributions, not a short
 perplexity.
 
+A cache format has both a writer and a reader. Trace one new key/value pair through the codec, then follow a later query back to the stored codes and scales. Reducing the payload is useful only if the read path preserves the declared numerical interpretation.
+
+\EngineFigure{sys-kv-quantization}{UML sequence view of a conceptual quantized-cache path. Code and scale storage form one contract. Reconstruction may be fused into attention; the diagram does not require a separate dequantized buffer or claim a specific engine uses this layout.}{fig:sys-kv-quantization}
+
 \LedgerSection
 
 Storing the KV cache in 8 or 4 bits instead of 16:

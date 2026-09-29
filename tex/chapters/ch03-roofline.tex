@@ -434,6 +434,10 @@ weight row (measured; cache sizes read from the operating system). The kernel
 is compute-bound at both batches, but against two different roofs. Tiling for
 the cache hierarchy is \Chref{matmul-hardware}'s subject.
 
+Use the roofline as a question to test. Count useful work and traffic at one named memory boundary, then compare measured time with both lower bounds. A large unexplained gap calls for another hypothesis, not a faster peak specification.
+
+\EngineFigure{sys-roofline-diagnosis}{A diagnostic flowchart, not a bottleneck proof. The larger idealized time identifies a candidate limit; omitted costs can keep measurements above both bounds.}{fig:sys-roofline-diagnosis}
+
 \LedgerSection
 
 Batching is the first technique in the book, and the roofline lets us charge

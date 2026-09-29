@@ -1,0 +1,20 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (c) at (0,0) {Clients\\untrusted requests};
+\node[sysbox] (g) at (0,-1.65) {Gateway\\authentication and limits};
+\node[sysbox] (a) at (0,-3.3) {Admission\\bounded queues and policy};
+\node[sysbox] (r) at (0,-4.95) {Router\\load, cache and model identity};
+\node[sysbox] (w) at (6,-4.95) {Ready worker pool\\scheduler, model and KV};
+\node[sysbox] (s) at (6,-6.6) {Streaming response path\\timeouts and terminal outcome};
+\node[sysbox] (t) at (6,0) {Telemetry\\queues, latency, errors, cost};
+\node[sysbox] (p) at (6,-1.65) {Planner and rollout control\\capacity and model revisions};
+\draw[flow] (c)--(g);
+\draw[flow] (g)--(a);
+\draw[flow] (a)--(r);
+\draw[flow] (r)--(w);
+\draw[flow] (w)--(s);
+\draw[flow] [dashed] (t)--(p);
+\draw[flow] [dashed] (p)--(w);
+\draw[flow] [dashed] (w.east)--++(1,0)|-(t.east);
+\node[sysnote,anchor=north west] at (-1.8,-7.8999999999999995) {Solid: request/output path. Dashed: observation and control. Not a deployment of a named engine.};
+\end{tikzpicture}

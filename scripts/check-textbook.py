@@ -239,6 +239,11 @@ def check_executable_and_calculations():
 
 
 def main():
+    diagrams = subprocess.run(
+        [sys.executable, str(ROOT/"scripts/check-system-diagrams.py")],
+        check=True, capture_output=True, text=True)
+    diagram_record = json.loads(diagrams.stdout)
+    sys.stderr.write(diagrams.stderr)
     subprocess.run([sys.executable, str(ROOT/"scripts/check-foundations.py")],
                    check=True)
     subprocess.run([sys.executable, "-m", "unittest", "discover", "-s",
@@ -305,6 +310,7 @@ def main():
     results = check_executable_and_calculations()
     by_status = {s: sum(r["status"] == s for r in rows) for s in STATUSES}
     record = {"chapters": len(rows), "by_status": by_status,
+              **diagram_record,
               "construction_chapters": 17, "systems_chapters": 42,
               "appendix_files": 0, "native_figures": len(used),
               "worked_problems": worked_problems,

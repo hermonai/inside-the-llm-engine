@@ -1,3 +1,4 @@
+% diagram-kind: activity
 % Split-K decode attention (conceptual). Top: one query head's cache cut into contiguous
 % chunks of 256 tokens (Flash-Decoding, Hermon); each chunk yields a partial (m, l, o) in
 % parallel, and the partials are merged in index order. Bottom: llama.cpp's Metal decode

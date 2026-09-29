@@ -424,6 +424,24 @@ measurements are marked as such.
 | DeepSeek V3/R1 serving details (update) | Decode unit of 18 nodes with 32 redundant routed experts, "each GPU manages 2 routed experts and 1 shared expert"; decode overlaps communication and computation by splitting attention into two steps in "a 5-stage pipeline"; "The average kvcache length per output token was 4,989 tokens"; served on H800s with FP8 matrix multiplications and BF16 MLA core computations. DeepSeek-V3 report: "NVLink offers a bandwidth of 160 GB/s, roughly 3.2 times that of IB (50 GB/s)"; "During inference, we can directly discard the MTP modules" | [open-infra-index day 6](https://github.com/deepseek-ai/open-infra-index/blob/main/202502OpenSourceWeek/day_6_one_more_thing_deepseekV3R1_inference_system_overview.md); [arXiv:2412.19437](https://arxiv.org/html/2412.19437) | 2026-09-27 | shipped (DeepSeek service) | 6, 32 |
 | DeepEP | All-to-all MoE dispatch/combine kernels, FP8, low SM use; README reports V2 | [github.com/deepseek-ai/DeepEP](https://github.com/deepseek-ai/DeepEP) (README numbers are vendor claims) | 2026-09-23 | shipped (open source) | 32 |
 
+## Systems illustration pass (checked 2026-09-29)
+
+These additions explain mechanisms; they introduce no new performance or
+deployment-maturity claims. Chapter IDs below are stable source IDs, not
+printed chapter numbers. Each diagram's caption states its scope.
+
+| Topic | Scope checked | Primary source | Maturity | Source chapters |
+| --- | --- | --- | --- | --- |
+| UML notation | Lifelines, open asynchronous-message arrows and dashed replies (§17.4.4); initial/final states and guarded transitions (§14.2.4). A limited teaching subset, not an executable UML model. Normative PDF read. | [OMG UML 2.5.1](https://www.omg.org/spec/UML/2.5.1/PDF) | published standard, December 2017 | Preface; interaction/state figures |
+| Exact speculative sampling | At rejection, sample normalized positive target-minus-proposal residual, not unadjusted target. Acceptance is tested in draft order. Full algorithm read; fixture checks include a finite-distribution conservation test. | [Leviathan et al., section 2.3](https://arxiv.org/html/2211.17192v2) | established algorithm; no new speed claim | 22 |
+| Paged KV | Per-request logical mapping, complete prefix sharing, separate writable tails; new four-slot layout is illustrative, not an engine default. | [Kwon et al.](https://arxiv.org/html/2309.06180v1) | published design; new figure is conceptual | 16 |
+| MLA cache representation | Compressed KV latent plus decoupled rotary key; per-layer/token element count and projection absorption from sections 2.1.2–2.1.4. No new quality comparison. | [DeepSeek-V2](https://arxiv.org/html/2405.04434v5) | published architecture, shipped checkpoints | 25 |
+
+Other diagrams explain the chapter's existing mechanisms and retain its dated
+implementation citations. They do not assert that a conceptual handoff,
+residency manager or failure path is implemented in a named engine.
+No new hardware timings were collected in this editorial pass.
+
 ## Leads to verify before the chapters that need them
 
 Not yet read at a primary source; do not cite until they are.

@@ -1,0 +1,16 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Count FLOPs $F$\\and transferred bytes $D$};
+\node[sysbox] (b) at (0,-1.6) {Estimate $D/\beta$\\and $F/\pi$};
+\node[sysdecision] (d) at (0,-3.5) {$D/\beta>F/\pi$?};
+\node[sysbox] (y) at (0,-5.55) {Candidate limit:\\memory bandwidth};
+\node[sysbox] (n) at (6,-3.5) {Candidate limit:\\arithmetic throughput};
+\node[sysbox] (z) at (6,-5.55) {Measure the workload;\\explain the remaining gap};
+\draw[flow] (a)--(b);
+\draw[flow] (b)--(d);
+\draw[flow] (d)--node[left,syslabel]{yes}(y);
+\draw[flow] (d)--node[above,syslabel]{no}(n);
+\draw[flow] (y)--(z);
+\draw[flow] (n)--(z);
+\node[sysnote,anchor=north west] at (-1.8,-6.8) {Use achieved roofs appropriate to the kernel, precision and memory boundary.};
+\end{tikzpicture}

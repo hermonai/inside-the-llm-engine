@@ -1,0 +1,14 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (a) at (0,0) {Initialize empty\\max, sum and numerator};
+\node[sysdecision] (d) at (0,-1.9) {More permitted\\KV tiles?};
+\node[sysbox] (b) at (0,-4) {Load tile; compute scores\\and local summary};
+\node[sysbox] (c) at (0,-5.6) {Rescale and merge\\into running summary};
+\node[sysbox] (z) at (6,-1.9) {Return numerator\\divided by sum};
+\draw[flow] (a)--(d);
+\draw[flow] (d)--node[left,syslabel]{yes}(b);
+\draw[flow] (b)--(c);
+\draw[flow] (d)--node[above,syslabel]{no}(z);
+\draw[flow] (c.west)--++(-1,0)|-(d.west);
+\node[sysnote,anchor=north west] at (-1.8,-6.8999999999999995) {Empty permitted rows need a separate contract; ordinary causal rows include self.};
+\end{tikzpicture}

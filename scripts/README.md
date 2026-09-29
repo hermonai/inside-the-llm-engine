@@ -15,6 +15,10 @@
   covering illustrative arithmetic, the leading Part I learning path and the
   corrected systems forward-pass softmax figure; called by `check-textbook.py`,
   so CI runs it too.
+- `check-system-diagrams.py` — native mechanism coverage in all 42 systems
+  chapters, plus six tests for coverage, tree attention, paged ownership,
+  absolute positions, cache element counts and speculative residual mass.
+  Called by the textbook check; it does not replace visual or technical review.
 - `check-links.py` — repository-relative Markdown links. `archive/` mirrors
   original paths; links to an archived file resolve through that mirror, and an
   archived document's links resolve from its original directory.

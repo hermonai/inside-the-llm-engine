@@ -182,6 +182,10 @@ prefill, and \texttt{deepep\_low\_latency}, with CUDA-graph support and a masked
 layout for decode (\texttt{docs/serving/expert\_parallel\_deployment.md} at
 \texttt{bcdacfc}).
 
+The expert output is not useful until it can be associated with the original token and routing weight. Read the diagram in both directions: dispatch changes ownership of the work, and combine restores its logical row order. Communication overlap cannot remove either dependency.
+
+\EngineFigure{sys-expert-exchange}{UML interaction view of conceptual expert parallelism. Dispatch sends rows to the ranks owning selected experts; combine returns contributions to their originating tokens. Exchanges involve all participating ranks even though one route is shown. Completion and row mapping are correctness dependencies.}{fig:sys-expert-exchange}
+
 \LedgerSection
 
 Spreading experts across $G$ devices with an all-to-all per MoE layer:

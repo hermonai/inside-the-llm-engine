@@ -1,0 +1,21 @@
+% diagram-kind: sequence
+% Conceptual interaction, not a measured timing trace.
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysparticipant] (p0) at (0,0) {Source rank};
+\draw[dashed,BookBlue!55] (0,-.65)--(0,-4.75);
+\node[sysparticipant] (p1) at (4,0) {Dispatch exchange};
+\draw[dashed,BookBlue!55] (4,-.65)--(4,-4.75);
+\node[sysparticipant] (p2) at (8,0) {Expert rank};
+\draw[dashed,BookBlue!55] (8,-.65)--(8,-4.75);
+\node[sysparticipant] (p3) at (12,0) {Combine exchange};
+\draw[dashed,BookBlue!55] (12,-.65)--(12,-4.75);
+\draw[sysmessage] (0,-0.95)--(4,-0.95)
+ node[midway,above,syslabel,text width=3.65cm]{token rows; expert IDs; row map};
+\draw[sysmessage] (4,-1.9)--(8,-1.9)
+ node[midway,above,syslabel,text width=3.65cm]{rows assigned to local experts};
+\draw[sysmessage] (8,-2.8499999999999996)--(12,-2.8499999999999996)
+ node[midway,above,syslabel,text width=3.65cm]{expert outputs; inverse row map};
+\draw[sysreply] (12,-3.8)--(0,-3.8)
+ node[midway,above,syslabel,text width=11.65cm]{returned contributions};
+\node[sysnote,anchor=north west] at (-1.3,-5.05) {Duplicate routes are possible: one token may visit several experts before weighted combination.};
+\end{tikzpicture}

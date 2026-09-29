@@ -249,6 +249,10 @@ how many positions it wants to resume from, paid in 50~MiB units here, where
 an attention model gets every position for free with the cache it already
 holds.
 
+Do not place all persistent state behind an API that assumes append-only K/V. A recurrent update replaces or transforms its state, while attention may append another position. Branching or rollback must preserve a consistent snapshot of both kinds of state.
+
+\EngineFigure{sys-hybrid-state}{Component layout of two illustrative consecutive layers in a hybrid decoder. Attention and recurrence have different state objects and update rules. Fixed-size recurrent state does not make the attention layers' cache constant-size.}{fig:sys-hybrid-state}
+
 \LedgerSection
 
 Replacing most attention layers with recurrent ones:

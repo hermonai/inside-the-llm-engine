@@ -3,12 +3,12 @@
 \setsansfont{texgyreheros-regular.otf}[BoldFont=texgyreheros-bold.otf,ItalicFont=texgyreheros-italic.otf,BoldItalicFont=texgyreheros-bolditalic.otf]
 \setmonofont{DejaVuSansMono.ttf}[Scale=.84,BoldFont=DejaVuSansMono-Bold.ttf,ItalicFont=DejaVuSansMono-Oblique.ttf,BoldItalicFont=DejaVuSansMono-BoldOblique.ttf]
 \usepackage[a4paper,inner=25mm,outer=25mm,top=23mm,bottom=25mm]{geometry}
-\usepackage{amsmath,amsthm,mathtools,graphicx,xcolor,booktabs,longtable,array,calc}
+\usepackage{amsmath,amsthm,mathtools,graphicx,xcolor,booktabs,longtable,array,calc,tabularx}
 \usepackage{unicode-math}
 \setmathfont{texgyrepagella-math.otf}
 \usepackage{titlesec,caption,fancyhdr,fvextra,needspace,seqsplit,adjustbox}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,calc,matrix,fit,backgrounds}
+\usetikzlibrary{arrows.meta,positioning,calc,matrix,fit,backgrounds,shapes.geometric}
 \usepackage{placeins}
 \usepackage{makeidx}
 \makeindex
@@ -68,6 +68,18 @@
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \newcounter{none}
 \tikzset{flow/.style={-{Stealth[length=2mm]},thick,BookBlue},control/.style={flow,dashed},cell/.style={draw=BookBlue,minimum width=10mm,minimum height=8mm,inner sep=2pt},block/.style={draw=BookBlue,fill=BookPale,rounded corners=2pt,align=center,minimum height=10mm,inner sep=5pt},note/.style={font=\small\sffamily,align=left,text=BookBlue}}
+\tikzset{
+ sysbox/.style={block,font=\small\sffamily,text width=38mm,minimum height=12mm},
+ sysdecision/.style={diamond,aspect=2.4,draw=BookBlue,fill=BookGold,
+   align=center,font=\small\sffamily,text width=32mm,inner sep=2pt},
+ sysparticipant/.style={draw=BookBlue,fill=BookPale,align=center,
+   font=\small\sffamily,text width=27mm,minimum height=12mm,inner sep=3pt},
+ sysmessage/.style={-{Straight Barb[length=1.8mm]},BookBlue,thick},
+ sysreply/.style={sysmessage,dashed},
+ syslabel/.style={font=\scriptsize\sffamily,align=center,fill=white,inner sep=1.5pt},
+ sysnote/.style={font=\small\sffamily,text=BookBlue,align=left,text width=116mm},
+ sysboundary/.style={draw=BookBlue!65,dashed,rounded corners=3pt,inner sep=7mm}
+}
 
 % --- Second edition: cross-references ----------------------------------------
 \newcommand{\Chref}[1]{Chapter~\ref{ch:#1}}

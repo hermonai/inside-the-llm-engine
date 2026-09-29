@@ -158,6 +158,10 @@ rules matter at scale: bound the queue, so that waiting time cannot grow
 without limit; and make retries back off, because clients that retry at once
 multiply the load that caused the refusal.
 
+Admission precedes expensive state allocation. Separate a valid request from one the service can presently support. The negative branch is a policy decision with a visible outcome, not an excuse for an unbounded queue.
+
+\EngineFigure{sys-admission-flow}{Admission flowchart for a conceptual SLO-aware scheduler. An estimate is not a guarantee. Deferral must be bounded; rejecting work is different from silently timing it out.}{fig:sys-admission-flow}
+
 \LedgerSection
 
 Admitting optimistically and preempting under memory pressure, with fair and

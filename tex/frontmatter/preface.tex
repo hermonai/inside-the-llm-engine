@@ -65,6 +65,36 @@ assumption: a tensor stride, a future token, a scale, a block size or
 a timing endpoint. A useful explanation lets you predict not only
 what works but why a nearby version fails.
 
+\section*{How to read the systems drawings}
+The drawings answer different questions. A sequence diagram asks who talks
+to whom; a state machine asks what may happen next. A component layout
+shows where a responsibility or resource lives. A flowchart explains a
+decision. We use a small, explained subset of UML notation
+\cite{omg2017uml}, alongside tensor and memory drawings:
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{28mm}X@{}}
+\toprule
+Drawing & Reading rule\\
+\midrule
+Sequence & Read downward in time. Boxes name participants; vertical dashed
+lines are lifelines. Open message arrowheads denote asynchronous signals;
+dashed message arrows return a result. Spacing is not elapsed time.\\
+State & Rounded boxes are states. A filled circle starts the path and a
+bullseye ends it. Brackets mark a guard; text after a slash is an action.\\
+Components & Follow the labeled data or control dependency. A box owns
+only the responsibility stated in it; it need not be a process or machine.\\
+Activity & Follow the steps and the labeled branches of a diamond.
+A return arrow means another iteration, not a second independent request.\\
+\bottomrule
+\end{tabularx}
+\end{center}
+Captions identify whether a drawing is conceptual, follows the teaching
+code or describes a named implementation. An arrow does not prove that
+communication is free, asynchronous or already implemented. The nearby
+text walks through the decisive path and explains its limits. Sequence views
+abstract away the host's blocking calls and thread implementation; logical
+message order does not establish CPU/GPU overlap.
+
 \section*{Numbers, identifiers and draft status}
 Measured numbers come with setup and raw records. Derived numbers show
 their arithmetic. Illustrative numbers are chosen to teach, not to

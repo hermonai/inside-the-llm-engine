@@ -349,6 +349,10 @@ measurements it passed all 121,165 checks, plain and under the undefined-behavio
 sanitizer, including the expert-cache and K-quant cases (measured; record
 \texttt{2026-09-24-m1-part7}).
 
+Follow the miss branch as carefully as the hit branch. Evicting an expert that a worker is still reading is a correctness error. A pin separates safe residency from mere presence in an index; the hit-rate curve is meaningful only with that ownership rule.
+
+\EngineFigure{sys-expert-residency}{A conceptual expert-cache lookup. A hit avoids a storage read, not expert computation. A miss requires a safe destination and a completed, validated load. This sketch does not promote the case study's library pager into a default serving path.}{fig:sys-expert-residency}
+
 \LedgerSection
 
 Streaming the experts of a mixture-of-experts model from an SSD:

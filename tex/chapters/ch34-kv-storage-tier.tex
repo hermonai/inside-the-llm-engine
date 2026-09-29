@@ -185,6 +185,10 @@ answering and document analysis \cite{liu2025lmcache}. Both are the authors'
 measurements, and both measure the hit case: a cache tier's value is its hit
 rate times the cost it avoids, minus what the misses and the tier itself cost.
 
+Separate the directory from the bytes it locates. The lookup decides whether state is reusable and where it resides. Loading from a slower tier is worthwhile only when transfer, conversion and waiting cost less than the alternative at the actual workload.
+
+\EngineFigure{sys-kv-tiers}{Component layout of a conceptual KV storage hierarchy. Solid arrows represent possible payload movement; dashed arrows are index/control lookups. A cache hit requires compatible content and representation, not merely an object with the same length.}{fig:sys-kv-tiers}
+
 \LedgerSection
 
 Keeping KV caches beyond their requests, across memory tiers:

@@ -1,0 +1,23 @@
+% diagram-kind: sequence
+% Conceptual interaction, not a measured timing trace.
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysparticipant] (p0) at (0,0) {Decoder};
+\draw[dashed,BookBlue!55] (0,-.65)--(0,-5.699999999999999);
+\node[sysparticipant] (p1) at (4,0) {Constraint state};
+\draw[dashed,BookBlue!55] (4,-.65)--(4,-5.699999999999999);
+\node[sysparticipant] (p2) at (8,0) {Sampler};
+\draw[dashed,BookBlue!55] (8,-.65)--(8,-5.699999999999999);
+\node[sysparticipant] (p3) at (12,0) {Stream};
+\draw[dashed,BookBlue!55] (12,-.65)--(12,-5.699999999999999);
+\draw[sysmessage] (0,-0.95)--(8,-0.95)
+ node[midway,above,syslabel,text width=7.65cm]{logits for the current prefix};
+\draw[sysmessage] (4,-1.9)--(8,-1.9)
+ node[midway,above,syslabel,text width=3.65cm]{allowed token set};
+\draw[sysmessage] (8,-2.8499999999999996)--(4,-2.8499999999999996)
+ node[midway,above,syslabel,text width=3.65cm]{commit selected token};
+\draw[sysmessage] (8,-3.8)--(12,-3.8)
+ node[midway,above,syslabel,text width=3.65cm]{selected token bytes};
+\draw[sysmessage] (4,-4.75)--(8,-4.75)
+ node[midway,above,syslabel,text width=3.65cm]{allowed set for next prefix};
+\node[sysnote,anchor=north west] at (-1.3,-5.999999999999999) {An empty allowed set needs an explicit error or recovery policy, not an arbitrary token.};
+\end{tikzpicture}

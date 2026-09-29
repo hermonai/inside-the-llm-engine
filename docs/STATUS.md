@@ -101,44 +101,44 @@ from the current printed chapter numbers. Prose word counts are approximate.
 | 17 | Reproducing the Book's Measurements | f17-measurements | FULL | 1,704 | 0 |
 | 18 | Why Inference Is Its Own Discipline | ch01-why-inference | FULL | 6,878 | 0 |
 | 19 | The Forward Pass, Compressed | ch02-forward-pass | FULL | 7,004 | 0 |
-| 20 | The Roofline: Why Decode Leaves Your GPU Idle | ch03-roofline | FULL | 5,178 | 0 |
-| 21 | Prefill and Decode: Two Workloads, One Model | ch04-prefill-decode | FULL | 5,101 | 0 |
+| 20 | The Roofline: Why Decode Leaves Your GPU Idle | ch03-roofline | FULL | 5,243 | 0 |
+| 21 | Prefill and Decode: Two Workloads, One Model | ch04-prefill-decode | FULL | 5,187 | 0 |
 | 22 | The KV Cache: Inference's Central Data Structure | ch05-kv-cache | FULL | 5,172 | 0 |
-| 23 | Napkin Math: Latency, Throughput and Cost per Token | ch06-napkin-math | FULL | 5,237 | 0 |
+| 23 | Napkin Math: Latency, Throughput and Cost per Token | ch06-napkin-math | FULL | 5,309 | 0 |
 | 24 | Matrix Multiplication on Real Hardware | ch07-matmul-hardware | FULL | 5,094 | 0 |
-| 25 | Attention as a Memory Problem: From Online Softmax to FlashAttention | ch08-flashattention | FULL | 6,216 | 0 |
+| 25 | Attention as a Memory Problem: From Online Softmax to FlashAttention | ch08-flashattention | FULL | 6,289 | 0 |
 | 26 | Decode Attention: FlashDecoding, Split-K and Paged Kernels | ch09-decode-attention | FULL | 5,190 | 0 |
-| 27 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | ch10-weight-quantization | FULL | 5,187 | 0 |
-| 28 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | ch11-low-precision-float | FULL | 5,160 | 0 |
-| 29 | Quantizing the KV Cache | ch12-kv-quantization | FULL | 5,098 | 0 |
+| 27 | Quantizing Weights: INT8, INT4, GPTQ, AWQ and K-Quants | ch10-weight-quantization | FULL | 5,244 | 0 |
+| 28 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | ch11-low-precision-float | FULL | 5,242 | 0 |
+| 29 | Quantizing the KV Cache | ch12-kv-quantization | FULL | 5,185 | 0 |
 | 30 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | ch13-kernel-languages | FULL | 6,323 | 0 |
-| 31 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ch14-request-lifecycle | ZERO | 3,418 | 0 |
-| 32 | Continuous Batching | ch15-continuous-batching | ZERO | 2,098 | 0 |
-| 33 | Paged KV Memory | ch16-paged-kv | ZERO | 1,906 | 0 |
-| 34 | Prefix Caching and RadixAttention | ch17-prefix-caching | ZERO | 2,117 | 0 |
-| 35 | Chunked Prefill and Phase Interference | ch18-chunked-prefill | ZERO | 1,894 | 0 |
-| 36 | Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission | ch19-scheduling | ZERO | 1,941 | 0 |
-| 37 | Structured Output at Engine Speed | ch20-structured-output | ZERO | 1,815 | 0 |
-| 38 | One Server, Many Models: LoRA, Adapters and Routing | ch21-multi-model-serving | ZERO | 1,855 | 0 |
-| 39 | Speculative Decoding: The Draft–Verify Contract | ch22-speculative-decoding | ZERO | 2,320 | 0 |
-| 40 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ch23-modern-speculation | ZERO | 2,052 | 0 |
-| 41 | When Speculation Loses | ch24-when-speculation-loses | ZERO | 1,860 | 0 |
-| 42 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | ch25-shrinking-kv | ZERO | 3,193 | 0 |
-| 43 | Mixture of Experts | ch26-mixture-of-experts | ZERO | 2,980 | 0 |
-| 44 | Hybrid Models: State Spaces and Linear Attention | ch27-hybrid-models | ZERO | 2,761 | 0 |
-| 45 | Long Context: Windows, Sinks and Sparse Attention | ch28-long-context | ZERO | 2,618 | 0 |
-| 46 | Reasoning Models and Test-Time Compute | ch29-reasoning-workloads | ZERO | 2,135 | 0 |
-| 47 | Multimodal Inference | ch30-multimodal | ZERO | 2,028 | 0 |
-| 48 | Tensor, Pipeline and Context Parallelism | ch31-model-parallelism | ZERO | 2,420 | 1 |
-| 49 | Expert Parallelism at Scale | ch32-expert-parallelism | ZERO | 2,175 | 1 |
-| 50 | Disaggregated Serving | ch33-disaggregated-serving | ZERO | 2,010 | 0 |
-| 51 | The KV Cache as a Distributed Storage Tier | ch34-kv-storage-tier | ZERO | 2,298 | 1 |
-| 52 | Offloading Across VRAM, RAM and NVMe | ch35-offloading | ZERO | 3,495 | 2 |
-| 53 | Streaming Experts From Disk: A Measured Case Study | ch36-expert-streaming | ZERO | 4,240 | 0 |
-| 54 | Unified Inference Memory | ch37-unified-memory | ZERO | 3,116 | 0 |
-| 55 | Fast Wrong Answers: Oracles, Differential Testing and Determinism | ch38-fast-wrong-answers | ZERO | 2,945 | 0 |
+| 31 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ch14-request-lifecycle | ZERO | 3,438 | 0 |
+| 32 | Continuous Batching | ch15-continuous-batching | ZERO | 2,124 | 0 |
+| 33 | Paged KV Memory | ch16-paged-kv | ZERO | 1,946 | 0 |
+| 34 | Prefix Caching and RadixAttention | ch17-prefix-caching | ZERO | 2,173 | 0 |
+| 35 | Chunked Prefill and Phase Interference | ch18-chunked-prefill | ZERO | 1,958 | 0 |
+| 36 | Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission | ch19-scheduling | ZERO | 2,004 | 0 |
+| 37 | Structured Output at Engine Speed | ch20-structured-output | ZERO | 1,893 | 0 |
+| 38 | One Server, Many Models: LoRA, Adapters and Routing | ch21-multi-model-serving | ZERO | 1,941 | 0 |
+| 39 | Speculative Decoding: The Draft–Verify Contract | ch22-speculative-decoding | ZERO | 2,384 | 0 |
+| 40 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ch23-modern-speculation | ZERO | 2,100 | 0 |
+| 41 | When Speculation Loses | ch24-when-speculation-loses | ZERO | 1,928 | 0 |
+| 42 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | ch25-shrinking-kv | ZERO | 3,323 | 0 |
+| 43 | Mixture of Experts | ch26-mixture-of-experts | ZERO | 3,064 | 0 |
+| 44 | Hybrid Models: State Spaces and Linear Attention | ch27-hybrid-models | ZERO | 2,837 | 0 |
+| 45 | Long Context: Windows, Sinks and Sparse Attention | ch28-long-context | ZERO | 2,711 | 0 |
+| 46 | Reasoning Models and Test-Time Compute | ch29-reasoning-workloads | ZERO | 2,223 | 0 |
+| 47 | Multimodal Inference | ch30-multimodal | ZERO | 2,107 | 0 |
+| 48 | Tensor, Pipeline and Context Parallelism | ch31-model-parallelism | ZERO | 2,524 | 1 |
+| 49 | Expert Parallelism at Scale | ch32-expert-parallelism | ZERO | 2,262 | 1 |
+| 50 | Disaggregated Serving | ch33-disaggregated-serving | ZERO | 2,103 | 0 |
+| 51 | The KV Cache as a Distributed Storage Tier | ch34-kv-storage-tier | ZERO | 2,378 | 1 |
+| 52 | Offloading Across VRAM, RAM and NVMe | ch35-offloading | ZERO | 3,574 | 2 |
+| 53 | Streaming Experts From Disk: A Measured Case Study | ch36-expert-streaming | ZERO | 4,326 | 0 |
+| 54 | Unified Inference Memory | ch37-unified-memory | ZERO | 3,203 | 0 |
+| 55 | Fast Wrong Answers: Oracles, Differential Testing and Determinism | ch38-fast-wrong-answers | ZERO | 3,003 | 0 |
 | 56 | Benchmarking Without Lying to Yourself | ch39-benchmarking | ZERO | 3,276 | 0 |
-| 57 | Operating Inference in Production | ch40-production | ZERO | 2,831 | 0 |
+| 57 | Operating Inference in Production | ch40-production | ZERO | 2,905 | 0 |
 | 58 | Anatomy of Real Engines: vLLM, SGLang, llama.cpp and Hermon | ch41-real-engines | ZERO | 2,629 | 0 |
 | 59 | Capstone: Build a Mini Engine End to End | ch42-capstone | ZERO | 3,372 | 0 |
 <!-- chapter-status:end -->

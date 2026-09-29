@@ -44,6 +44,9 @@ first edition's `AGENTS.md`, `docs/OUTLINE.md` and `docs/STATUS.md` are there.
   Never polish one chapter while others lack drafts.
 - Never write a frontier claim from memory: search, read the primary source,
   log it in `research/FRONTIER.md` with the date.
+- Explain systems logic visually: UML interactions and states, component
+  layouts and algorithm flowcharts. Every systems chapter must include a
+  native mechanism diagram; numerical plots alone are not enough.
 
 ## Rules that do not bend
 

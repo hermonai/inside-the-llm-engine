@@ -267,6 +267,10 @@ contiguous chunks and reuses recently loaded neurons, running models up to
 twice the size of DRAM with 4 to 5 times the speed of naive loading on a CPU
 and 20 to 25 times on a GPU \cite{alizadeh2024llmflash}.
 
+Draw buffer ownership before drawing overlap. A host copy can be asynchronous while its source must remain valid. Likewise, freeing the device slot after submission is too early: the dependent kernel may not have read it yet.
+
+\EngineFigure{sys-offload-sequence}{UML interaction view of a conceptual double-buffered offload path. The compute operation waits on copy completion, and buffer reuse waits on its last consumer. These dependencies remain even when submissions overlap; the diagram is not a measured transfer schedule.}{fig:sys-offload-sequence}
+
 \LedgerSection
 
 Placing layers, experts or cache blocks in host memory or on an SSD:

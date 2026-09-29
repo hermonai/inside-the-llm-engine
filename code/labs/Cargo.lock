@@ -76,5 +76,9 @@ name = "ch13-launch"
 version = "0.1.0"
 
 [[package]]
+name = "ch14-request-lifecycle"
+version = "0.1.0"
+
+[[package]]
 name = "engine0"
 version = "0.1.0"

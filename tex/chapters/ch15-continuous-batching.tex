@@ -140,11 +140,9 @@ recurs every few milliseconds, so the data structures are built for it: vLLM's
 V1 engine keeps a persistent batch of input tensors and applies only the
 changes between steps \cite{vllm2025v1}.
 
-\FigureIntent{A timeline of eight requests with different output lengths
-under static and continuous batching: rows are batch slots, columns are steps;
-static batching shows idle cells after each short request and a queue that
-waits for the batch to drain; continuous batching shows slots refilled at the
-next step.}
+Read one trip around the loop first. The scheduler creates a temporary batch from durable request records, the worker executes it, and completed results update those records. Row reuse is safe because identity belongs to the request and its cache mapping.
+
+\EngineFigure{sys-iteration-scheduler}{Activity view of a conceptual continuous-batching scheduler. Stable request IDs outlive temporary batch rows. Completion must establish that consumers are finished before their state is reclaimed; overlapped implementations preserve that dependency.}{fig:sys-iteration-scheduler}
 
 \section{Throughput--latency curves}
 

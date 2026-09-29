@@ -120,10 +120,9 @@ tree's shape as three settings --- drafting depth, branching per step and
 the number of tokens verified --- with defaults that differ by model family
 \cite{sglang2026specdecode}.
 
-\FigureIntent{A draft tree of depth three with branching two, its nodes laid
-out as a flat sequence, and the tree attention mask beside it: each row lit
-for the prompt, for the node's ancestors and for itself; the accepted path
-highlighted and the discarded branches' cache entries crossed out.}
+The array order is an implementation choice; ancestry is part of the attention contract. For row D, allow P, A and D even if B appears earlier in the flattened array. An ordinary triangular mask would incorrectly connect branches. Verification must also restore logical positions and retain only the chosen path.
+
+\EngineFigure{sys-tree-mask}{An illustrative two-level draft tree and its flattened attention mask. Column P represents the entire permitted committed prefix. A draft node reads that prefix, its ancestors and itself, never a sibling branch. Highlighting a path illustrates cache retention, not a particular acceptance algorithm.}{fig:sys-tree-mask}
 
 \section{Medusa heads}
 

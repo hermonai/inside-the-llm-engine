@@ -31,7 +31,7 @@ def main():
     sources = sorted((ROOT/"tex").rglob("*.tex"))
     sources += [ROOT/"tex/references.bib", ROOT/"Makefile", ROOT/"AUTHORING.md",
                 ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py",
-                ROOT/"scripts/check-foundations.py"]
+                ROOT/"scripts/check-foundations.py", ROOT/"scripts/check-system-diagrams.py"]
     sources += sorted((ROOT/"code/foundations").glob("*.py"))
     record = {"edition": "second edition; breadth-first working draft",
               "pdf": str(output.relative_to(ROOT)),

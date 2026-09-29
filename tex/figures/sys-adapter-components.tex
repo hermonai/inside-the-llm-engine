@@ -1,0 +1,14 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (r) at (3,0) {Request routing\\base revision and adapter ID};
+\node[sysbox] (b) at (0,-1.9) {Shared base projection\\$\mathbf X\mathbf W$};
+\node[sysbox] (a) at (6,-1.9) {Selected low-rank update\\$\mathbf X\mathbf A\mathbf B$};
+\node[sysbox] (s) at (3,-3.8) {Add matching contributions\\include declared scaling};
+\node[sysbox] (o) at (3,-5.5) {Continue the selected model\\for these request rows};
+\draw[flow] (r)--(b);
+\draw[flow] (r)--(a);
+\draw[flow] (b)--(s);
+\draw[flow] (a)--(s);
+\draw[flow] (s)--(o);
+\node[sysnote,anchor=north west] at (-1.8,-6.8) {Cache identity must include all model-affecting adapter choices.};
+\end{tikzpicture}

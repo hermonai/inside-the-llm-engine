@@ -1,0 +1,20 @@
+% diagram-kind: memory
+\begin{tikzpicture}[font=\small\sffamily]
+\foreach \i in {0,...,11} {
+ \node[draw=BookBlue,minimum size=8mm,inner sep=0pt] (t\i) at (\i*.95,0) {\i};
+}
+\foreach \i in {0,1,8,9,10,11} {
+ \node[draw=BookBlue,fill=BookGreen,minimum size=8mm,inner sep=0pt] at (\i*.95,0) {\i};
+}
+\draw[BookBlue,thick] (-.4,-.6)--(-.4,-.85)--(1.35,-.85)--(1.35,-.6);
+\node[note] at (.47,-1.2) {sink positions};
+\draw[BookBlue,thick] (7.2,-.6)--(7.2,-.85)--(10.85,-.85)--(10.85,-.6);
+\node[note] at (9,-1.2) {recent window};
+\node[note] at (4.25,1.1) {Absolute positions; current query at position 11};
+\node[sysbox] (policy) at (0,-3) {Model's permitted-key policy};
+\node[sysbox] (logical) at (5.2,-3) {Logical retained positions\\$[0,1,8,9,10,11]$};
+\node[sysbox] (physical) at (10.4,-3) {Map positions to\\physical cache locations};
+\draw[flow] (policy)--(logical); \draw[flow] (logical)--(physical);
+\node[sysnote,anchor=north west] at (-1.8,-4.35)
+ {Illustrative two-sink, four-recent policy. Never renumber retained positions for RoPE.};
+\end{tikzpicture}

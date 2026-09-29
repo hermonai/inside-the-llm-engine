@@ -163,6 +163,10 @@ makes it bimodal. Measure at the concurrency the service runs at, not at one.
 And compare like with like: two runs that produce different text are two
 different workloads (\Chref{benchmarking}).
 
+Compare committed output, not the number of candidates produced. Recheck the choice as batching and acceptance change. An adaptive controller needs stable measurement windows and a fallback, otherwise its switching can hide the cost being studied.
+
+\EngineFigure{sys-speculation-choice}{A break-even flowchart for speculation. Compare time per committed token under the same quality, load and latency contract. Draft, verify, rollback and queue costs all belong in the measurement.}{fig:sys-speculation-choice}
+
 \LedgerSection
 
 Speculating at a given batch size, temperature and drafter:
