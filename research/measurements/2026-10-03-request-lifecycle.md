@@ -9,6 +9,9 @@ The historical real-model measurement remains in
 - Apple M1, ordinary desktop session, macOS 26.6.2 (25G83).
 - Rust 1.92.0 (`ded5c06cf`), Cargo 1.92.0.
 - Baseline repository commit `7f7b9bc` plus the lab changes identified below.
+- The exact timed/tested source is preserved at commit `d48a8c9`. A later
+  comment-only clarification describes tick overruns more accurately;
+  it does not change the scheduler or any measured runtime operation.
 - `src/main.rs` SHA-256:
   `9fb7d40548458de657776dfceab19951cfba8601fc390b208b100a78568b2d27`.
 - `src/ownership.rs` SHA-256:
@@ -143,3 +146,30 @@ checks, not independent technical review or proof of production concurrency.
 ASGI and pinned engine sources were re-read; upstream issue 57061 was not
 reproduced locally. The chapter distinguishes the reported failure from
 the inspected source boundary and the book's own protocol model.
+
+## Book validation and layout
+
+The final 712-page XeLaTeX/biber build has no overfull boxes, missing glyphs
+or unresolved references. Its SHA-256 is
+`77efe40836c17e383b63f5bb7b042c84473f4bd4fcdc95da193a4c9c4002bb4a`.
+The source fingerprints are in `build/textbook/build-record.json`; all
+29 distinct files rendered by `\CodeLines` are included, not only the
+foundation listings. Read-only checks exercise duplicate listing paths,
+missing sources and outside-repository rejection.
+
+All 712 pages were rendered and passed the visible word-bounds audit in
+`build/lifecycle-release-review`. Chapter 31 occupies PDF pages 475--494
+(printed 469--488). All twenty pages were inspected in colour and grayscale.
+The new wait diagram's crowded label, ledger heading placement and split
+worked answers were corrected. Every problem/solution pair is now kept
+together. The relevant contents and bibliography pages were inspected too.
+This is author layout QA, not independent technical review or a new manual
+inspection of every unchanged page.
+
+The textbook gate reports 31 FULL and 28 ZERO chapters, 182 native figures,
+122 worked problems and five remaining TODOs. Structure/preservation/secrets,
+relative links, the full foundation and Rust workspaces, formatting/clippy,
+canonical diagram/style, deterministic figures, native parity, industrial
+visual mutation guards and all five Rust/visual parity scripts pass locally.
+The earlier independent ggml and native C sanitizer observations remain
+historical; no new GPU, model or remote CI execution is claimed.

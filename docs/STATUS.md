@@ -32,7 +32,7 @@ The first 14 systems chapter introductions now explain their question and
 offer a first-reading route before the measurements. This is an entry-point
 clarity pass, not a claim that every paragraph of the systems manuscript has
 been rewritten. Existing measured results and dated frontier claims remain.
-The book contains 178 native figures and 117 worked problems. Every one of
+The book contains 182 native figures and 122 worked problems. Every one of
 the 42 systems chapters has a native mechanism diagram. The author merged
 the second-edition work into main at `2c0474d`; this pass follows that checkout.
 
@@ -92,7 +92,7 @@ in `research/measurements/2026-10-03-foundation-experiments.md` with raw
 times and source/input hashes. These are Python observations, not a native
 GEMM, GPU, model or inference-service speed claim.
 
-The latest pass deepens Chapters 9--11 to about 3,100, 2,900 and 3,300
+The preceding pass deepens Chapters 9--11 to about 3,100, 2,900 and 3,300
 prose words respectively. Attention derives the shifted prediction boundary,
 offset chunk masks, GQA axes, operand counts and independent row properties.
 The FFN follows both normalized branch inputs and unnormalized residuals,
@@ -113,18 +113,51 @@ answers. The trace retains raw logits and evaluated frontiers in
 `research/measurements/2026-10-03-foundation-decoder.md`.
 These are correctness observations and derived counts, not speed measurements.
 
+The current pass completes printed Chapter 31, `ch14-request-lifecycle`,
+at about 6,600 prose words. It builds from the familiar difference between
+text and a request outcome to admission identity, wake predicates, fixed
+deadlines, bounded output, irreversible terminal decisions and physical
+work retirement. Four new native component, activity and sequence diagrams
+and five additional solved problems make those mechanisms inspectable.
+The original real-model cancellation observations remain intact and dated.
+
+The Rust lab now has seventeen tests, including 78,125 short ownership
+command orders and an independent integer-time wait oracle. The two larger
+seeded sweeps cover 901,145 requests. Two deliberately broken implementations
+fail the relevant tests: accepting natural completion after observed
+cancellation, and reusing a lease before outstanding work retires.
+Two repeated scaled CPU runs reproduce 437 extra orphan tokens under
+polling with a busy neighbour; the event-driven model produces none.
+A short poll slice demonstrates the failure's dependence on quiet intervals.
+These are teaching-model observations, not new llama.cpp, vLLM, GPU or
+service benchmarks. Raw runs, timing limits and exact source provenance are
+in `research/measurements/2026-10-03-request-lifecycle.md`.
+
+Pinned llama.cpp and vLLM control paths distinguish source inspection from
+deployment claims. ASGI disconnect semantics and a reported vLLM admission
+race qualify the boundary of the teaching model. Completion of the host
+protocol does not prove device interruption, network delivery, admission
+cleanup or shared-cache reference accounting.
+
 ## Validation of this revision
 
-The 702-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
-or unresolved references. All 702 pages rendered and passed the visible
-word-bounds audit. The 29 pages of the latest three chapters were reviewed
-in colour and grayscale, including all nine figures and three source listings.
-Visual review corrected arrows crossing output boxes, a touching-node
-connector, key-label spacing and a split worked answer. The previous
-Chapters 12--17, preface, Part II transition and 33 systems mechanism-plate
-reviews remain in their prior pass records.
+The 712-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
+or unresolved references. All 712 pages rendered and passed the visible
+word-bounds audit in `build/lifecycle-release-review`. Chapter 31's twenty
+pages were inspected in colour and grayscale, including all eight diagrams,
+its source listing and every worked solution. The relevant contents and
+bibliography pages were also inspected. Visual review corrected a crowded
+wait label, a detached ledger heading and split problem/solution blocks.
+The previous 29-page Chapters 9--11 review and the Chapters 12--17, preface,
+Part II transition and systems mechanism-plate reviews remain earlier QA.
 This is author QA, not independent technical review or a claim that every
 unchanged page received a new visual inspection.
+
+The build record now fingerprints all 29 distinct source files rendered by
+`\CodeLines`, including the lifecycle protocol implementation. Read-only
+checks exercised listing deduplication and rejection of missing or
+outside-repository sources. The PDF hash and review scope are recorded
+with the lifecycle evidence.
 
 Relevant local checks pass: structure/preservation/secrets, relative links,
 textbook contracts and six CLI trace tests, the 14 foundation arithmetic/structure
@@ -140,20 +173,23 @@ in the machine lesson's record; they were not rerun in this pass.
 AddressSanitizer remains unverified on this Mac. The combined Linux CI
 sanitizer check is committed, but its remote execution has not been observed.
 The prior independent ggml CPU result (direct decode, tensor orientation and
-32 packed-coordinate probes), five lifecycle tests and full Rust/parity CI
-results remain historical evidence; they were not rerun in this pass.
-This pass does not promote the lifecycle chapter to FULL or claim new timings.
+32 packed-coordinate probes) remains historical evidence and was not rerun.
+The lifecycle lab's seventeen tests, full Rust lab and mini-engine tests,
+format/lint checks, seven model-count and four napkin tests, and all five
+tensor/linear/norm/QKV/RoPE parity scripts pass locally in this revision.
+The scaled CPU lifecycle observations are recorded separately from the
+historical model measurements. Chapter 31 is now FULL, not VERIFIED.
 The previous accounting pass's small Python experiment remains in its dated
 record; no accelerator or model performance measurement is claimed.
 
 ## Next
 
-1. Complete the existing lifecycle lab's full chapter, now Chapter 31
-   (`ch14-request-lifecycle`), preserving the measured cancellation failure.
-   Chapters 9--17 now have concrete depth passes; keep their runnable reading
-   route when developing the later system mechanisms.
+1. Deepen Chapter 32, Continuous Batching, then Chapter 33, Paged KV Memory.
+   Carry Chapter 31's ownership and retirement rules into scheduling and
+   allocation, using executable examples and distinct failure tests.
+   Keep the runnable reading route established in Chapters 9--17.
 2. Continue the straightforward, concrete-first edit through the bodies of
-   systems chapters, then deepen the remaining 29 ZERO chapters. Keep
+   systems chapters, then deepen the remaining 28 ZERO chapters. Keep
    the original measurements and failure cases; explain them more gradually.
 3. Resolve the five remaining hardware-measurement TODOs when the required
    machines are available. Do not replace missing measurements with predictions.
@@ -206,7 +242,7 @@ from the current printed chapter numbers. Prose word counts are approximate.
 | 28 | Below 16 Bits in Floating Point: FP8, MXFP4 and NVFP4 | ch11-low-precision-float | FULL | 5,242 | 0 |
 | 29 | Quantizing the KV Cache | ch12-kv-quantization | FULL | 5,185 | 0 |
 | 30 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | ch13-kernel-languages | FULL | 6,323 | 0 |
-| 31 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ch14-request-lifecycle | ZERO | 3,438 | 0 |
+| 31 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ch14-request-lifecycle | FULL | 6,602 | 0 |
 | 32 | Continuous Batching | ch15-continuous-batching | ZERO | 2,124 | 0 |
 | 33 | Paged KV Memory | ch16-paged-kv | ZERO | 1,946 | 0 |
 | 34 | Prefix Caching and RadixAttention | ch17-prefix-caching | ZERO | 2,173 | 0 |
