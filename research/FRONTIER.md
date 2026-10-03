@@ -460,6 +460,20 @@ suggested viewing, not reviewed technical evidence or quoted transcripts.
 The author's [unofficial GGUF repository](https://github.com/iuliaturc/gguf-docs)
 was inspected as a lead; byte-level claims above rely on upstream sources.
 
+## Numerical and execution-model teaching pass (checked 2026-10-03)
+
+These are durable programming contracts and independently derived small examples,
+not refreshed product peaks or a new accelerator benchmark.
+
+| Topic | Scope checked | Primary source | Maturity | Printed chapter |
+| --- | --- | --- | --- | --- |
+| Binary arithmetic | Read format fields, rounding modes, FMA and dot-product ordering sections. Historic CPU capability remarks are not used as current facts | [NVIDIA floating-point guide](https://docs.nvidia.com/cuda/floating-point/index.html) | documented arithmetic | 13 |
+| BF16 interchange | Sign/exponent/fraction split and conversion rounding modes; mathematical BF16 lesson retains subnormals, without claiming every instruction does | [Khronos Intel BF16 extension](https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_bfloat16_conversions.html) | published extension | 13 |
+| Independent half oracle | `struct` standard-size binary16 conversion; all 65,536 bit patterns checked against the rational decoder | [Python struct](https://docs.python.org/3/library/struct.html) | executable standard-library check | 13 |
+| AArch64 NEON | Read `vld1q_f32`, `vmulq_f32`, `vaddq_f32`, `vaddvq_f32` entries; actual compiler assembly and sanitized native fixture checked separately | [Arm ACLE reference](https://arm-software.github.io/acle/neon_intrinsics/advsimd.html) | documented intrinsics; locally run correctness fixture | 14 |
+| CUDA worker hierarchy | Threads/blocks/grid, arbitrary block scheduling, warp width and divergence; no inter-block dependency assumed in ordinary teaching launch | [programming model](https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html) | programming contract | 15 |
+| Addresses and banks | Read §10.2.1 and §10.2.3: 32-byte global sectors (CC 6.0+), successive 32-bit shared words on 32 banks (CC 5.x+), same-word broadcast exception. Derived sector counts are not DRAM measurements | [CUDA best practices](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html) | documented scoped model | 15 |
+
 ## Leads to verify before the chapters that need them
 
 Not yet read at a primary source; do not cite until they are.

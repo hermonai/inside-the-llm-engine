@@ -1,0 +1,14 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[note,anchor=west] at (0,1) {Illustrative F32 matrix: $16$ rows, $16$ columns; aligned $64$-byte lines};
+\foreach \r/\lab in {0/{row 0},1/{row 1},2/{row 2},3/{row 15}} {
+ \node[note,anchor=east] at (-.2,-\r*.9) {\lab};
+ \foreach \c in {0,...,15} {
+  \pgfmathsetmacro{\shade}{ifthenelse(\c==0,35,8)}
+  \draw[BookBlue,fill=BookBlue!\shade] (\c*.65,-\r*.9-.28) rectangle ++(.65,.56);
+ }
+}
+\draw[flow] (0,.45)--node[above,syslabel]{row: use all 16 words in one line}(10.4,.45);
+\draw[flow] (-1.4,-.15)--node[left,note,align=center]{column\\stride\\64 B}(-1.4,-2.7);
+\node[note,anchor=north west,text width=115mm] at (0,-3.5)
+ {Full scan: 1,024 useful bytes in 16 distinct lines.\\One column: 64 useful bytes in the same 16 distinct lines.\\Shown rows omit 3--14. Counts assume no prior residency; no miss-rate or timing prediction.};
+\end{tikzpicture}

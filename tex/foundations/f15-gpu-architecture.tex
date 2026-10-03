@@ -205,7 +205,311 @@ provide hardware-specific measurements. If the hardware is unavailable,
 leave its speed unmeasured. A fabricated peak-to-runtime conversion
 would teach the wrong habit.
 
-The important outcome is that you can now point to a worker, a group,
-a reusable tile, a memory boundary and a completion event. The
-optimized kernel chapters will put real values on those objects.
+We can now name a worker, a group, a reusable tile and a completion
+event. Next we will assign actual coordinates to those objects and
+test the boundary cases without needing an accelerator.
+\section{Map an odd-sized matrix onto a launch}
+Take $\mathbf{A}\in\mathbb{R}^{5\times3}$ and
+$\mathbf{B}\in\mathbb{R}^{3\times7}$. Their product
+$\mathbf{C}$ has 35 values. Choose an illustrative output
+tile of two rows by two columns. It is deliberately small
+enough to draw, not a recommended CUDA block size.
+
+The grid needs $\lceil5/2\rceil=3$ block rows and
+$\lceil7/2\rceil=4$ block columns. There are twelve blocks,
+each describing four logical output workers, for 48 launch
+slots. Only 35 slots correspond to valid output coordinates.
+The other thirteen are boundary slots, not thirteen extra
+matrix values.
+
+For block coordinates $(b_y,b_x)$ and local coordinates
+$(t_y,t_x)$, the global output coordinates are
+\[
+ i=2b_y+t_y,\qquad j=2b_x+t_x.
+\]
+The output store is valid only when $i<5$ and $j<7$.
+Changing the launch geometry does not change these numerical
+dimensions. Confusing the padded launch extent with the
+matrix shape can overrun an allocation even when all
+interior tiles produce correct results.
+
+\EngineFigure{foundation-gpu-grid}{The executable teaching model's output
+mapping: twelve two-by-two tiles cover a five-by-seven result.
+Crossed slots have no valid output store. Cooperative participation
+and store validity are separate conditions; the tiny block geometry
+is for explanation, not an optimized CUDA launch.}
+{fig:foundation-gpu-grid}
+
+Our model calls these logical workers, not physical lanes.
+CUDA groups threads into 32-thread warps
+\cite{nvidia2026programmingmodel}; a four-thread CUDA block
+would leave most of its warp unused. The ratio $35/48$
+therefore describes useful output slots in this drawing,
+not GPU occupancy or arithmetic-unit utilization. Larger
+practical tiles can assign several outputs to each thread
+and use a different relationship between workers and values.
+
+\section{Follow one tile through the reduction dimension}
+Choose explicit illustrative inputs $A_{i,q}=i-q$ and
+$B_{q,j}=2q+j$. The result at $(0,0)$ is
+$0(0)+(-1)(2)+(-2)(4)=-10$. At $(4,6)$ it is
+$4(6)+3(8)+2(10)=68$. These two corners are useful
+hand fixtures because they involve both the first and
+last output tiles.
+
+For the output tile covering rows zero and one, columns
+zero and one, the first reduction stage uses $q=0,1$.
+The cooperating group loads a $2\times2$ tile of
+$\mathbf{A}$ and a $2\times2$ tile of $\mathbf{B}$,
+then reuses them across four output accumulators. The
+second stage starts at $q=2$. Because the true reduction
+length is three, the $q=3$ entries are outside the input
+and must be replaced by zeros in this teaching scheme.
+
+Zero-fill and guard are different actions. An invalid input
+load must not read outside the allocation and then hope
+that multiplying its result by zero will repair the error.
+The load is guarded first; cooperative storage receives
+zero where the corresponding mathematical padding applies.
+Only valid final outputs are written back. This ensures
+that an edge tile participates in the same stage sequence
+without pretending its padded values exist in global memory.
+
+The CPU-run \texttt{tiled\_product} implements those stages
+serially, so we can inspect every index. It does not
+simulate a GPU schedule. Its independent reference uses
+a direct integer matrix loop without tiles. The tests
+compare all outputs for 210 matrix shapes and four tile
+sizes, including reduction lengths not divisible by a
+tile size. Corner fixtures alone would not establish
+the entire mapping, and random square matrices would
+hide several boundary conditions.
+
+\section{Two ordering boundaries protect one reusable buffer}
+Cooperative reuse creates a producer--consumer dependency.
+Some workers write the input tile; other workers read those
+values during multiplication. A reader cannot consume an
+entry before the producer makes it available. After this
+publication boundary, the group can use the tile.
+
+A second dependency appears at the end of the stage. The
+storage is about to hold the next input tile. It cannot
+be overwritten while any consumer still needs the old one.
+Publication and retirement are different boundaries:
+\textit{loaded} does not imply \textit{safe to overwrite}.
+
+\EngineFigure{foundation-tile-protocol}{Conceptual state contract enforced
+by the teaching lab. Publishing permits reads; completion of every
+consumer permits reuse. The model rejects invalid transitions but
+does not execute GPU barriers or prove a hardware memory model.}
+{fig:foundation-tile-protocol}
+
+The lab's \texttt{TileProtocol} has loading, ready and retired
+states. It rejects a consumer during loading, a second
+load before retirement, and retirement with missing
+consumers. Counting calls is not enough: each consumer
+has an identity, and a duplicate does not replace an
+absent reader. This makes the state contract falsifiable
+even though the lesson has no concurrent hardware.
+
+In a conventional CUDA shared-memory tile, appropriate
+block synchronization must establish the corresponding
+dependencies. A block-wide barrier is not satisfied
+by only the threads that own valid outputs. An edge
+thread that returns early can prevent a valid cooperative
+stage. Keep cooperative participation uniform and guard
+loads/stores separately. An actual kernel still needs
+review against the target's synchronization rules; the
+serial model cannot expose every race or deadlock.
+
+Ordinary blocks must also be independently schedulable.
+A block waiting for another block to run can be wrong
+if all resident slots are occupied by waiting blocks.
+Our mapping has no such cross-block dependency. More
+advanced cluster or cooperative-launch mechanisms have
+their own contracts; they should not be smuggled into
+an ordinary grid by assuming all blocks run together.
+
+\section{Count what tiling saves at a named boundary}
+A naive worker loads two input values for each product.
+For 35 outputs and reduction length three, that is
+$2\cdot35\cdot3=210$ source-level input-value loads.
+The teaching tile loads only valid entries into its
+cooperative storage. Each $\mathbf{A}$ value is loaded
+once for each of four output block columns, giving
+$5\cdot3\cdot4=60$ loads. Each $\mathbf{B}$ value is
+loaded once for each of three output block rows,
+giving $3\cdot7\cdot3=63$. Total: 123 valid
+input-value loads.
+
+At F32 payload size this is 492 bytes of input values
+versus 840 bytes in the naive source-level count,
+plus 140 bytes for the 35 output stores in either
+version. These counts exclude address calculation,
+shared-memory traffic, barriers and padded arithmetic.
+They are not measured HBM transactions. Caches may
+serve repeated global loads; physical transactions
+can fetch extra bytes beyond the requested values.
+
+For a complete $T\times T$ output tile with reduction
+length $K$, count $2T^2K$ useful FLOPs under the
+two-FLOPs convention. If cooperative loading reads
+$2TK$ F32 inputs and stores $T^2$ F32 outputs
+at the chosen global boundary, its idealized intensity is
+\begin{equation}
+ I=\frac{2T^2K}{4(2TK+T^2)}\quad\text{FLOP/byte}.
+ \label{eq:foundation-tile-intensity}
+\end{equation}
+With $K$ large compared with $T$, this approaches $T/4$.
+The limit expresses reuse, not a guarantee that arbitrarily
+large tiles are better. Local storage and residency
+costs grow with the tile, while a small or odd workload
+may leave much of it unused.
+
+\section{A warp's addresses determine its sector requests}
+Consider one instruction in which 32 CUDA lanes read
+one F32 value each. Under the documented 32-byte-sector
+model for compute capability 6.0 and later, count aligned
+sectors containing the requested byte intervals
+\cite{nvidia2026bestpractices}. A sector is an address
+unit here, not the CPU cache line from the previous chapter.
+
+If lane $\ell$ reads address $4\ell$ from an aligned
+base, lanes zero through seven use sector zero,
+eight through fifteen sector one, and so on.
+Four sectors supply all 128 useful bytes. Shift the
+base by four bytes. The request interval now runs
+from byte four through byte 131 inclusive, touching
+five sectors. One sector contains only the final
+requested word.
+
+\EngineFigure{foundation-warp-sectors}{Derived requests for one
+32-lane F32 load: aligned adjacent, four-byte-offset adjacent,
+and 128-byte-strided addresses. Boxes name requested sectors,
+not measured off-chip transfers. The strided example shows
+four of its 32 sectors.}{fig:foundation-warp-sectors}
+
+Now use address $128\ell$. Every lane names a
+different sector, so the request covers 32 sectors
+for the same 128 useful bytes. Permuting lane IDs
+without changing the set of addresses does not change
+the sector count. Coalescing concerns the collective
+addresses of an instruction, not a requirement that
+the programmer label lanes in ascending address order.
+
+The Python \texttt{touched\_units} function includes the
+whole interval of each load, so a crossing access
+counts both sectors. Its results are set counts:
+four, five and 32 for these fixtures. An all-lanes
+broadcast of one word names one sector and four
+unique useful bytes. Summing 32 lane requests does
+not make that one word into 128 unique bytes.
+
+Do not convert these counts directly into an eightfold
+runtime ratio. Nearby instructions can reuse data,
+and the physical memory path can be limited elsewhere.
+The model provides a diagnosis to test with an actual
+kernel and counters, not a replacement for that test.
+
+\section{Shared memory has an address mapping too}
+Shared memory avoids some global movement, but its access
+pattern still matters. Use the documented teaching
+mapping of successive 32-bit words to successive
+members of 32 banks on compute capability 5.x and
+later \cite{nvidia2026bestpractices}. For a word index
+$w$, the bank is $w\bmod32$.
+
+Lanes reading word indices $0,1,\ldots,31$ use
+different banks. Reading the first column of a
+row-major $32\times32$ tile uses indices
+$0,32,64,\ldots,992$. All map to bank zero,
+but to different words. This is not a broadcast.
+The model counts 32 distinct words in the most-loaded
+bank, illustrating serialization pressure.
+
+Pad each row to 33 words. The same logical column
+now uses indices $33\ell$, whose bank indices
+are $\ell\bmod32$. The layout removes this
+specific conflict while adding 32 words, or 128
+F32 bytes, to a 32-row tile. The padding is a
+storage-for-access trade, not a universal fix for
+every datatype or matrix instruction.
+
+By contrast, all lanes reading word zero request
+the same location. The broadcast exception matters:
+counting threads per bank would wrongly diagnose a
+32-way distinct-word conflict. Our function stores
+a set of requested words per bank before computing
+its pressure. It intentionally models only this
+word mapping, not device cycles, wide operations
+or architecture-specific matrix-fragment layouts.
+
+\section{Apply every residency ceiling}
+Return to an illustrative processor with 64 KiB of
+shared storage. Add 65,536 register slots, a
+2,048-thread ceiling and an eight-block ceiling.
+Suppose each block uses 256 threads, 16 KiB
+of shared storage and 80 registers per thread.
+The separate block-count ceilings are
+\[
+ \left\lfloor\frac{65536}{16384}\right\rfloor=4,\quad
+ \left\lfloor\frac{65536}{80\cdot256}\right\rfloor=3,\quad
+ \left\lfloor\frac{2048}{256}\right\rfloor=8,\quad 8.
+\]
+The combined ceiling is three blocks, not four.
+At 24 KiB shared storage per block, the shared-storage
+ceiling falls to two and becomes the tighter limit.
+
+These capacities are illustrative inputs, not the
+specification of a named GPU. Real allocation granularity,
+reserved storage and architecture-specific limits can
+reduce admissible residency further. Neither three
+nor two tells us how many blocks are available in
+the workload, how many are waiting, or how fast an
+instruction stream runs.
+
+Occupancy is a resident-work ratio under the platform's
+definition. Utilization is how effectively a resource
+is doing useful work. Higher occupancy may hide
+latency, but can also reflect smaller tiles with less
+reuse. A kernel with enough work and a productive
+low-residency tile can outperform one with more
+resident groups. Predict the binding ceiling before
+measuring the trade rather than optimizing a percentage
+in isolation.
+
+\section{Run the model, then state what it cannot prove}
+\begin{verbatim}
+python3 code/foundations/memory_execution.py
+python3 -m unittest discover -s code/foundations -p 'test_*.py'
+\end{verbatim}
+Predict twelve blocks, 48 logical slots, 35 outputs
+and 123 valid global-value loads. Check the sector
+and bank examples separately. Then run a negative
+protocol test: a read before publication and reuse
+before the last consumer both raise errors.
+
+The independent integer matrix oracle covers 840
+shape/tile combinations. That establishes output
+mapping for the finite tested inputs; the stage
+tests establish the teaching object's transitions.
+Neither result validates a CUDA compiler, a real
+barrier or an accelerator's race behaviour.
+There is no GPU execution or performance claim in
+this lesson. The later native device labs add those
+boundaries with a recorded setup.
+
+\begin{ConstraintLedger}
+Memory bandwidth & buys & Cooperative tiles reuse values; sector layout can reduce over-fetch.\\
+Memory capacity & spends & Padding, shared tiles and accumulators occupy local storage.\\
+Compute & spends & Boundary slots and padded reduction entries can execute unused arithmetic.\\
+Correctness & risks & Guarded stores do not replace producer--consumer synchronization.\\
+Latency & moves & Greater reuse can reduce residency; submission and completion remain separate.\\
+\end{ConstraintLedger}
+You can now follow one output from its mathematical
+coordinates to a launch slot, a shared tile, a memory
+sector and a completion boundary. That chain is the
+prerequisite for understanding why an industrial
+kernel succeeds or fails; its product name alone
+cannot supply it.
 \input{worked/f15-gpu-architecture.tex}

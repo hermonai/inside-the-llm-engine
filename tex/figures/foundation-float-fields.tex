@@ -1,0 +1,15 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[note,anchor=west] at (0,1) {The same value: $1.5=1.1_2\times2^0$};
+\node[note,anchor=east] at (-.3,0) {FP16};
+\node[block,fill=BookGold,minimum width=11mm] at (.55,0) {$0$};
+\node[block,minimum width=40mm] at (3.3,0) {$01111$\\exponent $15$};
+\node[block,fill=BookGreen,minimum width=66mm] at (9,0) {$1000000000$\\fraction $512/1024$};
+\node[note,anchor=west] at (0,-1.1) {Bias $15$: $2^{15-15}(1+512/1024)=1.5$; encoding \texttt{3E00}.};
+\node[note,anchor=east] at (-.3,-2.4) {BF16};
+\node[block,fill=BookGold,minimum width=11mm] at (.55,-2.4) {$0$};
+\node[block,minimum width=60mm] at (4.3,-2.4) {$01111111$\\exponent $127$};
+\node[block,fill=BookGreen,minimum width=46mm] at (10,-2.4) {$1000000$\\fraction $64/128$};
+\node[note,anchor=west] at (0,-3.5) {Bias $127$: $2^{127-127}(1+64/128)=1.5$; encoding \texttt{3FC0}.};
+\node[note,anchor=west,text width=125mm] at (0,-4.5)
+ {Fields: sign (gold), biased exponent (blue), stored fraction (green). Labels retain the meaning in grayscale. Field boxes are schematic, not bit-width proportional.};
+\end{tikzpicture}

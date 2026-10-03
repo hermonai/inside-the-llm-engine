@@ -1,0 +1,15 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\foreach \c in {0,...,3} {
+ \node[cell,fill=BookPale] (a\c) at (\c*2.4,0) {$a_{\c}b_{\c}$};
+ \node[cell,fill=BookPale] (b\c) at (\c*2.4,-1.4) {$a_{\the\numexpr\c+4\relax}b_{\the\numexpr\c+4\relax}$};
+ \node[cell,fill=BookGreen] (s\c) at (\c*2.4,-3) {$s_{\c}$};
+ \draw[flow] (a\c)--(b\c); \draw[flow] (b\c)--(s\c);
+}
+\draw[BookBlue,dashed] (-.8,-2.1)--(8,-2.1);
+\node[note,anchor=west] at (8.4,-1.4) {second vector};
+\node[note,anchor=west] at (8.4,-3) {four partial sums};
+\node[block] (sum) at (3.6,-5) {$((s_0+s_1)+(s_2+s_3))$\\horizontal reduction};
+\foreach \c in {0,...,3} {\draw[flow] (s\c.south)--(sum.north);}
+\node[note,anchor=north,text width=110mm] at (5,-6)
+ {Indices shown for eight values. Each lane accumulates its own subsequence; the scalar tail is added after reduction. Grouping can change floating-point rounding.};
+\end{tikzpicture}

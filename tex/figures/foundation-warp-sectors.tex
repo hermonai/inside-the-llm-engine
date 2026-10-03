@@ -1,0 +1,19 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[note,anchor=west] at (0,1) {32 lanes, one F32 word per lane; each box is a 32-byte aligned sector};
+\foreach \i in {0,...,3} {
+ \node[block,minimum width=22mm] at (\i*2.6,0) {$8$ words};
+}
+\node[note,anchor=west] at (10.5,0) {4 sectors\\base $0$};
+\foreach \i in {0,...,4} {
+ \ifnum\i=0 \def\lab{$7$ words}\else
+ \ifnum\i=4 \def\lab{$1$ word}\else\def\lab{$8$ words}\fi\fi
+ \node[block,fill=BookGold,minimum width=22mm] at (\i*2.6,-1.8) {\lab};
+}
+\node[note,anchor=west] at (13,-1.8) {5 sectors\\base $4$};
+\foreach \i in {0,...,3} {
+ \node[block,fill=BookGreen,minimum width=22mm] at (\i*2.6,-3.6) {$1$ word};
+}
+\node[note,anchor=west] at (10.5,-3.6) {$\cdots$ 32 sectors\\stride $128$ bytes};
+\node[note,anchor=north west,text width=133mm] at (-1,-4.7)
+ {Counts name sectors requested by this instruction, not unique DRAM transfers across a kernel. Broadcast and neighbouring requests can change reuse. The strided row shows four of 32 requested sectors; intervening sectors are omitted.};
+\end{tikzpicture}

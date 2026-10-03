@@ -209,9 +209,277 @@ accumulation order. The examples still specify what it must preserve
 and where approximation is allowed. An optimization is easier to
 review when the expected numerical contract predates it.
 
-At this point, fewer bits should no longer sound like a free speed
-switch. They change storage, arithmetic support, conversion work and
-error. The later quantization chapters will measure those trade-offs
-on real implementations. Here we have built the vocabulary and the
-small tests needed to read those measurements critically.
+These small tests give us a starting contract. Next we will reach the
+actual bit fields, locate each rounding boundary and build an exact
+reference that can distinguish several plausible arithmetic paths.
+\section{Read the bits of an actual number}
+Let us turn the word precision into a calculation. The GGUF block in
+Chapter~\ref{app:formats} contained a two-byte scale. What would the
+bytes mean if that scale were 1.5? We must first name the format. FP16
+(IEEE binary16) and BF16 both occupy sixteen bits, but they allocate
+those bits differently. FP16 has one sign bit, five exponent bits and
+ten stored fraction bits. BF16 has one sign bit, eight exponent bits
+and seven stored fraction bits \cite{python2026struct,khronos2026bf16}.
+The format describes a representation, not the precision of every
+operation that consumes it.
+
+Write 1.5 in binary as $1.1_2\times2^0$. For a normal FP16 value, the
+leading one is implicit. We store the following zero in the sign field,
+the exponent zero plus bias fifteen in the exponent field, and the
+fraction one half in the fraction field:
+\[
+ s=0,\qquad E=15,\qquad F=512.
+\]
+Here $E$ and $F$ are unsigned integers extracted from the fields;
+they are not the unbiased exponent and a decimal fraction. The
+sixteen-bit integer encoding is
+\[
+ (s\ll15)\;|\;(E\ll10)\;|\;F
+ =15\cdot1024+512=15872=\texttt{0x3E00}.
+\]
+The shifts place fields; the vertical bars denote bitwise OR, not
+arithmetic addition in an overlapping field. For these disjoint fields
+the integer sums agree. Little-endian storage is \texttt{00 3E}.
+Byte order does not change the number of exponent bits.
+
+For BF16 the exponent bias is 127. One half occupies the fraction
+integer 64 out of 128 possible fraction steps. Thus $E=127$, $F=64$
+and the encoding is \texttt{0x3FC0}, stored little-endian as
+\texttt{C0 3F}. The same mathematical value now has different bytes.
+A sixteen-bit copy does not convert one format to the other.
+This is a concrete reason for keeping datatype metadata attached
+to the payload rather than inferring it from element size.
+
+\EngineFigure{foundation-float-fields}{Two actual sixteen-bit encodings of
+1.5. The stored exponent includes its bias, and the leading one is
+implicit only for normal values. Boxes distinguish fields; their widths
+are schematic. This is a representation comparison, not a hardware
+throughput comparison.}{fig:foundation-float-fields}
+
+\section{Derive normal and subnormal values}
+Let a format have $t$ stored fraction bits and exponent bias $b_E$.
+For a normal encoding, neither zero nor the all-ones exponent field,
+the exact represented number is
+\begin{equation}
+ x=(-1)^s 2^{E-b_E}\left(1+\frac{F}{2^t}\right).
+ \label{eq:foundation-normal-bits}
+\end{equation}
+For FP16, substitute $t=10$, $b_E=15$ and the fields above.
+The result is $2^0(1+512/1024)=1.5$. This expression decodes a
+stored value; it does not say that all real numbers are representable.
+
+With exponent field zero, the hidden leading bit is zero instead
+of one. The exponent stops decreasing:
+\begin{equation}
+ x=(-1)^s 2^{1-b_E}\frac{F}{2^t}.
+ \label{eq:foundation-subnormal-bits}
+\end{equation}
+For FP16, $F=1$ gives $2^{-14}/1024=2^{-24}$, the smallest
+positive subnormal. The largest subnormal has $F=1023$ and value
+$1023\cdot2^{-24}$. The next encoding, exponent field one and fraction
+zero, represents $2^{-14}=1024\cdot2^{-24}$. There is no sudden
+gap at that boundary. Subnormals fill the interval approaching zero
+with a fixed absolute spacing, losing relative precision as magnitude
+shrinks.
+
+The all-ones exponent field has another meaning. With fraction zero,
+these IEEE-style encodings represent signed infinity; a nonzero
+fraction encodes NaN. NaN is a class of encodings, not a single ordinary
+real value. Comparing a NaN to itself does not establish numerical
+equality. A test that computes an error and then checks only whether
+it exceeds a tolerance can accidentally accept NaN if it ignores
+nonfinite values. Check finiteness before an ordinary error contract.
+
+Sign one with exponent and fraction zero encodes negative zero.
+Its arithmetic comparison to positive zero does not distinguish the
+bits. Our rational lab retains the sign field when inspecting an
+encoding, but rational zero has no sign. Consequently it is not an
+emulator of signed-zero arithmetic, NaN payload propagation or
+exception flags. A complete interchange test needs those policies
+in addition to finite-value agreement.
+
+\section{Compute spacing instead of memorizing a datatype slogan}
+Within a normal binade $[2^e,2^{e+1})$, neighbouring values differ by
+\[
+ \Delta(e)=2^{e-t}.
+\]
+A binade is the interval between successive powers of two. The
+formula follows by increasing the fraction integer $F$ by one
+in Equation~\ref{eq:foundation-normal-bits}. Near one, FP16 spacing
+is $2^{-10}=1/1024$, BF16 spacing is $2^{-7}=1/128$, and FP32
+spacing is $2^{-23}$. These are exact differences between stored
+values in that interval. They are not universal absolute-error
+guarantees for a long computation.
+
+At 2,048, FP16 has $e=11$, so spacing becomes $2^{11-10}=2$.
+The exact result 2,049 lies halfway between 2,048 and 2,050.
+Round-to-nearest, ties-to-even chooses 2,048: its retained
+significand integer is even. Adding one again presents the same tie.
+The stored accumulator never advances.
+
+Now sum 4,096 copies of one, rounding the accumulator to FP16
+after every addition. It reaches 2,048 exactly and stays there.
+With an FP32 accumulator, all these integer partial sums are exact
+and the result is 4,096. Casting that final result to FP16 also
+gives 4,096 exactly. Wider accumulation has changed when information
+is discarded, even though the input and final output can stay FP16.
+This is why input storage and accumulation type must be separate
+entries in a kernel's numerical contract.
+
+BF16 has a larger exponent range than FP16, but fewer significant
+bits near the same magnitude. In the same repeated-unit experiment
+it reaches its analogous spacing boundary earlier. Wider range
+protects against some overflows; it does not retain small increments
+in a large partial sum. Whether an instruction preserves subnormals
+is a further execution policy. Our BF16 model uses the mathematical
+encoding with gradual underflow, not a claim about every device.
+
+\section{Make the halfway rule executable}
+The lab uses \texttt{Fraction}, so the intermediate exact value is a
+rational rather than an already-rounded Python float. To round a
+nonnegative rational $v$ to an integer, divide its numerator by its
+denominator. The quotient is the lower integer. Compare twice the
+remainder to the denominator: smaller chooses down, larger chooses
+up, and equality chooses the even neighbour.
+
+\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/numerical_path.py}{11}{16}
+\end{minipage}
+
+For $5/2$, the quotient is two and the remainder is one. Twice the
+remainder equals the denominator, and the lower integer is even,
+so the result is two. For $7/2$, the lower integer is three and
+odd, so the result is four. For a negative finite number, the
+encoder rounds its magnitude and reinstates its sign. This is
+nearest-even, not truncation towards zero.
+
+The binary encoder first locates the exponent interval, chooses
+the format's spacing in that interval, rounds to an integer
+number of spacing units, and packs the fields. Rounding can carry
+into the next exponent. Near zero, the spacing stops at the subnormal
+step. At the top of FP16, a sufficiently large rounded result becomes
+infinity. The largest finite value is 65,504; the halfway threshold
+for this nearest-even overflow case is 65,520. A test includes
+both the threshold and a value immediately below it.
+
+This route is slower than a native conversion, but its decisions
+are visible. The lesson is not to deploy rational arithmetic in
+an inference kernel. It is to build a reference whose rounding
+boundary can be explained independently of the optimized path.
+
+\section{Two legal arithmetic graphs can disagree}
+Take FP32-representable inputs
+\[
+ a=1+2^{-13},\qquad b=1-2^{-13},\qquad c=-1.
+\]
+Their exact product is $ab=1-2^{-26}$. A separate FP32
+multiplication rounds this product to one; a subsequent addition
+of $-1$ returns zero. A fused multiply-add instead forms the
+exact combined value $ab+c=-2^{-26}$ before rounding once. That
+value is representable in FP32, so it survives.
+
+\EngineFigure{foundation-rounding-path}{Original rational fixture showing
+where rounding happens. Separate multiply and add return zero; one
+fused rounding returns $-2^{-26}$. The diagram specifies numerical
+paths, not the latency of a particular instruction.}
+{fig:foundation-rounding-path}
+
+Both paths can implement correctly rounded operations with their
+own stated semantics \cite{nvidia2026floatingpoint}. Bitwise
+disagreement alone cannot tell us which graph was intended. A
+compiler's contraction setting, the instruction chosen by a kernel,
+and the library's accumulation policy can change that graph. Do not
+copy historical statements about CPU instruction availability from
+an old numerical guide into a current hardware comparison.
+
+Reduction order presents a second independent choice. In FP32,
+evaluate $[2^{24},1,-2^{24}]$ left to right. The first addition
+rounds $2^{24}+1$ to $2^{24}$, then cancellation leaves zero.
+Cancel the large terms first and the answer is one. The exact
+sum is one in either case. A SIMD reduction, a thread-count
+change or a different tile split can alter the grouping without
+changing the mathematical expression printed in the chapter.
+An independent exact sum explains the error; it does not make
+every regrouped result bitwise interchangeable.
+
+\section{A weight error becomes an output error through the input}
+Let a row of reference weights be $\mathbf{w}\in\mathbb{R}^d$,
+its reconstruction be $\widehat{\mathbf{w}}$, and the input
+be $\mathbf{x}\in\mathbb{R}^d$. With exact multiplication and
+summation, the projection error is
+\begin{equation}
+ \widehat y-y=\sum_{i=1}^d(\widehat w_i-w_i)x_i,\qquad
+ |\widehat y-y|\leq\sum_{i=1}^d|\widehat w_i-w_i|\,|x_i|.
+ \label{eq:foundation-projection-error}
+\end{equation}
+This is the triangle inequality, not a probabilistic claim.
+If all unclipped weight errors are bounded by $s_q/2$, it yields
+$|\widehat y-y|\leq(s_q/2)\|\mathbf{x}\|_1$. The input matters.
+Small weight errors multiplied by large activation coordinates
+can dominate the output. Hardware rounding introduces additional
+terms that this exact-arithmetic bound has not included.
+
+For the earlier weights $[-1.1,0.2,1.6]$ and reconstruction
+$[-1,0,1.5]$, choose input $[1,2,-1]$. The original dot product
+is $-2.3$ and the reconstructed one is $-2.5$, an absolute
+error of 0.2. The coordinatewise bound is
+$0.1+2(0.2)+0.1=0.6$. A bound need not be tight: signed
+errors cancel in the actual dot product but not after taking
+absolute values. A norm of weight error alone cannot identify
+which input makes that error consequential.
+
+An outlier also changes the codebook. For the illustrative row
+$[0.25,0.5,0.75,28]$, choose symmetric codes $[-7,7]$
+and scale $28/7=4$. The first three coordinates all round to
+zero; the outlier is exact. Splitting the first three into their
+own group gives scale $0.75/7=3/28$, with a much finer step,
+but requires another scale. Do not turn this example into a
+claim that smaller groups always improve end-to-end runtime.
+They trade metadata and decoding work against a local error
+budget, and the activation distribution still matters.
+
+\section{Run a reference that can disagree with itself usefully}
+Run the new lesson and the full foundation suite:
+\begin{verbatim}
+python3 code/foundations/numerical_path.py
+python3 -m unittest discover -s code/foundations -p 'test_*.py'
+\end{verbatim}
+The lesson reports FP16 encoding \texttt{0x3E00}, BF16 encoding
+\texttt{0x3FC0}, the stalled and wider sums, both reduction
+orders and the two multiply-add paths. These are derived
+numerical results. No GPU, inference model or timing loop runs.
+
+The test suite decodes every one of the 65,536 FP16 bit patterns
+and compares finite values and special classes with Python's
+\texttt{struct} binary16 implementation \cite{python2026struct}.
+Every nonzero finite encoding also round-trips through the
+rational encoder. The round trip alone would be weak evidence:
+an encoder and decoder could share a wrong convention. The
+standard-library comparison checks a separate implementation,
+and halfway tests compare conversion decisions around sampled
+adjacent encodings. BF16 tests check exact neighbour midpoints
+and fixed field/spacing fixtures; they do not have the same
+independent native BF16 conversion coverage.
+
+For a falsification exercise, change nearest-even to rounding
+every tie upward in a scratch copy. The 2.5 fixture fails even
+though most non-tie inputs still agree. Remove intermediate
+rounding from the accumulator and the stalled-sum test fails.
+Both changes can make a naive random test look better while
+violating the declared operation path. Small adverse examples
+are valuable precisely because they distinguish these plausible
+implementations.
+
+\section{Keep the numerical budget visible}
+\begin{ConstraintLedger}
+Memory capacity & buys & Smaller stored formats reduce payload; scales and padding remain.\\
+Compute & spends & Conversions and unpacking are operations, not free type annotations.\\
+Correctness & risks & Input rounding, clipping, reduction order and final casts create distinct errors.\\
+Latency & moves & A supported low-precision path may move the bottleneck to memory or conversion.\\
+\end{ConstraintLedger}
+The lesson now reaches from physical bits to a generated token's
+margin without treating them as the same test. Read a later
+kernel result by asking which encoding entered, where rounding
+occurred, how partial sums were grouped and which contract was
+checked. Only then ask whether its lower precision saved time.
 \input{worked/f13-numerics.tex}

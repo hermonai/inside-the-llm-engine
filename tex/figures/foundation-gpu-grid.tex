@@ -1,0 +1,19 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[note,anchor=west] at (0,1) {Output $5\times7$; block tile $2\times2$; launch covers $6\times8$ slots};
+\foreach \r in {0,...,5} {
+ \foreach \c in {0,...,7} {
+  \pgfmathtruncatemacro{\valid}{(\r<5)&&(\c<7)}
+  \ifnum\valid=1
+   \draw[BookBlue,fill=BookPale] (\c,-\r) rectangle ++(1,-1);
+   \node[font=\scriptsize\sffamily] at (\c+.5,-\r-.5) {\r,\c};
+  \else
+   \draw[BookBlue,fill=black!12] (\c,-\r) rectangle ++(1,-1);
+   \node[font=\scriptsize\sffamily] at (\c+.5,-\r-.5) {$\times$};
+  \fi
+ }
+}
+\foreach \r in {0,2,4} {\foreach \c in {0,2,4,6}
+ {\draw[BookBlue,very thick] (\c,-\r) rectangle ++(2,-2);}}
+\node[note,anchor=west,text width=40mm] at (8.7,-1.5) {12 blocks\\48 logical slots\\35 valid outputs\\13 boundary slots};
+\node[note,anchor=west,text width=40mm] at (8.7,-4.5) {Crossed slots:\\skip output stores;\\participate in every\\cooperative stage.};
+\end{tikzpicture}

@@ -1,0 +1,11 @@
+% diagram-kind: state
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (load) at (0,0) {Loading\\producer writes tile};
+\node[sysbox] (ready) at (5.5,0) {Ready\\tile published};
+\node[sysbox] (retired) at (11,0) {Retired\\all readers finished};
+\draw[flow] (load)--node[above,syslabel]{publish}(ready);
+\draw[flow] (ready)--node[above,syslabel]{all reads\\done}(retired);
+\draw[flow] (retired.south)--++(0,-1.6)-|node[pos=.25,below,syslabel]{reuse storage for next tile}(load.south);
+\node[sysnote,anchor=north west] at (-1.7,-2.5)
+ {Conceptual stage contract in the CPU-run teaching model. Reject reads during Loading and reloads before Retired. In a GPU kernel, suitable synchronization must establish these dependencies.};
+\end{tikzpicture}

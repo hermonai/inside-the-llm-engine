@@ -175,32 +175,300 @@ tasks each launch their own full team of inner workers. Record both
 levels when interpreting a speedup or slowdown.
 
 \section{Read a CPU benchmark in layers}
-Ask first whether the answers are correct. Next ask what data was
-timed: a tiny array in cache, a large streaming matrix, or an entire
-request including allocation and tokenization. Then ask how many
-threads ran and what else used the machine.
+Check correctness first. Then name the timed data: an in-cache array,
+a streaming matrix, or a request including allocation and tokenization.
+Record repeated input reuse, excluded costs, thread count and competing
+work. A valid warm-cache measurement does not directly estimate
+checkpoint streaming; the later roofline chapter measures separate
+boundaries for that reason.
 
-If a measured kernel time excludes allocation, say so. If its inputs
-were reused repeatedly, say that too. A warm in-cache result can be a
-valid measurement, but it is not a direct estimate of checkpoint
-streaming. The later roofline chapter measures more than one boundary
-precisely because a single bandwidth number cannot explain every loop.
-
-For a server, add the control work back into the picture. A numerical
-kernel that uses every core can delay token delivery, admission or
-cancellation. End-to-end latency can worsen while the isolated kernel
-benchmark improves. This is not a contradiction: the two experiments
-measure different scopes.
+Include the controller's work when evaluating a server. Occupying every
+core can delay token delivery, admission or cancellation while improving
+an isolated kernel. The measurements have different scopes.
 
 \section{A practical first optimization}
-Start from the checked scalar loop. Make the indexing and ownership
-obvious. Reuse data before adding architecture-specific instructions.
-Handle tails explicitly. Measure one thread before many. After each
-change, rerun correctness tests and retain the earlier result.
+Start from a checked scalar loop with explicit indexing, ownership
+and tails. Reuse data before adding target-specific instructions.
+Measure one thread before many; retain earlier results and rerun
+correctness after each change. For larger tiles the same questions
+remain: what is reused, where does it live, which operations are
+independent, and which numerical contract must survive?
+\section{Turn a stride into a set of transferred lines}
+Let $\mathbf{A}\in\mathbb{R}^{16\times16}$ be a row-major F32
+matrix, aligned to a line boundary on our illustrative 64-byte-line
+machine. There are 256 values and 1,024 payload bytes. Element
+$(i,j)$ begins at the byte address
+\[
+ a(i,j)=a_0+4(16i+j),
+\]
+where $a_0$ is the allocation's base address. The line index is
+$\lfloor a(i,j)/64\rfloor$. We count distinct line indices touched
+by an access pattern, not source-code loads.
 
-This sequence is intentionally modest. It lets a reader explain why a
-change helped or failed. Later chapters introduce larger tiles and
-specialized kernels, but the questions remain the same: which values
-are reused, where they live, which operations can proceed together,
-and what numerical result must survive the transformation?
+A complete row uses sixteen adjacent words in one line. The
+whole matrix spans sixteen lines. Now read only column zero.
+Successive values lie at offsets $0,64,128,\ldots,960$.
+Those sixteen F32 values contain 64 useful bytes, but name the
+same sixteen distinct lines. Under the stated empty-cache,
+single-read counting model, the line payload is 1,024 bytes
+and useful-byte fraction is $64/1024=1/16$.
+
+\EngineFigure{foundation-cpu-lines}{Two access patterns over the same
+illustrative aligned matrix. Dark first-column cells identify the
+strided pattern; a row consumes a whole line. The count names distinct
+64-byte lines, not measured misses, DRAM bytes or the actual line
+size of the machine running the lab.}{fig:foundation-cpu-lines}
+
+Two details prevent this drawing from becoming a false performance
+prediction. First, lines might already reside in a cache, and
+another pass can reuse them. Second, fetching one line can overlap
+with other outstanding requests. Latency and bandwidth constrain
+different parts of that process. The address set explains why
+one traversal can waste payload; it cannot prove a sixteenfold
+slowdown.
+
+The executable \texttt{matrix\_lines} lesson computes these sets
+from byte addresses. It also tests a four-byte access beginning
+at byte 62: the access spans two 64-byte lines. Looking only at
+the starting address would undercount it. This is a useful small
+analogy for vector loads crossing a boundary, though a legal
+hardware load and an allocation boundary are separate contracts.
+
+\section{A cache is neither a tensor nor a permanent allocation}
+The tensor API describes numerical coordinates and ownership.
+A cache holds recently used lines according to a hardware
+policy. Keeping an array allocated does not promise that its
+lines remain in a particular cache. A sequence of source-level
+loads does not establish how often DRAM was read.
+
+To reason about reuse, name the working set: the values needed
+before they are used again. A matrix tile may include part
+of a weight row, several input rows and partial output sums.
+Its byte footprint is the sum of those live objects, not only
+the weights. A tile that exceeds a useful storage level can
+evict data before reuse or force register values to spill.
+This is why reducing one load in the source can add several
+others after compilation.
+
+For a concrete example, eight output accumulators held as F32
+use 32 bytes of numerical state. This number is not a register
+allocation guarantee: address variables, loop state and compiler
+temporaries also need resources, and the target has its own
+allocation rules. Raising a tile's output count increases its
+reuse opportunity and its live state together. Look at both
+before choosing a block size.
+
+Alignment also has several meanings. A pointer can be aligned
+for an F32 value but not for a sixteen-byte vector or a cache
+line. An allocation can be well aligned while a sliced view
+begins four bytes later. Our native lab accepts float-aligned
+pointers and tests offset zero and offset one; it does not
+declare a stronger alignment promise to the compiler. A
+production interface should say whether it supports such views.
+
+\section{Read a real four-lane loop}
+The earlier eight-lane drawing taught the tail contract without
+selecting an instruction set. We now execute a different, concrete
+path: four F32 lanes using AArch64 NEON. Each vector represents
+four independent products. Arm's intrinsic reference describes
+the load, multiply, add and horizontal reduction used here
+\cite{arm2026neon}. The scalar path remains available on other
+targets and reports its identity.
+
+\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/cpu-dot.c}{14}{26}
+\end{minipage}
+
+The vector loop condition is \texttt{n - i >= 4}. At entry,
+$0\leq i\leq n$, and each iteration advances by four only
+when at least four values remain. That invariant makes the
+unsigned subtraction safe and prevents an out-of-range vector
+load. After the loop, $n-i$ is zero, one, two or three.
+The scalar cleanup consumes precisely those remaining values.
+The condition is not an invitation to load extra elements
+and discard them later: their storage still has to be valid.
+
+At $n=19$, the native path consumes four full vectors, covering
+indices zero through fifteen, then three scalar values. Four
+lanes is not the same grouping as the earlier eight-lane example,
+but both cover the same nineteen indices. An implementation
+can change grouping without changing the input contract.
+
+Each lane accumulates positions separated by four. Lane zero
+holds products at indices $0,4,8,\ldots$; lane one holds
+$1,5,9,\ldots$. The horizontal reduction combines lane sums,
+and the tail is added afterwards. This is not the left-to-right
+scalar order. For the bounded dyadic fixture below, both are
+exact. For general weights, Chapter~\ref{app:numerics} supplies
+the reason to compare under a declared error contract.
+
+\EngineFigure{foundation-neon-reduction}{Eight products through the
+four-lane teaching loop. Vertical arrows show contributions to one
+lane's subsequence; the final operation combines four lane sums.
+The diagram omits loads and depicts grouping, not instruction
+cycles or measured speed.}{fig:foundation-neon-reduction}
+
+\section{Choose inputs whose oracle is independent}
+The native lab does not make the scalar float loop its only
+oracle. For index $i$, it chooses
+\[
+ a_i=\frac{(i\bmod13)-6}{4},\qquad
+ b_i=\frac{(i\bmod7)-3}{2}.
+\]
+The residues are interpreted as signed integers before subtraction.
+Thus each product is an integer divided by eight. An independent
+integer loop sums the numerator, then divides once by eight
+to form the expected answer.
+
+With at most 257 values, each numerator's magnitude is at
+most $6\cdot3=18$, so even the sum of absolute numerator
+magnitudes is at most $257\cdot18=4626$. These eighths are
+exactly representable throughout the scalar and vector
+accumulations in F32. We may therefore require exact equality
+for this fixture without pretending that all floating-point
+dot products are exact.
+
+The lab checks every length from zero to 257 at offsets zero
+and one: $258\cdot2=516$ cases. The allocation contains 258
+values, so the final offset-one case ends exactly at the
+allocation boundary. Short lengths exercise no vector loop;
+lengths surrounding every multiple of four exercise different
+tails. The offset-one path tests a valid F32 slice that need
+not have the vector alignment of the base pointer.
+
+Remove the scalar tail in a scratch copy. Some divisible-by-four
+cases still pass, but non-divisible lengths need not. The
+record includes a deliberately tail-free variant whose
+length-one failure is detected. Predict that failure from
+the first product before running it. A test distribution
+containing only aligned multiples of four would have missed
+the bug.
+
+\section{Separate a compiled instruction from a benchmark}
+Build and run from the repository root:
+\begin{verbatim}
+mkdir -p build/foundations-machine
+cc -std=c11 -O2 -ffp-contract=off -Wall -Wextra -Werror \
+  code/foundations/cpu-dot.c -o build/foundations-machine/cpu-dot
+build/foundations-machine/cpu-dot
+\end{verbatim}
+The result names either the NEON path or the scalar fallback
+and reports 516 successful cases. The local run used the NEON
+path; its environment and result are recorded separately.
+No elapsed time is reported.
+
+Generate assembly with the same target and numerical flags:
+\begin{verbatim}
+cc -std=c11 -O2 -ffp-contract=off -S \
+  code/foundations/cpu-dot.c -o build/foundations-machine/cpu-dot.s
+\end{verbatim}
+Find the function \texttt{lane\_dot}, not only an instruction
+somewhere in the file. The inspected AArch64 output contains
+four-lane \texttt{fmul} and \texttt{fadd}, followed by
+\texttt{faddp} operations for reduction. A compiler can select
+different load mnemonics from those suggested by an intrinsic's
+documentation. Read the operand widths and function context,
+not a string match alone.
+
+The contraction flag keeps a multiply followed by add from
+being silently treated as our fused path. It is not a blanket
+determinism guarantee across compilers or processors. This lab
+avoids reassociation-enabling fast-math flags. If a later kernel
+uses FMA deliberately, its reference should describe that
+numerical choice instead of comparing to the wrong graph.
+
+Assembly inspection establishes that vector instructions were
+generated for this build. It does not establish how many
+instructions retired per second, whether loads hit cache or
+whether the server improves. Those require an experiment with
+an explicit workload and timing scope. Keep the generated
+code and runtime evidence as separate layers.
+
+\section{Partition writes before adding worker threads}
+For $\mathbf{Y}=\mathbf{X}\mathbf{W}^{\mathsf T}$, suppose
+$\mathbf{X}\in\mathbb{R}^{B\times d}$ and
+$\mathbf{W}\in\mathbb{R}^{m\times d}$. An output element
+$(r,j)$ is a reduction over $d$. Splitting output rows
+or ranges of output columns gives each worker an exclusive
+destination while inputs remain read-only. There is no
+mathematical need to combine workers' partial results if
+each complete reduction has one owner.
+
+Splitting the reduction axis instead produces several partial
+values for the same destination. These must be merged in
+some defined way. Concurrent unsynchronized updates are a
+data race, not an alternative reduction policy. Locking
+each update establishes mutual exclusion but can serialize
+the useful work and still vary the order of additions.
+Separate per-worker partial buffers and a deliberate merge
+make the ownership and numerical order easier to inspect.
+
+Exclusive destinations can nevertheless share a coherence
+line. Imagine four-byte counters at offsets zero and four
+in one illustrative 64-byte line. Two workers repeatedly
+update different counters. They do not conflict at the
+language-level object boundary, but a coherent machine may
+transfer ownership of the same line between cores. Place
+the counters in separate lines and the ownership interference
+can change. It is a hypothesis to measure, not a promise
+that every padded structure is faster.
+
+A NUMA topology adds placement. A worker can own an output
+range while its pages reside behind another memory controller.
+Ownership correctness does not imply locality. Likewise,
+four outer tasks each starting eight library workers create
+32 potentially runnable numerical workers before accounting
+for control work. They do not create 32 physical cores.
+State outer concurrency and inner thread counts together.
+
+\section{Reuse weights across a small batch}
+For one input row and one weight row of length $d$, a dot
+product performs $d$ multiplications and $d$ additions under
+our two-FLOPs-per-multiply-add convention. Ignoring the small
+output, F32 input and weight traffic would be $8d$ bytes
+if both rows were fetched anew at this boundary. Arithmetic
+intensity is then approximately $2d/(8d)=0.25$ FLOP/byte.
+
+Now update four input rows while reusing the weight row.
+The arithmetic is $8d$ FLOPs and the named-boundary input
+traffic is $(4+1)4d=20d$ bytes, giving 0.4 FLOP/byte.
+The reusable object is the weight row, not the four input
+rows magically disappearing. If input rows are already
+resident at the boundary, the denominator changes again.
+Always name which storage boundary the traffic count describes.
+
+A small tile exposes that reuse by keeping several output
+accumulators live while stepping through the weight row.
+The larger matrix case extends the same idea in more than
+one dimension. There are costs: more accumulators, more
+address state, boundary handling and possibly a different
+reduction order. Wider SIMD and tiling solve related but
+different problems. SIMD processes several elements per
+instruction; tiling tries to reuse fetched values.
+
+\section{The controller needs a budget too}
+When numerical workers share a CPU with an accelerator service,
+ask what happens to cancellation, tokenization and output
+delivery while the kernel runs. A delayed cancellation can
+retain KV state and spend more accelerator steps even if the
+CPU kernel became faster in isolation. This is a resource
+interaction, not a reason to forbid CPU inference.
+
+A first experiment should compare one numerical worker,
+several workers and the normal service configuration. Keep
+the same input and error contract. Record whether token
+delivery and admission are inside the timing boundary.
+Then identify whether the limit is compute, memory supply,
+coordination or control-plane contention. The later request
+lifecycle and roofline chapters make these measurements.
+This chapter has established the addresses, lanes and writers
+needed to interpret them without manufacturing a benchmark.
+
+\begin{ConstraintLedger}
+Memory bandwidth & buys & Contiguous access and weight reuse increase useful work per fetched line.\\
+Compute & buys & Independent lanes and accumulators expose parallel operations.\\
+Memory capacity & spends & Live tiles and per-worker state consume registers and cache footprint.\\
+Correctness & risks & Tails, aliasing, races and changed reduction order need separate checks.\\
+Latency & risks & Numerical workers can delay the service's control work.\\
+\end{ConstraintLedger}
 \input{worked/f14-cpu-simd.tex}

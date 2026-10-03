@@ -15,3 +15,27 @@ with scale 0.5 and codes limited to $[-7,7]$?
 \textbf{Solution.} The nearest unbounded code would be 20, but clipping
 forces code 7 and reconstruction 3.5. The 6.5 error comes mainly from
 clipping, not from rounding to a neighbouring representable code.
+\subsection*{4. Decode the scale bytes}
+\textbf{Problem.} Interpret little-endian bytes \texttt{00 3E}
+as FP16. Why would interpreting the same integer as BF16 be wrong?
+\textbf{Solution.} Integer \texttt{0x3E00} has FP16 fields
+$s=0,E=15,F=512$, so its value is $2^0(1+512/1024)=1.5$.
+BF16 uses different field boundaries and bias. The byte count alone
+does not identify the numerical format; BF16 1.5 is \texttt{0x3FC0}.
+\subsection*{5. The stopped accumulator}
+\textbf{Problem.} Why does adding one repeatedly in FP16 stop at 2,048,
+and why does a final FP16 cast of the FP32 result still preserve 4,096?
+\textbf{Solution.} At 2,048, spacing is two. The exact 2,049 is a tie,
+resolved to the even retained significand at 2,048. Repeating presents
+the same tie. FP32 keeps all 4,096 integer partial sums exact; 4,096
+itself is a power of two representable in FP16. The lost information
+depends on intermediate rounding, not only output type.
+\subsection*{6. Bound a projection error}
+\textbf{Problem.} For weights $[-1.1,0.2,1.6]$, reconstruction
+$[-1,0,1.5]$ and input $[1,2,-1]$, calculate the output error
+and its coordinatewise absolute bound.
+\textbf{Solution.} The two dot products are $-2.3$ and $-2.5$.
+Absolute error is 0.2. The triangle-inequality bound is
+$0.1+0.2(2)+0.1=0.6$. Taking absolute values removes cancellation,
+so the bound is valid but not attained here. This calculation
+excludes arithmetic rounding after reconstruction.

@@ -14,3 +14,26 @@ does a timer around that call establish?
 \textbf{Solution.} Submission duration, not completed device execution.
 To measure completion, wait for the relevant work or use an appropriate
 device timing mechanism with a declared scope.
+\subsection*{4. Cover the edge}
+\textbf{Problem.} A $5\times7$ output uses $2\times2$ logical tiles.
+How many blocks and boundary slots are there? May boundary workers
+skip all cooperative stages?
+\textbf{Solution.} $3\cdot4=12$ blocks cover 48 slots. There are
+35 valid outputs and thirteen boundary slots. Stores must be
+guarded, but required collective participation cannot be skipped
+merely because one worker lacks a valid output. These slots do
+not count physical warp utilization.
+\subsection*{5. Count sectors, not words}
+\textbf{Problem.} Thirty-two lanes read F32 addresses $4+4\ell$,
+for $\ell=0,\ldots,31$. How many aligned 32-byte sectors are touched?
+\textbf{Solution.} Bytes four through 131 inclusive touch sectors
+zero through four: five sectors. A base of zero would touch four.
+The difference is a request count, not a measured slowdown.
+\subsection*{6. Find the tighter ceiling}
+\textbf{Problem.} Use the illustrative capacities 64 KiB shared,
+65,536 register slots, 2,048 threads and eight blocks. Each block
+needs 16 KiB, 256 threads and 80 registers per thread.
+\textbf{Solution.} Shared storage permits four blocks, registers three,
+threads eight and the block ceiling eight. The combined ceiling is
+three. Architecture allocation granularity is omitted, so this is
+an upper bound under the stated model, not measured occupancy.

@@ -14,3 +14,27 @@ rows rather than splitting every dot-product reduction?
 \textbf{Solution.} Distinct output rows admit independent writers without
 a partial-sum merge. Splitting a reduction adds coordination and changes
 summation order; it can help at large sizes but needs separate evidence.
+\subsection*{4. Count native vectors}
+\textbf{Problem.} How does the four-lane C loop cover nineteen values?
+Why is the illustrative eight-lane answer not its instruction count?
+\textbf{Solution.} Four complete vectors cover sixteen values; the
+tail covers three. Eight-lane grouping would require two vectors,
+but that is a different logical width. Neither count alone predicts
+cycles, because loads, reductions and dependencies remain.
+\subsection*{5. Explain the exact oracle}
+\textbf{Problem.} The fixture's products are integer eighths.
+Why can its 257-element F32 dot product require exact equality?
+\textbf{Solution.} Each integer numerator is bounded by 18 in magnitude.
+Even the sum of absolute numerators is at most 4,626. The products
+and every possible partial sum are dyadic values within F32's
+precision here. An independent integer numerator sum divided by
+eight is exact. This argument does not apply to arbitrary model weights.
+\subsection*{6. Price batch reuse}
+\textbf{Problem.} Count intensity for one F32 dot product of length
+$d$, then four input rows sharing a weight row, excluding output traffic
+and assuming all named inputs are newly fetched.
+\textbf{Solution.} One row performs $2d$ FLOPs and fetches $8d$ bytes:
+0.25 FLOP/byte. Four rows perform $8d$ FLOPs and fetch
+$4d$ weight bytes plus $16d$ input bytes: 0.4 FLOP/byte.
+Reuse saves weight traffic, not input traffic. Cache residency at
+another boundary changes the denominator.

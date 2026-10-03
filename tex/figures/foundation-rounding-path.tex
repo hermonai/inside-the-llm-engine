@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[note,anchor=west] at (0,1) {$a=1+2^{-13}$,\quad $b=1-2^{-13}$,\quad $c=-1$; inputs exact in FP32};
+\node[sysbox] (p) at (2,0) {$a b=1-2^{-26}$\\exact product};
+\node[sysbox] (r) at (2,-2) {round product\\FP32 result $1$};
+\node[sysbox] (s) at (2,-4) {add $c$, then round\\result $0$};
+\draw[flow] (p)--(r); \draw[flow] (r)--(s);
+\node[sysbox,fill=BookGreen] (f) at (8.5,0) {$ab+c=-2^{-26}$\\exact combined value};
+\node[sysbox,fill=BookGreen] (g) at (8.5,-2) {round once\\FP32 result $-2^{-26}$};
+\draw[flow] (f)--(g);
+\node[note,anchor=north,text width=42mm,align=center] at (2,-5) {Separate operations:\\two rounding boundaries};
+\node[note,anchor=north,text width=42mm,align=center] at (8.5,-3) {Fused multiply-add:\\one rounding boundary};
+\end{tikzpicture}
