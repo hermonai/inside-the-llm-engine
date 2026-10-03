@@ -32,7 +32,7 @@ The first 14 systems chapter introductions now explain their question and
 offer a first-reading route before the measurements. This is an entry-point
 clarity pass, not a claim that every paragraph of the systems manuscript has
 been rewritten. Existing measured results and dated frontier claims remain.
-The book contains 168 native figures and 102 worked problems. Every one of
+The book contains 172 native figures and 108 worked problems. Every one of
 the 42 systems chapters has a native mechanism diagram. The author merged
 the second-edition work into main at `2c0474d`; this pass follows that checkout.
 
@@ -58,7 +58,7 @@ policy now requires concrete representations, implementations and
 distinguishing failure tests when deepening a lesson; minimum word counts
 alone do not establish depth.
 
-This pass deepens Chapters 13–15 to about 3,500 prose words each,
+The preceding pass deepened Chapters 13–15 to about 3,500 prose words each,
 preserving the earlier lessons while reaching actual representations and
 execution paths. Numerics derives FP16/BF16 bits, subnormals, ties,
 accumulation, fused arithmetic and projection-error bounds. CPU/SIMD
@@ -76,40 +76,60 @@ problem; negative regression tests preserve both requirements. See
 `research/measurements/2026-10-03-foundation-machines.md` for raw outputs,
 oracle coverage and the deliberately broken tail variant.
 
+This pass deepens Chapter 16 to about 3,300 prose words and Chapter 17
+to about 3,600. Chapter 16 follows a projection from axes through packed
+metadata, traffic, dimensions, cache reservation and conditional bounds.
+Chapter 17 turns a request cohort into separate wire, correct-completion
+and latency-qualified rates, then implements an auditable experiment.
+Four new native diagrams, six additional solved problems and three source
+listings make the reasoning inspectable. Repeated measurement guidance
+was consolidated without removing its technical points.
+
+Two standard-library lessons add eighteen tests. The optional timed mode
+compares small synchronous Python integer products with an exact independent
+oracle. Two nine-pair invocations, including preparation costs, are preserved
+in `research/measurements/2026-10-03-foundation-experiments.md` with raw
+times and source/input hashes. These are Python observations, not a native
+GEMM, GPU, model or inference-service speed claim.
+
 ## Validation of this revision
 
-The 675-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
-or unresolved references. All 675 pages rendered, and the visible-text-bounds
-audit passed. This pass visually inspected all 31 pages of Chapters 13–15
-in colour and grayscale, including their ten figures and source listings.
-A crowded tile-state transition label was corrected, and repeated CPU
-introductory prose was consolidated to remove a nearly empty spill page.
-The earlier Chapter 12, preface and 33 systems mechanism-plate reviews remain
-in the prior pass's record. This is author QA, not independent technical
-review or a claim that every unchanged page received a new visual inspection.
+The 688-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
+or unresolved references. All 688 pages rendered, and the visible-text-bounds
+audit passed. Both revised chapters and the transition into Part II were
+visually inspected in colour and grayscale, including all six figures and
+three source listings. A flowchart connector label was shortened, a split
+worked answer was kept together, and the worked-problem heading was kept
+with its first problem. The earlier Chapter 12, Chapters 13–15, preface and
+33 systems mechanism-plate reviews remain in their prior pass records.
+This is author QA, not independent technical review or a claim that every
+unchanged page received a new visual inspection.
 
 Relevant local checks pass: structure/preservation/secrets, relative links,
 textbook contracts and six CLI trace tests, the 14 foundation arithmetic/structure
-tests, all 45 decoder/lesson/binary-reader/numerical/execution tests, frozen diagrams,
+tests, all 63 foundation tests, frozen diagrams,
 deterministic figures, native-figure parity and industrial mutation guards.
-The native C fixture passes 516 length/offset cases on NEON, under UBSan,
-and through a forced scalar fallback. Clang static analysis completed without
-diagnostics; assembly was inspected, and the deliberately removed tail
-failed its independent integer oracle as expected. AddressSanitizer did not
-reach main on this Mac, so its result is unverified, not passed. The raw
-record preserves this limitation. A combined sanitizer step was added to
-Linux CI, but that remote CI run has not been observed.
+The new tests independently enumerate work and padding, distinguish
+percentile populations, retain failed/incorrect output, reject invalid traces,
+abort a corrupted measured route and recompute timing medians from raw rows.
+No performance threshold is asserted.
+The previous native C fixture's 516-case NEON, UBSan and forced-scalar
+results, static analysis, assembly inspection and failed tail mutation remain
+in the machine lesson's record; they were not rerun in this pass.
+AddressSanitizer remains unverified on this Mac. The combined Linux CI
+sanitizer check is committed, but its remote execution has not been observed.
 The prior independent ggml CPU result (direct decode, tensor orientation and
 32 packed-coordinate probes), five lifecycle tests and full Rust/parity CI
 results remain historical evidence; they were not rerun in this pass.
-This pass does not promote the lifecycle chapter to FULL. No new hardware
+This pass does not promote the lifecycle chapter to FULL. Only the explicitly
+identified small Python experiment is newly timed; no accelerator or model
 performance measurement is claimed.
 
 ## Next
 
 1. Deepen the remaining compact Part I lessons with the same concrete route.
-   Next: Chapters 16–17, dimensional reasoning and reproducible experiments;
-   then deepen the compact attention/FFN/decoder composition lessons.
+   Next: Chapters 9–11, the compact causal attention, FFN/residual and
+   decoder composition lessons. Chapters 12–17 now have concrete depth passes.
 2. Complete the existing lifecycle lab's full chapter, now Chapter 31
    (`ch14-request-lifecycle`), preserving the measured cancellation failure.
 3. Continue the straightforward, concrete-first edit through the bodies of
@@ -151,8 +171,8 @@ from the current printed chapter numbers. Prose word counts are approximate.
 | 13 | Numerics: Floating Point and Quantization Formats | f13-numerics | FULL | 3,498 | 0 |
 | 14 | CPU and SIMD | f14-cpu-simd | FULL | 3,465 | 0 |
 | 15 | GPU Architecture for Inference Engineers | f15-gpu-architecture | FULL | 3,567 | 0 |
-| 16 | Reading Shapes, Bytes and Performance Bounds | f16-notation | FULL | 1,537 | 0 |
-| 17 | Reproducing the Book's Measurements | f17-measurements | FULL | 1,704 | 0 |
+| 16 | Reading Shapes, Bytes and Performance Bounds | f16-notation | FULL | 3,279 | 0 |
+| 17 | Reproducing the Book's Measurements | f17-measurements | FULL | 3,579 | 0 |
 | 18 | Why Inference Is Its Own Discipline | ch01-why-inference | FULL | 6,878 | 0 |
 | 19 | The Forward Pass, Compressed | ch02-forward-pass | FULL | 7,004 | 0 |
 | 20 | The Roofline: Why Decode Leaves Your GPU Idle | ch03-roofline | FULL | 5,243 | 0 |
