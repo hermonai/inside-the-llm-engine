@@ -54,6 +54,41 @@ server. The existing Rust capstone adds paging and serving machinery later.
 The format lesson parses only its one-tensor F32 fixture; it is deliberately
 not a replacement for a maintained safetensors implementation.
 
+## Attention, residual and decoder depth pass
+
+```bash
+python3 code/foundations/decoder_trace.py
+python3 -m unittest discover -s code/foundations \
+  -p 'test_decoder_trace.py' -v
+```
+
+Predict: two queries after three cached tokens permit four and five keys,
+not one and two. Equal scores yield scalar means 1.5 and 2. Explain:
+local row numbers are not absolute token positions. Break: use the
+upper-left triangle; the negative control produces 0 and 0.5.
+
+Predict: the two-coordinate normalized residual trace ends near
+`[5.523036,3.132709]`. Explain: normalized branch inputs never replace
+the residual receiving an update. Break: swap gate/up projections or
+discard an uneven hidden tile. The scalar tiled path is checked on twenty
+shape/tile cases; its scratch count names only the products list, not
+Python allocation. No performance advantage is asserted.
+
+Predict: four greedy selections from `[0,1,2]` are `[0,4,0,4]`,
+but the final evaluated cache length is six, not seven. Explain:
+the last selected token is not fed back after stopping. Break: reset
+position after the first append; later logit parity fails.
+
+Seventeen tests add a 70-digit Decimal attention oracle, independently
+calculated residual coordinates, 375 complete three-token histories
+across three head/layer configurations, an analytic zero-update decoder,
+actual call-count instrumentation, GQA mapping and budget/end-token
+boundaries. Parity and hidden tiling still share primitives; the separate
+analytic fixtures establish only their stated finite-case coverage.
+This is a correctness lesson without timers or hardware claims. The
+dated [record](../../research/measurements/2026-10-03-foundation-decoder.md)
+preserves commands, outputs and oracle limits.
+
 ## Binary model-format extension
 
 `python3 code/foundations/gguf_bytes.py` constructs and inspects a
