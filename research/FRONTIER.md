@@ -442,6 +442,24 @@ implementation citations. They do not assert that a conceptual handoff,
 residency manager or failure path is implemented in a named engine.
 No new hardware timings were collected in this editorial pass.
 
+## Binary-depth teaching pass (checked 2026-10-03)
+
+| Topic | Scope checked | Primary source | Maturity | Printed chapter |
+| --- | --- | --- | --- | --- |
+| Build-to-understand teaching path | Read the official companion hub: text/embedding, attention, model implementation, loading; original inference-specific lessons use worked calculations and failure tests | [Raschka's hub](https://sebastianraschka.com/llms-from-scratch/) | teaching reference, not an engine claim | Preface; Part I |
+| GGUF byte layout | v3 fixed header, typed metadata, tensor descriptors and data-relative offsets; fixture derived independently | [pinned specification](https://github.com/ggml-org/ggml/blob/353b63b439f27ab2cc19dac97ab1681ba6d2d084/docs/gguf.md) | published format | 12 |
+| Alignment compatibility | Specification says multiple of eight; pinned reader checks power of two. Lab declares its supported intersection, not universal validity | [pinned loader](https://github.com/ggml-org/ggml/blob/353b63b439f27ab2cc19dac97ab1681ba6d2d084/src/gguf.cpp) | source checked | 12 |
+| Q4_0 and CPU arithmetic | Block struct, decoder, Q8_0 activation conversion and CPU type table read; independently run container/graph checks, including an explained initial failure | [ggml source](https://github.com/ggml-org/ggml/tree/353b63b439f27ab2cc19dac97ab1681ba6d2d084/src); [numerical record](measurements/2026-10-03-gguf-byte-lab.md) | tested tiny CPU fixture; not full-model or GPU coverage | 12 |
+| Tensor/graph/backend separation | The authors' tutorial supplies orientation; executable details checked against the pinned headers and source, not assumed unchanged since 2024 | [Introduction to ggml](https://huggingface.co/blog/introduction-to-ggml) | primary tutorial and pinned API | 12 |
+
+The user also supplied two videos as learning references:
+[first video](https://www.youtube.com/watch?v=qoQJq5UwV1c) and
+[GGUF video](https://www.youtube.com/watch?v=vW30o4U9BFE).
+Direct page and metadata retrieval failed or was throttled. They remain
+suggested viewing, not reviewed technical evidence or quoted transcripts.
+The author's [unofficial GGUF repository](https://github.com/iuliaturc/gguf-docs)
+was inspected as a lead; byte-level claims above rely on upstream sources.
+
 ## Leads to verify before the chapters that need them
 
 Not yet read at a primary source; do not cite until they are.

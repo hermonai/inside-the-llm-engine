@@ -4,7 +4,9 @@
 Loading a checkpoint is an interpretation. A loader must agree with the
 model on names, shapes, encodings and ordering. This chapter separates a
 valid container from a compatible model and supplies an address calculation
-to audit by hand.
+to audit by hand. We will also construct a 256-byte GGUF file, decode every
+weight and execute two projections through the real ggml CPU backend.
+The file is a numerical teaching fixture, not a miniature trained LLM.
 \end{ChapterIntent}
 
 \section{Three contracts}
@@ -51,6 +53,218 @@ Use the declared block geometry and byte size, check required divisibility,
 and account for mixed tensor types. A four-bit checkpoint label is not
 an exact file-size formula. Chapter~\ref{app:numerics} shows why scales
 change the effective bit count.
+
+\section{Read the first twenty-four bytes}
+Begin with a smaller question than loading a language model: what can a
+reader establish before it allocates a single tensor? Our fixture starts
+with the following hexadecimal bytes. A pair of hexadecimal digits
+represents one byte; two pairs are not automatically one integer.
+\begin{verbatim}
+47 47 55 46  03 00 00 00
+02 00 00 00 00 00 00 00
+01 00 00 00 00 00 00 00
+\end{verbatim}
+The first four bytes spell \texttt{GGUF}. They identify the container,
+not its model architecture. The next four encode the integer three in
+little-endian order. For a four-byte unsigned field with bytes
+$b_0,b_1,b_2,b_3$, the value is
+\begin{equation}
+u=b_0+2^8b_1+2^{16}b_2+2^{24}b_3.
+\end{equation}
+Each $b_i$ is an integer from zero to 255. The byte nearest the beginning
+of this field carries the smallest positional weight. Consequently
+\texttt{03 00 00 00} means three, while \texttt{00 00 00 03} would
+mean $3\cdot2^{24}$ under this interpretation. Endianness changes how
+bytes make a scalar; it does not reverse a tensor's logical axes.
+
+The next two fields are eight-byte unsigned counts: two tensors and
+one metadata entry. They end at absolute byte 24. Offsets in this chapter
+are zero-based and intervals exclude their upper endpoint. Thus the
+version occupies $[4,8)$, not bytes four through eight inclusive.
+That convention removes a common one-byte ambiguity from bounds checks.
+
+\begin{center}
+\begin{tabular}{@{}rrll@{}}
+\toprule
+Start & Bytes & Field & Fixture value\\
+\midrule
+0 & 4 & Magic bytes & \texttt{47 47 55 46}\\
+4 & 4 & Version & 3\\
+8 & 8 & Tensor count & 2\\
+16 & 8 & Metadata count & 1\\
+\bottomrule
+\end{tabular}
+\end{center}
+The version-three layout is defined by the GGUF specification
+\cite{ggml2026ggufpinned}. The lab deliberately accepts only its
+little-endian subset. It rejects other version encodings; it does not
+claim that every rejected file is invalid GGUF. Supporting another
+byte order means interpreting every affected field and payload
+consistently, not swapping the version and hoping the rest works.
+
+Do not map the file directly onto an ordinary compiler-generated C
+structure. A compiler may insert padding between members, and the
+variable-length regions do not fit fixed-size members in the first
+place. A serialized layout is a sequence of explicit fields. Its parser
+advances by the width actually specified for each field.
+
+\section{Metadata is typed data, not decoration}
+At byte 24 we store a string naming the key
+\texttt{general.alignment}. A GGUF string starts with an eight-byte
+byte count, then that many UTF-8 bytes. This key has 17 ASCII bytes,
+so its complete string representation needs $8+17=25$ bytes and ends
+at byte 49. There is no terminating zero byte to skip.
+
+The next four bytes identify the metadata value type. Here the type
+code is four, meaning \texttt{UINT32}. The following four bytes
+encode the value 32. The entry therefore occupies
+\[
+8+17+4+4=33\text{ bytes},
+\qquad 24+33=57.
+\]
+We now know where the tensor directory starts without inspecting any
+tensor data. If a parser treated the string length as a four-byte field,
+every later read would be shifted. Some shifted values might still look
+plausible; plausibility is not structural validation.
+
+The type tag is not optional information. A string containing the
+characters \texttt{32} and an unsigned integer with value 32 have
+different serialized lengths and different interpretations. Neither
+should silently substitute for the other. Likewise, the metadata
+type code and the tensor type code belong to different enumerations.
+Code four in a metadata field is not permission to decode a tensor
+with type four. Our supported tensor types are F32, code zero, and
+Q4\_0, code two. The tests deliberately swap these namespaces.
+
+String lengths count bytes, not displayed characters. The optional
+metadata test stores \texttt{café}; its UTF-8 encoding has five bytes.
+Another test stores a three-byte scalar in a token array. The reader
+must consume the declared byte span before decoding the text. Advancing
+by a programming language's character count can leave the cursor inside
+a multibyte scalar, corrupting the next field.
+
+An array has another distinction: its length counts elements, while
+the size of each element depends on its declared type. An array of
+strings therefore needs a string-length field for every element.
+Multiplying the array length by eight would account only for those
+length fields, not for the strings themselves. The lab supports bounded
+arrays of strings; it rejects nested arrays and other array element
+types rather than guessing their widths.
+
+This is where a loader can fail before doing any model arithmetic.
+A damaged count can otherwise ask it to allocate billions
+of entries or spend minutes walking an impossible directory. Bound
+the count before entering the loop. Bound each length against the
+remaining input before slicing. A small file should not create an
+unbounded amount of parser work.
+
+The reader uses one cursor for every field. These are the actual lab
+methods, with line numbers matching the companion source:
+\par\medskip\noindent\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/gguf_bytes.py}{30}{47}
+\end{minipage}\par\medskip
+The subtraction in \texttt{take} asks how many bytes remain before
+advancing the cursor. The format character \texttt{Q} requests an
+eight-byte unsigned integer; \texttt{I} requests four bytes. The
+\texttt{<} prefix fixes little-endian interpretation independently of
+the machine running Python. A string consumes its bytes once and
+then checks UTF-8. Neither a failed decode nor an excessive length
+returns a partly interpreted field.
+
+\section{A tensor descriptor locates a representation}
+Our first tensor is named \texttt{dense.weight}. Its descriptor
+contains the name, rank two, dimensions $[4,2]$, F32 type and relative
+offset zero. Its name has twelve bytes. The descriptor needs
+\[
+(8+12)+4+(2\cdot8)+4+8=52\text{ bytes}.
+\]
+It starts at 57 and ends at 109. The second descriptor names
+\texttt{packed.weight}; its thirteen-byte name makes its descriptor
+one byte longer. It occupies $[109,162)$ and declares dimensions
+$[32,1]$, Q4\_0 type and relative offset 32. The directory ends at
+162. No weight has been read yet.
+
+\EngineFigure{foundation-gguf-bytes}{The complete 256-byte teaching
+container. Intervals are exact, but panel widths are schematic. The
+descriptor offsets zero and 32 are relative to the data origin at 192,
+not to the file's beginning. Unused bytes are explicit alignment
+padding, not extra weights.}{fig:foundation-gguf-bytes}
+
+The directory describes a logical tensor and a physical encoding at
+the same time. The logical dimensions describe how many decoded
+values exist along each axis. The type determines how those values
+occupy bytes. With F32, eight values occupy 32 bytes. With Q4\_0,
+32 values occupy one 18-byte block. Elements and stored bytes
+are therefore not interchangeable units.
+
+For a supported block format, let $n_0,\ldots,n_{r-1}$ be the
+descriptor dimensions, $q$ the number of logical elements per block,
+and $s$ the stored bytes per block. In the contiguous layout used here,
+\begin{equation}
+N_{\mathrm{bytes}}=
+\left(\frac{n_0}{q}\right)
+\left(\prod_{i=1}^{r-1}n_i\right)s,
+\qquad n_0\bmod q=0.
+\label{eq:gguf-block-bytes}
+\end{equation}
+The fastest dimension must contain whole blocks. Checking only that
+the total element count is divisible by $q$ is insufficient: two rows
+of sixteen elements have 32 elements in total, but neither row contains
+a complete Q4\_0 block under this contract. A loader must not pack
+across a row boundary unless the representation explicitly permits it.
+
+Our parser keeps the offset field's own location in the returned
+descriptor. It is byte 101 for the first tensor and 154 for the second.
+Those are useful places to introduce a controlled fault in a test.
+They are not addresses of the tensor data. The fact that one file
+contains both an offset field and the location it describes is why
+annotated byte diagrams are worth drawing.
+
+\section{Alignment gives the data region its origin}
+The directory ends at 162, but the declared alignment is 32 bytes.
+The data region starts at the next aligned position:
+\begin{equation}
+D=A\left\lceil\frac{E}{A}\right\rceil
+=32\left\lceil\frac{162}{32}\right\rceil=192\text{ bytes}.
+\end{equation}
+Here $E$ is the directory-end offset, $A$ the alignment in bytes and
+$D$ the data origin. The 30 bytes in $[162,192)$ are padding.
+A boundary already divisible by $A$ needs no additional
+padding. Unconditionally adding an alignment unit would move an
+already aligned region too far.
+
+If a tensor's descriptor offset is $o$, its absolute payload begins
+at $D+o$. For the two tensors this is 192 and 224. The F32 payload
+ends at 224; the Q4\_0 payload ends at 242. Our canonical fixture
+then pads the last allocation to 256. Its total size is therefore
+24 fixed header bytes, 33 metadata bytes, 105 descriptor bytes,
+30 directory-padding bytes, 50 weight bytes and 14 final-padding bytes.
+Adding these independently gives 256.
+
+There are three different sizes to report. The file is 256 bytes.
+Its useful tensor payload is 50 bytes. Its two aligned tensor
+allocations occupy 64 bytes. None of these is a contradiction.
+They answer different questions: how much to transfer as a file,
+how much represents weights, and how much this serialized allocation
+layout reserves. Device repacking can introduce a fourth size.
+
+For production code, alignment deserves more care than a memorized
+bit trick. Rounding with \texttt{(x+A-1) \& \textasciitilde(A-1)}
+requires a power-of-two alignment and an addition that does not
+overflow. A general modulo-based calculation avoids the power-of-two
+assumption, but its result still needs bounds checking. Python's
+arbitrary-sized integers avoid machine wraparound; they do not remove
+the need to bound resource use.
+
+There is a concrete specification-versus-implementation boundary here.
+The pinned GGUF document describes alignment as a multiple of eight.
+The pinned \texttt{gguf.cpp} reader checks for a power of two
+\cite{ggml2026ggufpinned,ggml2026loaderpinned}. For example, 24 satisfies
+the first rule but not the second. Our lab chooses the intersection
+and limits it to powers of two from eight through 4096. Rejecting 24
+is a stated compatibility policy, not a claim that the two upstream
+descriptions say the same thing. Record the implementation revision
+when a format detail affects portability.
 
 \section{Validate before allocating}
 Metadata can claim enormous dimensions or offsets near integer limits.
@@ -161,6 +375,278 @@ once. A model that fits after conversion can fail during conversion.
 Write the lifetime of the source, temporary workspace and destination
 before computing the peak. Memory mapping does not automatically
 eliminate that overlap.
+
+\subsection{Decode an actual Q4\_0 block}
+We can now replace the hypothetical block with a named representation.
+At the pinned ggml revision, \texttt{block\_q4\_0} contains a binary16
+scale and sixteen packed bytes. The decoder assigns low nibbles to
+the first sixteen positions and high nibbles to the next sixteen
+\cite{ggml2026q4pinned}. Our fixture's block is
+\begin{verbatim}
+00 38  f0 e1 d2 c3 b4 a5 96 87
+78 69 5a 4b 3c 2d 1e 0f
+\end{verbatim}
+The first two bytes encode a binary16 scale of one half. As a
+little-endian 16-bit word they form hexadecimal \texttt{3800}.
+Its sign bit is zero, exponent field is fourteen, and fraction is
+zero. With exponent bias fifteen, the normal-value formula gives
+$2^{14-15}(1+0)=0.5$. The bytes are not two independent scales,
+nor an F32 value truncated to half its bytes.
+
+\EngineFigure{foundation-q4-nibbles}{One Q4\_0 block from the fixture.
+The first packed byte is hexadecimal F0. Its low nibble describes
+logical position zero; its high nibble describes position sixteen.
+The separation into two halves is part of the representation.
+This is decoding, not a recipe for choosing a quantization scale.}{fig:foundation-q4-nibbles}
+
+Let $u_j$ be packed byte $j$ after the scale, for $0\leq j<16$.
+Let $d$ be the decoded scale. The reconstruction is
+\begin{align}
+w_j &= d\bigl((u_j \mathbin{\&} 15)-8\bigr),\\
+w_{j+16} &= d\bigl((u_j \gg 4)-8\bigr).
+\end{align}
+The bitwise AND keeps the low four bits; the right shift moves
+the high four bits into the low positions. Each nibble is first
+interpreted as an unsigned code from zero through fifteen.
+Subtracting eight centers that code. These are offset codes,
+not four-bit two's-complement integers.
+
+For \texttt{F0}, the low nibble is zero and the high nibble is
+fifteen. Therefore $w_0=0.5(0-8)=-4$ and
+$w_{16}=0.5(15-8)=3.5$. The next byte, \texttt{E1}, gives
+$w_1=-3.5$ and $w_{17}=3$. A decoder that alternates low and
+high values would return $[-4,3.5,-3.5,3,\ldots]$ instead of
+the correct first-half order. Both outputs contain the same
+multiset of values; a check of their sum would miss the error.
+
+This is why the reference check uses basis vectors. Multiplying by
+the vector with a one at position $i$ and zeros elsewhere selects
+weight $w_i$. Thirty-two such probes establish the coordinate order
+in this one block. A single all-ones input checks only its sum,
+which is negative eight. It cannot prove the positions are right.
+Choose test inputs that distinguish the failure you are trying to find.
+
+The complete block decoder is short enough to audit against the equation:
+\par\medskip\noindent\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/gguf_bytes.py}{155}{163}
+\end{minipage}\par\medskip
+The format character \texttt{e} decodes binary16. The two list
+comprehensions preserve their own coordinate ranges, and
+\texttt{low + high} concatenates those ranges. Replacing that
+concatenation with alternating pairs would be an implementation error
+even though the block's size and sum stayed correct.
+
+Eighteen bytes for 32 values is $18\cdot8/32=4.5$ bits per value.
+That is the block's effective storage rate, not four, and not the
+whole file's compression ratio. Header, directory, padding and other
+tensor types change the file ratio. Q4\_0 is also not a claim about
+every four-bit checkpoint. Other block types use different
+scales, offsets, codebooks or group structures.
+
+The scale in a valid representation can be signed; our decoder
+does not force it positive. Selecting a scale and rounding a
+floating-point array into codes is a quantizer's job. We constructed
+known codes here to make the inverse interpretation unambiguous.
+No quantization-quality result follows from reconstructing these
+chosen numbers correctly.
+
+\section{From loaded tensors to a ggml computation}
+GGUF is a container. ggml is a tensor-computation library. An
+inference engine adds a model graph, tokenizer, request state,
+generation policy and scheduling around those lower-level pieces.
+The ggml authors' introductory tutorial separates tensor objects,
+computation graphs, backends and buffers \cite{nguyen2024ggmlintro}.
+Keep that separation while tracing the executable example below.
+
+A tensor object records type, dimensions, byte strides and the
+location of its data. Creating such an object is not the same
+operation as allocating device memory or evaluating a layer.
+Our optional reference program loads the trusted fixture through
+\texttt{gguf\_init\_from\_file}, retaining both the GGUF directory
+context and the ggml context that owns the loaded tensor objects
+and data. It then creates a separate work context for inputs,
+intermediate objects and computation graphs.
+
+\EngineFigure{foundation-loader-sequence}{UML sequence view of the
+optional CPU reference program. Loading establishes tensor objects
+and host data; graph construction establishes dependencies; execution
+produces results. The ownership lifetimes extend through their last
+consumer. This example does not perform GPU transfers or run an LLM.}{fig:foundation-loader-sequence}
+
+Consider the dense tensor. Its first eight floats are
+$[1,2,3,4,-1,0,1,2]$. In conventional row-major mathematical
+notation, read them as
+\[
+\mathbf W=
+\begin{bmatrix}1&2&3&4\\-1&0&1&2\end{bmatrix}
+\in\mathbb R^{2\times4},\qquad
+\mathbf x=\begin{bmatrix}1\\2\\4\\8\end{bmatrix}
+\in\mathbb R^4.
+\]
+The output is
+\[
+\mathbf W\mathbf x=
+\begin{bmatrix}1+4+12+32\\-1+0+4+16\end{bmatrix}
+=\begin{bmatrix}49\\19\end{bmatrix}.
+\]
+The GGUF descriptor's dimensions were $[4,2]$, not $[2,4]$.
+ggml stores the fastest dimension first: \texttt{ne[0]} is four
+and \texttt{ne[1]} is two. For this contiguous F32 tensor,
+\texttt{nb[0]} is four bytes and \texttt{nb[1]} is sixteen.
+The address of mathematical element $(r,c)$ is
+\[
+\operatorname{base}+r\,\texttt{nb[1]}+c\,\texttt{nb[0]}.
+\]
+For $(1,3)$, the file address is $192+16+12=220$.
+The four bytes there are \texttt{00 00 00 40}, the little-endian
+F32 representation of two. The dimensions change their notation
+between the mathematical and library views; the underlying array
+has not been transposed.
+
+For a quantized tensor, do not reuse this scalar-address equation
+with a fictional half-byte stride. A position identifies a block,
+a code within it and the block's metadata. In our Q4\_0 row,
+positions zero and sixteen depend on different nibbles of the
+same byte. Neither value exists as an independently loadable
+four-bit floating-point scalar.
+
+The call \texttt{ggml\_mul\_mat(ctx, weight, input)} creates an
+operation node. Under the pinned API's dimension convention,
+weights with \texttt{ne=[4,2]} and one input row with
+\texttt{ne=[4,1]} produce \texttt{ne=[2,1]}
+\cite{ggml2026apipinned}. The program expands a graph from this
+output node, then asks the CPU backend to execute that graph
+with one thread. Reading the result before execution would be
+reading storage, not the result of a completed multiplication.
+
+Here is that boundary in the C++ reference program:
+\par\medskip\noindent\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/ggml-reference/main.cpp}{19}{27}
+\end{minipage}\par\medskip
+The input copy populates the tensor's host data. The shape assertion
+checks the operation's contract before execution. Graph expansion
+collects the dependencies needed to produce \texttt{y}; computation
+then traverses them. Only after the success check does the program
+read the result pointer. In this small synchronous CPU path, return
+from computation is the completion boundary.
+
+This small path uses host-accessible context-owned data. A device
+backend introduces a buffer allocation, a copy or other supported
+access mechanism, and an execution-completion boundary before host
+readback. A pointer field is not evidence that the CPU may
+dereference device storage. The same separation applies when an
+engine captures or reuses an execution graph: describing the work
+and completing the work remain different events.
+
+The two contexts are kept alive until their last consumers finish.
+Destroying the weight context after graph construction but before
+execution would invalidate the graph's inputs. Destroying the work
+context before reading outputs would invalidate the results.
+The example uses C++ ownership wrappers so these lifetimes are
+explicit even when a validation check throws an exception.
+It reserves a four-MiB work arena for convenience; that number
+is not a measured minimum or an engine memory-footprint claim.
+
+\section{Run, compare and deliberately break the byte path}
+The default lab needs only Python's standard library:
+\begin{verbatim}
+python3 code/foundations/gguf_bytes.py
+python3 -m unittest discover -s code/foundations -p 'test_*.py'
+\end{verbatim}
+The first command constructs the fixture in memory and reports its
+hash, directory boundary, data origin, tensor intervals and all
+decoded values. It writes no file. Predict 256 file bytes, origin
+192, and payload intervals $[192,224)$ and $[224,242)$ before
+running it. Check those independently before interpreting the values.
+
+To inspect the bytes with an ordinary hex viewer, use
+\texttt{--write} followed by a new scratch filename. The command
+uses exclusive creation and refuses to overwrite an existing file.
+The reverse \texttt{--inspect} command accepts only the documented
+teaching subset and reads at most one MiB plus a limit-detection
+byte. Do not use it as a general scanner for multi-gigabyte models.
+Its deliberately small limits are part of the exercise.
+
+The optional C++ reference route is documented in
+\texttt{code/foundations/ggml-reference/README.md}. It builds against
+ggml revision \texttt{353b63b}, with the full commit pinned by the
+build configuration. It does not download weights. The program
+asks ggml to load the fixture independently, verifies its origin,
+names, types and dimensions, and executes the dense and packed
+projections. The expected dense output is $[49,19]$. The mathematical
+packed-row dot product with 32 ones is $-8$, but the actual CPU
+path has another rounding boundary, explained next.
+
+\subsection{The first reference run fails for a useful reason}
+Our first test demanded that the packed projection equal $-8$ within
+$10^{-5}$. It failed: the pinned CPU path returned
+$-7.99951171875$. Do not loosen the tolerance before finding the
+cause. The direct ggml Q4\_0 decoder reconstructs all 32 weights
+exactly. That localizes the discrepancy after weight interpretation,
+not in the file offsets or nibble order.
+
+The pinned CPU type table pairs Q4\_0 weights with Q8\_0 activations
+for its vector dot product \cite{ggml2026cpupinned}. An input block
+of ones receives an ideal Q8\_0 scale $1/127$ and integer codes 127.
+The scale is stored as binary16:
+\begin{align}
+d_x &= \operatorname{round}_{\mathrm{binary16}}(1/127)
+       =0.00787353515625,\\
+\widehat x &=127d_x=0.99993896484375,\\
+\widehat y &=-8\widehat x=-7.99951171875.
+\end{align}
+This prediction matches the observed value. The file's weight
+encoding did not change; the execution path introduced a second
+encoding for an operand that arrived as F32. Weight precision,
+activation precision and accumulation precision are separate questions.
+
+The finished reference check therefore has two layers. Direct weight
+decoding must match the hand values exactly. Graph outputs must match
+the prediction including this pinned activation conversion within
+$10^{-5}$. Basis-vector inputs receive the same scale correction
+at their nonzero coordinate, so the 32 coordinate probes still
+catch a permutation. This bound is specific to these fixtures,
+not a universal tolerance for quantized models.
+
+The failed initial expectation and the corrected run are recorded in
+\texttt{research/measurements/2026-10-03-gguf-byte-lab.md}.
+These are observed numerical outputs, not throughput measurements.
+Another backend can use a different arithmetic path and require a
+different independently justified prediction.
+
+The Python decoder, the hand calculations and ggml's execution path
+are distinct checks. They do not share a parser or a dequantization
+routine. Agreement therefore gives stronger evidence than writing
+and reading a file with the same code. It still establishes only
+this fixture and these supported types, not every GGUF model,
+every CPU instruction path or every backend.
+
+Now introduce faults one at a time. Move the packed tensor's
+relative offset from 32 to zero. The two allocations overlap and
+the teaching reader must reject the file. Change its fastest
+dimension from 32 to 31: the declared row no longer contains a
+complete block. Change the metadata type tag while leaving its
+payload unchanged: the field's meaning changes before any tensor
+is reached. These failures should name the violated contract,
+not appear later as a mysterious matrix-multiplication error.
+
+The test suite tries every truncation of the 256-byte fixture,
+including removal of a padding byte. Our canonical teaching
+container requires its declared aligned allocation spans to be
+present and its padding to be zero. That intentionally strict
+policy is stated in the lab; do not quietly apply it to every
+third-party artifact without checking the relevant reader's rules.
+The tests also cover duplicate names, invalid UTF-8, unsupported
+types, enormous dimensions, misalignment and unexplained trailing
+bytes.
+
+Finally replace one F32 payload value with a NaN while leaving
+all lengths unchanged. Structural inspection succeeds. Numerical
+inspection rejects it under the lab's finite-weight policy.
+This experiment makes the three contracts visible: correct
+container boundaries do not establish acceptable numerical values,
+and acceptable values would still not establish a complete
+language-model architecture.
 
 \section{What counts as the same model?}
 A checksum answers whether bytes match the recorded artifact. It does

@@ -33,6 +33,8 @@ def main():
                 ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py",
                 ROOT/"scripts/check-foundations.py", ROOT/"scripts/check-system-diagrams.py"]
     sources += sorted((ROOT/"code/foundations").glob("*.py"))
+    sources += [ROOT/"code/foundations/ggml-reference/main.cpp",
+                ROOT/"code/foundations/ggml-reference/CMakeLists.txt"]
     record = {"edition": "second edition; breadth-first working draft",
               "pdf": str(output.relative_to(ROOT)),
               "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),

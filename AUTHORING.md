@@ -81,6 +81,11 @@ that needs much less may be a section of its neighbour.
 - One idea at a time. Explain what a number means before giving several more.
   Define throughput, occupancy, arithmetic intensity and other terms before
   using them to explain a result. An opening must not assume its own lesson.
+- Minimum word counts are gates, not evidence of textbook depth. A deepening
+  pass must trace a concrete object through its representations, derive a
+  result by hand, implement it, and test a failure that distinguishes plausible
+  wrong answers. For loading and kernels, reach actual bytes, axes, strides,
+  encodings and arithmetic paths. Explain prerequisite knowledge at first use.
 - Concrete before abstract; numbers before notation; mechanism before
   optimization. Name real models, real hardware and real engines.
 - Short declarative sentences for claims; derivations may take their time.

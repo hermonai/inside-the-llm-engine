@@ -50,7 +50,7 @@ acceptable cost remain the goals.
 \section*{Build, predict and check}
 The teaching approach is original, while sharing the build-to-understand
 principle of Sebastian Raschka's \emph{Build a Large Language Model
-(From Scratch)} \cite{raschka2024build}. The examples here lead to
+(From Scratch)} \cite{raschka2024build,raschka2026companion}. The examples here lead to
 inference execution and serving, not a training curriculum.
 
 Early chapters use the existing Rust teaching engine and independent
@@ -78,7 +78,8 @@ Drawing & Reading rule\\
 \midrule
 Sequence & Read downward in time. Boxes name participants; vertical dashed
 lines are lifelines. Open message arrowheads denote asynchronous signals;
-dashed message arrows return a result. Spacing is not elapsed time.\\
+filled arrowheads denote synchronous calls. Dashed message arrows return
+a result. Spacing is not elapsed time.\\
 State & Rounded boxes are states. A filled circle starts the path and a
 bullseye ends it. Brackets mark a guard; text after a slash is an action.\\
 Components & Follow the labeled data or control dependency. A box owns
@@ -107,9 +108,6 @@ and historical records retain stable identifiers. For example,
 \Chref{request-lifecycle}; do not infer a printed number from its path.
 The source-to-chapter map is in \texttt{docs/STRUCTURE.md}.
 
-The foundational chapters form a complete construction and orientation
-path. Many later systems chapters still need their full-depth pass.
-The repository status table distinguishes developed chapters from
-drafts and independent review from the author's own checks. Read the
-book as a working textbook whose claims should remain inspectable
-as both the manuscript and the industry evolve.
+Part I supplies the construction path. Many systems chapters still need
+depth. The status table separates drafts, developed chapters and independent
+review. Claims remain inspectable as the book and the industry evolve.

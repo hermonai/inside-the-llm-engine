@@ -1,0 +1,17 @@
+% diagram-kind: memory
+\begin{tikzpicture}[font=\small\sffamily]
+\node[anchor=west,font=\bfseries\sffamily] at (0,1.2) {(a) Fixed header: bytes [0,24)};
+\foreach \x/\lab in {1.5/{Magic\\$[0,4)$},4.5/{Version 3\\$[4,8)$},7.5/{2 tensors\\$[8,16)$},10.5/{1 metadata\\entry\\$[16,24)$}} {
+ \node[block,text width=26mm,minimum height=14mm] at (\x,0) {\lab};
+}
+\node[anchor=west,font=\bfseries\sffamily] at (0,-1.35) {(b) Directory and alignment};
+\node[block,text width=31mm,minimum height=19mm,fill=BookGreen] at (1.8,-2.6) {Typed metadata\\$[24,57)$\\alignment = 32};
+\node[block,text width=42mm,minimum height=19mm] at (6,-2.6) {Tensor descriptors\\$[57,109), [109,162)$\\offsets: 0 and 32};
+\node[block,text width=25mm,minimum height=19mm,fill=BookGold] at (10.2,-2.6) {30 zero bytes\\$[162,192)$\\padding};
+\node[anchor=west,font=\bfseries\sffamily] at (0,-4.1) {(c) Tensor region: origin $D=192$};
+\node[block,text width=37mm,minimum height=20mm] (f) at (2.2,-5.4) {F32: 8 values\\$[192,224)$\\32 payload bytes};
+\node[block,text width=37mm,minimum height=20mm,fill=BookGreen] (q) at (6.8,-5.4) {Q4\_0: 32 values\\$[224,242)$\\18 payload bytes};
+\node[block,text width=23mm,minimum height=20mm,fill=BookGold] at (10.7,-5.4) {14 zero bytes\\$[242,256)$\\padding};
+\node[sysnote,anchor=north west] at (0,-7) {Absolute tensor address = data origin + descriptor offset.\\
+$192+0=192$ for F32; $192+32=224$ for Q4\_0.};
+\end{tikzpicture}

@@ -1,0 +1,15 @@
+% diagram-kind: sequence
+\begin{tikzpicture}[font=\small\sffamily,
+ call/.style={-{Triangle[length=1.8mm]},thick,BookBlue}]
+\foreach \i/\lab in {0/Program,1/GGUF reader,2/Graph builder,3/CPU executor}
+ {\node[sysparticipant] at (\i*4,0) {\lab};
+  \draw[dashed,BookBlue!55] (\i*4,-.65)--(\i*4,-7.5);}
+\draw[call] (0,-1)--node[above,syslabel]{load trusted fixture}(4,-1);
+\draw[sysreply] (4,-1.9)--node[above,syslabel]{tensor objects and host data}(0,-1.9);
+\draw[call] (0,-2.8)--node[above,syslabel]{create matrix-product node}(8,-2.8);
+\draw[sysreply] (8,-3.7)--node[above,syslabel]{result tensor; not computed yet}(0,-3.7);
+\draw[call] (0,-4.6)--node[above,syslabel]{expand graph from result}(8,-4.6);
+\draw[call] (0,-5.5)--node[above,syslabel]{execute graph, one CPU thread}(12,-5.5);
+\draw[sysreply] (12,-6.4)--node[above,syslabel]{completion; result values may now be read}(0,-6.4);
+\node[sysnote,anchor=north west] at (-1.3,-8) {Filled arrows: synchronous calls in this program. Weight and work contexts remain alive through computation and result inspection.};
+\end{tikzpicture}

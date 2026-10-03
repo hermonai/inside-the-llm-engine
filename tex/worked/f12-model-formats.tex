@@ -3,13 +3,51 @@
 \textbf{Problem.} Where does element $(1,1)$ of the example F32 tensor begin?
 \textbf{Solution.} Its row-major index is $1\cdot3+1=4$.
 The absolute byte position is $128+4\cdot4=144$; the stored value is 5.
+
+\textbf{Extend the check.} In the GGUF fixture, where is the dense
+tensor's mathematical element $(1,3)$? Its data origin is 192, its
+descriptor offset is zero and its byte strides are sixteen per row
+and four per column. Thus $192+0+1\cdot16+3\cdot4=220$.
+The interval $[220,224)$ contains \texttt{00 00 00 40}, which
+decodes to F32 value two. Adding the data origin twice would produce
+412, outside the file; omitting it would produce 28, inside metadata.
+An in-bounds address alone does not establish the correct interpretation.
 \subsection*{2. Include the scale}
 \textbf{Problem.} Store 64 values in blocks of 32 four-bit codes plus a
 16-bit scale per block. How many bytes are needed?
 \textbf{Solution.} Each block needs $(32\cdot4+16)/8=18$ bytes.
 Two blocks require 36 bytes, not 32.
+
+\textbf{Extend the check.} In the actual Q4\_0 block, which byte
+encodes position seventeen? It belongs to the high-nibble half, at
+packed-byte index $17-16=1$. The scale begins at absolute byte 224;
+two scale bytes precede the packed bytes, so the required byte is
+$224+2+1=227$. It contains \texttt{E1}. Its high nibble is fourteen,
+giving $0.5(14-8)=3$. The low nibble encodes position one instead,
+giving $0.5(1-8)=-3.5$. Reading adjacent nibbles as adjacent
+logical coordinates exchanges these roles.
+
+\textbf{Predict the kernel.} The direct decoded-weight sum is $-8$.
+For the pinned CPU graph, each input one is reconstructed as
+$127\operatorname{round}_{16}(1/127)=0.99993896484375$.
+The result is $-7.99951171875$, a difference of $0.00048828125$
+from ideal arithmetic. A $10^{-5}$ tolerance against the ideal sum
+must fail; the same tolerance against the conversion-aware prediction
+passes. Explain the conversion before choosing the comparison.
 \subsection*{3. Reject before interpreting}
 \textbf{Problem.} Design a truncation test for the teaching fixture.
 \textbf{Solution sketch.} Remove its last byte and require the inspector
 to reject the payload interval. It must not return a shorter tensor or
 silently fill the missing byte with zero.
+
+\textbf{Distinguish the layers.} Truncating the GGUF fixture from
+256 to 255 bytes removes allocation padding, not a weight. The lab
+still rejects it under its explicit canonical-padding policy. Replacing
+the F32 bytes at 220 with a quiet NaN changes no interval: structural
+inspection accepts the container, then numerical inspection rejects
+the value. Finally, supplying two finite tensors named
+\texttt{dense.weight} and \texttt{packed.weight} to a decoder model
+does not create its attention, normalization or output parameters.
+A model loader must reject missing architecture requirements even
+after both earlier checks pass. State which contract each experiment
+violates before writing its expected error.
