@@ -1,0 +1,27 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox] (input) at (0,0) {Generate integer inputs\\fixed construction};
+\node[sysbox] (oracle) at (5.5,0) {Independent oracle\\compare both variants};
+\node[sysdecision] (gate) at (11,0) {All outputs\\match?};
+\draw[flow] (input)--(oracle);
+\draw[flow] (oracle)--(gate);
+\node[sysbox,fill=BookGold] (abort) at (11,-3) {Abort result reporting\\keep failure};
+\draw[flow] (gate)--node[right,syslabel]{no}(abort);
+\node[sysbox] (warm) at (5.5,-3) {Warm both variants\\choose AB or BA pair};
+\draw[flow] (gate.south west)--node[above,syslabel]{yes}(warm.north east);
+\node[sysbox] (begin) at (0,-3) {Start timer\\before preparation};
+\draw[flow] (warm)--(begin);
+\node[sysbox] (work) at (0,-5.7) {Pack, if candidate\\compute full output};
+\draw[flow] (begin)--(work);
+\node[sysbox] (end) at (5.5,-5.7) {Stop timer\\output now exists};
+\draw[flow] (work)--(end);
+\node[sysdecision] (check) at (11,-5.7) {Every output\\still matches?};
+\draw[flow] (end)--(check);
+\draw[flow] (check.north)--node[right,syslabel]{no}(abort.south);
+\node[sysbox] (raw) at (5.5,-8.4) {Retain raw times\\repeat paired runs};
+\draw[flow] (check.south west)--node[above,syslabel]{yes}(raw.north east);
+\node[sysbox,fill=BookGreen] (summary) at (0,-8.4) {Summarize observed runs\\hash inputs and source};
+\draw[flow] (raw)--node[above,syslabel]{all pairs\\done}(summary);
+\node[sysnote,anchor=north west] at (-1.9,-9.7)
+ {Synchronous CPU teaching experiment. Reference construction and checking are outside timed work but are mandatory. The measured candidate total includes preparation; no accelerator submission is timed here.};
+\end{tikzpicture}

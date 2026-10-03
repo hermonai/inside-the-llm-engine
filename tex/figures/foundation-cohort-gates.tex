@@ -1,0 +1,19 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox,minimum height=21mm] (wire) at (0,0)
+ {Delivered\\8 tokens\\200 tokens/s};
+\node[sysbox,minimum height=21mm] (correct) at (5.5,0)
+ {Correct completion\\5 tokens\\125 tokens/s};
+\node[sysbox,minimum height=21mm,fill=BookGreen] (good) at (11,0)
+ {Accepted useful output\\3 tokens\\75 tokens/s};
+\draw[flow] (wire)--node[above,syslabel]{status\\and oracle}(correct);
+\draw[flow] (correct)--node[above,syslabel]{latency\\rule}(good);
+\node[sysbox,fill=BookGold] (failed) at (0,-3)
+ {C: timeout, 1 token\\D: wrong, 2 tokens};
+\node[sysbox,fill=BookGold] (late) at (5.5,-3)
+ {B: 18 ms mean gap\\2 tokens fail target};
+\draw[control] (wire)--node[right,syslabel]{retain rejected\\observations}(failed);
+\draw[control] (correct)--node[right,syslabel]{retain latency\\violation}(late);
+\node[sysnote,anchor=north west] at (-1.9,-4.4)
+ {Executable illustrative cohort, drained over 40 ms. Targets: planned-arrival TTFT at most 10 ms and request mean gap at most 10 ms when defined. Partial and incorrect output earns no useful-completion credit.};
+\end{tikzpicture}

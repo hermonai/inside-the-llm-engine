@@ -158,7 +158,7 @@ Never use physical block order as a position for RoPE.
 
 \section{Turn a traffic count into a time bound}
 Suppose an operation must read two billion bytes from a named memory
-interface. At an achieved ceiling of one hundred billion bytes per
+interface. At an assumed ceiling of one hundred billion bytes per
 second, those reads alone need at least 0.02 seconds. Units cancel:
 bytes divided by bytes per second gives seconds.
 
@@ -212,6 +212,231 @@ a wrong model before it becomes a wrong implementation.
 
 The symbol table is a reference, not a vocabulary test. Return to
 it when a later chapter combines weights, KV state and concurrent
-requests. The purpose is to make the argument easier to inspect,
-not to compress explanations into unexplained letters.
+requests. Now apply it to an entire small projection, from the shape
+of its operands to the assumptions behind its performance model.
+
+\section{Follow one projection through four different counts}
+Choose illustrative activations
+$\mathbf X\in\mathbb R^{3\times16}$ and weights
+$\mathbf W\in\mathbb R^{16\times8}$. Their product
+$\mathbf Y=\mathbf X\mathbf W$ has three rows and eight columns.
+There are 48 input elements, 128 weights and 24 output elements.
+These are three different objects. The input and output sizes grow
+with the number of work rows; the weight size does not.
+
+Assume the activations and outputs are stored with two bytes per element.
+Now choose a teaching weight format, not a named production format.
+Each complete group of sixteen weights stores eight code bytes and
+one two-byte scale. Eight groups represent the 128 weights:
+\[
+ D_W=8(8+2)=80\ \text{bytes},\qquad
+ b_w=\frac{80}{128}=\frac58\ \text{bytes/weight}.
+\]
+The code payload is four bits per weight. Including scales, the effective
+storage is five bits per weight. The distinction is not a rounding error:
+forgetting the scales would predict 64 bytes instead of 80.
+Chapter~\ref{app:formats} followed an actual Q4\_0 format; this different,
+explicitly chosen group makes the accounting method visible.
+
+At a hypothetical boundary where the weights and inputs are fetched once
+and each output is written once, the payload traffic is
+\[
+ D=80+(3\cdot16\cdot2)+(3\cdot8\cdot2)
+   =224\ \text{bytes}.
+\]
+With the two-FLOPs-per-multiply--add convention, work is
+$F=2\cdot3\cdot16\cdot8=768$ FLOPs. Thus
+$I=768/224=24/7\approx3.43$ FLOP/byte.
+This counts the projection, not its bias, normalization, scale conversion
+or a whole decoder layer. A direct dot product with sixteen multiplications
+and fifteen additions has a different literal operation count;
+the conventional count is useful only when the reported compute rate
+uses the same convention.
+
+\EngineFigure{foundation-projection-accounting}{A derived accounting
+route for the illustrative $3\times16$ projection. Shapes determine
+elements; the chosen storage format determines bytes. The traffic box
+assumes one fetch or store per object at a named boundary. It is not
+an observed memory-controller trace.}{fig:foundation-projection-accounting}
+
+The bytes occupied by weights are not automatically the bytes transferred
+in an invocation. Reusing a resident weight tile can remove a fetch at
+one boundary, while a strided access can transfer extra sectors at another.
+Keep a storage column and a traffic column in your notes. When they happen
+to be equal, state the reuse assumption that makes them equal.
+
+\section{Make dimensions executable}
+An equation can have reasonable-looking numbers and still be meaningless.
+Dividing 8 billion FLOPs by 100 billion bytes per second gives
+0.08 \emph{FLOP-seconds per byte}, not 0.08 seconds. The divisor describes
+the wrong resource. Adding that result to a time does not repair it.
+
+The new lesson stores a quantity as an exact rational value plus a dimension
+vector. Its three coordinates count powers of bytes, FLOPs and seconds.
+Bytes have vector $(1,0,0)$; bandwidth has $(1,0,-1)$.
+Division subtracts those vectors, yielding $(0,0,1)$ for a duration.
+This is a small type discipline, not a simulation of a device:
+\begin{verbatim}
+traffic = Quantity.of(2_000_000_000, "byte")
+bandwidth = Quantity.of(100_000_000_000, "byte/s")
+seconds = (traffic / bandwidth).in_unit("s")
+\end{verbatim}
+The value is exactly $1/50$ second. Replacing traffic by FLOPs makes
+the final unit check reject the calculation.
+
+Here is the actual division and unit-check path from the lesson:
+\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/performance_contract.py}{28}{35}
+\end{minipage}
+The \texttt{zip} pairs corresponding dimension exponents.
+The subtraction changes units; the rational division changes the value.
+The final method checks the dimension vector instead of trusting a
+variable named \texttt{seconds}. This implementation is deliberately
+small; it does not replace a general units library or encode memory
+boundaries in its type.
+
+Dimensions alone cannot detect every mistake. The matrix work count and
+an unrelated kernel's work count are both FLOPs. A memory controller's
+bandwidth and a network link's bandwidth are both bytes per second.
+Attaching a boundary, an operation and a precision remains the reader's
+job. Unit checking catches a class of errors; semantic checking catches
+the wrong objects within the right class.
+
+Decimal and binary prefixes also need explicit conversion. One GiB is
+1,073,741,824 bytes. Dividing it by one billion bytes per second gives
+1.073741824 seconds, not one second. A gigabit-per-second specification
+uses bits, so its nominal byte rate is one eighth as large before
+protocol overhead. Name the quantity before using its printed number.
+Never compare a traffic estimate in GiB with a bandwidth in GB/s by
+silently cancelling the prefixes.
+
+\section{Distinguish payload, reservation and peak residency}
+Return to the 64-byte cache footprint per evaluated token. Three requests
+with lengths $[1,5,9]$ have fifteen tokens, hence 960 logical bytes.
+Private four-token blocks reserve $[4,8,12]$ slots, or 1536 bytes.
+Six block-table entries at an illustrative four bytes each add 24 bytes.
+The cache and its table therefore occupy 1560 bytes under this narrow
+allocation model. Workspace, alignment and allocator objects are still
+outside that total.
+
+Multiplying the maximum length by three gives 27 slots, or 1728 bytes.
+That is a rectangular maximum-length reservation, not the logical
+state of these requests. Neither number is universally wrong.
+They describe different allocation policies. The program accepts
+individual lengths so that changing one request does not accidentally
+change the state attributed to every other request.
+
+Sharing changes the count again. If two requests share an immutable
+complete four-token prefix block, its 256 payload bytes need exist only
+once, though both requests need a mapping to it. Without sharing they
+occupy 512 bytes. An independently writable tail cannot be shared by
+the same argument: ownership and modification rules decide whether a
+physical object may be counted once. Identical token counts alone do not
+establish shareable state.
+
+The 80-byte weight tensor also illustrates alignment. If only its outer
+allocation is rounded to a 32-byte multiple, reservation becomes 96 bytes.
+If every ten-byte group were independently rounded to 32 bytes, it would
+become 256 bytes instead. Those are different physical formats; padding
+must follow the actual layout, not a convenient percentage.
+If the loader retains the packed 80 bytes while materializing all 128
+weights as two-byte values, both buffers coexist for 336 payload bytes.
+Their lifetimes determine peak residency. A final checkpoint size says
+nothing about whether such temporary duplication happens.
+
+\section{Choose a bound that matches the dependency graph}
+The earlier example has a 20 ms memory-resource time and an 8 ms
+compute-resource time. If both costs are unavoidable at their named
+boundaries and their rates are true ceilings, every implementation
+needs at least 20 ms. The maximum is a lower bound even when overlap
+is imperfect. It is not a promise that overlap can be implemented.
+
+Suppose a particular two-stage implementation completes a bulk transfer
+before allowing its compute stage to begin. Its dependency gives the
+stronger serial resource bound $20+8=28$ ms. If independent tiles can
+flow through both resources concurrently, a different graph may approach
+the maximum after filling its pipeline. First-result latency, steady-state
+throughput and pipeline drain are different questions.
+
+\EngineFigure{foundation-bound-dependencies}{Illustrative resource
+durations of 20 and 8 ms. The upper schedule permits ideal overlap;
+the lower imposes a completion dependency. The resulting 20 and 28 ms
+values are conditional models, not timings from a GPU or server.}
+{fig:foundation-bound-dependencies}
+
+There is an important distinction between a hardware upper limit and a
+measured rate used as a proxy. If a calibration achieved 100 GB/s, another
+access pattern might achieve more or less. Dividing by that measured rate
+gives an estimate under a transferability assumption, not a rigorous
+hardware lower bound. Similarly, a dense matrix peak cannot automatically
+price a reduction, a dequantizer or sparse routing. Match the operation
+and precision before assigning $\pi$.
+
+To challenge the model, record an observed time and compare it with the
+conditional estimate. If a result beats a true bound, inspect your assumptions:
+perhaps traffic was served by a cache, work was skipped, the rate was not
+a ceiling or the timer stopped at submission rather than completion.
+If it is slower, the ratio does not identify the missing cost by itself.
+Look for dependencies, small-work inefficiency, additional transfers and
+controller work before assigning all the difference to memory bandwidth.
+
+\section{Predict where an improvement stops helping}
+With $D/\beta=20$ ms and $F/\pi=8$ ms, halving traffic changes the
+ideal-overlap model from 20 to 10 ms. Halving it again gives a 5 ms
+memory term, but the result is now bounded by the unchanged 8 ms compute
+term. Four times fewer bytes did not produce four times less step time.
+The limiting resource moved. This is the reason to keep both terms
+visible rather than extrapolating a bandwidth improvement indefinitely.
+
+Nor does an isolated step determine end-to-end benefit. Choose an
+illustrative request with 20 ms in an optimizable stage and 20 ms elsewhere.
+Halving the stage gives a 30 ms request instead of 40 ms:
+the speed ratio is $40/30=4/3$, not two. For an original optimizable
+fraction $f$ and its speed ratio $r$, a serial, otherwise unchanged model
+gives
+\[
+ \text{speed ratio}=\frac{1}{(1-f)+f/r}.
+\]
+Here $f=1/2$ and $r=2$. This algebra describes the stated decomposition;
+it does not assume independent speed ratios can be multiplied or that
+queueing stays unchanged when a service becomes faster.
+
+A batch adds another population. Under the earlier 20 ms step bound,
+four output tokens imply an aggregate ceiling of 200 tokens/s.
+For four one-token-per-step requests, each advances at at most 50 tokens/s
+under the same model. Speculation may emit several accepted tokens for
+one request; padding may emit no useful token for a slot. Count accepted,
+useful outputs instead of equating launched work rows with delivered tokens.
+
+\section{Run, explain and deliberately break the accounting}
+Run the new lesson without downloading a model:
+\begin{verbatim}
+python3 code/foundations/performance_contract.py
+python3 -m unittest discover -s code/foundations
+\end{verbatim}
+The output reports 224 projection bytes, 768 FLOPs, cache payload and
+reservation separately, and exact 20 ms and 28 ms conditional times.
+The tests enumerate tiny projection loops independently of the closed
+work formula. Cache tests append padding slots explicitly before comparing
+with ceiling division. These alternative calculations make off-by-one
+and omitted-factor mistakes visible.
+
+In a scratch copy, omit scale metadata or multiply weight bytes by the
+work-row count. The first mutation changes the 80-byte fixture to 64;
+the second incorrectly duplicates the model. Swapping bandwidth and compute
+ceilings is rejected by dimensions. None of these tests establishes that
+the chosen memory boundary is correct for an industrial kernel.
+That requires implementation inspection and measurement.
+
+\begin{ConstraintLedger}
+Memory bandwidth & moves & Name the boundary and reuse before converting traffic to time.\\
+Memory capacity & spends & Metadata, padding and overlapping buffer lifetimes add to payload.\\
+Compute & moves & FLOP counts need an operation-specific rate and counting convention.\\
+Latency & risks & Overlap, dependencies and queueing distinguish a bound from a prediction.\\
+Correctness & buys & Unit and independent counting checks reject plausible accounting errors.\\
+\end{ConstraintLedger}
+
+You can now derive a prediction and identify the conditions that might
+falsify it. The next chapter turns that prediction into an experiment
+whose output, timestamps and failures remain inspectable.
 \input{worked/f16-notation.tex}

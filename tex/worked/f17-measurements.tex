@@ -13,3 +13,24 @@ a declared exclusion rule invalidates it.
 \textbf{Problem.} Does restarting the model process prove a cold file cache?
 \textbf{Solution.} No. File pages can remain in the operating system's
 cache after the process exits. State process and cache conditions separately.
+\subsection*{4. Recover the useful numerator}
+\textbf{Problem.} In the four-request trace, count wire, correct-completion
+and accepted tokens over 40 ms under the stated 10 ms TTFT/mean-gap rule.
+\textbf{Solution.} Wire: $3+2+1+2=8$; correct completion: $3+2=5$;
+accepted: A's three. Rates are 200, 125 and 75 tokens/s respectively.
+C's partial output and D's wrong output remain recorded.
+\subsection*{5. A different p95}
+\textbf{Problem.} Find nearest-rank and inclusive-linear p95 for
+$[9,10,10,11,60]$ ms. Does either establish a reliable population p95?
+\textbf{Solution.} Nearest rank chooses $\lceil0.95\cdot5\rceil=5$,
+giving 60 ms. Inclusive coordinate is $0.95\cdot4=3.8$,
+giving $11+0.8(60-11)=50.2$ ms. Five samples do not establish a
+reliable extreme-tail estimate.
+\subsection*{6. The unfair timer}
+\textbf{Problem.} Candidate packing takes 0.02 ms and computation takes
+0.80 ms; baseline total is 1.50 ms. What candidate time belongs in
+the single-call total comparison? What permits a different boundary?
+\textbf{Solution.} Use $0.02+0.80=0.82$ ms. These numbers are illustrative.
+Excluding packing is appropriate only for a separately declared workload
+where prepared columns already exist; reuse and amortization must be
+accounted for. Both routes must pass the same correctness contract.

@@ -1,0 +1,28 @@
+% diagram-kind: timeline
+\begin{tikzpicture}[font=\small\sffamily,x=.35cm,y=1cm]
+\node[note,anchor=west] at (0,1.1) {Ideal-overlap model: 20 ms};
+\node[note,anchor=east] at (-1,0) {Memory};
+\node[note,anchor=east] at (-1,-1) {Compute};
+\draw[draw=BookBlue,fill=BookPale] (0,-.3) rectangle (20,.3);
+\draw[draw=BookBlue,fill=BookGreen] (0,-1.3) rectangle (8,-.7);
+\node at (10,0) {20 ms};
+\node at (4,-1) {8 ms};
+\node[note,anchor=west] at (0,-2.2) {Completion dependency: 28 ms};
+\node[note,anchor=east] at (-1,-3.2) {Memory};
+\node[note,anchor=east] at (-1,-4.2) {Compute};
+\draw[draw=BookBlue,fill=BookPale] (0,-3.5) rectangle (20,-2.9);
+\draw[draw=BookBlue,fill=BookGreen] (20,-4.5) rectangle (28,-3.9);
+\node at (10,-3.2) {20 ms};
+\node at (24,-4.2) {8 ms};
+\draw[flow] (20,-3.5)--(20,-3.9);
+\draw[BookBlue!55,dashed] (20,.5)--(20,-4.7);
+\draw[BookBlue!55,dashed] (28,-3.7)--(28,-4.7);
+\draw[flow] (0,-5.2)--(30,-5.2);
+\foreach \t in {0,8,20,28} {
+ \draw[BookBlue] (\t,-5.1)--(\t,-5.3);
+ \node[below] at (\t,-5.3) {\t};
+}
+\node[note,anchor=west] at (30,-5.2) {ms};
+\node[sysnote,anchor=north west] at (-4,-6)
+ {Derived from chosen resource times, not measured schedules. The lower arrow requires the memory stage to finish before computation begins. Real pipelines have fill, drain and additional costs.};
+\end{tikzpicture}

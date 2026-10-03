@@ -14,3 +14,27 @@ Total unused capacity is $3\cdot3\cdot64=576$ bytes.
 What are the aggregate and per-request rates?
 \textbf{Solution.} Aggregate rate is $4/0.02=200$ tokens/s.
 Each request sees $1/0.02=50$ tokens/s, excluding other delays.
+\subsection*{4. Count the format, not only the codes}
+\textbf{Problem.} A $16\times8$ matrix uses the teaching format of
+sixteen weights per group, eight code bytes and a two-byte scale.
+Find payload bytes, effective bits per weight and traffic for three
+input rows with two-byte inputs and outputs.
+\textbf{Solution.} Eight groups cost $8(8+2)=80$ bytes.
+Effective precision is $8\cdot80/128=5$ bits/weight.
+Traffic under one-fetch/store assumptions is $80+96+48=224$ bytes.
+\Needspace{10\baselineskip}
+\subsection*{5. Two valid cache totals}
+\textbf{Problem.} Requests have lengths $[1,5,9]$, use 64 bytes per token
+and private four-token blocks. Table entries use four bytes. Find
+logical bytes and reservation including the table.
+\textbf{Solution.} Logical bytes are $(1+5+9)64=960$.
+There are $1+2+3=6$ blocks, reserving $6\cdot4\cdot64=1536$ bytes.
+The table adds 24 bytes, giving 1560. This excludes other allocator costs.
+\subsection*{6. The new limiting resource}
+\textbf{Problem.} Resource times are 20 ms for memory and 8 ms for
+compute. Reduce traffic by four without changing work or rates.
+What is the ideal-overlap bound? What if an unrelated 20 ms serial
+stage originally followed a 20 ms stage that is sped up by two?
+\textbf{Solution.} Memory falls to 5 ms, so the bound is 8 ms,
+not 5. The separate end-to-end example changes from 40 to 30 ms,
+a $4/3$ speed ratio. These are conditional derived models.

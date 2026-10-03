@@ -504,3 +504,22 @@ trained checkpoint. Its full-prefix/cached comparisons test state semantics;
 both paths share scalar primitives, which have separate hand-computed tests.
 The format parser supports only its one-tensor F32 fixture. GPU, SIMD and
 timestamp lesson outputs are derived arithmetic, not hardware benchmarks.
+
+## Accounting and experiment teaching pass (checked 2026-10-03)
+
+These additions develop measurement contracts, not new engine-maturity or
+accelerator-performance claims. Printed Chapters 16–17 use original hand
+fixtures; only the optional synchronous Python matrix mode is timed.
+
+| Topic | Scope read | Primary source | Maturity | Printed chapter |
+| --- | --- | --- | --- | --- |
+| Elapsed clocks | Performance counter includes elapsed waiting; monotonic differences, integer nanosecond variants and reported resolution | [Python time documentation](https://docs.python.org/3/library/time.html) | standard-library API; observed runtime is Python 3.9.6, not the online documentation version | 17 |
+| Quantile conventions | Inclusive and exclusive interpolation definitions; lesson's inclusive fixture cross-checks the standard library, while nearest rank is defined explicitly | [Python statistics documentation](https://docs.python.org/3/library/statistics.html) | standard-library API; no confidence claim from five samples | 17 |
+| Benchmark scenario contract | Section 3 distinguishes completion-driven single stream and independent Server arrivals; section 5 names scheduled-query latency and accuracy runs | [MLPerf Inference rules](https://github.com/mlcommons/inference_policies/blob/master/inference_rules.adoc) | published, living benchmark rules; lesson is not a compliant submission | 17 |
+| Submission versus completion | Sections 9.1.1–9.1.2: host timing requires completion synchronization; GPU event timing has a different scope | [NVIDIA Best Practices](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html) | documented CUDA behavior; no CUDA run in this pass | 17 |
+| Build-to-understand pedagogy | Companion hub's read, code and exercise path; book examples and figures remain original | [Raschka companion hub](https://sebastianraschka.com/llms-from-scratch/) | educational reference, not an implementation or speed claim | 16–17 |
+
+Projection, cache and conditional resource counts are derived from stated
+illustrative formats and boundaries. The new measured record retains raw
+Python times, correctness, source/input hashes and timer exclusions. It
+does not interpret interpreter differences as native cache or LLM speedups.

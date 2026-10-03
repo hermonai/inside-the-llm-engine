@@ -1,0 +1,18 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox,text width=36mm,minimum height=23mm] (x) at (0,0)
+ {$\mathbf X:3\times16$\\48 input elements\\$48\cdot2=96$ bytes};
+\node[sysbox,text width=36mm,minimum height=23mm,fill=BookGold] (w) at (5,0)
+ {$\mathbf W:16\times8$\\128 weights\\8 groups $\cdot$ 10 = 80 bytes};
+\node[sysbox,text width=36mm,minimum height=23mm,fill=BookGreen] (y) at (10,0)
+ {$\mathbf Y:3\times8$\\24 output elements\\$24\cdot2=48$ bytes};
+\node[note,align=center] at (5,2)
+ {$\mathbf Y=\mathbf X\mathbf W$\\$F=2\cdot3\cdot16\cdot8=768$ FLOPs};
+\node[sysbox,text width=86mm,minimum height=17mm] (d) at (5,-3.3)
+ {One-boundary payload traffic\\$D=96+80+48=224$ bytes\\$I=F/D=24/7$ FLOP/byte};
+\draw[flow] (x.south)--++(0,-.8)-|node[pos=.2,above,syslabel]{read once}(d.north west);
+\draw[flow] (w.south)--node[right,syslabel]{read once}(d.north);
+\draw[flow] (y.south)--++(0,-.8)-|node[pos=.2,above,syslabel]{write once}(d.north east);
+\node[sysnote,anchor=north west] at (-1.9,-4.7)
+ {Illustrative full-group format: sixteen weights use eight code bytes plus a two-byte scale. Activation and output storage use two bytes per element. Padding, conversion and workspace are not counted here.};
+\end{tikzpicture}
