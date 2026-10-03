@@ -1,12 +1,12 @@
 % diagram-kind: component
 \begin{tikzpicture}[font=\small\sffamily]
 \node[sysbox] (x) at (3,0) {Token representations};
-\node[sysbox] (r) at (3,-1.5) {Router\\expert IDs and gate weights};
-\node[sysbox] (a) at (0,-3.2) {Pack rows for expert A};
-\node[sysbox] (b) at (6,-3.2) {Pack rows for expert B};
-\node[sysbox] (ea) at (0,-4.8) {Run expert A};
-\node[sysbox] (eb) at (6,-4.8) {Run expert B};
-\node[sysbox] (c) at (3,-6.5) {Unpack and combine\\weighted outputs by token};
+\node[sysbox] (r) at (3,-2.2) {Router\\expert IDs and gate weights};
+\node[sysbox] (a) at (0,-4.4) {Pack rows for expert A};
+\node[sysbox] (b) at (6,-4.4) {Pack rows for expert B};
+\node[sysbox] (ea) at (0,-6.6) {Run expert A};
+\node[sysbox] (eb) at (6,-6.6) {Run expert B};
+\node[sysbox] (c) at (3,-8.8) {Unpack and combine\\weighted outputs by token};
 \draw[flow] (x)--(r);
 \draw[flow] (r)--(a);
 \draw[flow] (r)--(b);
@@ -14,5 +14,5 @@
 \draw[flow] (b)--(eb);
 \draw[flow] (ea)--(c);
 \draw[flow] (eb)--(c);
-\node[sysnote,anchor=north west] at (-1.8,-7.8) {The union of selected experts grows with the batch even when each token selects few.};
+\node[sysnote,anchor=north west] at (-1.8,-10.2) {The union of selected experts grows with the batch even when each token selects few.};
 \end{tikzpicture}

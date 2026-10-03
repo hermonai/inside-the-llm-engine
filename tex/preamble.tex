@@ -69,7 +69,8 @@
 \newcounter{none}
 \tikzset{flow/.style={-{Stealth[length=2mm]},thick,BookBlue},control/.style={flow,dashed},cell/.style={draw=BookBlue,minimum width=10mm,minimum height=8mm,inner sep=2pt},block/.style={draw=BookBlue,fill=BookPale,rounded corners=2pt,align=center,minimum height=10mm,inner sep=5pt},note/.style={font=\small\sffamily,align=left,text=BookBlue}}
 \tikzset{
- sysbox/.style={block,font=\small\sffamily,text width=38mm,minimum height=12mm},
+ sysbox/.style={block,font=\small\sffamily,text width=38mm,minimum height=12mm,
+   execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
  sysdecision/.style={diamond,aspect=2.4,draw=BookBlue,fill=BookGold,
    align=center,font=\small\sffamily,text width=32mm,inner sep=2pt},
  sysparticipant/.style={draw=BookBlue,fill=BookPale,align=center,

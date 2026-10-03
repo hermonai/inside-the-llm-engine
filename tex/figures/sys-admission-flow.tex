@@ -1,16 +1,16 @@
 % diagram-kind: activity
 \begin{tikzpicture}[font=\small\sffamily]
 \node[sysbox] (a) at (0,0) {Validate request; identify\\tenant and latency target};
-\node[sysbox] (b) at (0,-1.6) {Estimate state growth,\\queue delay and service time};
-\node[sysdecision] (d) at (0,-3.5) {Fits capacity\\and policy?};
-\node[sysbox] (y) at (0,-5.55) {Admit; allocate state;\\track progress};
-\node[sysbox] (n) at (6,-3.5) {Bounded defer, reject,\\or preempt by policy};
-\node[sysbox] (z) at (6,-5.55) {Record useful work,\\failures and deadline misses};
+\node[sysbox] (b) at (0,-2.3) {Estimate state growth,\\queue delay and service time};
+\node[sysdecision] (d) at (0,-4.7) {Fits capacity\\and policy?};
+\node[sysbox] (y) at (0,-7.1) {Admit; allocate state;\\track progress};
+\node[sysbox] (n) at (6,-4.7) {Bounded defer, reject,\\or preempt by policy};
+\node[sysbox] (z) at (6,-7.1) {Record useful work,\\failures and deadline misses};
 \draw[flow] (a)--(b);
 \draw[flow] (b)--(d);
 \draw[flow] (d)--node[left,syslabel]{yes}(y);
 \draw[flow] (d)--node[above,syslabel]{no}(n);
 \draw[flow] (y)--(z);
 \draw[flow] (n)--(z);
-\node[sysnote,anchor=north west] at (-1.8,-6.8) {Preemption releases usable capacity only after in-flight consumers release ownership.};
+\node[sysnote,anchor=north west] at (-1.8,-8.5) {Preemption releases usable capacity only after in-flight consumers release ownership.};
 \end{tikzpicture}

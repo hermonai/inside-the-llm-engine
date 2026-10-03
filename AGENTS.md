@@ -11,8 +11,9 @@ structural ones in your end-of-session report.
 
 ## Read first, in this order
 
-1. `git status` and `git log --oneline -10` — work is on branch
-   `second-edition` until the author merges it.
+1. `git status` and `git log --oneline -10` — the author merged
+   `second-edition` into `main` at `2c0474d`. Continue from the current
+   checkout; do not switch it based on superseded branch instructions.
 2. [`docs/STATUS.md`](docs/STATUS.md) — what is done, verified numbers, and the
    ordered next tasks. Start from its "Next" list.
 3. [`AUTHORING.md`](AUTHORING.md) — the only policy: the constraint ledger,

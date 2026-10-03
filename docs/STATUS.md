@@ -1,6 +1,6 @@
 # Status
 
-## Current reading path — 2026-09-28
+## Current reading path — 2026-10-03
 
 The author requested that all former appendices become the main learning path.
 The book now has **59 chapters in ten parts**, with no appendix detour:
@@ -32,38 +32,66 @@ The first 14 systems chapter introductions now explain their question and
 offer a first-reading route before the measurements. This is an entry-point
 clarity pass, not a claim that every paragraph of the systems manuscript has
 been rewritten. Existing measured results and dated frontier claims remain.
-The book contains 126 native figures and 93 worked problems.
+The book contains 161 native figures and 93 worked problems. Every one of
+the 42 systems chapters has a native mechanism diagram. The author merged
+the second-edition work into main at `2c0474d`; this pass follows that checkout.
+
+Chapter 12, `f12-model-formats`, now has about 5,100 prose words and a
+concrete byte-to-computation route: a 256-byte GGUF fixture, typed metadata,
+descriptor coordinates, alignment, F32 strides, actual Q4_0 bit packing,
+graph construction and CPU execution. Three new native figures show the
+byte regions, nibble interpretation and loader/graph/executor interaction.
+Source listings come directly from the checked Python and C++ labs.
+Worked problems now distinguish structural, numerical and model contracts.
+
+The optional reference check uses pinned upstream ggml `353b63b`. Direct
+weight decoding agrees exactly, and the executed dense projection gives
+`[49,19]`. The initial Q4_0 dot-product expectation failed; the chapter
+derives the CPU's Q8_0 activation rounding and predicts the observed
+`-7.99951171875`. The failed expectation and two matching finished runs are
+preserved in `research/measurements/2026-10-03-gguf-byte-lab.md`.
+These are numerical observations, not speed measurements.
+
+The diagram pass fixes crowded nodes, headings, message labels and
+paged-memory arrows. The preface explains the notation. The authoring
+policy now requires concrete representations, implementations and
+distinguishing failure tests when deepening a lesson; minimum word counts
+alone do not establish depth.
 
 ## Validation of this revision
 
-The 622-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
-or unresolved references. All pages were rendered and their text bounds
-audited. Visual inspection covered the front matter, all nine new/expanded
-construction lessons, their figures in colour and grayscale, and the fourteen
-revised systems openers. Attention-label collisions, a contents/preface page
-collision and split command blocks were corrected. After the final pagination
-edits, all 622 pages passed the bounds audit again; the nine changed pages
-were re-rendered and inspected. This is author QA, not independent review.
+The 659-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
+or unresolved references. All 659 pages rendered, and the visible-text-bounds
+audit passed. Visual inspection covered every Chapter 12 page, its figures
+in colour and grayscale, the preface, and the 33 systems mechanism plates
+added or reused in the recent diagram pass. Short source listings remain
+on one page. This is author QA, not independent technical review or a claim
+that every unchanged page received a new visual inspection.
 
-Local CI checks pass: structure/preservation/secrets, relative links, textbook
-contracts and CLI trace, the 13 foundation arithmetic/structure tests, the
-15 small-decoder/lesson tests, frozen diagram and native-figure parity,
-industrial mutation guards, tensor/linear/norm/QKV/RoPE parity, Rust fmt,
-workspace tests and clippy, and both Python lab suites. The existing
-uncommitted lifecycle lab also passes its five tests but remains outside
-this revision's commit. No new hardware performance measurement is claimed.
+Relevant local checks pass: structure/preservation/secrets, relative links,
+textbook contracts and CLI trace, the 13 foundation arithmetic/structure
+tests, all 26 decoder/lesson/binary-reader tests, frozen diagrams,
+deterministic figures, native-figure parity and industrial mutation guards.
+The independent ggml CPU check passes direct decode, tensor orientation
+and all 32 packed-coordinate probes. CI now runs the foundation suite.
+The lifecycle lab's five tests pass; that lab was already committed in the
+author's base, and this pass does not promote its chapter to FULL.
+The earlier full Rust/parity CI results remain in the historical ledger.
+No new hardware performance measurement is claimed.
 
 ## Next
 
-1. Complete the existing lifecycle lab and full chapter, now Chapter 31
-   (`ch14-request-lifecycle`). Its uncommitted lab and workspace changes
-   were present at entry and are not silently included in this editorial work.
-2. Continue the straightforward, concrete-first edit through the bodies of
+1. Deepen the remaining compact Part I lessons with the same concrete route.
+   Next: Chapter 13's floating-point bits, accumulation, quantization and
+   executable numerical error examples.
+2. Complete the existing lifecycle lab's full chapter, now Chapter 31
+   (`ch14-request-lifecycle`), preserving the measured cancellation failure.
+3. Continue the straightforward, concrete-first edit through the bodies of
    systems chapters, then deepen the remaining 29 ZERO chapters. Keep
    the original measurements and failure cases; explain them more gradually.
-3. Resolve the five remaining hardware-measurement TODOs when the required
+4. Resolve the five remaining hardware-measurement TODOs when the required
    machines are available. Do not replace missing measurements with predictions.
-4. Obtain independent technical review before assigning VERIFIED.
+5. Obtain independent technical review before assigning VERIFIED.
 
 ## Historical evidence
 
@@ -93,7 +121,7 @@ from the current printed chapter numbers. Prose word counts are approximate.
 | 9 | Causal Attention, One Row at a Time | f09-causal-attention | FULL | 1,519 | 0 |
 | 10 | The Feed-Forward Network and the Residual Stream | f10-feed-forward | FULL | 1,567 | 0 |
 | 11 | Assembling a Decoder That Generates Tokens | f11-decoder | FULL | 1,644 | 0 |
-| 12 | Model File Formats: GGUF and safetensors | f12-model-formats | FULL | 1,590 | 0 |
+| 12 | Model File Formats: GGUF and safetensors | f12-model-formats | FULL | 5,130 | 0 |
 | 13 | Numerics: Floating Point and Quantization Formats | f13-numerics | FULL | 1,564 | 0 |
 | 14 | CPU and SIMD | f14-cpu-simd | FULL | 1,603 | 0 |
 | 15 | GPU Architecture for Inference Engineers | f15-gpu-architecture | FULL | 1,617 | 0 |

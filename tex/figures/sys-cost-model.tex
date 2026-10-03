@@ -1,16 +1,16 @@
 % diagram-kind: activity
 \begin{tikzpicture}[font=\small\sffamily]
 \node[sysbox] (a) at (0,0) {Fix model, lengths,\\arrivals and hardware};
-\node[sysbox] (b) at (0,-1.6) {Predict and measure\\latency and throughput};
-\node[sysdecision] (d) at (0,-3.5) {Latency target\\met?};
-\node[sysbox] (y) at (0,-5.55) {Count useful work\\meeting the target};
-\node[sysbox] (n) at (6,-3.5) {Revise batch, admission\\or placement};
-\node[sysbox] (z) at (6,-5.55) {Charge total cost\\to useful work};
+\node[sysbox] (b) at (0,-2.3) {Predict and measure\\latency and throughput};
+\node[sysdecision] (d) at (0,-4.7) {Latency target\\met?};
+\node[sysbox] (y) at (0,-7.1) {Count useful work\\meeting the target};
+\node[sysbox] (n) at (6,-4.7) {Revise batch, admission\\or placement};
+\node[sysbox] (z) at (6,-7.1) {Charge total cost\\to useful work};
 \draw[flow] (a)--(b);
 \draw[flow] (b)--(d);
 \draw[flow] (d)--node[left,syslabel]{yes}(y);
 \draw[flow] (d)--node[above,syslabel]{no}(n);
 \draw[flow] (y)--(z);
-\draw[flow] (n.north)--++(0,1.9)--(b.east);
-\node[sysnote,anchor=north west] at (-1.8,-6.8) {A throughput-only improvement can fail the user's latency objective.};
+\draw[flow] (n.north)|-(b.east);
+\node[sysnote,anchor=north west] at (-1.8,-8.5) {A throughput-only improvement can fail the user's latency objective.};
 \end{tikzpicture}

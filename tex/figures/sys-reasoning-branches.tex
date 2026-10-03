@@ -1,11 +1,11 @@
 % diagram-kind: component
 \begin{tikzpicture}[font=\small\sffamily]
 \node[sysbox] (p) at (5,0) {Common evaluated prefix\\immutable shareable state};
-\node[sysbox] (a) at (0,-1.9) {Candidate A\\private continuation state};
-\node[sysbox] (b) at (5,-1.9) {Candidate B\\private continuation state};
-\node[sysbox] (c) at (10,-1.9) {Candidate C\\private continuation state};
-\node[sysbox] (v) at (5,-3.9) {Verifier or selection policy\\compare completed candidates};
-\node[sysbox] (o) at (5,-5.6) {Chosen response\\account for all branch work};
+\node[sysbox] (a) at (0,-2.3) {Candidate A\\private continuation state};
+\node[sysbox] (b) at (5,-2.3) {Candidate B\\private continuation state};
+\node[sysbox] (c) at (10,-2.3) {Candidate C\\private continuation state};
+\node[sysbox] (v) at (5,-4.6) {Verifier or selection policy\\compare completed candidates};
+\node[sysbox] (o) at (5,-6.9) {Chosen response\\account for all branch work};
 \draw[flow] (p)--(a);
 \draw[flow] (p)--(b);
 \draw[flow] (p)--(c);
@@ -13,5 +13,5 @@
 \draw[flow] (b)--(v);
 \draw[flow] (c)--(v);
 \draw[flow] (v)--(o);
-\node[sysnote,anchor=north west] at (-1.8,-6.949999999999999) {Branch budgets, stop conditions and task-quality checks belong to the workload definition.};
+\node[sysnote,anchor=north west] at (-1.8,-8.3) {Branch budgets, stop conditions and task-quality checks belong to the workload definition.};
 \end{tikzpicture}
