@@ -1,0 +1,15 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\foreach \x/\name/\label in {0/loop/{Generation loop},5/cache/{Request cache},10/model/{Decoder}} {
+  \node[block,text width=31mm] (\name) at (\x,0) {\label};
+  \draw[BookBlue,dashed] (\x,-.55)--(\x,-6.9);
+}
+\draw[flow] (0,-1.1)--node[syslabel,above]{append known input ID}(5,-1.1);
+\draw[flow] (5,-2)--node[syslabel,above]{evaluate at position $p$}(10,-2);
+\draw[flow,dashed] (10,-2.9)--node[syslabel,above]{logits; new layer K/V}(5,-2.9);
+\node[syslabel,anchor=west] at (5.15,-3.5) {commit evaluated count $p+1$};
+\draw[flow,dashed] (5,-4.1)--node[syslabel,above]{logits for next selection}(0,-4.1);
+\node[syslabel,anchor=west,text width=40mm] at (.2,-4.85) {Select ID. Cache unchanged.};
+\draw[flow] (0,-5.8)--node[syslabel,above]{[continue] append selected ID}(5,-5.8);
+\node[syslabel,anchor=west,text width=43mm] at (.2,-6.65)
+  {[stop] return selections; do not evaluate final selection};
+\end{tikzpicture}

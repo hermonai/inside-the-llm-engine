@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox,text width=37mm] (history) at (0,0) {Persistent history\\K: $N\times d_h$\\V: $N\times d_h$};
+\node[sysbox,text width=29mm] (query) at (5,-2.1) {Current query\\$d_h$ coordinates};
+\node[sysbox,text width=34mm] (scores) at (5,0) {Temporary scores\\$N$ entries\\scale and softmax};
+\node[sysbox,text width=34mm,fill=BookGreen] (out) at (10,0) {Output row\\$d_h$ coordinates\\weighted value sum};
+\draw[flow] (history)--node[syslabel,above]{read K}(scores);
+\draw[flow] (query.north)--(scores.south);
+\draw[flow] (scores)--node[syslabel,above]{probabilities}(out);
+\draw[flow] (history.south)--(0,-3.2)--node[syslabel,below]{read V}(10,-3.2)--(out.south);
+\node[sysnote,text width=131mm,anchor=west] at (-2,-4.3)
+  {One head: K/V payload $2Nd_hb$ bytes; conventional product work $4Nd_h$ FLOPs. No hardware traffic or timing is measured here.};
+\end{tikzpicture}

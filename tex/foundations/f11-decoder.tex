@@ -62,6 +62,56 @@ values. Cached evaluation keeps each layer's positioned K/V and processes
 one newly supplied token. A selected token lies beyond the evaluated
 frontier until feedback evaluates it.}{fig:foundation-decoder-cache}
 
+\section{Account for every learned matrix}
+The shape walk gives a checkable inventory. In output-row storage, each
+layer's Q matrix has four rows of four coefficients. K and V each have
+two rows of four. The attention output matrix has four rows of four.
+Gate and up each have six rows of four, and down has four rows of six.
+Count the entries rather than guessing from the number of operators:
+\[
+ P_{\rm layer}=16+8+8+16+24+24+24=120.
+\]
+Embedding and vocabulary output each contain $5\cdot4=20$ entries.
+Two layers therefore give
+\[
+ P_{\rm matrices}=20+2\cdot120+20=280.
+\]
+The model has no bias vectors or learned normalization gains to add to
+that count. Its unit gains are a fixed operation, not another stored
+parameter vector. A hypothetical packed F32 representation of these
+matrix entries would occupy $280\cdot4=1{,}120$ bytes. This is a payload
+derivation, not the Python process's allocation or a checkpoint file size.
+
+\EngineFigure{foundation-decoder-components}{Component and shape map for
+the executable teaching decoder. A layer owns seven matrices and its own
+K/V history. The generation loop owns selection and stopping. Dashed
+control flow chooses the next input; solid flow carries numerical data.
+This is not a network server architecture.}
+{fig:foundation-decoder-components}
+
+The graph has repeated structure, not repeated parameters. Layer one
+has the same matrix shapes as layer zero but different values.
+Sharing those matrices would define another model. The output matrix
+is also untied: it is not an alias of the embedding table. A tied
+architecture can share the parameters while using them in different
+directions; our count and generator explicitly implement the untied case.
+
+The inspection program prints an additional concrete object: layer zero's
+projection at logical position two of prompt $[0,1,2]$. Its input residual
+is the embedding row for ID 2, approximately
+$[0.079348,-0.192279,-0.029800,0.199959]$. The positioned queries are
+approximately $[0.322253,0.091755]$ and $[0.747837,-0.235368]$.
+There is one positioned key, $[0.443089,-0.332632]$, and one value,
+$[0.026982,0.311392]$. These are derived from the illustrative weights,
+not activations collected from a trained model.
+
+Two query heads are visible even though there is only one key and one
+value head. The second layer consumes the first layer's residual output,
+not that same embedding row. Checking this transition prevents a plausible
+assembly error: applying every layer independently to the original
+embedding and then adding their answers. The correct stack is composition,
+with one layer's result becoming the next layer's input.
+
 \section{A complete prediction is not a complete generation}
 Run the program from the repository root:
 \begin{verbatim}
@@ -86,6 +136,70 @@ generation loop owns it. Our demonstration has no designated end token;
 the tests use a fixed number of steps. Giving every toy vocabulary an
 end token without defining how its parameters treat that token would
 obscure the boundary we are trying to teach.
+
+\section{Make selection, feedback and stopping three events}
+Four greedy selections from the prompt produce IDs $[0,4,0,4]$ with
+the committed illustrative weights. Before each selection, the evaluated
+prefix has lengths three, four, five and six. After the fourth selection,
+the cache still has length six: the selected final ID 4 has not been
+fed back. The visible output contains four new IDs, but only the first
+three of those have been evaluated to obtain another prediction.
+
+Here is the boundary as a table. The prefix column gives the tokens
+already evaluated, not merely queued or selected.
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Evaluated prefix & Selected ID & Further evaluation?\\
+\midrule
+$[0,1,2]$ & 0 & Yes, to predict another ID\\
+$[0,1,2,0]$ & 4 & Yes\\
+$[0,1,2,0,4]$ & 0 & Yes\\
+$[0,1,2,0,4,0]$ & 4 & No, budget exhausted\\
+\bottomrule
+\end{tabular}
+\end{center}
+There is no reason to calculate the final selected token's K/V if the
+caller will not request another prediction. A continuing chat may later
+evaluate it when feedback resumes, provided the history and model
+configuration remain consistent. The interface must record which tokens
+are already represented in the cache.
+
+\EngineFigure{foundation-decoder-feedback-sequence}{Interaction of the
+teaching generation loop with a request cache and decoder. A selection
+returns an ID but does not append its K/V. Feedback calls append only when
+another prediction is needed. The budget-stop branch leaves the last
+selection beyond the evaluated frontier. Dashed arrows are replies.}
+{fig:foundation-decoder-feedback-sequence}
+
+An end-token policy follows the same boundary. If a selected ID is the
+configured end ID, include or suppress it in the externally visible
+representation according to a declared API policy, then stop. Our trace
+retains every selected ID, including the end ID, and stops before
+evaluating it. It validates that an optional end ID belongs to the toy
+vocabulary. This policy demonstrates control flow; it does not give a
+random model trained end-token semantics.
+
+The implementation uses a positive selection budget and a nonempty
+prompt. It does not define a zero-budget prefill API. Those are deliberate
+small-interface limits, not universal requirements for serving APIs.
+Before every selection it compares the entire cached logit row with
+full-prefix recomputation, so a wrong intermediate result cannot be
+hidden by a coincidentally unchanged greedy winner.
+
+\begin{verbatim}
+python3 code/foundations/decoder_trace.py
+python3 -m unittest discover -s code/foundations \
+  -p 'test_decoder_trace.py' -v
+\end{verbatim}
+The output records each selection's evaluated length, logits and maximum
+cached/full absolute error. On this run the maximum errors are zero.
+That observation describes these Python paths and fixtures; the test
+contract allows $10^{-12}$ absolute error. It does not promise exact
+identity after substituting a different reduction order or precision.
+\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/decoder_trace.py}{85}{96}
+\end{minipage}
 
 \section{First implement the expensive version}
 The \texttt{Decoder.full} method embeds every input token, runs every
@@ -128,6 +242,35 @@ For the default model, each token adds two layers times two objects
 values. A packed F32 implementation would use 32 payload bytes per token.
 Python lists and Python float objects take additional memory, so this
 payload count is not a measurement of our program's resident size.
+
+\section{Why caching is valid: a short induction}
+Let $\mathbf x_i^{(\ell)}$ be the residual at position $i$ entering
+layer $\ell$, where layer zero receives the embedding. For a fixed
+model, that embedding depends on the input ID at $i$, not on any future
+token. Suppose every input to layer $\ell$ at positions through $i$
+depends only on tokens through its own position.
+
+Normalization and projections operate on each row. Positioned Q/K/V
+therefore inherit that dependency, with the fixed position rule included.
+Attention at $i$ reads only K/V at positions $j\le i$. Its output can
+depend on tokens through $i$ but not on a token beyond $i$.
+The output projection, residual additions and FFN also operate on the
+current row. Thus $\mathbf x_i^{(\ell+1)}$ preserves the dependency.
+Induction over layers proves that extending the prefix cannot change
+an already-computed row in this model.
+
+Consequently its old positioned keys and values remain valid, and one
+new query may consume them rather than rebuilding them. The proof relies
+on fixed weights, fixed normalization and position rules, causal
+attention and deterministic evaluation without changing stochastic state.
+It is not a license to reuse caches after switching an adapter, editing
+the prompt or changing RoPE configuration.
+
+Notice that the proof establishes a real-arithmetic computation and its
+dependencies. An optimized full-prefix kernel and an incremental kernel
+may use different floating-point reduction orders. Numerical agreement
+then needs an explicit tolerance and task-level checks. Causality does
+not itself prove bitwise equality of two implementations.
 
 \section{Name the evaluated frontier}
 After evaluating the three-token prompt, the cache position is three.
@@ -173,12 +316,81 @@ append in a scratch copy. The first token still works, because its
 correct position is zero. Later comparisons fail. A test containing
 only singleton prompts would have missed the defect.
 
+\section{Measure saved work by counting calls, not guessing time}
+Take a three-token prompt and request three predictions. The full path
+evaluates prefixes of lengths three, four and five. Per layer, that
+is twelve projected rows. The cached path evaluates the prompt once
+and appends only two feedback tokens, giving five projected rows per
+layer. With two layers the counts are 24 versus ten.
+
+Attention does not disappear. Full-prefix causal pair counts per query
+head are $6+10+15=31$. The cached path consumes row lengths
+$1+2+3+4+5=15$. Multiplying by two query heads and two layers gives
+124 versus 60 query--key pairs. The test wraps the actual projection
+and attention calls and observes those counts; it does not merely
+reimplement the formulas.
+
+The cached count includes the prompt's serial append evaluation.
+A dedicated parallel prefill path could calculate the same prompt rows
+together, but our small cache does not implement that optimization.
+Comparing these scalar call counts is not a latency benchmark. Weight
+reuse, scheduling, reduction overhead and parallelism influence runtime.
+The derivation identifies removed work without manufacturing a speedup.
+
+During the next incremental step, all five old K/V entries remain useful
+and the new entry is added. There will be six permitted keys per head.
+This makes the trade-off tangible: projection work for old tokens is
+removed, persistent storage grows with history, and each new attention
+row still reads that history. Later chapters optimize those costs
+separately rather than treating cache enablement as a complete solution.
+
+\section{Separate an assembly oracle from a regression fixture}
+The printed five-logit row is a useful regression fixture. If a change
+moves it, something numerical changed. But recording that row from the
+program does not independently prove it correct.
+Full-prefix/cache agreement is another kind of evidence: it detects
+different state/control-flow errors while leaving shared primitive errors
+potentially invisible.
+
+An independent assembly fixture can make the whole decoder tractable by
+removing its two updates. Set every attention output matrix and every
+FFN down matrix to zero, with biases still absent. Neither branch can
+change the residual. Choose an embedding $[3,4,0,0]$ and output rows
+that extract coordinate zero, extract coordinate one, subtract coordinate
+one from coordinate zero, and extract coordinates two and three.
+After any number of these zero-update layers, the residual is still
+$[3,4,0,0]$. The final RMS normalization and output projection must give
+\[
+ \frac{[3,4,-1,0,0]}{\sqrt{25/4+10^{-5}}}.
+\]
+The test derives this answer directly and checks both execution paths
+for three repeated input IDs. It can catch a missing final normalization,
+an extra residual addition or a wrong output orientation. It does not
+exercise nonzero attention/FFN updates, so the separate operator fixtures
+and ordinary parity cases remain necessary.
+
+The new parity sweep covers every three-token history over five IDs:
+$5^3=125$ histories in each of three head/layer configurations.
+Every prefix row is compared. Deliberately resetting the cached position
+to zero after the first append produces a discrepancy greater than
+$10^{-5}$ in the chosen two-token case; a singleton-only test passes.
+The suite preserves this failure as a negative control without modifying
+the valid implementation.
+
 \section{What this decoder does not yet promise}
 There is no checkpoint importer, training loop, optimized kernel,
 scheduler or network server here. The cache is a growing Python list,
 not paged device memory. It is bound to the decoder instance, whose
 weights must remain unchanged during use. A general service would
 need stronger lifecycle and mutation controls.
+
+Even its error handling has a boundary. An invalid token ID is rejected
+before cache mutation. That does not make append transactional against
+every later failure. If a broken weight matrix raises an exception halfway
+through the stack, some layer histories may already have grown.
+A production request needs a commit/rollback or failure-retirement policy;
+this teaching program assumes valid, fixed matrices and tests the stated
+input rejection. Do not infer recoverability from one guarded input.
 
 The existing Rust capstone implements a related decoder with paging,
 batch scheduling and terminal events. It is useful later, after those
@@ -199,4 +411,11 @@ numerical formats, hardware and experiments. They prepare the reader
 to understand a roofline plot or a cache-capacity calculation as a
 consequence of a program they already know, rather than a formula to
 memorize.
+\begin{ConstraintLedger}
+Compute & buys & Three predictions from a three-token prompt use ten cached projection rows versus 24 full-prefix rows across two layers.\\
+Memory capacity & spends & Each evaluated token retains eight KV scalars in the default model; packed F32 payload would grow by 32 bytes.\\
+Memory bandwidth & moves & Old projections disappear, but each new attention row still consumes its permitted history.\\
+Correctness & risks & Cache identity, position, layer ownership and the evaluated frontier must agree with the model and generation policy.\\
+\end{ConstraintLedger}
+\Needspace{10\baselineskip}
 \input{worked/f11-decoder.tex}

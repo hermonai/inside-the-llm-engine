@@ -4,6 +4,7 @@
 scores are equal. Find the output.
 \textbf{Solution.} Equal exponentials give weights $[1/2,1/2]$ and output
 $[1,2]$. Equality of scores matters; their common finite value does not.
+\Needspace{9\baselineskip}
 \subsection*{2. A mask applied too late}
 \textbf{Problem.} A first-position query has unmasked probabilities
 $[1/4,3/4]$. Why is zeroing the second probability insufficient?
@@ -16,3 +17,27 @@ and checks every earlier output row.
 \textbf{Solution sketch.} Compute the original outputs, change that value
 to a large vector, recompute, and compare rows before the last. None may
 change. Also demonstrate that removing the prefix slice makes the test fail.
+\Needspace{8\baselineskip}
+\subsection*{4. Two new queries after a prefix}
+\textbf{Problem.} Three positions are cached and two new query rows are
+supplied with the full five-entry K/V history. Scores are equal and values
+are $[0],[1],[2],[3],[4]$. Find the permitted sets and outputs.
+\textbf{Solution.} The local rows have logical positions three and four.
+Their permitted sets are $\{0,1,2,3\}$ and $\{0,1,2,3,4\}$, giving
+$[1.5]$ and $[2]$. A local upper-left triangle gives $[0]$ and $[0.5]$,
+which are shape-correct wrong answers.
+\Needspace{8\baselineskip}
+\subsection*{5. Shared storage, separate queries}
+\textbf{Problem.} Four query heads share two KV heads in contiguous groups.
+Which KV head does query head three read? How many permitted pairs do the
+chapter's two-row chunk calculate across all four query heads?
+\textbf{Solution.} Group size is $4/2=2$, so head three reads
+$\lfloor3/2\rfloor=1$. Each query head has $4+5=9$ pairs;
+the four heads calculate 36 pairs. KV sharing does not divide that count.
+\Needspace{8\baselineskip}
+\subsection*{6. Translate every value}
+\textbf{Problem.} Add $[10,-4]$ to every permitted value in a row.
+Keys and query are unchanged. What happens to the output?
+\textbf{Solution.} Probabilities stay unchanged. Their sum is one, so
+the output gains exactly $[10,-4]$ in real arithmetic. Floating-point
+tests use a tolerance. This property applies before the output projection.

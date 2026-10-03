@@ -106,6 +106,31 @@ produce a row with no permitted keys. There is no normalized distribution
 over an empty set. Our teaching routine rejects that input rather than
 pretending the output is an ordinary attention result.
 
+\section{The diagonal is permitted because the target is shifted}
+A common first question is whether attending to the current token is itself
+cheating. Write an illustrative input sequence as $[a,b,c]$. The logit row
+at position zero predicts what comes \emph{after} $a$, the row at position
+one predicts what comes after $[a,b]$, and the row at position two predicts
+what comes after $[a,b,c]$. In a next-token training example their targets
+would be $[b,c,d]$, where $d$ is the following token. Input position $i$
+contains a known token; its target is the next token. Allowing $j=i$
+therefore does not reveal that target.
+
+This is the distinction between a token's position and a prediction's
+boundary. During inference, the final prompt token is known, so its key
+and value belong in the history used to predict the first continuation.
+If we remove the diagonal, the first query has no permitted key. If we
+remove the future mask instead, earlier queries can read their own targets
+from later input rows. Neither change implements the stated decoder.
+
+The same reasoning explains prompt parallelism. At one layer, all input
+rows to that layer already exist. Their projections can be calculated
+together. Each attention row then reads a different permitted subset.
+Parallel calculation does not mean unrestricted information flow.
+The next layer starts after the current layer has produced its outputs;
+there remains a dependency across layers even when rows within a layer
+are processed together.
+
 \section{Evaluate softmax without overflowing}
 An exponential grows quickly. Directly computing $\exp(1000)$ can overflow
 even when the desired probability is perfectly ordinary. Subtract the
@@ -148,6 +173,165 @@ KV heads $[0,0,1,1]$. Sharing keys does not make the queries equal, so their
 attention rows can still differ. Concatenating head outputs and applying an
 output projection returns to model width; it does not add the heads' query
 scores together.
+
+\section{A cached chunk needs positions, not a square triangle}
+Now keep three previously evaluated positions and process two additional
+tokens together. There are two query rows but five key rows. A causal
+mask with two rows and five columns is not the upper-left corner of the
+ordinary five-by-five triangle. Query row zero belongs to logical position
+three, not position zero. It may read keys zero through three. Query row
+one belongs to logical position four and may read all five keys.
+
+Choose both queries to be $[0,0]$ and every key to be $[1,2]$. All scores
+are zero regardless of scaling. Give the five values one coordinate each:
+$[0],[1],[2],[3],[4]$. The correct outputs are the means
+\[
+ y_3=(0+1+2+3)/4=1.5,\qquad
+ y_4=(0+1+2+3+4)/5=2.
+\]
+An upper-left triangle would admit only the first key for row zero and
+the first two for row one. It returns $0$ and $0.5$. Both outputs are
+finite, and both fit the requested output shape. A singleton prompt test
+or a square-mask test cannot distinguish this error.
+
+\EngineFigure{foundation-attention-offset-mask}{Logical positions determine
+the permitted entries in this illustrative two-query chunk. Numbered cells
+are allowed; crosses are forbidden. The wrong panel treats local row zero
+as logical position zero. Colour is redundant with cell labels.}
+{fig:foundation-attention-offset-mask}
+
+Let $S_{\rm prefix}$ be the number of cached positions before a new chunk, $C$ its
+number of tokens, $r\in\{0,\ldots,C-1\}$ a local query row, and
+$j\in\{0,\ldots,S_{\rm prefix}+C-1\}$ a key position. With no padding or eviction,
+the permitted set is
+\[
+ {\cal J}_r=\{j:0\le j\le S_{\rm prefix}+r\}.
+\]
+For a single new token, $C=1$, every key in the $S_{\rm prefix}+1$-entry history is
+permitted. For an uncached prompt, $S_{\rm prefix}=0$, the familiar square triangle
+returns. One expression covers both cases without assigning causal
+meaning to the array's local row number.
+
+Our decoder in the next chapter appends one token at a time. The separate
+\texttt{chunk\_attention} lesson teaches the offset rule; it is not a new
+chunked decoder implementation. Keys and values supplied to it include
+both the prefix and the entire new chunk. The function selects the proper
+prefix for each query, so an already-created future K/V cannot enter its
+denominator:
+\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/decoder_trace.py}{8}{20}
+\end{minipage}
+Run \texttt{python3 code/foundations/decoder\_trace.py}. The first two
+output records state positions three and four, their permitted key lists
+and outputs $[1.5]$ and $[2.0]$. Change the prefix to zero without removing
+the old keys and the interface rejects the inconsistent history rather
+than silently choosing a different mask.
+
+\section{Keep sequence, head and coordinate axes separate}
+There are three different kinds of index in an attention calculation.
+A position index chooses a token within one request. A head index chooses
+a projected representation. A coordinate index chooses one feature
+inside that head. Mixing these axes can preserve the total element count
+while changing every comparison.
+
+For a rectangular batch with $B$ requests and $S$ positions per request,
+one possible logical layout is
+\[
+ \mathbf Q\in\mathbb R^{B\times H_q\times S\times d_h},\quad
+ \mathbf K,\mathbf V\in
+ \mathbb R^{B\times H_{kv}\times S\times d_h}.
+\]
+This is a declaration of axes, not a required physical stride order.
+Our list implementation keeps request state separately and nests each
+cached row by KV head, then coordinate. An optimized tensor may store a
+different order. Read the accessor, not the total size, to establish what
+an address means.
+
+For contiguous groups, let $G=H_q/H_{kv}$ be a positive integer.
+Query head $h$ reads KV head $\lfloor h/G\rfloor$. At $H_q=4$,
+$H_{kv}=2$, heads zero and one read KV head zero; heads two and three
+read KV head one. At $H_q=H_{kv}$ every query head has its own KV head.
+At $H_{kv}=1$ all query heads share one history. In all cases the score
+and normalization are computed separately for each query head.
+
+Do not average the queries first. In general, softmax of the average
+score row is not the average of the two softmax rows. The nonlinear
+normalization makes those different computations. Sharing K/V storage
+reduces the number of stored vectors; it does not license removing query
+heads or averaging their outputs before the output projection.
+
+Requests also need separate permitted sets. Packing tokens from several
+requests into one array does not make them one causal sequence.
+A batch dimension or an explicit sequence-boundary map must prevent a
+query for request B from reading request A's values. Padding is storage,
+not a real token: it must not acquire probability mass. The tiny routine
+uses neither packed requests nor padding, so its ordinary prefix slice
+cannot be reused unchanged for those layouts.
+
+\section{Count a row before counting a kernel}
+At one query head, let $N$ be the number of permitted keys.
+Computing scores performs $N$ dot products of width $d_h$.
+Forming the value mixture performs $d_h$ reductions over $N$ terms
+when value width equals head width. Under the conventional two-FLOPs
+per multiply--add count, these two products total $4Nd_h$ FLOPs.
+Score scaling, exponentials, normalization and mask handling are outside
+that count. It describes matrix arithmetic, not CPU instructions.
+
+For $S=4$, causal row lengths are $1,2,3,4$: ten query--key pairs
+per head. Their product work is $40d_h$ conventional FLOPs.
+A dense product that computes all sixteen scores and only then masks
+them performs more work than a triangular evaluation. A diagram of the
+mathematical permitted set is not evidence that a kernel skips the
+forbidden products.
+
+\EngineFigure{foundation-attention-row-storage}{The executable teaching
+row reads a permitted K/V history and produces one output. The scratch
+score/probability rows are temporary; the history survives for later
+queries. Counts assume equal key/value width and packed elements of
+$b$ bytes, not Python object allocation.}
+{fig:foundation-attention-row-storage}
+
+The row reference keeps $N$ scores, then probabilities, and returns
+$d_h$ output coordinates. Their lifetime differs from the $2Nd_h$
+K/V elements. Scratch belongs to a calculation; history belongs to the
+evaluated prefix. A fused kernel may stream through blocks and retain
+less scratch. That is the bridge to \Chref{flashattention}: avoiding a
+large stored intermediate does not abolish the permitted comparisons.
+
+Reading the same KV head for multiple query heads creates an opportunity
+for reuse, not a guaranteed traffic reduction. Whether hardware actually
+reuses those bytes depends on the loop order, tiling and memory hierarchy.
+Here we count logical operands. We do not infer DRAM bytes from Python
+list traversal or advertise a speedup from the smaller head count.
+
+\section{Use answers that do not depend on a second copy}
+An independent oracle is a calculation whose failure modes differ from
+the program under test. The new tests evaluate several asymmetric score
+rows using 70-digit Decimal arithmetic: dot products, scaling,
+exponentials and value reductions are written without calling the model's
+operators. Python float results agree within the stated $10^{-12}$
+absolute tolerance on these small fixtures. This is finite-case evidence,
+not a proof for all magnitudes or every low-precision kernel.
+
+Structural properties supply other checks. Probabilities are nonnegative
+and sum to one within numerical tolerance. Each output coordinate lies
+between the minimum and maximum permitted value coordinates: it is a
+convex combination. Add the same vector $\mathbf c$ to every permitted
+value, leaving keys unchanged, and the output must increase by
+$\mathbf c$, because the probabilities sum to one.
+
+These properties apply before the attention output projection and residual
+addition. A learned output projection can produce values outside those
+coordinate bounds. Checking the convex bound on an entire decoder layer
+would reject a correct implementation. Likewise, changing values alone
+is different from changing an input token, which changes Q and K too.
+Tests must identify the operator boundary they claim to check.
+
+Stable softmax does not repair an overflowing dot product upstream.
+The model rejects nonfinite score rows, but it is not a general tensor
+validator for every intermediate. Use finite values of controlled
+magnitude in these fixtures. Chapter~\ref{app:numerics} develops the
+rounding and range questions needed for actual low-precision execution.
 
 \Needspace{10\baselineskip}
 \section{Build the row, then build the mask}
@@ -202,5 +386,11 @@ every weight in a small example, and prove that a future token cannot
 affect an earlier row. Attention mixes information across positions.
 The next chapter supplies a different operation: transforming the features
 of each position without mixing positions at all.
+\begin{ConstraintLedger}
+Compute & spends & Permitted pairs still require score and value products; causal layout alone does not establish skipped kernel work.\\
+Memory capacity & spends & K/V persists; score and probability rows are temporary reference scratch.\\
+Memory bandwidth & moves & GQA permits K/V reuse, but loop and hardware determine realized traffic.\\
+Correctness & risks & Offset masks, sequence boundaries and head mapping must preserve the same permitted set.\\
+\end{ConstraintLedger}
 \Needspace{10\baselineskip}
 \input{worked/f09-causal-attention.tex}

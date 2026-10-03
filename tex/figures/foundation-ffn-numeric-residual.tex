@@ -1,0 +1,20 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox,text width=31mm] (x) at (0,0) {$\mathbf x=[3,4]$};
+\node[sysbox,text width=53mm] (a) at (5.5,-.8)
+  {Normalize for attention\\$[3,4]/\sqrt{13}$\\supplied update $[1,-2]$};
+\node[circle,draw=BookBlue,fill=BookGreen,minimum size=8mm] (p) at (0,-2) {$+$};
+\node[sysbox,text width=31mm] (r) at (0,-3.2) {$\mathbf r=[4,2]$};
+\node[sysbox,text width=53mm] (f) at (5.5,-4)
+  {Normalize for FFN\\$[4,2]/\sqrt{10.5}$\\update $[1.523036,1.132709]$};
+\node[circle,draw=BookBlue,fill=BookGreen,minimum size=8mm] (p2) at (0,-5.25) {$+$};
+\node[sysbox,text width=53mm] (out) at (0,-6.55)
+  {Next residual\\$[5.523036,3.132709]$};
+\draw[flow] (x)--(p);
+\draw[flow] (x.east)-|(a.north);
+\draw[flow] (a.south)|-(p.east);
+\draw[flow] (p)--(r);
+\draw[flow] (r)--(p2);
+\draw[flow] (r.east)-|(f.north);
+\draw[flow] (f.south)|-(p2.east);
+\draw[flow] (p2.south)--(out.north);
+\end{tikzpicture}

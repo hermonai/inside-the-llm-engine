@@ -1,0 +1,16 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[sysbox,text width=33mm] (embed) at (0,0) {Embedding\\IDs $\to S\times4$\\20 entries};
+\node[sysbox,text width=52mm] (layer) at (0,-2.15)
+  {Layer $\ell$: $S\times4\to S\times4$\\Q/K/V/O: 48 entries\\gate/up/down: 72 entries};
+\node[sysbox,text width=37mm,fill=BookGreen] (cache) at (5.6,-2.15)
+  {Layer-local history\\K and V\\one KV head of width 2};
+\node[sysbox,text width=52mm] (head) at (0,-4.4)
+  {Final RMS normalization\\untied output: 20 entries\\last row $\to$ five logits};
+\node[sysbox,text width=37mm,fill=BookGold] (loop) at (5.6,-4.4)
+  {Generation loop\\select ID; check stop\\feedback if continuing};
+\draw[flow] (embed)--(layer);
+\draw[flow] (layer)--node[syslabel,left]{two layers}(head);
+\draw[flow] (layer)--node[syslabel,above]{write/read K/V}(cache);
+\draw[flow] (head)--node[syslabel,above]{logits}(loop);
+\draw[control] (loop.east)--++(1,0)|-node[syslabel,pos=.75,above]{next selected ID}(embed.north);
+\end{tikzpicture}

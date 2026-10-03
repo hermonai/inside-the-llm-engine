@@ -126,6 +126,103 @@ input, the result is approximately $[-1.193176,1.193176]$.
 This arithmetic omits normalization to isolate the FFN; the complete
 decoder will normalize its FFN input.
 
+\section{Calculate both residual additions with visible numbers}
+The earlier ReLU example deliberately left normalization out. Now follow
+the complete order with two coordinates. Choose an incoming residual
+$\mathbf x=[3,4]$, unit normalization gains, and $\epsilon=0.5$.
+This large illustrative epsilon makes the square-root arithmetic easy to
+check. It is not the epsilon used by the default decoder.
+The mean square is $(9+16)/2=12.5$, so the attention branch receives
+\[
+ \mathbf n_a=\frac{[3,4]}{\sqrt{13}}
+ \approx[0.832050,1.109400].
+\]
+To isolate the residual bookkeeping, supply a head-concatenated attention
+result $[1,-2]$ and an identity output projection. We are choosing that
+attention result, not claiming it follows from particular Q/K/V weights.
+The first addition uses the untouched residual:
+\[
+ \mathbf r=[3,4]+[1,-2]=[4,2].
+\]
+Adding the update to $\mathbf n_a$ instead would give approximately
+$[1.832050,-0.890600]$. Shape checks cannot expose that substitution;
+the saved residual and the normalized branch input have equal widths.
+
+The FFN input comes from $\mathbf r$, whose mean square is ten:
+\[
+ \mathbf h=[a,b]=\frac{[4,2]}{\sqrt{10.5}}
+ \approx[1.234427,0.617213].
+\]
+Choose gate preactivations $[a,b]$ and up activations $[a+b,a-b]$.
+The first branch applies SiLU, then corresponding entries are multiplied.
+The two products are
+\[
+ p_0=\frac{a(a+b)}{1+e^{-a}}\approx1.770497,\qquad
+ p_1=\frac{b(a-b)}{1+e^{-b}}\approx0.247461.
+\]
+Choose the down projection to produce
+$[p_0-p_1,\frac12p_0+p_1]$. This yields an FFN update near
+$[1.523036,1.132709]$. Add it to $\mathbf r$, not to $\mathbf h$:
+\[
+ \mathbf x_{\rm next}\approx[5.523036,3.132709].
+\]
+Every displayed decimal is rounded from an illustrative calculation.
+\texttt{residual\_trace} prints the unrounded intermediate values, and a
+test recomputes the scalar expressions without calling its projection or
+normalization routines.
+\begin{minipage}{\linewidth}
+\CodeLines{../code/foundations/decoder_trace.py}{22}{36}
+\end{minipage}
+
+\EngineFigure{foundation-ffn-numeric-residual}{A numerical trace of the
+teaching pre-norm order. Solid arrows on the left carry residuals;
+branches on the right consume normalized inputs and return updates.
+The attention update is supplied to isolate bookkeeping. The illustrative
+$\epsilon=0.5$ is not a decoder default.}
+{fig:foundation-ffn-numeric-residual}
+
+The decisive detail is which object survives each branch. During the first
+branch, $\mathbf x$ must remain available until its update is added.
+During the second, $\mathbf r$ must remain available. An implementation may
+reuse storage after its last read, but it must not overwrite a live
+residual with a normalization result. An in-place operation is a lifetime
+decision, not merely a shorter assignment.
+
+The scalar teaching code keeps separate lists. A native kernel may fuse
+normalization and projection, or fuse an addition with a later operation.
+Such a kernel still owes the same input/output relationship. Naming a
+fused operation does not authorize moving normalization across a
+nonlinear branch or replacing pre-norm with post-norm.
+
+\section{Read the matrices by their coordinates}
+Write the ReLU expansion in the program's output-row storage:
+\[
+ \widetilde{\mathbf W}_{\rm up}=
+ \begin{bmatrix}1&0\\0&1\\1&-1\end{bmatrix},\qquad
+ \widetilde{\mathbf W}_{\rm down}=
+ \begin{bmatrix}1&1&0\\0&1&1\end{bmatrix}.
+\]
+The tilde marks storage that is transposed relative to the earlier
+row-vector equation. The first matrix contains three output rows, each
+with two input coefficients. Its last row computes $x_0-x_1$.
+The second contains two output rows, each consuming three activated
+coordinates. Its second row computes $a_1+a_2$.
+
+For a flat packed F32 array in output-major order, coefficient
+$(j,i)$ of the up matrix starts at byte $4(2j+i)$ relative to its
+payload origin. Row two therefore occupies bytes 16 through 23.
+That statement depends on the chosen physical layout and four-byte
+elements. A quantized matrix has block metadata and packed codes;
+the same logical coefficient no longer follows this simple byte formula.
+Chapter~\ref{app:formats} follows that representation boundary.
+
+The matrices are rectangular, so a transpose mistake can be rejected by
+dimensions here. In a width-preserving square projection it may not be.
+Use an asymmetric coordinate fixture to establish which coefficient
+multiplies which input. An identity matrix cannot detect a transpose:
+its transpose is itself. This is why rectangular examples and visibly
+unequal coefficients are valuable before an optimized implementation.
+
 \section{Count weights and work before optimizing}
 Without biases, an ordinary two-matrix FFN has $2dd_{\rm ff}$ weights.
 A three-matrix gated FFN has $3dd_{\rm ff}$ weights. With $d=4$ and
@@ -150,6 +247,91 @@ choose it along with the activation and projection count. Comparing a
 gated FFN and a two-matrix FFN at the same hidden width therefore compares
 different parameter budgets. Read the model configuration rather than
 inferring one width from a familiar architecture name.
+
+\section{Match budgets before comparing activations}
+Consider a two-matrix FFN with $d=6$ and hidden width twelve. It has
+$2\cdot6\cdot12=144$ matrix weights. A gated FFN of width twelve
+would have 216, so calling its improvement a free activation change would
+hide fifty percent more matrix parameters and conventional product work.
+Matching the original budget gives gated hidden width eight:
+\[
+ 2d f_{\rm two}=3d f_{\rm gated}
+ \quad\Longrightarrow\quad
+ f_{\rm gated}=\tfrac23 f_{\rm two}.
+\]
+The two constructions now have 144 weights each. Their matrix products
+both count as 288 conventional FLOPs per token. Their nonlinear
+operations and intermediate storage differ, and equality of this count
+does not establish equal runtime. The matched-width idea is used in the
+GLU comparison \cite{shazeer2020glu}; these particular dimensions are
+our own small example.
+
+If the computed width is not an integer, a real configuration must choose
+an integer. Kernel-friendly alignment may round it further. Record the
+actual hidden width after those decisions. Padding a mathematical width
+to a kernel tile does not necessarily change the model: extra coordinates
+can contribute zero when their relevant weights are zero and no bias or
+other operation makes them nonzero. Computing them still consumes work.
+Increasing a model's learned hidden width is a different operation.
+
+A bias is another budget and semantic choice. With a nonzero down bias,
+zero gate weights no longer guarantee zero update. In the bias-free
+lesson, the zero-gate boundary test is valid. In a biased checkpoint,
+the correct expected output includes the bias. A useful test names its
+assumptions rather than declaring all nonzero zero-gate outputs incorrect.
+
+\section{Separate an activation's lifetime from model state}
+For each token, a straightforward gated implementation can materialize
+two width-$d_{\rm ff}$ projection results and a third width-$d_{\rm ff}$
+product. If all three are retained, that is $3d_{\rm ff}$ scalar
+slots before counting the output or residual. At $d_{\rm ff}=6$,
+packed F32 would occupy 72 bytes. A fused gate/product operation can
+overwrite a no-longer-needed branch and reduce the live set.
+That count describes named arrays, not a universal allocator minimum.
+
+There is also a second, more instructive organization. The output
+coordinate $o$ is
+\[
+ \Delta x_o=\sum_{j=0}^{d_{\rm ff}-1}
+    \widetilde W_{{\rm down},o,j}
+    \operatorname{SiLU}\!\left(\sum_i
+       \widetilde W_{{\rm gate},j,i}h_i\right)
+    \left(\sum_i\widetilde W_{{\rm up},j,i}h_i\right).
+\]
+Here $i$ ranges over model-width input coordinates, and $j$ ranges
+over hidden coordinates. We may calculate a tile of hidden products,
+add its contribution to each output accumulator, then retire that tile.
+The next tile adds another part of the same sum. We have changed
+the evaluation order, not the real-arithmetic function.
+
+\EngineFigure{foundation-ffn-hidden-tiles}{The checked teaching loop streams
+a five-coordinate hidden axis in tiles of two. The last tile contains
+one product, not two. Each tile contributes to every output coordinate;
+output accumulators remain live until all hidden coordinates have been
+consumed. No timing or hardware residency is represented.}
+{fig:foundation-ffn-hidden-tiles}
+
+\texttt{tiled\_swiglu} implements this scalar organization. Its reported
+scratch count is the maximum length of the \emph{products} list, not the
+program's total memory allocation. With hidden width five and tile width
+two, product tiles have lengths two, two and one. The count is two,
+while all output accumulators remain live across the three tiles.
+The tests compare twenty shape/tile combinations with the materialized
+path and force uneven tails.
+
+Floating-point reductions may differ when partial sums are grouped
+differently. The tests allow $10^{-12}$ absolute error for their bounded
+Python float fixtures; they do not require bitwise identity or establish
+a tolerance for a large quantized model. Chapter~\ref{app:numerics}
+explains why a reduction tree belongs to the numerical contract.
+No timing is collected. A scalar hidden-tile loop is not evidence of
+faster GEMM or lower device traffic.
+
+The FFN products need not survive for later tokens in this causal decoder.
+They contribute to the current row, whose later-layer projections produce
+the K/V that future queries need. Retaining every hidden activation as a
+permanent cache would spend capacity on values this decoder never reads
+again. This contrasts with K/V history, which has explicit future readers.
 
 \section{Implement a scalar reference}
 Run the example:
@@ -223,4 +405,11 @@ convention, while the residual carries the representation forward.
 The next chapter stacks these blocks, projects the final representation
 to vocabulary logits, and runs the first complete generation loop.
 Nothing about that assembly requires a large model or a GPU.
+\begin{ConstraintLedger}
+Compute & spends & SwiGLU uses three projections; matched hidden widths equalize matrix work, not activation cost or runtime.\\
+Memory capacity & buys & Hidden products can retire tile by tile; live residual and output accumulators still need storage.\\
+Memory bandwidth & moves & Fusion can remove intermediate transfers, but reuse depends on the actual kernel and layout.\\
+Correctness & risks & Branch order, biases, reduction grouping and residual lifetime are part of the numerical function.\\
+\end{ConstraintLedger}
+\Needspace{10\baselineskip}
 \input{worked/f10-feed-forward.tex}

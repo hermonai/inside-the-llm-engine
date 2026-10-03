@@ -1,0 +1,20 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\node[anchor=west,font=\bfseries\sffamily] at (0,1) {Hidden coordinate axis: five products};
+\foreach \j in {0,...,4} {
+  \node[draw=BookBlue,fill=BookPale,minimum width=17mm,minimum height=9mm]
+    (p\j) at (1+1.8*\j,0) {$p_{\j}$};
+}
+\draw[BookBlue,thick] (.05,-.6)--(.05,-.8)--(3.75,-.8)--(3.75,-.6);
+\draw[BookBlue,thick] (3.9,-.6)--(3.9,-.8)--(7.35,-.8)--(7.35,-.6);
+\draw[BookBlue,thick] (7.5,-.6)--(7.5,-.8)--(9.05,-.8)--(9.05,-.6);
+\node at (1.9,-1.15) {tile 0: two};
+\node at (5.6,-1.15) {tile 1: two};
+\node at (8.3,-1.15) {tail: one};
+\node[sysbox,text width=78mm,fill=BookGreen] (o) at (4.5,-3)
+  {Persistent output accumulators\\$\Delta x_o\mathrel{+}= \sum_{j\ {\rm in\ tile}} W_{{\rm down},o,j}p_j$};
+\draw[flow] (1.9,-1.45)--(o.north west);
+\draw[flow] (5.6,-1.45)--(o.north);
+\draw[flow] (8.3,-1.45)--(o.north east);
+\node[sysnote,text width=99mm,anchor=west] at (0,-4.3)
+  {Each product tile retires after its contribution. Every hidden coordinate contributes exactly once, including the uneven tail.};
+\end{tikzpicture}

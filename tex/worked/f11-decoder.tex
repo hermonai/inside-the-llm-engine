@@ -18,3 +18,28 @@ agreement on every logit?
 entry. A faulty cache can change nonwinning scores while preserving that
 winner. Compare complete rows at every prefix and include cases with
 different token histories and head sharing.
+\Needspace{8\baselineskip}
+\subsection*{4. Count the actual model}
+\textbf{Problem.} Count matrix parameters and hypothetical packed F32
+payload for the default decoder, including the untied vocabulary output.
+\textbf{Solution.} Each layer has $16+8+8+16+24+24+24=120$ entries.
+Embedding and output each add twenty. Total is $20+240+20=280$,
+or 1,120 payload bytes at four bytes per entry. Unit normalization gains
+and absent biases add no learned parameters.
+\Needspace{8\baselineskip}
+\subsection*{5. Three predictions, two feedback evaluations}
+\textbf{Problem.} Compare projected rows and causal query--key pairs when
+predicting three IDs from a three-token prompt, across both layers and
+both query heads of the default model.
+\textbf{Solution.} Full-prefix lengths are three, four and five: projected
+rows total $2(3+4+5)=24$, and pairs total $4(6+10+15)=124$.
+Cached evaluation visits five tokens once: ten projected rows and
+$4(1+2+3+4+5)=60$ pairs. These are work counts, not timings.
+\Needspace{8\baselineskip}
+\subsection*{6. Stop without evaluating the end ID}
+\textbf{Problem.} Suppose the first selected ID is configured as the end
+ID in the trace's policy. How many IDs are selected and how many positions
+are cached?
+\textbf{Solution.} One ID is selected and retained in the trace. The
+three prompt positions remain cached; the selected end ID is not fed back.
+Stopping and evaluation are different events.

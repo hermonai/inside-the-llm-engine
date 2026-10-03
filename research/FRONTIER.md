@@ -523,3 +523,21 @@ Projection, cache and conditional resource counts are derived from stated
 illustrative formats and boundaries. The new measured record retains raw
 Python times, correctness, source/input hashes and timer exclusions. It
 does not interpret interpreter differences as native cache or LLM speedups.
+
+## Attention-to-decoder teaching pass (checked 2026-10-03)
+
+These additions deepen printed Chapters 9--11 with original illustrative
+fixtures. No model quality, vendor performance or current engine default
+is inferred from them.
+
+| Topic | Scope read | Primary source | Maturity | Printed chapter |
+| --- | --- | --- | --- | --- |
+| Causal scaled attention | Sections 3.1--3.3: shifted prediction boundary, score scaling, row softmax, permitted diagonal, concatenated heads and position-wise FFN | [Vaswani et al., full paper](https://arxiv.org/html/1706.03762v7) | established construction; original paper's post-norm is not imposed on the pre-norm teaching decoder | 9--11 |
+| Gated FFN budgets | Section 2, equations 5--6: Swish-1 gate, elementwise product and three matrices; hidden width reduced to two thirds for matched matrix budgets | [Shazeer, full paper](https://arxiv.org/html/2002.05202v1) | established construction; no quality or speed comparison reproduced | 10 |
+| Construction pedagogy | Read companion study route and chapter map; original lessons keep calculations, code, exercises and solutions together | [Raschka companion hub](https://sebastianraschka.com/llms-from-scratch/) | educational reference, not text or illustration to copy | 9--11 |
+
+The chunk mask is derived from logical positions, not attributed to an
+unexamined library API. Cache validity is derived for this fixed causal
+decoder. Decimal fixtures, zero-update assembly and full-prefix/cache
+checks have distinct coverage, recorded in
+[the correctness record](measurements/2026-10-03-foundation-decoder.md).

@@ -14,3 +14,28 @@ Weights are shared, so the three-token batch does not triple parameter storage.
 \textbf{Solution sketch.} Run two rows, change only one row, and rerun.
 The untouched row's output must be unchanged. Also compare the batched
 operation with separate row calls under the intended numerical tolerance.
+\Needspace{8\baselineskip}
+\subsection*{4. Which vector receives the update?}
+\textbf{Problem.} For the normalized trace, incoming residual is $[3,4]$
+and attention update is $[1,-2]$. Find the first residual and the FFN
+input under unit RMS gains and $\epsilon=0.5$.
+\textbf{Solution.} Add to the unnormalized residual to get $[4,2]$.
+Its mean square is ten, giving FFN input $[4,2]/\sqrt{10.5}$.
+Using the original normalized attention input as the residual changes
+the model's function.
+\Needspace{8\baselineskip}
+\subsection*{5. Equal matrix budgets}
+\textbf{Problem.} A bias-free two-matrix FFN has model width six and hidden
+width twelve. Find a gated hidden width with the same matrix parameter
+count and conventional matrix FLOPs per token.
+\textbf{Solution.} The original has $2\cdot6\cdot12=144$ parameters.
+Solve $3\cdot6\cdot f=144$ to get $f=8$. Both have 288 conventional
+matrix FLOPs per token. Nonlinear work and runtime need not be equal.
+\Needspace{8\baselineskip}
+\subsection*{6. Retire the hidden tail}
+\textbf{Problem.} A five-wide hidden axis is streamed in tiles of two.
+How many products are in each tile, and what must remain live?
+\textbf{Solution.} Tile lengths are two, two and one. The maximum product
+list length is two. All model-width output accumulators remain live
+until every hidden product contributes. Omitting the one-entry tail
+changes the update; it is not harmless padding.

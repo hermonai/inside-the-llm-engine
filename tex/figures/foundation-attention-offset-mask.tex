@@ -1,0 +1,27 @@
+\begin{tikzpicture}[font=\small\sffamily]
+\foreach \origin/\heading in {0/{Correct: logical positions},7/{Wrong: local triangle}} {
+  \node[anchor=west,font=\bfseries\sffamily] at (\origin,1.35) {\heading};
+  \foreach \j in {0,...,4} {
+    \node at (\origin+1.25+\j,0.75) {$k_{\j}$};
+  }
+  \foreach \r in {0,1} {
+    \pgfmathtruncatemacro{\pos}{3+\r}
+    \node[anchor=east] at (\origin+.65,-\r) {$q_{\pos}$};
+    \foreach \j in {0,...,4} {
+      \pgfmathtruncatemacro{\limit}{\r}
+      \ifnum\origin=0 \pgfmathtruncatemacro{\limit}{3+\r}\fi
+      \ifnum\j>\limit
+        \node[draw=BookBlue,fill=BookGold,minimum width=9mm,minimum height=8mm]
+          at (\origin+1.25+\j,-\r) {$\times$};
+      \else
+        \node[draw=BookBlue,fill=BookGreen,minimum width=9mm,minimum height=8mm]
+          at (\origin+1.25+\j,-\r) {\j};
+      \fi
+    }
+  }
+}
+\node[anchor=west] at (0,-2) {Means: $1.5,\ 2$};
+\node[anchor=west] at (7,-2) {Means: $0,\ 0.5$};
+\node[sysnote,text width=121mm,anchor=west] at (0,-3)
+  {Three old positions, two new queries. Equal scores and scalar values $0,1,2,3,4$ isolate the mask from the arithmetic.};
+\end{tikzpicture}
