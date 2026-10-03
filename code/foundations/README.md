@@ -115,3 +115,47 @@ Inspect the `lane_dot` function in the assembly: four-lane multiply/add and
 horizontal reduction establish generated vector instructions, not throughput.
 The dated [record](../../research/measurements/2026-10-03-foundation-machines.md)
 keeps the observed path, checks and limits.
+
+## Shapes, conditional bounds and auditable experiments
+
+```bash
+python3 code/foundations/performance_contract.py
+python3 code/foundations/experiment_trace.py
+python3 -m unittest discover -s code/foundations -p 'test_*.py'
+python3 code/foundations/experiment_trace.py \
+  --measure --size 24 --repetitions 9 --warmups 2
+```
+
+Predict: the chosen three-row projection has 128 weights, 80 packed weight
+bytes including scales, 224 one-boundary traffic bytes and 768 conventional
+FLOPs. Explain why work rows do not multiply parameter storage. Break:
+remove metadata, duplicate weights per row, or price FLOPs with a byte rate.
+The tests check exact fixtures, enumerate work/padding independently and
+reject incompatible dimensions. The unit type does not know which memory
+boundary or operation you meant. Counts and resource times are **derived
+from illustrative inputs**, not an observed roofline.
+
+Predict: the four-request cohort delivers eight tokens, but only five
+belong to correct completed responses and only three meet the chosen
+latency rule. Over 40 ms, these are 200, 125 and 75 tokens/s. Explain each
+numerator. Break: ignore planned-arrival delay, count terminal handling as
+a token gap, drop partial failures or credit incorrect output.
+The trace uses one declared clock domain and requires a drained cohort;
+it does not estimate censored requests or rolling production windows.
+Nearest-rank and inclusive-linear sample percentiles are separate methods.
+
+Default mode contains no timing. **Only `--measure` performs an experiment**:
+small synchronous Python integer matrix products. Input construction and
+exact reduction-first reference calculation are outside timed work. Each
+measured output is checked afterwards; a failure aborts reporting.
+Candidate total includes column preparation and output allocation.
+Warm-up calls are separate; AB/BA order alternates across pairs. Raw setup,
+compute and total durations, clock metadata and source/input hashes remain
+in the JSON output. No timing threshold is asserted by tests.
+
+Predict, run, explain and then corrupt a candidate coordinate in a scratch
+copy. The checker must reject the result even if the incorrect route was
+faster. Try other sizes without changing the oracle or timer boundaries.
+This is not a native GEMM, an LLM, a cache-isolation experiment or a GPU run.
+The [dated record](../../research/measurements/2026-10-03-foundation-experiments.md)
+preserves two invocations and the scope of their observed differences.
