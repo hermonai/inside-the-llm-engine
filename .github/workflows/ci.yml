@@ -18,6 +18,8 @@ jobs:
         run: python3 scripts/check-links.py
       - name: Check the book source, executable request trace and worked calculations
         run: python3 scripts/check-textbook.py
+      - name: Check the foundation decoder and bounded binary-format reader
+        run: python3 -m unittest discover -s code/foundations -p 'test_*.py'
       - name: Check canonical diagram width
         run: python3 scripts/check-diagram-width.py
       - name: Check canonical diagram style and inventory

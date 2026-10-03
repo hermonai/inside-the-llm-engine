@@ -53,3 +53,16 @@ It has no training, tokenizer, checkpoint import, paging, scheduler or HTTP
 server. The existing Rust capstone adds paging and serving machinery later.
 The format lesson parses only its one-tensor F32 fixture; it is deliberately
 not a replacement for a maintained safetensors implementation.
+
+## Binary model-format extension
+
+`python3 code/foundations/gguf_bytes.py` constructs and inspects a
+256-byte, two-tensor GGUF fixture in memory. It prints exact byte intervals
+and decoded F32/Q4_0 values. Eleven additional tests cover every truncation
+boundary, type namespaces, duplicate names, malformed dimensions, alignment,
+nibble order, numerical validity and the CPU activation-rounding prediction.
+
+The [optional ggml reference](ggml-reference/README.md) independently loads
+that fixture and executes CPU graphs at a pinned upstream revision. Its
+direct decoder agrees exactly, while its quantized graph demonstrates why
+activation conversion is a separate numerical boundary.
