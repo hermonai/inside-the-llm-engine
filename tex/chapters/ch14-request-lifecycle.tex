@@ -1,9 +1,9 @@
-% status: ZERO
-% Chapter 14 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
+% status: FULL
+% Printed Chapter 31, stable source/lab ID ch14. Rules: AUTHORING.md.
 % The sections from "One prediction is not yet a service" to "What we have
 % established" are the first edition's Chapter 1, moved here with git mv on
-% 2026-09-23. They are the mechanism of this chapter; the ZERO pass reworks
-% them around the anatomy. Commands are regression checked by
+% 2026-09-23. The full-depth pass connects them to service ownership.
+% Commands are regression checked by
 % scripts/check-textbook.py.
 % Measurements: research/measurements/2026-09-24-m1-part3.md (lifecycle, cancel2,
 % sse_bytes).
@@ -71,21 +71,38 @@ or four characters of text (measured). At 25 tokens per second a stream sends
 about 7.7~KB/s on the OpenAI-compatible endpoint, and ten thousand concurrent
 streams send about 77~MB/s: real, but small next to the machines producing
 them (derived). Each event also costs CPU for detokenization and
-serialization, which engines move off the scheduling loop
+serialization, which can be moved off the scheduling loop
 (\Chref{continuous-batching}).
 
-The larger cost of a stream is its duration. From admission to its terminal
-event a request holds a batch slot and its KV cache: for Qwen3-8B at 4,096
+The larger cost of a stream is its duration. While executing, and until safe
+reclamation, a request holds engine resources. Its KV cache can dominate:
+for Qwen3-8B at 4,096
 tokens of context, 576~MiB (\Chref{kv-cache}). A request that should have been
 cancelled but runs to completion wastes both, and the waste is easy to price:
 \begin{equation}
-W_{\text{orphan}} = n_{\text{left}}\;t_{\text{token}}\quad\text{of a slot, holding }m_{kv}\,S\text{ bytes},
+W_{\text{orphan}} \approx n_{\text{left}}\;t_{\text{token}}
+   \quad\text{slot-seconds},
 \label{eq:orphan-waste}
 \end{equation}
-for $n_{\text{left}}$ tokens left to generate at $t_{\text{token}}$ each. The
-opening's orphan held a slot for 37 seconds. At a hosted service's scale, a
-fraction of a percent of abandoned requests that are never cancelled is a
-fraction of a percent of the fleet serving nobody.
+for $n_{\text{left}}$ abandoned output tokens and an approximately constant
+$t_{\text{token}}$ seconds per token. The opening's orphan held a slot for
+about 37 seconds. Do not insert its single-stream 40~ms gap here: two active
+slots changed the step time. Use the orphan's own trace.
+
+Memory waste also has a duration. If $M(t)$ is the request's resident cache
+in bytes at time $t$, its abandoned occupancy is
+\begin{equation}
+A_{\mathrm{memory}}=\int_{t_{\mathrm{close}}}^{t_{\mathrm{release}}} M(t)\,dt
+   \quad\text{byte-seconds}.
+\end{equation}
+A constant 576~MiB held for 37~s would cost 21,312~MiB\,s, or
+20.8125~GiB\,s. This is an illustrative fixed-cache calculation, not a new
+Qwen measurement; dense decoding normally grows the cache. If abandoned
+requests arrived steadily at 0.5 per second and each held that fixed cache
+for 37~s, their mean occupancy would be 18.5 requests and 10.40625~GiB.
+This follows by counting the arrivals within one holding interval. A
+fraction of arrivals is not a fraction of fleet capacity unless their
+resource requirements and holding times also match.
 
 \section{One prediction is not yet a service}
 Suppose a model has just produced four numbers. One number is larger than the
@@ -178,7 +195,7 @@ belong to the runtime policy rather than to the matrix calculation.
 
 This recurrence is \Term{autoregression}. It says what feeds the next call;
 it does not say that the model actually uses every earlier ID. Our fixture
-looks only at the final input token. Later attention chapters will construct
+looks only at the final input token. Part I's attention lessons constructed
 genuine dependence on earlier positions. Keeping the history and using that
 history are separate claims.
 
@@ -278,8 +295,9 @@ The implementation lives in \texttt{crates/engine0/src/lib.rs}; its
 \texttt{Runtime::generate} method owns the loop. The lifecycle tests are in
 \texttt{crates/engine0/tests/lifecycle.rs}. The textbook gate checks the commands
 above against the executable, including their terminal classes and event counts.
-The next chapters will reveal the tokenizer, model and sampler behind those
-interfaces instead of changing the observable contract without warning.
+Part I has already built the tokenizer, model and sampler behind these
+interfaces. The systems lesson is to retain their observable contract while
+changing how work is shared.
 
 \section{Follow three objects, not one vague arrow}
 The request gives us three different journeys.
@@ -372,9 +390,273 @@ prediction, an immediate-EOS counterexample and three distinct ways to stop
 after the same visible prefix. We have named ownership and timing boundaries.
 
 How text becomes an ID, and how an ID can fail to become readable text
-immediately, is the subject of \Appref{tokens}, which opens the tokenizer and
-the UTF-8 buffer without changing the request's terminal contract.
+immediately, was constructed in \Appref{tokens}. We now place that byte
+buffer inside a service, where other requests and asynchronous work change
+what it means to own the next event.
 
+\section{Admission establishes an identity before execution}
+Suppose request 7 asks for a 200-token prompt and at most 128 generated
+tokens. Before computing its first layer, the service must interpret that
+description. It checks that the selected model exists, the token IDs belong
+to its vocabulary, the prompt fits its supported context, the output budget
+is valid and the caller may use the resources. A malformed request is a
+rejection, not a model failure after admission. The chapter's one-terminal
+contract applies to admitted engine requests; the frontend must separately
+return an honest rejection to callers who never entered that domain.
+
+Admission is not necessarily reservation of the entire future KV cache.
+One design reserves a maximum; another reserves initial blocks and grows
+them as positions are evaluated. Both need an explicit capacity policy.
+Accepting a request into a bounded waiting queue says it may wait. Accepting
+it without a limit and hoping memory becomes available says much less.
+Scheduling under pressure is developed in \Chref{scheduling}; here we need
+only a stable identity and a clear owner while a request is waiting.
+
+Give the request a server-created key. A client-supplied label can help trace
+retries, but it is not automatically a unique execution identity. Two
+simultaneous requests labelled \texttt{7} must not share history or allow one
+client's cancellation to stop the other. In the synchronous lab,
+\texttt{Engine::admit} rejects duplicate active identities before adding a
+second owner. Its numerical ID is sufficient because the harness never
+reuses IDs within a scenario. That is a teaching assumption, not a safe
+distributed naming scheme.
+
+A pooled service may identify an execution by a slot and a generation:
+$(7,12)$ means the twelfth use of slot seven. When that slot is reused as
+$(7,13)$, a delayed cancellation for $(7,12)$ must not affect it. A work
+ticket also needs a serial number within the generation; a duplicate reply
+from step zero must not retire step one. None of these numbers encode a
+token. They identify the computation entitled to mutate the request.
+The protocol extension tests both stale generations and stale serials.
+
+\EngineFigure{request-serving-components}{Conceptual component layout.
+The owner serializes request decisions; a bounded data queue carries output,
+while cancellation bypasses that queue. Shared weights are read-only.
+This is a service design, not a claim that the synchronous fixture implements
+these components as separate processes.}{fig:request-serving-components}
+
+Read the layout from left to right. Validation establishes the request key.
+The owner submits numerical work with that key and receives a matching
+completion. Sampling and byte assembly produce a data event. The writer
+drains those events toward the connection. Read it from right to left as
+well: a failed write reports the loss of the consumer, and that control
+message must reach the owner even when no data can move forward.
+
+There is an admission failure before the first model call that a steady-state
+decode test misses. A frontend might register an output queue, then await
+submission to an engine process. Cancellation during that await leaves a
+partially constructed request unless cleanup already knows its identity.
+Store the ownership record before the first interruptible operation.
+If submission has not occurred, remove the local registration; if it may
+have occurred, arrange an abort using that same identity and await the
+appropriate acknowledgement. A local exception handler cannot infer that
+remote acceptance never happened merely because its await did not return.
+This is a design obligation; our one-process lab does not implement remote
+admission or prove a distributed rollback protocol.
+
+\section{A notification is not a predicate or a deadline}
+A condition variable lets a waiting thread sleep until another thread
+announces that shared state may have changed. The announcement does not
+identify the result it needs. On waking, the thread must examine a
+\Term{predicate}: in this lab, whether the queue contains a result for its
+request key. Several handlers can wake for a result belonging to one of
+them. A wake without a matching result is not a reason to emit text or stop.
+
+That distinction explains the cancellation failure. Let the timeout slice
+be an illustrative 100~ms and let a neighboring request publish at 4, 8,
+12~ms and so on through 2,000~ms. The abandoned handler starts its first
+wait at zero. At 4~ms it wakes, finds no result for itself, then starts
+another full 100~ms wait. The same sequence repeats. The last wake at
+2,000~ms moves the timeout to 2,100~ms. A client that left at 350~ms can
+therefore remain unobserved for approximately 1,750~ms.
+
+\EngineFigure{request-wait-deadlines}{Deterministic teaching schedule, in
+illustrative milliseconds. Restarting an idle slice after unrelated wakes
+pushes the check to 2,100~ms. A fixed first deadline remains 100~ms, and a
+disconnect event at 350~ms does not depend on either timer.
+Thread scheduling can change the measured boundaries.}{fig:request-wait-deadlines}
+
+An \Term{idle timeout} asks whether nothing has happened for an interval.
+A \Term{deadline} asks whether the current clock has reached a fixed time.
+For a fixed deadline $d_{\mathrm{check}}$, the remaining wait at time $t$
+is $\max(0,d_{\mathrm{check}}-t)$. Repeated wakes shorten that remainder
+instead of resetting it. When the deadline arrives, check cancellation
+and choose the next deadline. Periodic checking then has a configured
+observation interval, plus scheduling and engine propagation delays.
+It does not make cancellation instantaneous.
+
+The independent integer-time test enumerates every subset of eight possible
+wakes. It compares the repeated-slice implementation with the first
+interval containing no earlier wake. For this deterministic model, expiry
+wins a tie with a notification at the exact deadline. The threaded Rust
+condition variable has operating-system scheduling rather than that
+chosen tie rule. Separating the two avoids using a nondeterministic race
+to establish an exact arithmetic boundary.
+
+Event-driven cancellation removes this dependence on unrelated result
+traffic. The disconnect becomes a control event in its own right. The
+handler stops waiting for useful output and posts an abort. The engine still
+needs to receive that abort before its next cooperative boundary.
+In the lab, the worker drains commands before each step, so an event can
+arrive just after the drain and wait for the next tick. The experiment
+measures this handoff; it does not interrupt the numerical work inside a
+real device kernel.
+
+\section{Terminal publication and memory retirement are different clocks}
+Now imagine a device step that has already been submitted for $(7,12)$.
+Cancellation arrives while that step is running. The owner can prevent
+another submission and decide that no further token will be published.
+It cannot infer that the device has stopped reading the request's cache.
+Freeing or reassigning those bytes immediately can corrupt another request.
+
+Separate a \Term{logical ending}, which fixes the output outcome, from
+\Term{physical retirement}, which establishes that no remaining work can
+access the resource. A completion fence is evidence about device work;
+an HTTP connection close is evidence about a consumer. These events
+answer different questions. \Appref{gpu} introduced this
+submission-versus-completion distinction for one kernel. Here it becomes
+a request-lifetime rule.
+
+\EngineFigure{request-cancel-retirement}{UML sequence for the executable
+protocol model. Cancellation fixes one outcome while work is outstanding.
+The late reply acknowledges retirement but its text is discarded.
+Only then can the device lease be reused. Lifelines are roles, not four
+implemented network processes or a measured GPU trace.}{fig:request-cancel-retirement}
+
+Follow the decisive order. The owner issues a work ticket, then selects
+Cancelled. Its logical terminal metadata can already be read. When the
+matching work reply arrives, the owner acknowledges retirement but refuses
+to publish its payload. Only after the outstanding ticket is removed may
+the modeled device lease be reused. Output metadata can have a longer host
+lifetime than the released cache; the implementation must not destroy that
+metadata merely because the device bytes are free.
+
+The small protocol model allows one outstanding ticket per request. For a
+real engine with several dependent operations, retirement requires all
+relevant references or a fence covering their execution. A cache block
+shared by other requests also needs their references accounted for.
+The model deliberately omits those mechanisms. Its local reuse predicate is
+\begin{equation}
+\text{reusable} \iff
+  (\text{outcome selected})\land(\text{no outstanding ticket}).
+\end{equation}
+That predicate is tested after every command in short exhaustive schedules.
+It is not a substitute for a production allocator's proof.
+
+Two stopping causes can arrive close together. If EOS has already been
+committed as the outcome, a later cancellation does not create a second
+ending. If cancellation has been committed first, a later EOS reply must
+not change the published status. The owner makes this irreversible decision
+at a \Term{linearization point}: one precise state update that competing
+operations must observe consistently. In the protocol model,
+\texttt{finish} sets an optional outcome only when it is empty.
+Its first successful call wins.
+
+\begin{minipage}{\linewidth}
+The actual single-owner decision in \texttt{ownership.rs} is short enough
+to inspect. Returning \texttt{false} leaves the first outcome intact:
+\CodeLines{../code/labs/ch14-request-lifecycle/src/ownership.rs}{74}{85}
+\end{minipage}
+
+This precedence differs from guessing which event happened first according
+to clocks on separate machines. The contract is about the order accepted by
+the owner. In an asynchronous service, one actor can serialize decisions;
+a shared-state design may require locking or an atomic transition.
+The lab exercises ordinary single-owner calls, not lock-free correctness.
+An implementation should not claim a stronger concurrency guarantee from
+those tests.
+
+\section{A slow reader must not block the stop signal}
+Suppose a model emits 25 data events per second while a client drains five.
+An unbounded queue grows by 20 events each second. If the queue holds at
+most 64 events, it fills from empty in approximately
+$64/(25-5)=3.2$~s under this illustrative constant-rate model.
+At 306 serialized bytes per event, 64 events contain 19,584 payload bytes,
+before queue objects, framing buffers and allocator overhead.
+An event-count limit is not a byte limit when event sizes differ.
+
+\Term{Backpressure} makes the producer respond when the consumer cannot
+keep up. A bounded queue can pause that request, combine deltas, spill to
+a deliberately bounded store, or cancel under a documented policy.
+There is no universally correct choice. Combining deltas delays when the
+reader sees text; pausing retains its KV state; cancelling loses an answer
+that may still be valuable. The important first step is to bound what can
+grow and identify who pays for the wait.
+
+\EngineFigure{request-backpressure-flow}{Activity diagram for the protocol
+extension. A full data queue prevents new submission, not cancellation.
+Natural completion drains queued text before one terminal delivery.
+Cancellation or failure discards unsent text; already delivered prefixes
+cannot be recalled. The teaching queue bounds events, not encoded bytes.}
+{fig:request-backpressure-flow}
+
+A common failure is to put cancellation behind data in the same full queue.
+The producer waits for space; the consumer has left; the abort cannot enter.
+Use a control path that is not blocked by output capacity. Similarly, if
+the only terminal indication is another data item, a full queue can prevent
+the owner from recording the outcome. The protocol lab stores terminal
+metadata separately from its bounded data deque. A responsive receiver can
+drain natural output and then receive one terminal event without requiring
+another data slot.
+
+Cancellation chooses a different policy in that model: queued but unsent
+text is discarded. Any outstanding work still retires, and its late payload
+is suppressed. This does not erase a prefix already read by the client.
+For a natural budget or EOS ending, the existing deque drains before the
+terminal is delivered. Both policies are explicit, tested and intentionally
+small. The earlier synchronous engine sends callbacks directly and does not
+have this output queue.
+
+Do not block an entire batch behind one request's slow writer. A per-request
+queue and scheduling eligibility can separate the stalled consumer from
+its neighbors, though retained KV still consumes shared capacity. Nor can
+we assume a successful socket write means the application consumed the
+bytes: it may only mean a local transport buffer accepted them. Observability
+should distinguish engine generation, queue publication, writer acceptance
+and client receipt when the last boundary is actually available.
+
+\section{Test traces, then diagnose the timeline}
+The terminal invariant is a \Term{safety property}: something forbidden,
+such as a second terminal or text after termination, never occurs.
+Eventual release is a \Term{liveness property}: something required
+eventually occurs. A request that never produces any event satisfies
+\emph{no text after terminal} vacuously but serves nobody. Test both kinds.
+The deterministic engine uses finite budgets so admitted scenarios finish.
+The threaded replay separately observes close-to-release delay.
+
+For a useful trace, record the server execution key, event sequence number,
+event type and local monotonic timestamp. Do not merge independently timed
+records into one apparent total order without a correlation method.
+The minimum cancellation timeline is: consumer gone, frontend notified,
+abort enqueued, engine observed, outcome selected, work retired, resources
+released. A long gap between the first two suggests detection or transport
+trouble. A long gap after enqueue suggests a blocked command path. A long
+retirement gap can be legitimate outstanding work rather than lost cancellation.
+
+The property checker now rejects mixed request identities and status replies
+in a generation trace. It also rejects a natural completion after a
+cancellation recorded for a still-running request. Its earlier checker could
+accept that completion if it matched the natural oracle, overlooking the
+stronger cancellation obligation. The new negative test constructs precisely
+that plausible wrong trace.
+
+Tests need not guess sleep durations to force an order. The protocol tests
+submit a ticket, cancel, inspect reuse, retire the ticket, then inspect output.
+Another test fills both output slots before cancelling. Another changes the
+slot generation before submitting a delayed old reply. These controlled
+orders establish the relevant boundaries more clearly than an assertion
+that a wall-clock timeout happened to be short.
+
+Finally, count the numerical and output populations separately. The
+four-token fixture performs two forward calls for one text token. A token
+budget may stop without an EOS prediction. A stop-string implementation may
+buffer text that is generated but never exposed. Cancelled work may have
+completed on the device without any token being published. A benchmark that
+uses one counter for all four populations can call wasted work useful
+throughput. \Appref{reproducing} gives the cohort accounting needed to
+keep that distinction visible.
+
+\Needspace{23\baselineskip}
 \LedgerSection
 
 Streaming output as events and ending every request with exactly one terminal
@@ -382,32 +664,92 @@ outcome:
 
 \begin{ConstraintLedger}
 Latency & buys & The first words after the time to first token (0.74~s on the M1) instead of after the whole answer (6~s). \\
-Memory capacity & spends & A batch slot and the request's KV cache from admission to its terminal event; an uncancelled orphan holds them to completion. \\
-Compute & risks & Tokens generated after a client leaves are wasted: 490 in the opening's orphan (equation~\eqref{eq:orphan-waste}). \\
+Memory capacity & spends & Request state while waiting or running; cache leases until safe retirement. The illustrative 576~MiB orphan occupies 20.8125~GiB\,s over 37~s. \\
+Compute & spends & Tokens generated after a client leaves: about 490 in the opening's orphan. A late reply may retire safely without becoming useful output. \\
 Correctness & buys & One terminal outcome per request, so a prefix is never mistaken for a completed answer. \\
+Latency & spends & Queueing, output buffering and cancellation propagation; bounded data queues may pause generation while retaining KV. \\
 \end{ConstraintLedger}
 
 \LabSection{the request trace}
 
-\LabIntent{In \texttt{code/labs/ch14-request-lifecycle/}, the mini-engine's
-request trace (\texttt{engine0 --trace}) is extended with a streaming sink that
-records every event with a monotonic timestamp and a cancellation source that
-can fire at any declared boundary. Property tests drive thousands of random
-event orders and check the terminal contract of
-equation~\eqref{eq:terminal-contract}; the reader then adds a slow consumer and
-measures how long a cancellation takes to reach the model loop.}
+The self-contained Rust lab is in
+\texttt{code/labs/ch14-request-lifecycle/}. It does not load a model.
+An engine tick stands for one decode step, making the control mechanism
+observable without a GPU or a previous lab. From \texttt{code/labs}, run:
+\begin{verbatim}
+cargo test -p ch14-request-lifecycle
+cargo run --release -p ch14-request-lifecycle
+cargo run --release -p ch14-request-lifecycle -- --slice-ms 3
+cargo run --release -p ch14-request-lifecycle -- \
+  --contracts-only --scenarios 100000 --seed 7
+\end{verbatim}
+
+\textbf{Predict.} With a 4~ms step and 100~ms idle slice, does a busy
+neighbor improve or worsen cancellation? Why can a 3~ms slice behave
+differently? Does a terminal delivery entitle the protocol owner to reuse
+a lease whose ticket has not returned?
+
+\textbf{Run.} The threaded portion uses the same generation engine and
+shared result queue for poll and event handlers. A non-streaming client
+leaves after 350~ms; another request streams 500 tokens, or a monitor
+asks for status every 2~ms. Changing only the handler exposes the
+observation mechanism. Two recorded default runs generated 437 abandoned
+tokens each with a streaming neighbor under polling; the event model
+generated zero and released in 2--3~ms. A 3~ms slice exposed quiet gaps
+and stopped the polled orphan with zero additional tokens in that case.
+These are scaled CPU-thread observations,
+not vLLM or llama.cpp performance measurements.
+Exact timing varies with scheduling. The token-count snapshot and close
+timestamp are not atomic, so boundary counts can vary. A printed delay of
+zero milliseconds is rounded, not instantaneous.
+
+\textbf{Explain.} In \texttt{main.rs}, \texttt{Engine::step} serializes
+cancellation before failure and EOS. Its budget ends on the last permitted
+token's step. By contrast, \texttt{engine0} checks the budget before its
+next forward call. Both meet their documented terminal contract, but their
+step boundaries are not identical. Do not transfer a race-precedence
+assertion from one loop to the other without reading it.
+
+The separate oracle \texttt{natural\_end} simulates a request without the
+engine. An additional closed-form test takes the earliest reachable
+failure, EOS or budget boundary, with failure winning a same-position
+failure/EOS tie. It checks 490 small specifications across streaming modes.
+Random scenarios then interleave arrivals and cancellation. The two
+seeded 100,000-scenario runs check hundreds of thousands of requests,
+not every possible production schedule.
+
+\texttt{ownership.rs} adds the bounded deque, optional outcome and work
+ticket. Its seven tests include 78,125 seven-command schedules and 256
+notification subsets. The schedules verify one terminal for responsive
+completed traces, no later output, bounded data and no lease reuse before
+matching retirement. They do not prove network delivery, GPU fencing,
+concurrent mutation or crash recovery.
+
+The record is \texttt{2026-10-03-request-lifecycle}; it includes source
+hashes, raw timing rows, the two seeded scenario counts and the failed
+mutations. The full lab has seventeen tests. Unit examples in this
+chapter are recomputed by \texttt{chapter\_unit\_examples\_are\_recomputed}.
+
+\textbf{Break.} Change a 100~ms slice to 3~ms, then record the altered
+polling behavior. Next, deliberately permit a natural end after an observed
+cancellation: the checker-rejection test must fail. Finally, allow the
+protocol owner to report reusable while its ticket remains outstanding.
+The controlled cancellation test must reject that change before any
+performance comparison. Restore each mutation before moving on.
 
 \HappenedSection{cancellation that did not reach the model}
 
 The orphaned request of this chapter's opening was not an accident of the
-measurement. llama.cpp's server, at the commit of the measured build, handles a
+measurement. \textbf{DEFAULT, pinned case:} llama.cpp's server, at the commit
+of the measured build, handles a
 non-streamed request on an HTTP thread that waits for the request's result. It
 waits in slices of one second, and only when a slice expires with no result
 does it ask the socket whether the client is still there; if the client has
 gone, it posts a cancellation that releases the request's slot
 (\texttt{HTTP\_POLLING\_SECONDS} in \texttt{tools/server/server-context.cpp}
 and \texttt{recv\_with\_timeout} in \texttt{tools/server/server-queue.cpp} at
-commit \texttt{d006858}). The waiting threads of all requests share one
+commit \texttt{d006858}; \cite{llamacpp2026cancelqueue,llamacpp2026cancelcontext}).
+The waiting threads of all requests share one
 condition variable, and every result delivered for \emph{any} request wakes
 them all; a woken thread that finds nothing for itself starts a fresh
 one-second wait. While another client is streaming --- a result every 40~ms ---
@@ -424,26 +766,55 @@ than the server's slice, and with a separate streaming client as the
 neighbor --- which is when the mechanism became clear. Both runs are in the
 record.
 
-vLLM makes the opposite design choice. Its OpenAI-compatible handlers are
+For disconnect detection, vLLM makes the opposite design choice.
+\textbf{DEFAULT, pinned handler path:} its decorated API handlers are
 wrapped so that each request's work races a listener for the HTTP server's
 disconnect message; whichever finishes first cancels the other, and the
 engine aborts the request when its generator is cancelled
 (\texttt{vllm/entrypoints/serve/utils/api\_utils.py} and
-\texttt{vllm/v1/engine/async\_llm.py} at commit \texttt{bcdacfc}). Disconnects
-there are events, not polls. The lesson is the chapter's: cancellation is part
-of the request's contract, and a contract enforced by a timer that other
-traffic can reset is not enforced.
+\texttt{vllm/v1/engine/async\_llm.py} at commit \texttt{bcdacfc};
+\cite{vllm2026cancelhandler,vllm2026cancelengine}).
+The decorator hands disconnect listening to the streaming response once the
+handler returns that response. Its scope assumes the request body has
+already been read. Disconnects here are events rather than idle-result polls.
+This establishes an observation path, not cancellation correctness at
+every admission boundary.
 
-\FrontierSection{2026-09-24}
+\FrontierSection{2026-10-03}
 
-The lifecycle contract is becoming explicit in APIs. OpenAI's Responses API
+The ASGI HTTP specification makes two signals relevant: a disconnect receive
+event and an exception when sending on a closed connection. Concurrent sends
+can fail before the disconnect event is received, and older implementations
+need not provide the newer send-exception behavior
+\cite{asgi2026disconnect}. An owner should converge both supported
+signals on one stopping decision. Receiving either does not establish that
+a downstream engine process has reclaimed its resources.
+
+Event-driven detection does not remove partially completed admission.
+An upstream report, issue 57061 opened on 15 September 2026, describes local
+request-state retention when cancellation interrupts engine submission
+\cite{vllm2026admissioncancel}. This is a reported failure, not a
+reproduction by this book or a claim about every current deployment.
+The pinned \texttt{bcdacfc} code independently exposes the relevant
+boundary: \texttt{\_add\_request} registers locally before awaiting
+engine submission, while \texttt{generate} guards abort with
+\texttt{q is not None}; that collector is assigned only after
+\texttt{add\_request} returns. The multi-sample branch has a separate
+exception cleanup path. The inference is narrow: read and test each
+admission branch rather than treating an event listener as a complete
+cleanup proof. The lab's protocol extension illustrates ownership rules;
+it does not reproduce this vLLM issue.
+
+The preceding API check, dated 24 September 2026, also illustrates a
+different lifecycle policy. OpenAI's Responses API
 streams typed events --- a response created, text deltas, a completion or an
 error --- rather than bare tokens \cite{openai2026streaming}, and its
 background mode decouples a request from the connection that started it:
 a long response keeps running when the client disconnects, is cancelled only
 by an explicit, idempotent cancel call, and can be resumed from a sequence
-number if the stream drops \cite{openai2026background}. Engines are moving
-the same way: detokenization and streaming in processes of their own
-(\Chref{continuous-batching}) and cancellation driven by events.
+number if the stream drops \cite{openai2026background}. This historical
+source check is retained, not silently redated by the present pass.
+Connection-independent work is useful when explicitly requested. It is
+not equivalent to an accidental orphan in a connection-bound service.
 
 \input{worked/ch14-request-lifecycle.tex}

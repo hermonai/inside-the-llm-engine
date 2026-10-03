@@ -1,0 +1,20 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\sffamily\small]
+\node[circle,fill=BookBlue,inner sep=2.4pt] (start) at (0,1.3) {};
+\node[sysdecision,text width=24mm] (room) at (0,-.6) {Data queue\\has room?};
+\node[block,text width=27mm] (submit) at (0,-3.2) {Submit one ticket\\retire into data};
+\node[block,text width=29mm,fill=BookGold] (pause) at (5.5,-.6) {Pause new work\\owner remains responsive};
+\node[block,text width=25mm,fill=BookGreen] (cancel) at (5.5,-3.2) {Cancel / fail\\discard unsent data};
+\node[block,text width=27mm] (normal) at (0,-5.8) {EOS / budget\\drain queued prefix};
+\node[block,text width=33mm,fill=BookGold] (final) at (5.5,-5.8) {Terminal metadata\\deliver once};
+\draw[flow] (start)--(room);
+\draw[flow] (room)--node[left,syslabel]{[yes]}(submit);
+\draw[flow] (room)--node[above,syslabel]{[no]}(pause);
+\draw[flow] (pause.north)--++(0,1.7)-|node[pos=.35,above,syslabel]{consumer drains / retry}(room.north east);
+\draw[control] (pause)--node[right,syslabel]{control event}(cancel);
+\draw[flow] (submit)--node[left,syslabel]{natural ending}(normal);
+\draw[control] (submit)--node[above,syslabel]{stop signal}(cancel);
+\draw[flow] (normal)--node[above,syslabel]{[empty]}(final);
+\draw[flow] (cancel)--(final);
+\node[sysnote,anchor=north west] at (-1.7,-7.3) {Scope: teaching protocol policy. Cancellation bypasses data capacity. Lease reuse separately requires the outstanding ticket to retire, even if terminal metadata is already delivered.};
+\end{tikzpicture}

@@ -3,10 +3,22 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
+
+def listing_sources(tex_sources):
+    """CodeLines paths resolve from the TeX working directory, not the chapter."""
+    result = set()
+    for source in tex_sources:
+        for name in re.findall(r"\\CodeLines\{([^}]+)\}", source.read_text()):
+            path = (ROOT/"tex"/name).resolve()
+            if ROOT not in path.parents or not path.is_file():
+                raise ValueError(f"invalid book listing source: {name}")
+            result.add(path)
+    return sorted(result)
 
 
 def main():
@@ -29,6 +41,7 @@ def main():
         raise SystemExit("\n".join(failures))
     shutil.copyfile(build/"inside-the-llm-engine.pdf", output)
     sources = sorted((ROOT/"tex").rglob("*.tex"))
+    sources += listing_sources(sources)
     sources += [ROOT/"tex/references.bib", ROOT/"Makefile", ROOT/"AUTHORING.md",
                 ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py",
                 ROOT/"scripts/check-foundations.py", ROOT/"scripts/check-system-diagrams.py"]

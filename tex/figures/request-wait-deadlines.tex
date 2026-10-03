@@ -1,0 +1,17 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\sffamily\small]
+\node[anchor=west,text=BookBlue] at (0,1) {\textbf{Same notifications, different waiting contracts}};
+\node[block,text width=25mm] (wake) at (1.6,-.2) {Wake at 4 ms\\no result for us};
+\node[block,text width=31mm] (idle) at (7,-.2) {Restart full slice\\expiry: 104 ms};
+\draw[flow] (wake)--node[above,syslabel]{idle-wait policy}(idle);
+\node[block,text width=31mm,fill=BookGold] (fixed) at (7,-2.3) {Keep deadline\\96 ms remain};
+\draw[flow] (wake.south)--++(0,-2.1)--node[above,syslabel]{fixed-deadline policy}(fixed.west);
+\node[block,text width=42mm] (repeat) at (1.6,-4.7) {Further wakes: 8, 12, \ldots, 2,000 ms\\same unrelated stream};
+\node[block,text width=36mm] (last) at (7,-4.7) {Idle: 2,100 ms\\deadline: 100 ms};
+\draw[flow] (repeat)--(last);
+\node[block,text width=25mm,fill=BookGreen] (gone) at (1.6,-7) {Disconnect\\at 350 ms};
+\node[block,text width=31mm,fill=BookGreen] (event) at (7,-7) {Event path\\notify owner now};
+\draw[control] (gone)--node[above,syslabel]{notify}(event);
+\node[syslabel,text width=45mm] at (4.3,-7.85) {No quiet slice required};
+\node[sysnote,anchor=north west] at (0,-8.6) {Scope: integer-time teaching schedule, not a timed run. Repeated wakes can defer an idle check indefinitely; a deadline or independent event cannot be reset by them.};
+\end{tikzpicture}

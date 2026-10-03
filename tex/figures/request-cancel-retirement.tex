@@ -1,0 +1,17 @@
+% diagram-kind: sequence
+\begin{tikzpicture}[font=\sffamily\small]
+\foreach \name/\x/\title in {front/0/Frontend,owner/4/Owner,work/8/Worker,pool/12/Lease pool}{
+  \node[block,text width=22mm,minimum height=10mm] (\name) at (\x,0) {\title};
+  \draw[BookBlue,dashed] (\x,-.6)--(\x,-9.5);
+}
+\draw[flow] (4,-1.4)--node[above,syslabel]{submit: (7,12), serial 0}(8,-1.4);
+\draw[flow] (0,-2.7)--node[above,syslabel]{cancel(7,12)}(4,-2.7);
+\draw[flow] (4,-3.5)--(5.2,-3.5)--(5.2,-4.3)--(4,-4.3);
+\node[syslabel,anchor=west,text width=49mm] at (5.5,-3.9) {commit Cancelled\\no new submission};
+\draw[flow] (4,-5.1)--node[above,syslabel]{one terminal metadata event}(0,-5.1);
+\node[syslabel,text width=35mm] at (10,-5.7) {Outstanding ticket:\\lease not reusable};
+\draw[control] (8,-6.7)--node[above,syslabel]{retire matching ticket + late text}(4,-6.7);
+\node[syslabel,anchor=east,text width=28mm] at (3.7,-7.5) {discard late text;\\acknowledge retirement};
+\draw[flow] (4,-8.6)--node[above,syslabel]{[no pending ticket] / permit reuse}(12,-8.6);
+\node[sysnote,anchor=north west] at (-1.2,-10) {Scope: executable single-ticket protocol model. The terminal belongs to a responsive in-process consumer; this is not successful delivery over a disconnected socket.};
+\end{tikzpicture}

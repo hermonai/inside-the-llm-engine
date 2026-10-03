@@ -1,0 +1,17 @@
+% diagram-kind: component
+\begin{tikzpicture}[font=\sffamily\small]
+\node[block,text width=25mm] (front) at (0,0) {Frontend\\validate + assign key};
+\node[block,text width=29mm,fill=BookGold] (owner) at (4.8,0) {Request owner\\history + outcome};
+\node[block,text width=25mm] (worker) at (10,0) {Executor\\work ticket};
+\node[block,text width=27mm] (data) at (4.8,-3) {Bounded data queue\\text deltas};
+\node[block,text width=25mm] (writer) at (0,-3) {Stream writer\\connection};
+\node[block,text width=25mm,fill=BookGreen] (weights) at (10,-3) {Shared weights\\read-only};
+\draw[flow] (front)--node[above,syslabel]{admit(key)}(owner);
+\draw[flow] (owner)--node[above,syslabel]{submit(ticket)}(worker);
+\draw[flow] (worker.north)--++(0,1.3)-|node[pos=.25,above,syslabel]{matching completion}(owner.north);
+\draw[flow] (owner)--node[right,syslabel]{publish}(data);
+\draw[flow] (data)--node[below,syslabel]{drain in order}(writer);
+\draw[control] (writer.south)--++(0,-1.4)-|node[pos=.35,below,syslabel]{disconnect / write failure: control bypass}(owner.south east);
+\draw[control] (weights)--node[right,syslabel]{read}(worker);
+\node[sysnote,anchor=north west] at (-1.4,-5.4) {Scope: conceptual service layout. Queue fullness must not prevent a stop decision. Device leases retire separately from host output metadata.};
+\end{tikzpicture}

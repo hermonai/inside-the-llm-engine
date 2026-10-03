@@ -428,8 +428,9 @@ impl Server {
                 let mut engine = Engine::default();
                 let mut ids = Vec::new();
                 let mut out = Vec::new();
-                // Steps start on a fixed schedule, so a step is `tick` long on
-                // average however long each sleep overshoots.
+                // Aim for scheduled ticks instead of adding a full sleep
+                // after every step. Overruns reset the schedule below;
+                // this is not a hard step-period or latency guarantee.
                 let mut next = Instant::now();
                 while !stop.load(Ordering::SeqCst) {
                     let mut statuses = Vec::new();

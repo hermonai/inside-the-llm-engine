@@ -541,3 +541,22 @@ unexamined library API. Cache validity is derived for this fixed causal
 decoder. Decimal fixtures, zero-update assembly and full-prefix/cache
 checks have distinct coverage, recorded in
 [the correctness record](measurements/2026-10-03-foundation-decoder.md).
+
+## Request ownership pass (checked 2026-10-03)
+
+Printed Chapter 31, stable source ID `ch14-request-lifecycle`. These are
+source-pinned paths, not an assertion about every release or deployment.
+The historical 2026-09-24 model measurement remains separately dated.
+
+| Topic | Scope read | Primary source | Maturity | Printed chapter |
+| --- | --- | --- | --- | --- |
+| Idle-result polling | `recv_with_timeout` restarts a full wait after an unmatched wake; `send` notifies all interested waiters; result reader tests its stop predicate after timeout; server context supplies a one-second interval | [llama.cpp queue at d006858](https://github.com/ggml-org/llama.cpp/blob/d006858316d4650bb4da0c6923294ccd741caefd/tools/server/server-queue.cpp), [context at the same revision](https://github.com/ggml-org/llama.cpp/blob/d006858316d4650bb4da0c6923294ccd741caefd/tools/server/server-context.cpp) | DEFAULT pinned server path; not a new current-head bug claim | 31 |
+| Event-driven handler | Decorator races handler work with disconnect reception; request body must already be consumed; streaming response takes over listening after return | [API utilities at bcdacfc](https://github.com/vllm-project/vllm/blob/bcdacfc/vllm/entrypoints/serve/utils/api_utils.py), [decorated chat route](https://github.com/vllm-project/vllm/blob/bcdacfc/vllm/entrypoints/openai/chat_completion/api_router.py) | DEFAULT pinned decorated route; not proof of all admission paths | 31 |
+| Cancellation during admission | Single-request registration precedes awaited engine submission; generate abort is guarded by an assigned collector; multi-sample branch has separate exception cleanup | [AsyncLLM at bcdacfc](https://github.com/vllm-project/vllm/blob/bcdacfc/vllm/v1/engine/async_llm.py), [upstream issue 57061](https://github.com/vllm-project/vllm/issues/57061) | Code boundary inspected; reported leak not reproduced by this book; no claim a current deployment remains unfixed | 31 |
+| Transport termination signals | ASGI defines disconnect reception and closed-connection send exceptions; send can fail before disconnect is received; older servers may not support the newer exception behavior | [ASGI HTTP specification](https://asgi.readthedocs.io/en/stable/specs/www.html) | Published specification; actual transport support must be tested | 31 |
+
+Single-owner tickets, queue policies, integer-time schedules and cost examples
+are original teaching designs, not features attributed to those engines.
+The CPU-thread replay is a mechanism experiment; its millisecond values
+are not GPU model-serving performance. See
+[the separate lifecycle record](measurements/2026-10-03-request-lifecycle.md).
