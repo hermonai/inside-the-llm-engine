@@ -1,4 +1,8 @@
-# Chapter 14 lab: the terminal contract, and cancellation that reaches the model
+# Printed Chapter 31 lab: terminal ownership and cancellation
+
+Stable source/lab ID: `ch14-request-lifecycle`. The original ID is retained
+to preserve its evidence history. This is a CPU-thread teaching model, not an
+HTTP server, real-model benchmark or implementation of either named engine.
 
 A small server in one process. An engine thread steps every running request
 once per tick --- a decode step --- and delivers results to one queue that wakes
@@ -42,6 +46,8 @@ Does the event design care what else the server is doing?
 cargo run --release -p ch14-request-lifecycle
 cargo run --release -p ch14-request-lifecycle -- --slice-ms 3
 cargo run --release -p ch14-request-lifecycle -- --scenarios 100000 --seed 7
+cargo test -p ch14-request-lifecycle
+cargo run --release -p ch14-request-lifecycle -- --contracts-only --scenarios 100000 --seed 7
 ```
 
 **Explain.** The poll design checks its client only when nothing at all has
@@ -56,3 +62,43 @@ catches the leaver, because slices expire between steps --- at the price of
 waking every handler hundreds of times a second. In `Engine::step`, emit the
 budget's `Final` and keep the request running (return `true`), and watch
 Part 2 name the first request that ended twice.
+
+## Protocol extension: publication is not retirement
+
+`ownership.rs` is an executable single-owner protocol model. It holds a
+bounded deque of text events, separate terminal metadata, and at most one
+work ticket. Each ticket contains a slot, generation and serial. It neither
+allocates GPU memory nor polls a socket.
+
+Predict whether the lease is reusable after cancellation but before the
+matching ticket returns. Run the program's initial protocol demonstration:
+it delivers one terminal while reuse is false, then discards late text and
+permits reuse after retirement. Fill both data slots: cancellation still
+works because it does not need queue capacity. Natural EOS/budget completion
+instead drains the prefix before terminal delivery.
+
+The tests enumerate 78,125 seven-command sequences (submit, retire, cancel,
+EOS, receive), 256 short notification schedules and 490 small natural-stop
+specifications. Controlled cases reject stale generations, stale serials,
+duplicate retirement, duplicate active admission, mixed-ID traces, status
+events in a generation trace, post-terminal output and a natural completion
+after observed cancellation. Seeded scenarios complement these tests; they
+are not exhaustive production model checking.
+
+Break `Owner::reusable` by ignoring pending work. The cancellation/retirement
+test must fail. Break `check` by removing its observed-cancellation guard;
+the dedicated rejection test must fail. Restore mutations before timing.
+
+## Timing interpretation
+
+The worker follows scheduled ticks, but OS sleeps and scheduling can
+overshoot. The observer reads a published token-count snapshot immediately
+before recording the close time; these operations are not an atomic cut
+through the worker. Counts can differ at a boundary. Delays are printed
+rounded to integer milliseconds, so `0` is not literally zero duration.
+Results explain the mechanism, not a hard latency guarantee.
+
+The historical llama.cpp model measurement is retained in
+`research/measurements/2026-09-24-m1-part3.md`. The new scaled runs and
+correctness checks are recorded separately in
+`research/measurements/2026-10-03-request-lifecycle.md`.

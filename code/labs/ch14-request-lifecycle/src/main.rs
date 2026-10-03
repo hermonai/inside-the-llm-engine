@@ -36,6 +36,8 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+mod ownership;
+
 pub type Id = usize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,6 +99,10 @@ pub struct Engine {
 impl Engine {
     pub fn admit(&mut self, id: Id, spec: Spec) {
         assert!(spec.budget > 0, "a request must allow at least one token");
+        assert!(
+            self.made(id).is_none(),
+            "an active request identity cannot be admitted twice"
+        );
         self.running.push(Running { id, spec, made: 0 });
     }
 
@@ -179,6 +185,15 @@ pub fn check(
     spec: &Spec,
     cancelled_after: Option<usize>,
 ) -> Result<Outcome, String> {
+    let Some(first) = events.first() else {
+        return Err("no events".into());
+    };
+    if events.iter().any(|e| e.id() != first.id()) {
+        return Err("mixed request identities".into());
+    }
+    if events.iter().any(|e| matches!(e, Event::Status { .. })) {
+        return Err("a status reply is not a generation event".into());
+    }
     let finals: Vec<usize> = (0..events.len())
         .filter(|&i| matches!(events[i], Event::Final { .. }))
         .collect();
@@ -210,6 +225,11 @@ pub fn check(
         return Err("tokens streamed for a non-streamed request".into());
     }
     let (end, natural) = natural_end(spec);
+    // The harness records cancellation only for a still-running request.
+    // A subsequent natural end is therefore wrong, even if its counts match.
+    if cancelled_after.is_some() && outcome != Outcome::Cancelled {
+        return Err("observed cancellation did not win the next step".into());
+    }
     match (outcome, cancelled_after) {
         (Outcome::Cancelled, Some(at)) if n == at => Ok(outcome),
         (Outcome::Cancelled, Some(at)) => {
@@ -669,6 +689,20 @@ fn main() {
     };
     let scenarios = num("--scenarios", 10_000) as usize;
     let seed = num("--seed", 1);
+    assert!(
+        !t.tick.is_zero() && !t.slice.is_zero(),
+        "positive timing intervals required"
+    );
+    ownership::demonstrate();
+    if std::env::args().any(|a| a == "--contracts-only") {
+        let mut rng = Rng::new(seed);
+        let mut tally = Tally::default();
+        for _ in 0..scenarios {
+            random_scenario(&mut rng, &mut tally).expect("terminal contract");
+        }
+        println!("checked {scenarios} scenarios, {} requests", tally.requests);
+        return;
+    }
     let ms = |d: Duration| d.as_secs_f64() * 1e3;
 
     println!("Part 1: a client leaves; how many tokens does the engine make for nobody?");
@@ -709,8 +743,8 @@ fn main() {
         for (neighbour, what) in &cases {
             let r = replay(design, *neighbour, t);
             let name = match design {
-                Design::Poll => "poll (llama.cpp)",
-                Design::Event => "event (vLLM)",
+                Design::Poll => "poll model",
+                Design::Event => "event model",
             };
             println!(
                 "  {:<18} {:<34} {:>13} {:>13.0}",
@@ -818,6 +852,86 @@ mod tests {
             outcome: Outcome::Cancelled,
         });
         assert!(check(&events, &s, None).is_err());
+    }
+
+    #[test]
+    fn checker_rejects_natural_end_after_observed_cancellation() {
+        let s = spec(3, None, None, true);
+        assert!(check(&run(s, None), &s, Some(1)).is_err());
+    }
+
+    #[test]
+    fn checker_rejects_mixed_id_status_missing_and_late_output() {
+        let s = spec(2, None, None, true);
+        let good = run(s, None);
+        let mut mixed = good.clone();
+        mixed[0] = Event::Token { id: 8, index: 0 };
+        assert!(check(&mixed, &s, None).is_err());
+        let mut status = good.clone();
+        status.insert(0, Event::Status { id: 7 });
+        assert!(check(&status, &s, None).is_err());
+        assert!(check(&good[..2], &s, None).is_err());
+        let mut late = good;
+        late.push(Event::Token { id: 7, index: 2 });
+        assert!(check(&late, &s, None).is_err());
+    }
+
+    #[test]
+    fn failure_beats_eos_and_cancellation_beats_both() {
+        let s = spec(3, Some(1), Some(1), true);
+        assert_eq!(check(&run(s, None), &s, None), Ok(Outcome::Failed));
+        assert_eq!(check(&run(s, Some(1)), &s, Some(1)), Ok(Outcome::Cancelled));
+    }
+
+    #[test]
+    fn duplicate_active_admission_is_rejected_without_changing_owner() {
+        let mut engine = Engine::default();
+        let s = spec(2, None, None, true);
+        engine.admit(7, s);
+        let rejected = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            engine.admit(7, s);
+        }));
+        assert!(rejected.is_err());
+        let mut out = Vec::new();
+        engine.step(&mut out);
+        engine.step(&mut out);
+        assert_eq!(check(&out, &s, None), Ok(Outcome::MaxTokens));
+    }
+
+    #[test]
+    fn exhaustive_small_specs_match_closed_form_end() {
+        for budget in 1..=5 {
+            for eos in [None, Some(0), Some(1), Some(2), Some(3), Some(4), Some(5)] {
+                for fail in [None, Some(0), Some(1), Some(2), Some(3), Some(4), Some(5)] {
+                    // Independent minimum of three boundaries, not another step loop.
+                    let mut boundaries = vec![(budget, 2, Outcome::MaxTokens)];
+                    if let Some(k) = eos {
+                        if k < budget {
+                            boundaries.push((k, 1, Outcome::EndOfSequence));
+                        }
+                    }
+                    if let Some(k) = fail {
+                        if k < budget {
+                            boundaries.push((k, 0, Outcome::Failed));
+                        }
+                    }
+                    boundaries.sort_by_key(|&(k, priority, _)| (k, priority));
+                    let (n, _, outcome) = boundaries[0];
+                    for stream in [false, true] {
+                        let s = spec(budget, eos, fail, stream);
+                        assert_eq!(natural_end(&s), (n, outcome));
+                        assert_eq!(
+                            *run(s, None).last().unwrap(),
+                            Event::Final {
+                                id: 7,
+                                tokens: n,
+                                outcome
+                            }
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]
