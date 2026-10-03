@@ -66,3 +66,52 @@ The [optional ggml reference](ggml-reference/README.md) independently loads
 that fixture and executes CPU graphs at a pinned upstream revision. Its
 direct decoder agrees exactly, while its quantized graph demonstrates why
 activation conversion is a separate numerical boundary.
+
+## Numbers, addresses and cooperative execution
+
+```bash
+python3 code/foundations/numerical_path.py
+python3 code/foundations/memory_execution.py
+mkdir -p build/foundations-machine
+cc -std=c11 -O2 -ffp-contract=off -Wall -Wextra -Werror \
+  code/foundations/cpu-dot.c -o build/foundations-machine/cpu-dot
+build/foundations-machine/cpu-dot
+```
+
+Predict: half accumulation of 4,096 ones stops at 2,048; a wider accumulator
+retains 4,096. Explain the halfway tie from the significand bits. Break:
+replace nearest-even with truncation and the midpoint tests fail.
+The rational format model accepts finite inputs and models one rounding at
+each stated operation. It classifies encoded specials but does not implement
+NaN payload propagation, signed-zero arithmetic, exception flags or a GPU.
+Its BF16 subnormal policy is mathematical, not a claim about every instruction.
+Ten new tests include exhaustive half decoding against `struct`, finite
+round trips, independent midpoint conversions and exact FMA cancellation.
+
+Predict: 32 adjacent F32 addresses cover four aligned 32-byte sectors, or
+five after a four-byte shift. Explain the address intervals. Break: attempt
+to read a tile before publication or overwrite it before its last consumer;
+the protocol rejects both. Nine new tests compare 840 tile/shape combinations
+against an independent integer matrix loop. No GPU is simulated in time:
+there are no caches, warp schedules or physical barriers in this model.
+
+The C lab executes four-lane NEON on AArch64 with NEON; other builds print
+`scalar fallback`. Its independent integer numerator oracle checks 516
+length/offset cases. Use the printed path, not the source filename, to know
+which ran. Inputs are dyadic and bounded so expected F32 results are exact;
+this is not a general floating-point accuracy test or a speed benchmark.
+Optional memory/undefined-behaviour check with Clang:
+
+```bash
+clang -std=c11 -O1 -g -ffp-contract=off -fsanitize=address,undefined \
+  -fno-omit-frame-pointer code/foundations/cpu-dot.c \
+  -o build/foundations-machine/cpu-dot-sanitized
+build/foundations-machine/cpu-dot-sanitized
+clang -std=c11 -O2 -ffp-contract=off -S code/foundations/cpu-dot.c \
+  -o build/foundations-machine/cpu-dot.s
+```
+
+Inspect the `lane_dot` function in the assembly: four-lane multiply/add and
+horizontal reduction establish generated vector instructions, not throughput.
+The dated [record](../../research/measurements/2026-10-03-foundation-machines.md)
+keeps the observed path, checks and limits.

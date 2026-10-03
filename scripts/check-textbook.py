@@ -156,9 +156,10 @@ def worked_problem_count(path, text):
             fail(f"missing worked problems {worked.relative_to(ROOT)}")
         body = worked.read_text()
         problems = body.count(r"\textbf{Problem.")
-        if problems != 3:
-            fail(f"{worked.relative_to(ROOT)}: expected 3 problems, found {problems}")
-        if body.count(r"\textbf{Solution") < 2 and name != "ch14-request-lifecycle":
+        if problems < 3:
+            fail(f"{worked.relative_to(ROOT)}: expected at least 3 problems, found {problems}")
+        required_solutions = problems if path.parent.name == "foundations" else 2
+        if body.count(r"\textbf{Solution") < required_solutions and name != "ch14-request-lifecycle":
             fail(f"{worked.relative_to(ROOT)}: closed problems need worked solutions")
         count += problems
     return count

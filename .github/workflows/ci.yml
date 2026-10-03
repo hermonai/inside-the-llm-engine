@@ -18,8 +18,13 @@ jobs:
         run: python3 scripts/check-links.py
       - name: Check the book source, executable request trace and worked calculations
         run: python3 scripts/check-textbook.py
-      - name: Check the foundation decoder and bounded binary-format reader
+      - name: Check foundation decoder, bytes, numerics and execution models
         run: python3 -m unittest discover -s code/foundations -p 'test_*.py'
+      - name: Check portable native CPU fixture with memory sanitizers
+        run: |
+          mkdir -p build/foundations-machine
+          clang -std=c11 -O1 -g -ffp-contract=off -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer code/foundations/cpu-dot.c -o build/foundations-machine/cpu-dot
+          build/foundations-machine/cpu-dot
       - name: Check canonical diagram width
         run: python3 scripts/check-diagram-width.py
       - name: Check canonical diagram style and inventory

@@ -33,6 +33,29 @@ def choose(probabilities, draw):
 
 
 class Foundations(unittest.TestCase):
+    def test_worked_problem_minimum_not_ceiling(self):
+        import importlib.util
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        spec = importlib.util.spec_from_file_location("textbook_contract", ROOT/"scripts/check-textbook.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with TemporaryDirectory() as scratch:
+            tex = Path(scratch)
+            (tex/"worked").mkdir()
+            chapter = tex/"foundations/f13-numerics.tex"
+            worked = tex/"worked/f13-numerics.tex"
+            inclusion = r"\input{worked/f13-numerics.tex}"
+            with patch.object(module, "TEX", tex), patch.object(module, "ROOT", tex):
+                for count in (3,6):
+                    worked.write_text((r"\textbf{Problem.} P \textbf{Solution.} S"+"\n")*count)
+                    self.assertEqual(module.worked_problem_count(chapter,inclusion),count)
+                for body in ((r"\textbf{Problem.} P \textbf{Solution.} S"+"\n")*2,
+                             (r"\textbf{Problem.} P"+"\n")*6):
+                    worked.write_text(body)
+                    with self.assertRaises(SystemExit):
+                        module.worked_problem_count(chapter,inclusion)
+
     def printed(self, name, *anchors):
         text = (TEX / "foundations" / name).read_text()
         for anchor in anchors:

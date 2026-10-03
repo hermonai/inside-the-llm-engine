@@ -33,6 +33,7 @@ def main():
                 ROOT/"scripts/build-textbook.py", ROOT/"scripts/check-textbook.py",
                 ROOT/"scripts/check-foundations.py", ROOT/"scripts/check-system-diagrams.py"]
     sources += sorted((ROOT/"code/foundations").glob("*.py"))
+    sources += sorted((ROOT/"code/foundations").glob("*.c"))
     sources += [ROOT/"code/foundations/ggml-reference/main.cpp",
                 ROOT/"code/foundations/ggml-reference/CMakeLists.txt"]
     record = {"edition": "second edition; breadth-first working draft",
