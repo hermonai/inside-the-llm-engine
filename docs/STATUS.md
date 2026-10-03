@@ -32,7 +32,7 @@ The first 14 systems chapter introductions now explain their question and
 offer a first-reading route before the measurements. This is an entry-point
 clarity pass, not a claim that every paragraph of the systems manuscript has
 been rewritten. Existing measured results and dated frontier claims remain.
-The book contains 172 native figures and 108 worked problems. Every one of
+The book contains 178 native figures and 117 worked problems. Every one of
 the 42 systems chapters has a native mechanism diagram. The author merged
 the second-edition work into main at `2c0474d`; this pass follows that checkout.
 
@@ -76,7 +76,7 @@ problem; negative regression tests preserve both requirements. See
 `research/measurements/2026-10-03-foundation-machines.md` for raw outputs,
 oracle coverage and the deliberately broken tail variant.
 
-This pass deepens Chapter 16 to about 3,300 prose words and Chapter 17
+The accounting pass deepens Chapter 16 to about 3,300 prose words and Chapter 17
 to about 3,600. Chapter 16 follows a projection from axes through packed
 metadata, traffic, dimensions, cache reservation and conditional bounds.
 Chapter 17 turns a request cohort into separate wire, correct-completion
@@ -92,24 +92,45 @@ in `research/measurements/2026-10-03-foundation-experiments.md` with raw
 times and source/input hashes. These are Python observations, not a native
 GEMM, GPU, model or inference-service speed claim.
 
+The latest pass deepens Chapters 9--11 to about 3,100, 2,900 and 3,300
+prose words respectively. Attention derives the shifted prediction boundary,
+offset chunk masks, GQA axes, operand counts and independent row properties.
+The FFN follows both normalized branch inputs and unnormalized residuals,
+rectangular matrix coordinates, matched parameter budgets and hidden-tile
+lifetimes. Decoder assembly inventories all 280 matrix entries, proves causal
+cache reuse by induction and separates selection, feedback and stopping.
+Six new native diagrams, nine additional worked problems and three actual
+source listings support the explanations. Existing lessons remain intact.
+
+The new standard-library inspection lesson adds seventeen tests. A separate
+70-digit Decimal row oracle and analytic residual/zero-update fixtures
+complement, rather than replace, shared-primitive parity checks.
+The sweep compares 375 three-token histories across three head/layer
+configurations. Instrumented calls confirm 24 versus ten projected rows
+and 124 versus 60 attention pairs for the stated three-prediction cohort.
+Offset-mask and position-reset negative controls expose plausible wrong
+answers. The trace retains raw logits and evaluated frontiers in
+`research/measurements/2026-10-03-foundation-decoder.md`.
+These are correctness observations and derived counts, not speed measurements.
+
 ## Validation of this revision
 
-The 688-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
-or unresolved references. All 688 pages rendered, and the visible-text-bounds
-audit passed. Both revised chapters and the transition into Part II were
-visually inspected in colour and grayscale, including all six figures and
-three source listings. A flowchart connector label was shortened, a split
-worked answer was kept together, and the worked-problem heading was kept
-with its first problem. The earlier Chapter 12, Chapters 13–15, preface and
-33 systems mechanism-plate reviews remain in their prior pass records.
+The 702-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
+or unresolved references. All 702 pages rendered and passed the visible
+word-bounds audit. The 29 pages of the latest three chapters were reviewed
+in colour and grayscale, including all nine figures and three source listings.
+Visual review corrected arrows crossing output boxes, a touching-node
+connector, key-label spacing and a split worked answer. The previous
+Chapters 12--17, preface, Part II transition and 33 systems mechanism-plate
+reviews remain in their prior pass records.
 This is author QA, not independent technical review or a claim that every
 unchanged page received a new visual inspection.
 
 Relevant local checks pass: structure/preservation/secrets, relative links,
 textbook contracts and six CLI trace tests, the 14 foundation arithmetic/structure
-tests, all 63 foundation tests, frozen diagrams,
+tests, all 80 foundation tests, frozen diagrams,
 deterministic figures, native-figure parity and industrial mutation guards.
-The new tests independently enumerate work and padding, distinguish
+The accounting tests independently enumerate work and padding, distinguish
 percentile populations, retain failed/incorrect output, reject invalid traces,
 abort a corrupted measured route and recompute timing medians from raw rows.
 No performance threshold is asserted.
@@ -121,23 +142,22 @@ sanitizer check is committed, but its remote execution has not been observed.
 The prior independent ggml CPU result (direct decode, tensor orientation and
 32 packed-coordinate probes), five lifecycle tests and full Rust/parity CI
 results remain historical evidence; they were not rerun in this pass.
-This pass does not promote the lifecycle chapter to FULL. Only the explicitly
-identified small Python experiment is newly timed; no accelerator or model
-performance measurement is claimed.
+This pass does not promote the lifecycle chapter to FULL or claim new timings.
+The previous accounting pass's small Python experiment remains in its dated
+record; no accelerator or model performance measurement is claimed.
 
 ## Next
 
-1. Deepen the remaining compact Part I lessons with the same concrete route.
-   Next: Chapters 9–11, the compact causal attention, FFN/residual and
-   decoder composition lessons. Chapters 12–17 now have concrete depth passes.
-2. Complete the existing lifecycle lab's full chapter, now Chapter 31
+1. Complete the existing lifecycle lab's full chapter, now Chapter 31
    (`ch14-request-lifecycle`), preserving the measured cancellation failure.
-3. Continue the straightforward, concrete-first edit through the bodies of
+   Chapters 9--17 now have concrete depth passes; keep their runnable reading
+   route when developing the later system mechanisms.
+2. Continue the straightforward, concrete-first edit through the bodies of
    systems chapters, then deepen the remaining 29 ZERO chapters. Keep
    the original measurements and failure cases; explain them more gradually.
-4. Resolve the five remaining hardware-measurement TODOs when the required
+3. Resolve the five remaining hardware-measurement TODOs when the required
    machines are available. Do not replace missing measurements with predictions.
-5. Obtain independent technical review before assigning VERIFIED.
+4. Obtain independent technical review before assigning VERIFIED.
 
 ## Historical evidence
 
@@ -164,9 +184,9 @@ from the current printed chapter numbers. Prose word counts are approximate.
 | 6 | Embeddings and Normalization | f06-embeddings-norm | FULL | 7,398 | 0 |
 | 7 | Queries, Keys, and Values | f07-qkv | FULL | 5,819 | 0 |
 | 8 | Position: RoPE From First Principles | f08-rope | FULL | 5,314 | 0 |
-| 9 | Causal Attention, One Row at a Time | f09-causal-attention | FULL | 1,519 | 0 |
-| 10 | The Feed-Forward Network and the Residual Stream | f10-feed-forward | FULL | 1,567 | 0 |
-| 11 | Assembling a Decoder That Generates Tokens | f11-decoder | FULL | 1,644 | 0 |
+| 9 | Causal Attention, One Row at a Time | f09-causal-attention | FULL | 3,079 | 0 |
+| 10 | The Feed-Forward Network and the Residual Stream | f10-feed-forward | FULL | 2,908 | 0 |
+| 11 | Assembling a Decoder That Generates Tokens | f11-decoder | FULL | 3,336 | 0 |
 | 12 | Model File Formats: GGUF and safetensors | f12-model-formats | FULL | 5,130 | 0 |
 | 13 | Numerics: Floating Point and Quantization Formats | f13-numerics | FULL | 3,498 | 0 |
 | 14 | CPU and SIMD | f14-cpu-simd | FULL | 3,465 | 0 |
