@@ -1,0 +1,16 @@
+% diagram-kind: state
+\begin{tikzpicture}[node distance=12mm and 14mm]
+\node[sysbox] (q) {Queued};
+\node[sysbox,right=of q] (a) {Admitted};
+\node[sysbox,right=of a,fill=BookGreen] (r) {Running};
+\node[sysbox,below=18mm of r] (t) {Terminal};
+\node[sysbox,left=of t] (ret) {Retired};
+\node[sysbox,below=of q,fill=BookGold] (rej) {Rejected};
+\draw[flow](q)--node[syslabel]{capacity}(a);
+\draw[flow](a)--node[syslabel]{grant}(r);
+\draw[flow](r)--node[syslabel]{stop}(t);
+\draw[flow](t)--node[syslabel]{safe release}(ret);
+\draw[flow](q)--node[syslabel]{infeasible}(rej);
+\draw[flow](r.north)--++(0,12mm)-|node[syslabel,pos=.25]{preempt; retain logical history}(q.north);
+\node[sysnote,below=18mm of ret,anchor=north] {An arrival enters Queued. Preemption returns it to the queue,\\not to a new request identity. Terminal output and safe retirement differ.};
+\end{tikzpicture}

@@ -1,0 +1,10 @@
+% diagram-kind: memory
+\begin{tikzpicture}[node distance=6mm and 12mm]
+\node[sysbox](a){A\\depth 1};
+\node[sysbox,below left=of a](b){B\\depth 2};
+\node[sysbox,below right=of a](c){C\\depth 2};
+\node[sysbox,below=of b](d){D\\depth 3};
+\node[sysbox,below=of c](e){E\\depth 3};
+\draw[flow](a)--(b);\draw[flow](a)--(c);\draw[flow](b)--(d);\draw[flow](c)--(e);
+\node[note,right=18mm of c]{flat rows: A,B,C,D,E\\visibility follows parent links,\\not row order};
+\end{tikzpicture}

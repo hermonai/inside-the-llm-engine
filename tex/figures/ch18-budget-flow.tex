@@ -1,0 +1,11 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=7mm and 11mm]
+\node[sysbox] (start) {iteration starts\\budget $T$};
+\node[sysbox,right=of start] (dec) {schedule decodes\\spend $D$};
+\node[sysdecision,right=of dec] (room) {budget + KV\\capacity remain?};
+\node[sysbox,right=of room,fill=BookGreen] (pre) {schedule legal\\prefill chunk};
+\node[sysbox,below=11mm of room,fill=BookGold] (run) {run selected work\\then commit success};
+\draw[flow](start)--(dec); \draw[flow](dec)--(room);
+\draw[flow](room)--node[syslabel]{yes}(pre); \draw[flow](pre)|-(run);
+\draw[flow](room)--node[syslabel]{no}(run);
+\end{tikzpicture}

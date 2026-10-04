@@ -1,0 +1,40 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Naive check budget}
+\textbf{Problem.} \emph{Derivation.} With $V=200{,}000$, $B=64$ and an 8-ms model step, what
+average $t_c$ would keep naive equation~\eqref{eq:structured-naive} below 10\% of the
+step? Explain why the answer motivates precomputation.
+
+\textbf{Solution.} Ten percent of 8 ms is 0.8 ms. Equation~\eqref{eq:structured-naive} gives
+$t_c\le0.0008/(64\cdot200000)=6.25\times10^{-11}$ s, or 0.0625 ns/check.
+That is not a realistic scalar parser budget; the vocabulary work must be avoided,
+amortized, parallelized or overlapped.
+
+\Needspace{12\baselineskip}
+\subsection{Sparse versus dense}
+\textbf{Problem.} \emph{Representation.} Compare bytes written by a dense bitset with a sparse
+list when 12 of 200,000 token IDs are legal. State the ID width you assume.
+
+\textbf{Solution.} A 200,000-bit dense mask is 25,000 bytes. Twelve legal 32-bit token IDs need only
+48 bytes before container metadata, so sparse allowed IDs win strongly at that state.
+
+\Needspace{12\baselineskip}
+\subsection{Tool-call security}
+\textbf{Problem.} \emph{Security.} Give an example of a syntactically valid tool call that must
+still be rejected by authorization policy.
+
+\textbf{Solution.} A grammar may accept a transfer tool with a numeric amount while authorization rejects
+it because the caller lacks permission, the amount exceeds a limit, or confirmation is
+missing. Syntax and authority are independent guarantees.
+
+\Needspace{12\baselineskip}
+\subsection{EOS}
+\textbf{Problem.} \emph{Trace.} For the lab grammar, trace parser states after tokens
+\texttt{\{"ok":}, \texttt{tr}, \texttt{ue\}} and identify where EOS first becomes
+legal.
+
+\textbf{Solution.} EOS is legal only after the recognizer reaches an accepting state representing the
+complete closing brace; accepting a prefix such as \texttt{\{"ok":tr} would violate
+the language even though it can still be extended to a valid string.

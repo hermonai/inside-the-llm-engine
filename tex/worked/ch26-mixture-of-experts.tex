@@ -1,0 +1,70 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Union}
+\textbf{Problem.} \emph{Union.} Derive Equation~\eqref{eq:ch43-union}. For $E=256,k=8$, solve the
+smallest $B$ for which the expected union reaches at least 90\% of experts.
+
+\textbf{Solution.} Set $E[1-(1-k/E)^B]\ge0.9E$, hence
+$(1-k/E)^B\le0.1$ and
+\[
+B\ge\frac{\ln 0.1}{\ln(1-k/E)}.
+\]
+For $E=256,k=8$, this is $\ln(0.1)/\ln(31/32)\approx72.5$, so the smallest
+integer batch is 73.
+
+\Needspace{12\baselineskip}
+\subsection{Occupancy}
+\textbf{Problem.} \emph{Occupancy.} For $E=128,k=8,B=64$ and $U=126$, compute average rows per
+active expert. Explain why this can still be a poor GEMM shape.
+
+\textbf{Solution.} $Bk/U=64(8)/126\approx4.06$ rows per active expert. Four rows are far smaller than
+the row dimension for which large accelerator GEMMs normally achieve high utilization;
+padding and launch/dispatch overhead can dominate.
+
+\Needspace{12\baselineskip}
+\subsection{Parameters}
+\textbf{Problem.} \emph{Parameters.} A layer has 64 experts of 20M parameters, top-4 routing and
+100M shared parameters. Compute total and active parameters for one token.
+
+\textbf{Solution.} Total: $100\text{M}+64(20\text{M})=1.38$B. Active per token:
+$100\text{M}+4(20\text{M})=180$M.
+
+\Needspace{12\baselineskip}
+\subsection{Correctness}
+\textbf{Problem.} \emph{Correctness.} Work the three-token routing trace in this chapter and show
+the combine result if the grouped rows return in reverse expert order.
+
+\textbf{Solution.} Physical return order is irrelevant if every row carries its token ID and expert ID.
+The combine operation scatters each result to its original token and applies the gate
+paired with that expert. A reverse return order therefore produces the same mathematical
+sum; positional combine without IDs is incorrect.
+Use the executable's scalar experts $f_e(x)=(e+1)(x+0.1)$ and tokens
+$(1,2,-1)$. Token zero routes to $(e=2,g=0.7)$ and $(e=0,g=0.3)$:
+$y_0=0.7(3.3)+0.3(1.1)=2.64$. Token one routes to $(1,0.6)$
+and $(2,0.4)$: $y_1=0.6(4.2)+0.4(6.3)=5.04$. Token two
+routes to $(2,0.8)$ and $(3,0.2)$:
+$y_2=0.8(-2.7)+0.2(-3.6)=-2.88$.
+Reversing expert-return order must preserve $(2.64,5.04,-2.88)$
+within the declared floating-point tolerance. Sharing the scalar expert
+function between the reference and grouped paths checks dispatch/combine,
+not the correctness of an independent FFN kernel.
+
+\Needspace{12\baselineskip}
+\subsection{Distributed bytes}
+\textbf{Problem.} \emph{Distributed bytes.} With $B=128,k=4,d=4096$ and BF16 activations, compute
+the naive activation bytes in one dispatch direction.
+
+\textbf{Solution.} $Bkd b_a=128(4)(4096)(2)=4{,}194{,}304$ bytes, exactly 4 MiB in one naive dispatch
+direction, before protocol, alignment or duplicate-destination optimizations.
+
+\Needspace{12\baselineskip}
+\subsection{Capacity experiment}
+\textbf{Problem.} \emph{Implementation.} Extend the lab with a per-expert capacity of two rows.
+First implement dropping, then dropless overflow. Demonstrate why the dropping version
+can make one token's output depend on its batch-mates.
+
+\textbf{Solution.} A dropping implementation is batch-dependent: adding another token can fill an expert's
+capacity before the original token's assignment is admitted. Dropless overflow preserves
+the model semantics and converts overload into additional work/latency instead.

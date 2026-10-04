@@ -1,0 +1,11 @@
+% diagram-kind: memory
+\begin{tikzpicture}[level distance=17mm,sibling distance=38mm,
+every node/.style={font=\small\sffamily}]
+\node[block] {root / namespace}
+ child {node[block] {system [0:64]}
+   child {node[block,fill=BookGreen] {tools A [64:96]}
+     child {node[block] {chat X [96:144]}}}
+   child {node[block] {tools B [64:88]}
+     child {node[block,fill=BookGold] {agent Y [88:160]}}}};
+\node[note,right=8mm of current bounding box.east] {Edges carry token spans.\\Common ancestry is explicit.\\Pinned paths are not evictable.};
+\end{tikzpicture}

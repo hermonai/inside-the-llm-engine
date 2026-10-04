@@ -1,0 +1,11 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=10mm and 16mm]
+\node[sysbox] (a) {Tenant A\\tokens 10,20,30};
+\node[sysbox,below=of a] (b) {Tenant B\\tokens 10,20,30};
+\node[sysbox,right=of a] (ka) {$\kappa_A$\\security namespace};
+\node[sysbox,right=of b] (kb) {$\kappa_B$\\security namespace};
+\node[sysbox,right=of ka,fill=BookGreen] (ha) {$H(\kappa_A,\ldots)$\\cache branch A};
+\node[sysbox,right=of kb,fill=BookGold] (hb) {$H(\kappa_B,\ldots)$\\cache branch B};
+\draw[flow](a)--(ka); \draw[flow](b)--(kb); \draw[flow](ka)--(ha); \draw[flow](kb)--(hb);
+\draw[control] (ha)--node[syslabel]{no cross-tenant alias}(hb);
+\end{tikzpicture}

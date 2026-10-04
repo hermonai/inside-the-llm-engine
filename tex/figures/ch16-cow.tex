@@ -1,0 +1,14 @@
+% diagram-kind: activity
+\begin{tikzpicture}[font=\small,>=Stealth,node distance=.8cm and 1.1cm]
+\node[draw,rounded corners,align=center] (before)
+ {before append\\$T_X=[5,9]$\\$T_Y=[5,9]$\\refcnt$(9)=2$};
+\node[draw,rounded corners,right=of before,align=center] (guard)
+ {X wants position 6\\tail 9 shared?\\yes};
+\node[draw,rounded corners,right=of guard,align=center] (copy)
+ {allocate block 3\\copy valid cells 4,5\\$T_X[1]\leftarrow3$};
+\node[draw,rounded corners,right=of copy,align=center] (after)
+ {append X[6]\\$T_X=[5,3]$\\$T_Y=[5,9]$};
+\draw[->] (before)--(guard);
+\draw[->] (guard)--node[above,font=\scriptsize]{COW}(copy);
+\draw[->] (copy)--(after);
+\end{tikzpicture}

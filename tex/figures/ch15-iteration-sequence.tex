@@ -1,0 +1,16 @@
+% diagram-kind: sequence
+\begin{tikzpicture}[font=\scriptsize,>=Stealth,x=2.5cm,y=.72cm]
+\foreach \x/\name in {0/API,1/Scheduler,2/Allocator,3/Worker} {
+  \node[font=\small] at (\x,0) {\name};
+  \draw[dashed,gray] (\x,-.25)--(\x,-8.5);
+}
+\draw[->] (0,-.8)--node[above]{arrival / cancel}(1,-.8);
+\draw[->] (1,-1.6)--node[above]{retire safe leases}(2,-1.6);
+\draw[->] (1,-2.4)--node[above]{fit? request + memory}(2,-2.4);
+\draw[<-] (1,-3.0)--node[above]{capacity grant}(2,-3.0);
+\draw[->] (1,-3.8)--node[above]{plan: $(id,g,q)$}(3,-3.8);
+\draw[->] (3,-4.8)--node[above]{result: $(id,g,\Delta)$}(1,-4.8);
+\node[draw,rounded corners,align=left,fill=white] at (1,-5.8)
+ {validate generation\\commit or discard};
+\draw[->] (1,-7.2)--node[below,align=center,fill=white]{stream token\\or terminal}(0,-7.2);
+\end{tikzpicture}

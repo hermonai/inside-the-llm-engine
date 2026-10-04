@@ -1,0 +1,9 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=7mm and 9mm]
+\node[sysbox](c){cached latent\\$c_s$};
+\node[sysbox,right=of c](dot){latent-space\\scores / reduction};
+\node[sysbox,above=of dot](q){query\\$W_K^\top q$};
+\node[sysbox,right=of dot](u){post-reduction\\$W_V$};
+\draw[flow](c)--(dot);\draw[flow](q)--(dot);\draw[flow](dot)--(u);
+\node[note,below=of dot]{fixed projections move to the current-query\\and post-reduction sides};
+\end{tikzpicture}

@@ -1,0 +1,8 @@
+% diagram-kind: memory
+\begin{tikzpicture}[node distance=5mm and 8mm]
+\node[sysbox](m){MHA\\4 Q : 4 KV};
+\node[sysbox,right=of m](g){GQA\\4 Q : 2 KV};
+\node[sysbox,right=of g](q){MQA\\4 Q : 1 KV};
+\draw[flow](m)--node[syslabel]{share heads}(g);
+\draw[flow](g)--node[syslabel]{share further}(q);
+\end{tikzpicture}

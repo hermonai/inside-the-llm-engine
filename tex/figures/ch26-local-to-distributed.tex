@@ -1,0 +1,11 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=6mm and 8mm]
+\node[sysbox](a){router\\assignments};
+\node[sysbox,right=of a](b){local pack\\by owner/expert};
+\node[sysbox,right=of b](c){all-to-all\\dispatch};
+\node[sysbox,below=of c](d){local grouped\\expert GEMM};
+\node[sysbox,left=of d](e){all-to-all\\return};
+\node[sysbox,left=of e](f){combine\\by token};
+\draw[flow](a)--(b);\draw[flow](b)--(c);\draw[flow](c)--(d);
+\draw[flow](d)--(e);\draw[flow](e)--(f);
+\end{tikzpicture}

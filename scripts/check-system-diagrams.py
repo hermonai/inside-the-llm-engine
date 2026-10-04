@@ -42,6 +42,30 @@ def coverage():
 
 
 class DiagramContracts(unittest.TestCase):
+    def test_ragged_batch_coordinates_match_grants(self):
+        text = source("ch15-ragged-batch")
+        arrays = re.findall(r"\\foreach \\x/\\lab in \{([^}]+)\}", text)
+        values = [[int(pair.split("/")[1]) for pair in array.split(",")]
+                  for array in arrays]
+        self.assertEqual(values, [[0, 1, 2, 4], [3, 1, 0, 1]])
+        self.assertEqual([b-a for a, b in zip(values[0], values[0][1:])],
+                         [1, 1, 2])
+        self.assertIn("$A_3$", text)
+        self.assertIn("$B_1$", text)
+        self.assertIn("$C_0$", text)
+        self.assertIn("$C_1$", text)
+
+    def test_chunk_trace_uses_counts_and_zero_based_positions(self):
+        text = source("ch18-request-trace")
+        prefix, budget = 6144, 1024
+        first = prefix + budget - 64
+        second = first + budget - 80
+        self.assertEqual((first, second), (7104, 8048))
+        self.assertIn("through 7103", text)
+        self.assertIn("through 8047", text)
+        self.assertIn("schedule 960", text)
+        self.assertIn("schedule 944", text)
+
     def test_every_systems_chapter_has_a_mechanism(self):
         self.assertEqual(coverage()["systems_chapters_with_mechanism"], 42)
 

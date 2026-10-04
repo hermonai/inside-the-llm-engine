@@ -1,0 +1,41 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Queueing ratios}
+\textbf{Problem.} \emph{Derivation.} From equation~\eqref{eq:sched-mm1}, solve for utilization
+when mean system time is 5, 20 and 50 service times.
+
+\textbf{Solution.} From $T/(1/\mu)=1/(1-\rho)=k$, $\rho=1-1/k$. For $k=5,20,50$ the
+utilizations are 0.80, 0.95 and 0.98.
+
+\Needspace{12\baselineskip}
+\subsection{Opening capacity}
+\textbf{Problem.} \emph{Trace.} Four requests each need 200 prompt cells and up to 1,200 output
+cells. Compute worst-case total capacity. With 4,096 cells and equal progress, at
+approximately how many generated tokens/request is capacity exhausted?
+
+\textbf{Solution.} Worst-case cells are $4(200+1200)=5600$. With 4,096 cells and four 200-token
+prompts, 3,296 cells remain for outputs, or 824 output cells/request under equal
+progress. This reproduces the pressure point in the recorded setup.
+
+\Needspace{12\baselineskip}
+\subsection{Victim efficiency}
+\textbf{Problem.} \emph{Victim selection.} Requests A and B reference 100 blocks each. A uniquely
+owns 20 and costs 5 ms to reconstruct; B uniquely owns 70 and costs 40 ms. Compare
+reclaimable-blocks-per-ms and explain what the ratio omits.
+
+\textbf{Solution.} A reclaims 20/5=4 unique blocks/ms of reconstruction cost. B reclaims
+70/40=1.75 blocks/ms, so this narrow metric chooses A. It omits priority, deadline,
+service already invested, cache reuse, transfer alternatives and whether the freed
+blocks are sufficient to satisfy the blocked allocation.
+
+\Needspace{12\baselineskip}
+\subsection{Conservative-policy falsification}
+\textbf{Problem.} \emph{Falsification.} Construct a workload where strict SLO-aware rejection
+reduces goodput relative to optimistic admission. Identify which predictor error or
+burst structure makes the conservative policy lose.
+
+\textbf{Solution.} If the predictor systematically overestimates output length, strict reservation can
+reject short requests that would have completed safely. Optimistic admission can then
+produce higher SLO-qualified completions when actual outputs terminate early.

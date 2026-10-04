@@ -1,0 +1,9 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=8mm and 10mm]
+\node[sysbox](l){server load\\SLO state};
+\node[sysbox,right=of l](b){choose tree\\budget};
+\node[sysbox,right=of b](x){draft + verify};
+\node[sysbox,below=of x](m){accepted path\\iteration time};
+\draw[flow](l)--(b);\draw[flow](b)--(x);\draw[flow](x)--(m);
+\draw[flow](m.west)-| node[syslabel,pos=.25]{feedback}(l.south);
+\end{tikzpicture}

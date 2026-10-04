@@ -1,0 +1,16 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=8mm and 16mm]
+\node[sysbox] (lookup) {Lookup candidate prefix};
+\node[sysbox,below=of lookup] (ns) {Check security and\\compute namespace};
+\node[sysbox,below=of ns] (tok) {Check exact tokens\\and legal boundary};
+\node[sysbox,below=of tok] (live) {Validate live handles;\\acquire pins atomically};
+\node[sysbox,below=of live,fill=BookGreen] (hit) {Commit hit;\\skip verified prefill};
+\node[sysbox,right=22mm of tok,fill=BookGold] (miss) {Fail closed;\\recompute prefix};
+\draw[flow](lookup)--(ns);
+\draw[flow](ns)--node[syslabel]{match}(tok);
+\draw[flow](tok)--node[syslabel]{match}(live);
+\draw[flow](live)--node[syslabel]{success}(hit);
+\draw[flow](ns.east)-|node[syslabel,pos=.25]{mismatch}(miss.north);
+\draw[flow](tok.east)--node[syslabel]{mismatch}(miss.west);
+\draw[flow](live.east)-|node[syslabel,pos=.25]{stale / cannot pin}(miss.south);
+\end{tikzpicture}

@@ -1,0 +1,61 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Prediction: the first iteration}
+\textbf{Problem.} \emph{Prediction.} With $S_{\max}=2$ and $T_{\max}=3$, requests
+$A=(p=3,o=4)$ and $B=(p=1,o=2)$ arrive together. Under the lab's rule that a
+prefill is not split, which request can consume the first iteration? What
+budget remains?
+
+\textbf{Solution.} $A$'s unsplit prefill needs all three available token positions, so the
+deterministic FCFS teaching scheduler grants $q_A=3$ and $q_B=0$ in the first
+iteration. The sequence budget has one nominal place left, but the token budget
+has zero tokens left. This is the smallest example showing why a sequence cap
+cannot replace a token cap.
+
+\Needspace{12\baselineskip}
+\subsection{Derivation: fixed-batch waste}
+\textbf{Problem.} \emph{Derivation.} A fixed batch has output lengths
+$(2,2,2,10)$. Compute $\eta_{\mathrm{static}}$. Then compute the number of
+unused sequence-steps.
+
+\textbf{Solution.} For $(2,2,2,10)$, useful sequence-steps are $16$ and reserved sequence-steps
+are $4\times10=40$. Thus $\eta_{\mathrm{static}}=16/40=0.4$. The unused
+reservation is $40-16=24$ sequence-steps.
+
+\Needspace{12\baselineskip}
+\subsection{Representation: ragged offsets}
+\textbf{Problem.} \emph{Representation.} A ragged step grants token counts $(1,3,2)$ to
+requests $(R_0,R_1,R_2)$. Construct the offset vector and state the shape of
+the flattened hidden-state matrix for model width $d=4096$.
+
+\textbf{Solution.} Counts $(1,3,2)$ have prefix sums $(0,1,4,6)$, so the offset vector is
+$\mathbf o=[0,1,4,6]$. There are six flattened token rows. With model width
+$d=4096$, the hidden-state matrix is
+$\mathbf X\in\mathbb R^{6\times4096}$.
+
+\Needspace{12\baselineskip}
+\subsection{Correctness: stale result}
+\textbf{Problem.} \emph{Correctness.} Slot 4 generation 11 belongs to request $X$ when a
+worker ticket launches. $X$ is cancelled; a broken scheduler reuses slot 4
+for $Y$ at generation 12. State the minimum fields a returning result must
+carry to prevent publication into $Y$.
+
+\textbf{Solution.} The returning result must identify the durable request and its ownership
+generation, here $(X,11)$, rather than only physical slot 4. The current slot
+owner is $(Y,12)$, so the result cannot mutate $Y$. A system that also tracks
+a unique work-ticket ID can reject duplicate completion as well.
+
+\Needspace{12\baselineskip}
+\subsection{Falsification: utilization is not goodput}
+\textbf{Problem.} \emph{Falsification.} Construct a workload where continuous batching
+preserves high accelerator occupancy but user goodput is zero under a stated
+TTFT target. Explain why the example falsifies the claim ``high utilization
+implies a healthy service.''
+
+\textbf{Solution.} Let the TTFT objective be 100 ticks. Feed work faster than the engine can
+complete it while keeping the runnable set non-empty. Accelerator utilization
+can remain 100\%, yet after the queue exceeds 100 ticks every newly completed
+request violates the TTFT objective. Raw utilization is therefore compatible
+with zero goodput under that objective.

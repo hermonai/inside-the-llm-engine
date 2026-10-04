@@ -1,0 +1,7 @@
+\begin{tikzpicture}
+\begin{axis}[width=.82\linewidth,height=5.4cm,xlabel={batch tokens $B$},
+ylabel={expected active experts},xmin=1,xmax=128,ymin=0,ymax=132,grid=major]
+\addplot[BookBlue,thick,domain=1:128,samples=128]{128*(1-(1-8/128)^x)};
+\addplot[dashed] coordinates {(1,128) (128,128)};
+\end{axis}
+\end{tikzpicture}

@@ -36,7 +36,8 @@ def main():
     log = (build/"inside-the-llm-engine.log").read_text()
     failures = [line for line in log.splitlines() if any(s in line for s in
                 ("Overfull", "Missing character:", "undefined references",
-                 "multiply defined", "LaTeX Warning: Reference"))]
+                 "multiply defined", "LaTeX Warning: Reference",
+                 "LaTeX Warning: Citation"))]
     if failures:
         raise SystemExit("\n".join(failures))
     shutil.copyfile(build/"inside-the-llm-engine.pdf", output)

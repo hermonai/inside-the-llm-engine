@@ -1,0 +1,15 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=12mm and 22mm]
+\node[sysbox] (need) {Allocation needs\\$\Delta b$ blocks};
+\node[sysbox,below=of need] (check) {Observe free capacity};
+\node[sysbox,below=of check] (cache) {If insufficient, evict\\unpinned inactive cache};
+\node[sysbox,below=of cache,fill=BookGold] (victim) {If still insufficient,\\select bounded victims};
+\node[sysbox,below=of victim] (observe) {Wait for safe release;\\observe actual free blocks};
+\node[sysbox,right=of cache,fill=BookGreen] (run) {Capacity grant\\schedule work};
+\draw[flow](need)--(check);\draw[flow](check)--(cache);
+\draw[flow](cache)--(victim);\draw[flow](victim)--(observe);
+\draw[flow](check.east)-|node[syslabel,pos=.25]{enough}(run.north);
+\draw[flow](cache)--node[syslabel,align=center]{enough after\\eviction}(run);
+\draw[flow](observe.east)-|node[syslabel,pos=.25]{enough after release}(run.south);
+\node[sysnote,below=12mm of observe,anchor=north]{Recovery has a finite work/latency budget. If it cannot grant capacity,\\defer or reject: do not spin indefinitely or count pinned bytes as free.};
+\end{tikzpicture}

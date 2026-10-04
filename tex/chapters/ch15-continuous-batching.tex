@@ -1,242 +1,737 @@
-% status: ZERO
-% Chapter 15 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part3.md (contbatch);
-% research/measurements/2026-09-23-m1-llama32-3b.md (batched decode staircase).
+% status: FULL
+% Printed Chapter 32. Stable source/lab ID: ch15-continuous-batching.
+% Preserves measurements from research/measurements/2026-09-24-m1-part3.md
+% and research/measurements/2026-09-23-m1-llama32-3b.md.
 \chapter{Continuous Batching}\label{ch:continuous-batching}
 
 \begin{ChapterIntent}
-Batching is the lever that moves decode up the roofline, but batching
-whole requests makes every short request wait for the longest one. Continuous
-batching schedules at the granularity of a single model step: finished
-sequences leave and new ones join between iterations. This chapter derives
-iteration-level scheduling, explains which operations can share a batch and
-which cannot, measures the throughput--latency curve it produces, and looks at
-how production schedulers overlap CPU scheduling work with GPU
-execution.
+A request lives for many model iterations, but a batch should not. Continuous
+batching rebuilds the executable work set at iteration boundaries so that
+finished requests leave, newly admissible requests enter, and every scheduled
+token is charged against explicit sequence, token, and memory limits. This
+chapter follows four requests through fixed request batching and
+iteration-level batching, derives the scheduler state needed to keep ragged
+requests correct, and builds a deterministic CPU scheduler whose accounting can
+be checked independently. The goal is not a particular engine policy. It is
+the set of invariants that any production policy must preserve.
 \end{ChapterIntent}
 
 \OpeningSection{The request that waited for a stranger's essay}
 
-Start llama.cpp's server on the M1 with four request slots and Llama~3.2~3B.
-One client asks for a 512-token answer. Two seconds later a second client asks
-for 32 tokens --- a one-line reply that needs about 1.3 seconds of decoding.
-With the server's continuous batching switched off, the second client's first
-token arrived \textbf{20.5 to 21.6 seconds} after it asked, in three runs: it
-waited for the stranger's essay to finish before its own prompt was even read.
-With continuous batching on --- the default --- its first token arrived in
-\textbf{0.50 seconds}, and its whole answer was complete 2.9 seconds after it
-asked (measured; record \texttt{2026-09-24-m1-part3}).
+Start llama.cpp's server on the recorded Apple M1 setup with four request
+slots and Llama~3.2~3B. One client asks for a 512-token answer. Two seconds
+later a second client asks for 32 tokens. With continuous batching disabled,
+the second client's first token arrived \textbf{20.5 to 21.6 seconds} after
+submission in three runs. With continuous batching enabled, its first token
+arrived in \textbf{0.50 seconds}, and its complete answer arrived 2.9 seconds
+after submission (measured; record
+\texttt{research/measurements/2026-09-24-m1-part3.md}).
 
-The switch changes one condition in the server's scheduling loop. At every
-iteration, llama.cpp first adds one token for each sequence that is decoding;
-new prompts are then added to the same batch only if continuous batching is on
-or if nothing is decoding (\texttt{tools/server/server-context.cpp} at commit
-\texttt{d006858}, the source of the measured build). Off, the server batches
-whole requests: a new one starts when the current batch drains. On, the batch
-is re-formed at every step, and a newcomer joins the very next forward pass.
+That difference is not a faster matrix multiplication. It is a different
+answer to a scheduling question: \emph{when may the membership of the next
+forward pass change?} Fixed request batching says ``after the current cohort
+finishes.'' Continuous batching says ``at an iteration boundary, subject to
+capacity and ownership rules.'' The second answer turns a batch from a durable
+container into a temporary execution plan.
 
-The first client paid something for the second's speed. Its essay took 23.3 to
-25.7 seconds instead of 22.1 to 23.2, and while the two shared the machine each
-step took 75~ms instead of 40. On this laptop that is nearly the cost of two
-separate steps: the M1's matrix kernels for a batch of two are almost as slow
-as two batches of one (\Chref{roofline}), so here continuous batching bought
-the newcomer's latency, not throughput. On a data-center GPU, where a decode
-step of a small model costs about the same for one sequence as for thirty-two
-(\Chref{roofline}), it buys both.
-This chapter is about the scheduler that makes the choice at every step.
+The first request did not receive the improvement for free. In the same
+recorded experiment, its long answer took 23.3--25.7 seconds with the newcomer
+instead of 22.1--23.2 seconds without it. During the shared interval, a step
+took about 75~ms rather than about 40~ms. On that M1 workload, a two-sequence
+step was therefore close to the cost of two one-sequence steps. Continuous
+batching bought latency isolation for the newcomer, not a large aggregate
+throughput gain. On hardware where a larger decode batch reuses weights much
+more efficiently, the same scheduling mechanism can buy both latency and
+throughput. The mechanism does not guarantee either outcome by itself.
 
-\Foundations{Batch rows are temporary assignments}{
-A batch is a group of token computations submitted together. A request can outlive
-many batches, and its row number can change between steps. Request identity must
-therefore not be inferred from its current row. Continuous batching rebuilds the
-active group at iteration boundaries as requests arrive or finish. The model weights
-can be shared, but each request retains its own history, position and cache mapping.
-Chapter~\ref{ch:prefill-decode} explains why rows can represent different kinds of
-work; Chapter~\ref{ch:request-lifecycle} explains when a request is eligible to leave
-the group.
+This chapter starts where Chapter~\ref{ch:request-lifecycle} stopped. A request
+already has a stable identity, a terminal-state owner, a cancellation path and
+a retirement rule. The scheduler must not weaken those guarantees merely
+because it wants to reuse a row quickly.
+
+\Foundations{A batch row is not a request}{
+A request is durable control state. A batch row is a temporary assignment for
+one executable step. The row may contain prompt tokens for one request, one
+decode token for another, and disappear completely on the next iteration.
+Request identity, output ownership and cache ownership therefore cannot be
+encoded only by the row index. Chapter~\ref{ch:prefill-decode} introduced the
+different arithmetic shapes of prefill and decode; Chapter~\ref{ch:request-lifecycle}
+established that terminal publication and physical retirement are separate
+events. We now combine those ideas in a scheduler.
 }
 
-\NapkinSection{Napkin math: occupancy of a static batch}
+\NapkinSection{Napkin math: why request-level batches waste slots}
 
-Batch $B$ requests together and run them until all have finished. Request $i$
-needs $L_i$ output tokens, so the batch occupies $B$ slots for $\max_i L_i$
-steps but does useful work in only $\sum_i L_i$ slot-steps. Its occupancy is
+Suppose a fixed cohort contains $B$ requests and request $i$ needs $L_i$
+decode iterations. If the implementation keeps all $B$ rows until the longest
+request finishes, it reserves
+\[
+  W_{\mathrm{reserved}} = B\max_i L_i
+\]
+sequence-steps while useful decode work is only
+\[
+  W_{\mathrm{useful}} = \sum_{i=1}^{B} L_i .
+\]
+The sequence-slot utilization is therefore
 \begin{equation}
-\eta_{\text{static}} = \frac{\sum_{i=1}^{B} L_i}{B\,\max_i L_i}
-= \frac{\bar{L}}{L_{\max}},
-\label{eq:static-occupancy}
+  \eta_{\mathrm{static}}
+  = \frac{\sum_i L_i}{B\max_i L_i}
+  = \frac{\bar L}{L_{\max}} .
+  \label{eq:static-occupancy}
 \end{equation}
-the mean output length over the longest. Chat and agent outputs are skewed:
-most answers are short and a few run to thousands of tokens. With a mean of 300
-and a longest of 2,000 in a batch of 32 (illustrative), $\eta=0.15$ --- 85\% of
-the batch's decode capacity is spent carrying finished sequences, and every
-request that arrives meanwhile waits up to 2,000 steps to start.
+These counts are exact under the stated convention: one active request for one
+decode iteration is one sequence-step. They are not FLOP counts and they do
+not predict wall-clock speed without a step-time model.
 
-Iteration-level scheduling replaces the batch's lifetime with a single step.
-A finished sequence frees its slot after the step that produced its last
-token, and a waiting request takes the slot at the next step, so occupancy
-stays near one whenever work is queued. The only waits left are the ones
-memory imposes (\Chref{paged-kv}) and the one-step delay before a newcomer's
-prompt joins the batch. With the step time $t(B)$ of \Chref{roofline}, the
-throughput of a full batch is $B/t(B)$, and the latency each sequence feels is
-$t(B)$ per token: the scheduler's job is to pick the $B$ at which that
-trade-off is worth making.
+Take four illustrative output budgets:
+\[
+  (L_A,L_B,L_C,L_D)=(6,2,4,1).
+\]
+A fixed four-request cohort occupies $4\times6=24$ sequence-steps but performs
+$6+2+4+1=13$ useful sequence-steps, so
+\[
+  \eta_{\mathrm{static}}=13/24\approx0.542.
+\]
+Almost half of the reserved row-time is empty after shorter requests finish.
+The deeper problem is temporal: a fifth request arriving while $A$ is still
+running cannot use one of those empty logical rows if cohort membership is
+frozen.
 
-\section{Static batching and its waste}
+Continuous batching removes that particular restriction. It does not create
+unlimited capacity. If the scheduler allows at most $S_{\max}$ active
+sequences and at most $T_{\max}$ scheduled tokens in an iteration, a candidate
+plan must satisfy
+\begin{align}
+  |\mathcal A_k| &\le S_{\max},\\
+  \sum_{r\in\mathcal A_k} q_{r,k} &\le T_{\max},
+  \label{eq:budgets}
+\end{align}
+where $\mathcal A_k$ is the set of requests scheduled at iteration $k$ and
+$q_{r,k}$ is the number of input positions request $r$ contributes to that
+iteration. For ordinary decode, $q_{r,k}=1$. For prefill, $q_{r,k}$ can be
+many prompt positions. Equation~\eqref{eq:budgets} is why ``batch size'' is
+ambiguous in modern inference: a sequence budget and a token budget constrain
+different resources.
 
-Early serving systems scheduled requests the way a training loop schedules
-examples: assemble a batch, run it to completion, return every result. That
-suits encoders, whose requests all finish in one pass. It fails for generation
-twice over. Short requests finish early and hold their slots idle, the waste of
-equation~\eqref{eq:static-occupancy}; and requests that arrive during a batch
-cannot join it, so their time to first token includes the remaining lifetime of
-someone else's batch. Padding sequences to a common length adds a third waste:
-arithmetic on tokens that do not exist.
+\section{One cohort, two schedulers}
 
-\section{Iteration-level scheduling}
+We will follow four illustrative requests. Time is measured in scheduler
+ticks, not milliseconds, so the example exposes policy rather than pretending
+to be a hardware benchmark.
 
-Orca, presented at OSDI in 2022, named the fix: schedule at the granularity of
-one iteration of the model rather than one request \cite{yu2022orca}. After
-each step the scheduler returns finished sequences, admits new ones, and forms
-the next batch from whatever is running. Its authors reported 36.9 times the
-throughput of NVIDIA's FasterTransformer on GPT-3 175B at the same latency
-(their measurement, 2022). Every serving engine now works this way; vLLM's V1
-engine reduces a scheduling decision to a map from request identifier to the
-number of tokens that request contributes to the next step, which covers
-decodes, prompt chunks and speculative drafts with one representation
-\cite{vllm2025v1}.
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+Request & arrival & prompt tokens & output budget & cancel tick\\
+\midrule
+A & 0 & 3 & 4 & --\\
+B & 0 & 1 & 2 & --\\
+C & 1 & 2 & 3 & --\\
+D & 3 & 1 & 2 & 5\\
+\bottomrule
+\end{tabular}
+\end{center}
 
-\section{What can share a batch}
+Assume $S_{\max}=2$ active requests and $T_{\max}=3$ scheduled tokens per
+iteration. To keep this chapter focused, a request's prefill may be scheduled
+as one chunk only when its remaining prompt fits the current token budget.
+Chapter~\ref{ch:chunked-prefill} will remove that simplifying restriction.
+Likewise, the scheduler asks a cache allocator whether a request fits, but
+Chapter~\ref{ch:paged-kv} owns the block-allocation mechanism.
 
-Most of a Transformer layer treats tokens independently. The projections,
-normalizations and feed-forward network see a matrix whose rows are tokens,
-and it does not matter which request a row came from: tokens from different
-sequences --- one decode token from each of thirty sequences, plus a chunk of
-someone's prompt --- can be concatenated into one matrix and multiplied by the
-weights once. That is where batching's saving comes from: the weights are read
-once per step for everyone (\Chref{roofline}). Orca called this
-\emph{selective batching}.
+With \emph{fixed request batching}, $A$ and $B$ form the first cohort because
+both arrive at tick 0. Their membership is frozen. Even after $B$ finishes,
+$C$ cannot enter until $A$ also finishes. The empty place beside $A$ is wasted.
+Only then may $C$ and $D$ form another cohort. If $D$ is cancelled while that
+second cohort runs, its terminal result may be published, but its physical
+slot cannot be reused until outstanding work carrying its lease has retired.
 
-Attention is the exception. Each token attends only to its own sequence's keys
-and values, so the attention kernel must know where each sequence's cache lives
-and how long it is. Engines therefore batch the token-wise work as one ragged
-matrix and run attention with kernels built for variable-length, per-sequence
-caches (\Chref{decode-attention}, \Chref{paged-kv}). Some differences between
-requests still forbid sharing a step. llama.cpp's server batches two slots only
-if their tasks are of the same type and they use identical LoRA adapter
-settings (\texttt{can\_batch\_with} in the same source); an embedding request
-and a generation request, or two requests with different adapters, take turns
-(\Chref{multi-model-serving}).
+With \emph{iteration-level batching}, membership is reconsidered after every
+completed step. When $B$ retires, $C$ can become active while $A$ continues.
+The important word is \emph{retire}, not merely \emph{finish}. Chapter 31's
+ownership rule survives intact: the scheduler may observe a terminal decision
+before every device or worker result associated with the old lease is gone.
 
-\section{The batch as a moving set}
+\EngineFigure{ch15-moving-cohort}{A separate three-request decode-only
+illustration, not the four-request lab trace. A occupies six ticks; B occupies
+two. Fixed request batching leaves a hole after B finishes;
+iteration-level batching admits C at the next safe boundary. The figure models
+scheduler ticks, not measured wall-clock time.}{fig:ch15-moving-cohort}
 
-A continuous-batching scheduler keeps two collections: the requests that are
-running, each with its cache and its position, and a queue of requests waiting
-to start. Each step it removes the sequences that finished, decides whether
-the waiting requests at the head of the queue fit --- in the step's token
-budget and in cache memory --- and builds the step's batch: one token for each
-running sequence, plus prompt tokens for newcomers. The cost of that decision
-recurs every few milliseconds, so the data structures are built for it: vLLM's
-V1 engine keeps a persistent batch of input tensors and applies only the
-changes between steps \cite{vllm2025v1}.
+\section{Admission is not scheduling}
 
-Read one trip around the loop first. The scheduler creates a temporary batch from durable request records, the worker executes it, and completed results update those records. Row reuse is safe because identity belongs to the request and its cache mapping.
+Two decisions that are often conflated must be kept separate.
+
+\emph{Admission} decides whether a request may enter the engine's managed
+working set. It is a capacity and service-protection decision. An engine may
+reject or queue a request because too many requests are already in flight,
+because its prompt would exceed a configured backlog limit, because the KV
+allocator cannot reserve safe capacity, or because a tenant has exhausted a
+quota. Admission can happen before the request has ever appeared in a model
+batch.
+
+\emph{Scheduling} decides which admitted requests contribute work to the
+\emph{next} iteration. A request can be admitted but waiting. It can be active
+but unscheduled for one iteration. It can be terminal but not retired. A
+scheduler that stores only ``in batch / not in batch'' has too few states to
+express these cases safely.
+
+For the teaching implementation we use
+\[
+ \textsc{Queued}\rightarrow\textsc{Admitted}\rightarrow
+ \textsc{Running}\rightarrow\textsc{Terminal}\rightarrow\textsc{Retired}.
+\]
+Cancellation can move a queued, admitted or running request to
+\textsc{Terminal}. Only retirement makes its reusable slot available. A
+production engine may split these states further, but it must preserve the
+same ownership distinction.
+
+\EngineFigure{ch15-request-state}{Conceptual state machine behind the teaching
+scheduler. Terminal publication is irreversible; physical capacity returns
+only on retirement. A generation number guards reused slots against late
+results.}{fig:ch15-request-state}
+
+This separation gives backpressure a precise location. If the waiting queue is
+unbounded, continuous batching can keep the accelerator busy while user
+latency diverges. A saturated engine that accepts every request is not
+healthy; it is accumulating future latency. Capacity limits must therefore
+bound some combination of queued requests, queued prompt tokens, active
+sequences and cache residency. A rejection such as HTTP 503 can be a more
+honest service response than accepting work whose latency objective is already
+impossible.
+
+\section{Prefill and decode consume different budgets}
+
+Autoregressive inference has two recurring shapes. During \emph{prefill}, a
+request contributes many known prompt positions. During \emph{decode}, it
+usually contributes one new position per iteration. Both use the same model
+weights, but their arithmetic intensity, attention work and latency role are
+different.
+
+Consider $A$ with three prompt tokens and $B$ with one. With
+$T_{\max}=3$, scheduling all of $A$'s prompt consumes the entire token budget.
+Although the sequence budget still has room for $B$, the token budget does
+not. On the next iteration $A$ may need one decode token while $B$ contributes
+one prefill token, for only two scheduled tokens total. A sequence-only limit
+cannot express this distinction.
+
+This also explains why ``continuous batching'' is not synonymous with
+``decode batching.'' The active set may be ragged in both phase and length.
+A production step can contain decode work for several requests and prompt work
+for another if its kernels and scheduler support that combination. The
+scheduler needs an interface that says how many positions each request may
+advance and a cache interface that says whether those positions can be made
+resident. Detailed chunk selection belongs to
+Chapter~\ref{ch:chunked-prefill}; detailed block placement belongs to
+Chapter~\ref{ch:paged-kv}.
+
+A useful representation is a per-request work ticket
+\[
+  w_{r,k}=(\mathrm{id}_r,g_r,p_r,c_r,o_r,q_{r,k}),
+\]
+where $\mathrm{id}_r$ is stable request identity, $g_r$ is the slot generation,
+$p_r$ is prompt length, $c_r$ is the number of model positions already
+computed, $o_r$ is the number of committed output tokens, and $q_{r,k}$ is
+the number of positions authorized for this iteration. The batch builder may
+pack these tickets into any row order. Correctness must not depend on that
+order.
+
+\section{Ragged batches need explicit metadata}
+
+Suppose the next executable step contains
+\[
+ q_A=1,\qquad q_B=1,\qquad q_C=2.
+\]
+There are four token rows but three requests. A flattened token tensor can be
+written as
+\[
+  \mathbf X\in\mathbb R^{4\times d},
+\]
+where $d$ is model width. The rows might be ordered
+\[
+  [A_3,\ B_1,\ C_0,\ C_1].
+\]
+The subscript is the logical position within that request. The model-wide
+linear layers can treat these as four ordinary rows. Attention cannot. It
+must know that $A_3$ may attend to $A$'s earlier positions, $B_1$ to $B$'s,
+and the two $C$ rows to the correct causal prefix of $C$.
+
+One compact host representation uses request offsets
+\[
+  \mathbf o=[0,1,2,4].
+\]
+Request $j$ owns flattened rows
+$[\mathbf o_j,\mathbf o_{j+1})$. The differences
+$(1,1,2)$ recover $q_A,q_B,q_C$. A second vector carries logical positions,
+for example
+\[
+  \mathbf p=[3,1,0,1].
+\]
+A cache mapping associates each request and logical position with storage.
+The next chapter will make that mapping paged; this chapter requires only the
+interface.
+
+At four-byte integers, the illustrative offsets occupy $4\times4=16$ bytes
+and positions another $4\times4=16$ bytes. Those byte counts are derived, not
+measured. Real runners carry more metadata: cache block tables, sequence
+lengths, sampling state, adapter identifiers, grammar state, multimodal
+metadata and often device-resident persistent buffers. The important
+engineering principle is that raggedness is represented explicitly rather
+than hidden in padding or inferred from row number.
+
+\EngineFigure{ch15-ragged-batch}{Memory view of an illustrative ragged batch.
+Four flattened token rows belong to three durable requests; offsets and
+logical positions recover ownership while row numbers remain temporary. Cache
+addresses are intentionally abstract because Chapter 33 owns paging.}
+{fig:ch15-ragged-batch}
+
+\section{The iteration transaction}
+
+A safe scheduler iteration is easiest to reason about as a transaction with
+five boundaries.
+
+First, \emph{collect events}. Arrivals, cancellation observations and worker
+completions are applied to durable request records. A terminal decision is
+monotonic: once cancellation or completion owns the outcome, a later event
+cannot replace it.
+
+Second, \emph{retire safe work}. A terminal request returns physical capacity
+only when every outstanding work ticket for its current generation has
+retired. This is the Chapter 31 invariant that prevents a late result from
+being published into a reused request.
+
+Third, \emph{admit}. The engine moves queued requests into its managed active
+set only while request, token-backlog and memory limits permit. Admission
+policy can be FCFS, priority-aware or tenant-aware; continuous batching does
+not choose among them.
+
+Fourth, \emph{schedule}. The scheduler walks eligible requests and grants
+$q_{r,k}$ positions while both sequence and token budgets remain. The teaching
+lab uses FCFS admission and deterministic physical-slot order for scheduling.
+A production scheduler may reserve decode
+capacity, cap long prefills, preempt work or use deadlines. Those policies
+change latency and fairness but not the accounting invariants.
+
+Fifth, \emph{launch}. The batch builder snapshots request identity and
+generation into immutable work tickets. The worker result must return the same
+pair. When the result comes back, the owner validates
+$(\mathrm{id},g)$ before committing it.
+
+\EngineFigure{ch15-iteration-sequence}{Sequence diagram for one scheduler
+iteration. Events and retirement precede admission; admission precedes
+scheduling; launch snapshots identity plus generation; result publication
+validates the snapshot before mutating request state.}{fig:ch15-iteration-sequence}
+
+The transaction need not be implemented under one mutex. CPU scheduling can
+overlap accelerator execution. The logical dependency, however, must remain:
+a plan cannot consume capacity that has not safely returned, and a result
+cannot mutate state whose generation no longer matches.
+
+\section{Safe completion, cancellation and slot reuse}
+
+Assume request $D$ occupies physical slot 1 with generation 7. The scheduler
+launches work ticket $(D,7)$, then observes cancellation. The request becomes
+terminal immediately from the client's perspective. The engine may stop
+scheduling new work for it, but ticket $(D,7)$ is still outstanding.
+
+The tempting optimization is to assign slot 1 to request $E$ immediately.
+Suppose the slot's request pointer now names $E$. When the old result returns,
+code that validates only the slot index sees a valid slot and may append
+$D$'s token to $E$. This is an ABA-style reuse bug: the location looks valid
+again even though its ownership epoch changed.
+
+The fix is a generation or lease identity. Reuse increments the generation,
+so $E$ owns $(1,8)$. A late $(D,7)$ result cannot match it. The stronger rule
+used in the teaching lab is to avoid reuse until outstanding work reaches
+zero; generation checking remains defense in depth and makes the failure
+observable.
+
+Three invariants are worth writing as assertions:
+
+\begin{enumerate}
+\item \textbf{Budget invariant:}
+$\sum_r q_{r,k}\le T_{\max}$ and the number of requests with
+$q_{r,k}>0$ is at most $S_{\max}$.
+\item \textbf{Terminal monotonicity:} once a request is terminal, no later
+worker result changes its externally visible terminal reason.
+\item \textbf{Lease validity:} a worker result may mutate request state only
+when its request identity and generation match an outstanding ticket.
+\end{enumerate}
+
+These are correctness properties. They should be tested independently of
+performance.
+
+\section{Capacity and backpressure}
+
+Continuous batching improves utilization only while there is schedulable work
+that fits. It cannot manufacture KV memory, host queue capacity or latency
+budget.
+
+Let $Q$ be the number of admitted-but-waiting requests and $\lambda$ the
+arrival rate in requests/s. If the engine's sustainable completion rate is
+$\mu<\lambda$, then $Q$ grows without bound in an unbounded queue. The
+accelerator may show excellent utilization while TTFT becomes unacceptable.
+That is why admission control belongs before scheduling.
+
+A token backlog can be more informative than a request count. Ten requests
+with 32-token prompts and ten requests with 32,000-token prompts are not the
+same prefill obligation. If the engine estimates sustainable prefill service
+at $R_p$ prompt tokens/s and wants a prefill-queue contribution to TTFT below
+$\tau$, a rough derived bound is
+\[
+  Q_{\mathrm{prompt}}\lesssim R_p\tau
+\]
+prompt tokens. This is a capacity-planning relation, not a universal
+admission formula. Cache hits, chunking, multimodal encoders and mixed decode
+work change the realized service rate.
+
+Backpressure is therefore part of the continuous-batching story even though
+it is not part of the batching algorithm. Without it, the scheduler can
+optimize device occupancy while the service violates its user-facing target.
+
+\section{Throughput, TTFT, inter-token latency and goodput}
+
+Four metrics answer different questions.
+
+\emph{Throughput} counts useful tokens completed per unit time across the
+engine. A larger active set often improves it while the model is
+memory-bandwidth limited because more requests share a weight read.
+
+\emph{Time to first token} (TTFT) measures submission to first generated
+token. Continuous admission can reduce TTFT dramatically compared with a
+frozen cohort, as the opening measurement shows. Long prefills or a deep
+waiting queue can still make TTFT poor.
+
+\emph{Inter-token latency} (ITL), or time per output token (TPOT) under a
+specified convention, measures the cadence after generation starts. Larger
+decode batches can increase each request's step time even while aggregate
+throughput improves.
+
+\emph{Goodput} counts only work that satisfies a service objective. If a
+system produces 1,000 tokens/s but half the requests miss the TTFT or ITL
+target, raw throughput hides the service failure. Continuous batching is a
+mechanism for exposing more scheduling choices; goodput is one way to judge
+whether those choices serve users.
+
+The recorded M1 decode staircase illustrates the tension. Aggregate decode
+throughput rose from roughly 20 tokens/s at one sequence to 176 tokens/s at
+32 sequences, while per-sequence step time rose from roughly 50~ms to 182~ms
+(record \texttt{research/measurements/2026-09-23-m1-llama32-3b.md}).
+Those are measurements for that recorded setup, not a universal batch curve.
+The scheduler needs a policy target because maximizing aggregate throughput
+and minimizing per-request latency are different optimization problems.
+
+\section{Continuous batching does not imply fairness}
+
+Consider two tenants. Tenant X keeps 100 short decode requests ready. Tenant Y
+submits one long prompt. A scheduler that always fills available token budget
+with already-running decode work can keep X moving indefinitely while Y waits.
+Reverse the priority and a large prefill can inflate ITL for every decoder.
+Both schedulers use continuous batching. Neither policy follows from the
+mechanism.
+
+Fairness requires an additional rule: FCFS, weighted fair sharing, priority
+classes, deadlines, age boosts, reserved decode budget, prefill caps or another
+explicit policy. Latency objectives likewise require control. Continuous
+batching says when membership \emph{may} change. It does not say whose work
+\emph{should} run.
+
+This distinction matters when reading production source. A token budget is a
+mechanism. A long-prefill threshold is policy. A queue cap is admission. A
+cache watermark is capacity protection. They interact, but collapsing them
+into one word---``batching''---makes failures difficult to diagnose.
+
+\section{What the teaching implementation builds}
+
+The lab in \texttt{code/labs/ch15-continuous-batching/} is a deterministic
+CPU state machine. It does not run a Transformer. That is intentional: the
+scheduler can be tested without GPU timing noise.
+
+Each request has an immutable ID, arrival tick, prompt length and output
+budget; mutable state tracks computed prompt positions, committed output,
+terminal reason, physical slot, generation and outstanding tickets. Each
+iteration performs the transaction described above and emits a trace:
+arrivals, admissions, scheduling grants, terminal transitions, retirement and
+rejected replies. Completion is a synchronous method call in this lab, not
+a separate trace event; a production trace needs submission and completion
+timestamps as well.
+
+An independent oracle recomputes budget accounting from the emitted trace
+rather than calling the scheduler's accounting methods. Tests cover the hand
+cohort, capacity bounds, cancellation before admission, cancellation during
+outstanding work, duplicate replies and late replies after slot reuse.
+Input validation also rejects duplicate IDs and prompts that cannot fit
+an unchunked iteration. These are contract tests, not throughput measurements.
+
+The lab's unit of time is one tick. It demonstrates state and accounting, not
+GPU performance, kernel efficiency, paged allocation, prefix reuse or
+chunked-prefill quality. Those boundaries are part of the lesson.
+
+\section{Walk the trace before changing the policy}
+
+The most useful way to read a scheduler is to explain each change of
+ownership. Start with the trace from the executable, not a proposed
+throughput improvement. At tick zero both A and B are admitted: admission
+consumes two request slots. Only A is scheduled: its three prompt positions
+consume the entire token budget. B therefore owns a slot without receiving
+any model work yet. This distinction is not an implementation accident.
+It is the difference between reserving the right to run and actually
+running. Monitoring only the number of admitted requests would miss it.
+
+At tick one C arrives and waits. A requires one decode position; B still
+requires its complete one-position prompt. Together they consume two of
+the three available positions. The remaining position is not an invitation
+to admit C: both request slots are already owned. At tick two A and B each
+receive one decode position. At tick three D arrives while B receives its
+second and final output position. B becomes terminal at the end of that
+iteration. Its terminal event is a statement about the request's outcome,
+not an admission grant for another request.
+
+At tick four retirement releases B's slot. C, which arrived before D,
+inherits that physical location with a different generation. A receives
+one decode position and finishes; C receives its two-position prompt.
+The total is exactly three positions, but the rows have different roles.
+The model-side batch builder must know which row reads an existing cache,
+which rows extend a prompt, and which sequence owns every position.
+A single rectangular hidden-state matrix does not erase those distinctions.
+
+At tick five D is cancelled while it is still waiting. It never owned a
+slot and never launched a ticket. There is consequently no slot-retirement
+event for D. A retires, but the cancelled waiting entry is skipped rather
+than admitted. C decodes at ticks five, six and seven, then retires at tick
+eight. This small trace exposes a tempting test mistake: requiring every
+cancelled request to retire a slot would invent ownership it never had.
+The test for active cancellation must create a genuinely outstanding
+ticket, observe cancellation, and prove that retirement waits for that
+ticket's completion.
+
+\begin{center}
+\begin{tabular}{@{}clll@{}}
+\toprule
+Tick & Granted work & Total positions & Boundary consequence\\
+\midrule
+0 & A prompt: 3 & 3 & B admitted but not scheduled\\
+1 & A decode: 1; B prompt: 1 & 2 & C waits for a slot\\
+2--3 & A decode: 1; B decode: 1 & 2 each & B finishes at tick 3\\
+4 & A decode: 1; C prompt: 2 & 3 & B retired; A finishes\\
+5 & C decode: 1 & 1 & D cancelled without admission\\
+6--7 & C decode: 1 & 1 each & C finishes at tick 7\\
+8 & None & 0 & C's slot retires\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+These are deterministic logical ticks. They are not milliseconds, and
+three positions do not necessarily take three times as long as one.
+The lab counts a prompt pass separately from output-token commits; it
+does not implement the usual optimization in which the final prompt row's
+logits select the first output token. When connecting it to a real decoder,
+define that boundary explicitly before comparing the number of model calls.
+Otherwise a supposedly faster schedule can simply be counting a different
+amount of work.
+
+\section{A reply needs more than the right slot}
+
+Imagine an output message addressed to apartment four. The address tells
+the delivery system where to go, but not whether the resident is still
+the intended recipient. A generation distinguishes successive occupants
+of a physical slot. A ticket serial distinguishes successive pieces of
+work for the same occupant. Both checks matter. If a worker retries a
+reply before the request retires, the request ID and generation can still
+match. Accepting that duplicate could decrement an outstanding counter
+twice or append the same output twice.
+
+The teaching implementation stores each pending ticket by serial.
+A reply must match the current slot owner and the complete pending
+ticket, including its token grant. The first valid reply consumes the
+pending entry. A second copy is rejected without changing the request.
+The pending map is not a general network exactly-once protocol: it is
+an in-memory ownership check within one scheduler instance. Recovering
+after a process crash would additionally require durable request epochs,
+replay policy and a definition of what the client has already observed.
+
+Cancellation changes whether a valid reply may publish output, but it
+does not pretend that the reply never existed. A matching completion for
+a cancelled request retires outstanding ownership while discarding its
+payload. Only then can the slot be released. In a GPU implementation
+this boundary must correspond to actual completion of all consumers of
+the memory, often established by an event or a dependency on a stream.
+A generation check on the CPU cannot repair a device write that already
+overwrote another request's KV bytes.
+
+There is also a budget-replay hazard. Calling a planning method twice
+with a fresh local budget in the same logical iteration can spend the
+iteration's allowance twice. This lab therefore permits one plan per
+tick and skips requests with outstanding work. Overlapped production
+engines may allow several launches, but then their shared budget and
+computed-position frontiers must include all in-flight grants. The right
+extension is an explicit reservation model, not removal of the guard.
+
+\section{Read the batch as a data contract}
+
+The scheduler produces a plan, not a tensor. The batch builder translates
+that plan into token IDs, absolute positions, sequence offsets, cache
+locations and row-to-request ownership. For a ragged batch with grants
+$(1,1,2)$, the offset vector is $(0,1,2,4)$. Row two belongs to the third
+request even though its physical request slot need not be two. Row three
+belongs to that same request, at the next logical position. Sampling
+must consume the appropriate final row's logits rather than every row
+indiscriminately.
+
+Keep request identity out of accidental tensor-index conventions.
+An integer token ID identifies a vocabulary entry. An integer row
+identifies a location in this launch's tensor. A logical position
+identifies a point in a request's history. A physical cache address
+identifies storage. All four can happen to contain the number seven,
+yet substituting one for another is a correctness bug. Named metadata
+fields and checked conversion boundaries make those bugs visible before
+they become wrong text.
+
+The same distinction applies at the binary boundary. Rust's native
+struct layout is not a portable worker-message format. A distributed
+worker protocol must specify field widths, byte order, version, bounds
+and ticket identity rather than transmitting the memory image of a
+struct. Within one process, an index into a live pending-ticket table
+can be enough; across processes, that index needs a lifetime and restart
+contract. No tensor optimization should silently choose that contract.
+
+Finally, separate host and device costs when evaluating an improvement.
+A larger cohort can amortize weight traffic while increasing metadata
+packing, allocation, grammar checks and response dispatch. Time each
+stage, then measure the overlapped critical path; adding independent
+stage timings is not automatically the observed wall time. Report the
+arrival process and output lengths alongside the batch histogram.
+An excellent kernel benchmark can coexist with poor request latency
+if admission waits, backpressure or a long prompt dominates the service.
 
 \EngineFigure{sys-iteration-scheduler}{Activity view of a conceptual continuous-batching scheduler. Stable request IDs outlive temporary batch rows. Completion must establish that consumers are finished before their state is reclaimed; overlapped implementations preserve that dependency.}{fig:sys-iteration-scheduler}
 
-\section{Throughput--latency curves}
-
-Adding sequences to the batch raises throughput until the step turns
-compute-bound, and it raises every sequence's time per token all along. On the
-M1, the batched-decode measurement of \Chref{roofline} traces the curve:
-aggregate decode throughput rose from 20 tokens per second at one sequence to
-176 at thirty-two, while each sequence's step time grew from 50~ms to 182~ms
-(record \texttt{2026-09-23-m1-llama32-3b}). A serving system chooses a point on
-that curve by capping the batch --- in sequences, in tokens per step, or in
-cache memory --- and the right point depends on the latency its users will
-accept. \Chref{scheduling} turns that choice into admission control.
-
-\section{Overlapping scheduling with execution}
-
-A step on a fast GPU can take a few milliseconds, and the CPU work around it
---- scheduling, preparing inputs, sampling, detokenizing, streaming --- can take
-a comparable time. Done serially, it leaves the GPU idle between steps. Engines
-now overlap the two. vLLM's V1 engine moved the scheduling loop into its own
-process, apart from the API server that tokenizes and streams
-\cite{vllm2025v1}. SGLang's scheduler runs one batch ahead, preparing step
-$n+1$ while the GPU executes step $n$; its developers reported 1.1 times the
-throughput of their previous release \cite{sglang2024v04}. vLLM's second
-model runner makes the same overlap a design constraint, keeping request state
-on the device and building inputs there, and reported 6.3\% lower time per
-output token on four GB200s \cite{vllm2026mrv2} (both the developers'
-measurements).
-
 \LedgerSection
 
-Scheduling at every step instead of every request:
-
 \begin{ConstraintLedger}
-Compute & buys & A full batch whenever work is queued: occupancy near one instead of $\bar{L}/L_{\max}$ (equation~\eqref{eq:static-occupancy}). \\
-Latency & buys & A newcomer starts at the next step: 0.50~s instead of 20.5--21.6~s to the first token in the opening measurement. \\
-Latency & spends & Every running sequence's time per token rises with the batch: the essay took 1--2.5~s longer. \\
-Memory capacity & spends & Cache for every sequence in the batch; the batch is capped by memory (\Chref{paged-kv}). \\
-Correctness & risks & Results can depend on the batch a request shared (\Chref{fast-wrong-answers}). \\
+Memory bandwidth & buys & More sequences can share each weight read when the hardware benefits from a larger token matrix. \\
+Memory capacity & spends & Every admitted/running request retains request state and, in a real engine, KV-cache capacity; batching cannot exceed residency. \\
+Compute & moves & Filling empty decode slots raises useful work, but mixed prefill/decode work changes the arithmetic shape and can move the bottleneck. \\
+Latency & buys & New requests can enter at an iteration boundary instead of waiting for a frozen cohort to drain. \\
+Latency & spends & Larger active sets can lengthen each model step; queueing and long prefills can still violate TTFT or ITL targets. \\
+Correctness & risks & Row reuse, cancellation races and stale worker results can cross request ownership unless identity and generation are validated. \\
+Cost & buys & Higher utilization can improve useful tokens per accelerator-dollar only when the added work still meets the service objective. \\
 \end{ConstraintLedger}
 
-\LabSection{a continuous-batching simulator driven by measured step times}
+\LabSection{a deterministic scheduler with an independent accounting oracle}
 
-\LabIntent{In \texttt{code/labs/ch15-continuous-batching/}, a Rust
-discrete-event simulator that replays a trace of arrivals and output lengths
-through static and iteration-level schedulers, using a step-time table
-measured on the reader's machine (or the M1 table of \Chref{roofline}). It
-reports throughput, time to first token and time per output token for each
-policy, and checks itself against a brute-force step-by-step oracle on small
-traces. The reader predicts the occupancy of equation~\eqref{eq:static-occupancy}
-for a skewed trace before running it.}
+The lab is self-contained Rust with no external crates. Before running it,
+predict the hand cohort's first two scheduling decisions. Then run:
 
-\HappenedSection{one context, many sequences}
+\begin{verbatim}
+cd code/labs/ch15-continuous-batching
+cargo test
+cargo run -- trace
+cargo run -- broken late-result
+\end{verbatim}
 
-Hermon's first concurrent runtime gave each request its own llama.cpp context:
-a pool of four contexts, each with its own KV cache, running in parallel. On an
-Apple M3 Pro with four concurrent requests for 128 tokens, the pool produced
-19.1 tokens per second in aggregate --- no better than Ollama's 18.5 on the
-same benchmark, and every user waited 13.4 seconds (Hermon
-\texttt{docs/PERFORMANCE.md}, 2026-05-11; the developers' measurement). Four
-contexts meant four forward passes per step, each reading all the weights: the
-parallelism was real and the batching was absent.
+The normal trace must preserve both budgets, terminal monotonicity and lease
+validity. The broken late-result mode is a non-zero instruction stub, not an
+executed mutation experiment: use the focused stale-reply test, then change
+its owner validation locally to observe the failure. Do not report the stub
+as evidence that a broken implementation was run. The README
+contains the complete predict/run/explain/break route.
 
-The replacement configured one context for several sequences sharing one KV
-cache. Each step built a single batch with one new token per active sequence
-and ran one forward pass for all of them. Aggregate throughput rose to
-\textbf{41.4 tokens per second} and every user finished in 6.19 seconds. The
-lesson is the one this chapter's napkin math predicts: concurrency does not
-batch anything by itself; the weights are read once per step only when the
-sequences share the step. The batched runtime is Hermon's default at commit
-\texttt{2a3fd52} (\texttt{crates/hermon-runtime/src/dispatch.rs}; DEFAULT).
+\HappenedSection{from iteration-level scheduling to token-budget schedulers}
 
-\FrontierSection{2026-09-24}
+Orca named iteration-level scheduling and selective batching in OSDI 2022
+\cite{yu2022orca}. Its key observation remains durable: autoregressive
+requests have multiple iterations, so freezing a request cohort wastes
+finished capacity and delays new arrivals. The paper reports a 36.9$\times$
+throughput improvement over the compared FasterTransformer configuration at
+the same latency for its GPT-3 175B evaluation. That is the authors'
+measurement, not a result reproduced by this book.
 
-Iteration-level scheduling is universal; the frontier is what shares the step
-and how little the CPU delays it. vLLM's V1 scheduler treats prompt chunks,
-decodes and drafts uniformly and enables chunked prefill and prefix caching by
-default \cite{vllm2025v1,vllm2026optimization}; its second model runner,
-announced in March 2026 and still opt-in, is built around asynchronous
-scheduling \cite{vllm2026mrv2}; SGLang overlaps scheduling with execution
-\cite{sglang2024v04}. The remaining questions --- which requests to
-admit, and which to preempt when memory runs out --- are \Chref{scheduling}'s.
+The modern scheduler interface is broader. In vLLM V1 source inspected on
+2026-10-05, the scheduler does not need a hard semantic split called
+``prefill phase'' versus ``decode phase'' for its core token accounting.
+A request carries how many tokens have been computed and how many need to be
+computed; each iteration grants tokens so the first count can catch the
+second. The scheduler separately maintains a per-iteration token budget.
+The configuration also distinguishes maximum batched tokens, maximum
+sequences, and an optional lower maximum number of active sequences. These are
+source observations from the inspected revision, not claims about every vLLM
+release or deployment.
+
+That representation is important because the industrial scheduler is no
+longer merely replacing finished decode rows. The same accounting boundary
+must coexist with prompt chunks, speculative tokens, cache allocation,
+multimodal encoder work and asynchronous execution. The teaching lab stops
+before those mechanisms, but its work ticket---stable request identity,
+generation and granted token count---is deliberately shaped to survive that
+expansion.
+
+Hermon's historical evidence makes a complementary point. Its earlier
+concurrent runtime used several independent contexts, so concurrent requests
+performed separate forward passes and separately read model weights. In the
+record already preserved by this book, four concurrent 128-token requests on
+an Apple M3 Pro produced 19.1 tokens/s in aggregate, while a replacement that
+placed several sequences into one shared forward step produced 41.4 tokens/s.
+Those are the developers' recorded measurements from the cited historical
+Hermon material, not measurements rerun for this chapter. The mechanism-level
+lesson is narrower than the number: concurrency is not batching unless the
+requests share executable model work.
+
+\FrontierSection{2026-10-05}
+
+The frontier has moved from ``can requests join between iterations?'' to
+``how much heterogeneous work should each iteration admit without destroying
+latency or capacity?'' The vLLM scheduler source checked on 2026-10-05 exposes
+distinct token, sequence and active-request controls and includes policy
+controls for long prefills and queue/backlog protection. Its core scheduler
+represents work as per-request scheduled token counts, allowing the same
+accounting structure to cover several inference mechanisms. These are shipped
+source interfaces, not evidence that every option is enabled by default;
+deployment behavior still depends on configuration.
+
+SGLang-family scheduler documentation and source inspected the same day also
+describe waiting/running queues, dynamic batch construction, KV allocation and
+overlap of CPU scheduling with device execution. The important trend is not a
+single winning policy. It is the increasing separation of durable request
+state, capacity management, scheduling policy and device execution so that
+each can evolve without making batch-row identity a correctness primitive.
+
+The next chapters fill in two interfaces this chapter deliberately leaves
+abstract. Chapter~\ref{ch:paged-kv} explains how logical request positions
+obtain physical KV storage without requiring one contiguous maximum-size
+allocation. The later chunked-prefill chapter explains how a long prompt can
+consume only part of an iteration's token budget instead of monopolizing it.
 
 \ExercisesSection
 
 \begin{enumerate}
-\item \emph{Derivation.} For output lengths drawn from an exponential
-distribution with mean $\mu$, estimate $\eta_{\text{static}}$ for a batch of
-$B$ requests. How does it scale with $B$?
-\item \emph{Prediction.} Using the M1 step times of \Chref{roofline}, predict
-the essay's completion time when the 32-token request joins at 2~s, and compare
-with the measured 23.3--25.7~s.
-\item \emph{Implementation.} Add a cap on tokens per step to the lab's
-scheduler and plot time to first token against it.
-\item \emph{Falsification.} Find a workload for which static batching has
-higher throughput than continuous batching on the same hardware. What makes it
-possible?
+\item \emph{Prediction.} With $S_{\max}=2$ and $T_{\max}=3$, requests
+$A=(p=3,o=4)$ and $B=(p=1,o=2)$ arrive together. Under the lab's rule that a
+prefill is not split, which request can consume the first iteration? What
+budget remains?
+
+\item \emph{Derivation.} A fixed batch has output lengths
+$(2,2,2,10)$. Compute $\eta_{\mathrm{static}}$. Then compute the number of
+unused sequence-steps.
+
+\item \emph{Representation.} A ragged step grants token counts $(1,3,2)$ to
+requests $(R_0,R_1,R_2)$. Construct the offset vector and state the shape of
+the flattened hidden-state matrix for model width $d=4096$.
+
+\item \emph{Correctness.} Slot 4 generation 11 belongs to request $X$ when a
+worker ticket launches. $X$ is cancelled; a broken scheduler reuses slot 4
+for $Y$ at generation 12. State the minimum fields a returning result must
+carry to prevent publication into $Y$.
+
+\item \emph{Implementation.} Extend the lab with a reserved decode-token
+budget. Define the invariant that prevents prefills from consuming the
+reservation when at least one decoder is eligible. Add a deterministic test
+where the reservation changes TTFT/ITL trade-offs.
+
+\item \emph{Falsification.} Construct a workload where continuous batching
+preserves high accelerator occupancy but user goodput is zero under a stated
+TTFT target. Explain why the example falsifies the claim ``high utilization
+implies a healthy service.''
 \end{enumerate}
+
+\input{worked/ch15-continuous-batching.tex}

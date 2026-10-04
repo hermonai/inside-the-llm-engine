@@ -1,248 +1,498 @@
 % status: ZERO
-% Chapter 23 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part4.md (draftmodel, verify).
 \chapter{Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction}\label{ch:modern-speculation}
 
 \begin{ChapterIntent}
-The best drafters now come from the target model itself. This chapter
-follows the EAGLE family --- drafting from the target's hidden features,
-dynamic draft trees, and EAGLE-3's direct token prediction with fused
-multi-layer features --- alongside Medusa's extra heads, multi-token-prediction
-modules trained with the model, and parallel drafting that produces a whole
-draft in one pass. It explains tree attention for verifying many candidate
-continuations at once and compares the methods by what they cost to train, to
-run and to integrate.
+Chapter~\ref{ch:speculative-decoding} established the invariant: proposals are tentative,
+the target is authoritative, and only a verified contiguous history commits. Modern
+speculation changes the proposal engine. EAGLE predicts from target features, EAGLE-2
+allocates a dynamic tree, EAGLE-3 predicts tokens from fused target features, Medusa
+adds future-token heads, and multi-token-prediction modules train future prediction
+into the model. This chapter follows those mechanisms into the serving engine: tree
+layout, ancestry masks, logical positions, target verification, KV ownership, dynamic
+tree budgets and the point where drafting becomes a scheduling problem.
 \end{ChapterIntent}
 
-\OpeningSection{Drafting from the model's own features}
+\OpeningSection{A smaller model can be both expensive and wrong}
 
-The obvious drafter is a smaller model. On the M1 we paired an
-8-billion-parameter target, DeepSeek-R1-0528-Qwen3-8B, with a 3-billion-parameter
-drafter, Qwen2.5-Coder-3B, both quantized to four bits, in llama.cpp's server.
-The drafter disagreed with its target more than half the time: of the tokens
-it drafted, the target accepted 98 of 208 on one task and 106 of 231 on another,
-46 to 47\% (measured; record \texttt{2026-09-24-m1-part4}). It was not cheap
-either. One step of the drafter took 0.38 of a step of the target, close to the
-ratio of their bytes; and because the two models' vocabularies differ, the
-server translated every draft between them through text. The result, priced in
-\Chref{when-speculation-loses}, was decoding at half its normal speed.
+The book's M1 record paired an 8B target with a 3B drafter. On two measured tasks the
+target accepted only 98/208 and 106/231 proposed tokens, roughly 46--47 percent. A
+drafter step cost about 0.38 of a target step, and the models used different
+vocabularies, requiring token/text translation
+(\texttt{research/measurements/2026-09-24-m1-part4.md}). The combination decoded more
+slowly than the target alone.
 
-A drafter must predict what the target is about to say, cheaply. A separate
-model trained on different data and tokenized differently predicts what
-\emph{it} would say, at a third of the target's cost. The drafters of this
-chapter reverse both terms. They are built from the target itself --- its
-hidden features, its output head, heads trained alongside it --- so they agree
-with it far more often, and they cost a small fraction of a target step.
+This is the modern speculation problem in one experiment. A useful drafter needs
+\emph{correlation with the target} and \emph{low marginal cost}. A separately trained
+small model may have neither. Modern methods move proposal generation closer to the
+target's own representation or train future prediction into the model itself.
 
-\Foundations{A tree contains incompatible histories}{
-Two draft branches can share a prefix and then diverge. Their later states belong to
-different histories even if stored in one tensor. Verification must use a mask and
-position map that allow each node to see only its ancestors, not its siblings. Extra
-prediction heads or hidden features change how candidates are proposed; they do not
-eliminate the need to specify the acceptance contract. Read
-Chapter~\ref{ch:speculative-decoding} before comparing draft architectures. Count
-proposed, verified, accepted and published tokens separately: these quantities answer
-different performance and correctness questions.
+\Foundations{Proposal architecture and verification semantics are orthogonal}{
+A better drafter raises useful accepted work; it does not become the authority.
+Linear, multi-head and tree proposals all feed the target-verification/commit protocol
+of Chapter~\ref{ch:speculative-decoding}. A tree additionally contains incompatible
+histories. Flattening nodes into one tensor does not make them a sequence: attention
+must follow ancestry, logical positions must follow depth, and only one accepted path
+may survive as autoregressive history.
 }
 
-\NapkinSection{Napkin math: draft cost against acceptance length}
+\NapkinSection{Napkin math: optimize accepted work per wall time}
 
-Let a drafter propose $\gamma$ tokens per verification pass at a cost of $c$
-target steps each, and let the target accept $\tau$ tokens per pass on average,
-counting the one it always produces. Ignoring the extra cost of verifying
-several tokens at once, the speedup is
+For one speculative iteration define $N$ proposed/verified tree nodes, $A$ newly
+committed draft tokens, $t_d(N)$ draft time, $t_v(N)$ target verification time and
+$t_o$ controller overhead. Compare with ordinary target decode time $t_1$ per token:
 \begin{equation}
-S \approx \frac{\tau}{1 + \gamma\,c}.
-\label{eq:draft-speedup}
+S_{\rm iter}\approx\frac{(A+1)t_1}{t_d(N)+t_v(N)+t_o}.
+\label{eq:modern-speed}
 \end{equation}
-Every modern drafter attacks the denominator. A separate model a third the
-size of its target has $c \approx 0.37$ in bytes read, the opening's case, so
-four drafted tokens cost more than a whole target step. A drafter built from one
-extra transformer layer that reuses the target's embedding table and output
-head reads that layer plus the output head per drafted token. For Llama~3.2~3B
-the output head alone is 394 million parameters --- 12\% of the model --- so
-such a drafter still costs about 15\% of a step; for Llama~3's
-70-billion-parameter model, with the same vocabulary, 80 layers and width 8,192
-\cite{llama2024herd}, the head is about 1.5\% of the parameters and one layer
-about 1.2\% (derived). Drafting from the target's
-own features pays best on large models, which is where its published speedups
-were measured.
+The $+1$ represents the correction/bonus opportunity from the target contract. This
+form is more useful for trees than ``acceptance rate'': ten accepted nodes scattered
+across incompatible branches do not equal ten committed tokens.
 
-\section{Drafting from hidden features}
+Define verification efficiency
+\begin{equation}
+\eta_{\rm tree}=\frac{A+1}{N}.
+\end{equation}
+A wider tree can increase the probability of finding a long accepted path while
+decreasing $\eta_{\rm tree}$. Modern drafting is therefore a constrained search:
+spend verification slots where their expected contribution to accepted path length is
+largest.
 
-EAGLE drafts not tokens but features: a small network, a single transformer
-layer, predicts the target's next second-to-top-layer feature vector from the
-current one and the token just sampled, and the target's own output head turns
-each predicted feature into a token distribution \cite{li2024eagle}. Features
-carry more of what the target is about to do than tokens do, and feeding the
-drafter the token sequence advanced by one step resolves the ambiguity of which
-continuation was sampled. Verification uses the rule of
-\Chref{speculative-decoding}, so the output distribution is unchanged. Its
-authors reported latency speedups of 2.7 to 3.5 times on LLaMA2-Chat 70B and
-doubled throughput (their measurement).
+\section{The proposal engine is now part of model architecture}
 
-\section{EAGLE and EAGLE-2: dynamic draft trees}
+Classical speculative decoding uses another autoregressive model. Modern methods exploit
+information already produced by the target or add lightweight predictive structure.
+This changes four costs:
+\begin{enumerate}
+\item how many sequential draft steps occur before verification;
+\item how much target state must be exported to the drafter;
+\item how many candidate nodes target verification must evaluate;
+\item how tightly a drafter checkpoint is coupled to one target checkpoint.
+\end{enumerate}
+The last point is operationally important. A prompt lookup table is model-agnostic. An
+EAGLE-style drafter is trained for a particular target representation. Updating the
+target can invalidate the drafter even when tokenizer and public API remain unchanged.
 
-A single chain of drafted tokens fails at its first wrong guess. A tree hedges:
-at each depth the drafter keeps several candidates, and one verification pass
-checks every root-to-leaf path. The tree's shape matters, and the best shape
-depends on the context: after \emph{New} a tree should branch; inside a quoted
-URL it should run deep. EAGLE-2 grows the tree where its drafter is confident,
-using the drafter's probabilities as estimates of acceptance, which its authors
-found well calibrated; they reported speedups of 3.05 to 4.26 times, 20 to 40\%
-faster than EAGLE \cite{li2024eagle2} (their measurement).
+\section{EAGLE: autoregress in feature space}
 
-\section{EAGLE-3: tokens, not features}
+EAGLE's central move is to predict a target-model feature rather than ask an unrelated
+small LM to reproduce the target's token distribution. A lightweight autoregressive
+draft module consumes target-derived features together with sampled-token information,
+predicts a future feature, and uses the target's language-model head to obtain proposal
+tokens \cite{li2024eagle}.
 
-EAGLE-3's authors found that predicting features limited how much the drafter
-improved with more training data. Their third version predicts tokens directly,
-fuses features from several layers of the target rather than only the top one,
-and during training feeds the drafter its own earlier predictions, as it will
-see them when drafting several steps ahead --- a procedure they call
-training-time test \cite{li2025eagle3}. They reported speedups up to 6.5 times,
-about 1.4 times EAGLE-2, and 1.38 times the throughput at batch 64 inside
-SGLang (their measurement). EAGLE-3 is supported by vLLM and SGLang
-\cite{vllm2026specdecode,sglang2026specdecode}.
+Conceptually, if target layer features are $h_t$ and emitted token embedding is
+$e(x_t)$, the drafter implements a learned transition
+\[
+\widehat h_{t+1}=D_\phi(h_t,e(x_t),\text{draft state}),
+\qquad
+q_{t+1}=\operatorname{softmax}(W_{\rm lm}\widehat h_{t+1}).
+\]
+This is schematic, not a universal EAGLE equation. The important systems fact is that
+$D_\phi$ is much cheaper than a full target forward step while its predictions are
+conditioned on target-native representations.
 
-\section{Tree attention and verification}
+The target still verifies proposals. Feature prediction improves proposal quality; it
+does not grant predicted features authority over committed target KV.
 
-Verifying a tree in one forward pass needs an attention mask shaped like the
-tree: each drafted token attends to the prompt, to the tokens already accepted
-and to its own ancestors in the tree, and to nothing on other branches. The
-tree's nodes are laid out as one flat sequence of positions, the mask encodes
-the branching, and the target computes logits for every node at once. SpecInfer
-introduced this token-tree verification, reporting 1.5 to 2.8 times faster
-distributed serving and 2.6 to 3.5 times faster offloaded serving
-\cite{miao2024specinfer} (their measurement). After verification the engine
-keeps the cache entries of the longest accepted path and discards the rest, the
-tree version of \Chref{speculative-decoding}'s rollback. SGLang exposes the
-tree's shape as three settings --- drafting depth, branching per step and
-the number of tokens verified --- with defaults that differ by model family
-\cite{sglang2026specdecode}.
+\EngineFigure{ch23-eagle-pipeline}{EAGLE-style serving reuses target-derived features to drive a lightweight draft transition. Proposed tokens enter the same authoritative target verifier and commit/rollback protocol as any other drafter.}{fig:modern-eagle}
 
-The array order is an implementation choice; ancestry is part of the attention contract. For row D, allow P, A and D even if B appears earlier in the flattened array. An ordinary triangular mask would incorrectly connect branches. Verification must also restore logical positions and retain only the chosen path.
+\section{Why a draft chain leaves probability on the table}
+
+Suppose the drafter assigns next-token probabilities $(0.45,0.40,0.15)$. A chain must
+choose one token. If the target follows the second candidate, speculation stops at
+depth one even though the drafter knew that alternative was almost as plausible.
+
+A tree retains several futures. At depth $d$, node $u$ has a path score such as
+\[
+s(u)=\prod_{v\in\operatorname{path}(u)}q(v\mid\operatorname{ancestors}(v)),
+\]
+or, numerically, a sum of log probabilities. Under a node budget $N_{\max}$, the tree
+builder chooses which frontier nodes deserve expansion.
+
+The score is a proposal heuristic, not target acceptance probability unless calibration
+has been established. A production engine should distinguish draft confidence from
+measured target acceptance.
+
+\section{EAGLE-2: spend the tree budget dynamically}
+
+EAGLE-2 develops the draft tree according to context-dependent confidence rather than
+using one fixed shape \cite{li2024eagle2}. Predictable continuations can grow deep;
+ambiguous positions can branch. This reframes tree construction as best-first resource
+allocation.
+
+A teaching version is:
+\begin{enumerate}
+\item initialize the frontier with candidates from the current committed state;
+\item score frontier nodes with draft probabilities/path scores;
+\item pop the most promising expandable node;
+\item generate children and insert them into the frontier;
+\item stop when node/depth/time budgets are exhausted.
+\end{enumerate}
+The real algorithm and engine optimizations are more specific, but this abstraction
+exposes the systems contract: tree construction must produce parent links, token IDs,
+depth/logical positions and a deterministic flattened order for verification.
+
+\section{A proposal tree is a graph stored in an array}
+
+Consider committed prefix $P$ and this tree:
+\[
+P\rightarrow A,\quad
+A\rightarrow B,\ A\rightarrow C,\quad
+B\rightarrow D,\ C\rightarrow E.
+\]
+Flatten the draft nodes as $[A,B,C,D,E]$. Array index 2 ($C$) is after $B$ in memory,
+but $C$ must not attend to $B$. Node $E$ is after $D$, but $E$ must not attend to
+$B$ or $D$.
+
+For draft nodes $i,j$, define
+\begin{equation}
+M_{ij}=
+\begin{cases}
+0,&j\in\operatorname{Ancestors}(i)\cup\{i\},\\
+-\infty,&\text{otherwise}.
+\end{cases}
+\label{eq:tree-mask}
+\end{equation}
+Every draft node may additionally attend to the entire committed prefix. Logical
+position is
+\[
+\operatorname{pos}(i)=C+\operatorname{depth}(i),
+\]
+not $C+i$. Siblings at the same depth share a logical position while occupying
+different packed rows.
+
+\EngineFigure{ch23-tree-mask}{A proposal tree flattened into verification rows. Parent links determine visibility; flat storage order does not. Nodes see the committed prefix and their own ancestor chain, never sibling branches.}{fig:modern-tree}
+
+\section{Why an ordinary triangular mask is wrong}
+
+A causal triangular mask means row $i$ sees every earlier packed row. That is correct
+only when packed order is one causal sequence. In a tree it leaks sibling history.
+
+With flattened $[A,B,C,D,E]$, triangular attention lets $C$ see $B$ and $E$ see
+$A,B,C,D$. The resulting hidden states correspond to no legal root-to-node sequence.
+The target may then ``verify'' logits for a history it could never autoregressively
+produce.
+
+This is an excellent differential test. Evaluate each root-to-node path independently
+with ordinary causal attention. Its final result must equal the corresponding row of
+the flattened tree evaluation under the ancestry mask, modulo the numerical tolerance
+of the implementation.
+
+\section{Tree packing needs three coordinate systems}
+
+For every packed node retain:
+\[
+(\text{packed row},\ \text{parent row},\ \text{logical position}).
+\]
+Packed row addresses tensors. Parent row reconstructs ancestry. Logical position drives
+RoPE/positional semantics.
+
+Do not derive parentage from position: siblings have equal logical position. Do not
+derive position from packed row: breadth-first and depth-first layouts assign different
+rows to the same logical tree.
+
+For paged KV, tentative tree nodes additionally need physical storage ownership. A
+useful descriptor is
+\[
+(\text{request generation},\text{tree generation},\text{node id},
+\text{KV handle},\text{parent}).
+\]
+Only nodes on the accepted path are candidates for retention.
+
+\section{Verification is a short irregular prefill}
+
+Target verification over $N$ nodes resembles a short prefill with a non-triangular
+mask. It can exploit matrix parallelism unavailable to single-token decode, but tree
+geometry changes attention.
+
+The engine prepares packed token IDs, logical positions, ancestry metadata/mask and KV
+write destinations; executes the target; then walks candidate paths according to the
+acceptance algorithm. The result is a selected path length $A$, not ``all nodes whose
+token matched somewhere.''
+
+The verification kernel should not materialize a dense $N\times N$ mask if topology can
+be encoded more compactly. But any optimized representation must be equivalent to
+equation~\eqref{eq:tree-mask}.
+
+\section{Rollback becomes branch retirement}
+
+Chapter~\ref{ch:speculative-decoding} rolled back a linear rejected suffix. A tree has
+many losing branches. After target verification:
+\begin{enumerate}
+\item identify the accepted root-to-node path;
+\item reconcile the correction/bonus token;
+\item retain or materialize target KV for committed history;
+\item retire every unchosen branch's tentative KV/state;
+\item reset draft state to the new committed history.
+\end{enumerate}
+A losing branch must never enter the shared prefix cache merely because target KV was
+computed for it.
+
+Reference counts matter when physical pages contain shared committed prefix plus private
+tree tails. Branch retirement decrements only the private ownership it acquired.
+
+\section{EAGLE-3: direct token prediction from fused target features}
+
+EAGLE-3 changes the drafting representation: its authors describe direct token
+prediction using fused features from multiple target layers and a training procedure
+designed to expose the drafter to its own rollout conditions \cite{li2025eagle3}.
+The motivation is practical: draft quality must remain strong several speculative
+steps away from the verified target frontier.
+
+For the serving engine, this means target execution must expose the feature set expected
+by the drafter, with exact layer identity, dtype, shape and model revision. Treat that
+interface like an ABI:
+\[
+I_{\rm draft}=
+H(\text{target checkpoint},\text{layers},\text{feature transform},
+\text{tokenizer},\text{drafter checkpoint}).
+\]
+Loading a superficially compatible drafter against the wrong target features is a
+correctness/quality configuration error, not merely a performance miss.
+
+At vLLM source snapshot
+\texttt{155488d853a0bc42df227dbfc74005b3fd488e94}, documentation and model executor
+paths explicitly include EAGLE/EAGLE-3 support, including
+\texttt{vllm/model\_executor/models/deepseek\_eagle3.py}. This is a pinned source fact,
+not a statement that every model/backend combination is supported.
+
+\section{Medusa: multiple futures from one hidden state}
+
+Medusa attaches multiple decoding heads to predict future offsets from target hidden
+state \cite{cai2024medusa}. Head $k$ proposes candidates for a token roughly $k$ steps
+ahead. Combining top candidates across heads produces a tree that target verification
+checks.
+
+This trades an autoregressive draft loop for parallel head computation. But independent
+future heads do not automatically define mutually consistent paths: a token predicted
+for offset 3 was not necessarily conditioned on the particular offset-1 and offset-2
+candidates paired with it. Tree verification is what restores target authority.
+
+Medusa also illustrates a crucial taxonomy: \emph{exact verification} and looser
+``typical'' acceptance are different semantic products. If an acceptance heuristic
+permits tokens the exact target sampler would not emit under the same random process,
+label the mode approximate rather than hiding the distinction inside a speed feature.
+
+\section{Multi-token prediction: train speculation into the checkpoint}
+
+Multi-token prediction (MTP) asks the model to predict several future positions during
+training. Future-token modules can improve representations and can also serve as
+drafters at inference \cite{gloeckle2024mtp,deepseek2024v3}.
+
+Architecturally, MTP moves compatibility management upstream. Instead of pairing an
+arbitrary external drafter with a target, the checkpoint/model family declares the
+future-prediction module it was trained with. That can reduce deployment mismatch.
+
+It does not remove verification. An MTP head predicts possible futures; the ordinary
+target path remains authoritative unless the model defines a different decoding
+semantics.
+
+\section{Parallel drafting attacks draft latency itself}
+
+Even a tiny autoregressive drafter has a serial dependency:
+\[
+d_1\rightarrow d_2\rightarrow\cdots\rightarrow d_\gamma.
+\]
+Once target verification is highly optimized, this small serial chain can dominate the
+iteration.
+
+Parallel-draft approaches predict multiple speculative positions with fewer sequential
+draft passes. The systems question becomes whether the parallel proposal computation
+raises accepted path length enough to justify its larger one-shot work.
+
+At vLLM snapshot \texttt{155488d853a0bc42df227dbfc74005b3fd488e94},
+\texttt{vllm/config/speculative.py} and
+\texttt{docs/features/speculative\_decoding/parallel\_draft\_model.md} expose
+parallel-drafting integration. Treat exact performance as model/hardware/load-specific.
+
+\section{The tree builder is a scheduler}
+
+A dynamic tree consumes a finite verification budget. Let frontier node $u$ have
+estimated probability $\hat p_u$ of extending the accepted path and expansion cost
+$c_u$ verification nodes. A simple priority is
+\[
+\rho(u)=\frac{\hat p_u\Delta L_u}{c_u},
+\]
+where $\Delta L_u$ estimates accepted-length contribution. Real policies can include
+depth penalties, diversity, verification shape and calibrated acceptance.
+
+This looks like scheduling because it is scheduling: choose speculative work under
+compute, latency and memory budgets. Under high server load, the same verification
+slots may be more valuable serving other requests.
+
+\section{Tree shape changes GPU work}
+
+A chain of eight drafts has eight nodes and maximum accepted draft length eight. A full
+binary tree of depth three has
+\[
+2+4+8=14
+\]
+nodes but can commit at most three draft tokens along one path before the target's
+correction/bonus. Width hedges uncertainty; depth creates potential accepted length.
+
+The right tree is therefore neither ``widest'' nor ``deepest.'' It depends on proposal
+entropy, target agreement, verification-kernel efficiency, KV capacity and concurrent
+load.
+
+\section{Continuous batching with speculative trees}
+
+For request $i$, let $N_i$ be verification nodes. A scheduler can impose
+\[
+\sum_i N_i + N_{\rm ordinary}\le T_{\rm iter}.
+\]
+But equal node counts need not cost equally: attention context lengths differ, tree
+metadata differs, and model/drafter families may invoke different kernels.
+
+A practical scheduler needs at least draft method, requested tree budget, estimated
+verification tokens, tentative KV requirement, recent accepted length and queue/SLO
+state. It may shrink trees under load rather than disable speculation globally.
+
+This creates a feedback loop:
+\[
+\text{load}\rightarrow\text{tree budget}\rightarrow
+\text{acceptance/work}\rightarrow\text{iteration time}\rightarrow\text{load}.
+\]
+Stable control matters more than maximizing an isolated benchmark.
+
+\section{Structured output prunes the proposal tree}
+
+If grammar state permits only a subset of tokens at a node, illegal children should
+not consume tree budget. Each branch has its own grammar state because branches encode
+different token histories.
+
+A tree node therefore may carry a grammar-state handle alongside parent/depth. Sibling
+grammar states must not alias mutable state. After verification, retain only the
+accepted branch's state and retire the rest.
+
+This is an opportunity as well as a constraint: schemas can make future tokens highly
+predictable, increasing useful speculative depth.
+
+\section{Distributed targets complicate feature reuse}
+
+With tensor parallelism, the feature consumed by an EAGLE-style drafter may be sharded.
+Running the drafter on one rank can require an all-gather; replicating it can require
+replicated inputs and synchronized proposal decisions.
+
+With pipeline parallelism, required target features may live on a stage different from
+the language-model head. A drafter that is cheap in FLOPs can become expensive in
+communication.
+
+Always account:
+\[
+t_d=t_{\rm draft\ compute}+t_{\rm feature\ movement}+t_{\rm synchronization}.
+\]
+The method name alone does not determine draft cost.
+
+\section{Quantization and drafter compatibility}
+
+Quantizing the target can change feature values and target logits. A drafter trained
+against one numerical target may experience lower acceptance against another
+quantization, even when model semantics appear close.
+
+Similarly, quantizing the drafter reduces its cost but can lower proposal quality.
+Evaluate the pair, not each component independently. Record target format, drafter
+format, tokenizer, feature dtype and backend.
+
+\section{Failure boundaries}
+
+Modern speculation adds new failure classes:
+\begin{enumerate}
+\item triangular attention accidentally leaks sibling branches;
+\item packed-row index is used as logical position;
+\item a child points to a stale parent/tree generation;
+\item losing-branch KV is retained or prefix-cached;
+\item target upgrade is paired with an incompatible feature drafter;
+\item grammar state is shared mutably between siblings;
+\item acceptance statistics count matching nodes rather than committed path tokens.
+\end{enumerate}
+Most can survive superficial text tests. Structural differential tests are mandatory.
+
+\section{Observability: count paths, not just nodes}
+
+Record draft method/version, tree nodes, maximum depth, branch factor distribution,
+draft time, target verification time, controller time, accepted path length, rejected
+nodes, bonus/correction events, tentative KV bytes and rollback.
+
+Two useful metrics are
+\[
+\eta_{\rm tree}=\frac{A+1}{N},
+\qquad
+G_{\rm spec}=\frac{\text{committed tokens}}
+{t_d+t_v+t_o}.
+\]
+Neither replaces end-to-end TTFT/ITL/goodput. At high concurrency, per-request
+$G_{\rm spec}$ can improve while fleet goodput falls.
+
+\EngineFigure{ch23-control-loop}{Serving turns modern speculation into a feedback-controlled resource allocation problem: load and recent acceptance determine tree budget; the resulting verification work changes iteration latency and therefore future load.}{fig:modern-control}
 
 \EngineFigure{sys-tree-mask}{An illustrative two-level draft tree and its flattened attention mask. Column P represents the entire permitted committed prefix. A draft node reads that prefix, its ancestors and itself, never a sibling branch. Highlighting a path illustrates cache retention, not a particular acceptance algorithm.}{fig:sys-tree-mask}
 
-\section{Medusa heads}
-
-Medusa skips the separate drafter: it adds several output heads to the target,
-head $i$ predicting the token $i$ positions ahead from the last hidden state,
-and builds a tree from the top candidates of each head \cite{cai2024medusa}.
-With the backbone frozen, its authors reported more than 2.2 times speedup;
-training heads and backbone together, 2.3 to 3.6 times (their measurement).
-Medusa also offered a \emph{typical acceptance} rule that accepts plausible
-tokens rather than exactly verified ones. It raises acceptance and gives up the
-guarantee that the output distribution is the target's: an engineering choice
-the ledger must record, not a free improvement.
-
-\section{Multi-token prediction trained with the model}
-
-The drafter can be part of the model from the start. Gloeckle and colleagues
-trained models to predict several future tokens with independent heads on a
-shared trunk; the auxiliary task improved 13-billion-parameter models on
-coding benchmarks, and models trained to predict four tokens ran up to three
-times faster with self-speculative decoding, including at large batch sizes
-\cite{gloeckle2024mtp} (their measurement). DeepSeek-V3 trains one extra
-multi-token-prediction module. Its report states that the module can be
-discarded at inference, and that used as a drafter its second-token prediction
-was accepted 85 to 90\% of the time, raising decoding speed to 1.8 times the
-tokens per second \cite{deepseek2024v3}. When a model ships with such a module,
-the drafter's training cost has already been paid.
-
-\section{Parallel drafting}
-
-An autoregressive drafter still runs $\gamma$ small steps in sequence before
-each verification, and at high speed those steps are the bottleneck. P-EAGLE
-drafts all $\gamma$ tokens in one forward pass of the drafter, which lets it
-draft deeper at the same cost; its developers reported acceptance 13 to 31\%
-higher than EAGLE-3 at equal depth and speedups over EAGLE-3 of 1.55 to 1.69
-times at a concurrency of one \cite{vllm2026peagle}. Speculative speculative
-decoding attacks the remaining sequential dependency: while the target verifies
-one draft, the drafter prepares drafts for the verification's likely outcomes,
-and its authors reported 30\% more speed than optimized speculative decoding
-\cite{kumar2026ssd} (their measurement).
-
-\section{Choosing a method}
-
-\begin{center}\small
-\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.2\linewidth}@{}}
-\toprule
-Drafter & Training needed & Draft cost & Distribution \\
-\midrule
-Prompt or suffix lookup & none & a table lookup & exact \\
-Smaller model & none, if one exists & a large fraction of a step & exact \\
-EAGLE family & a one-layer drafter per target & one layer plus the output head & exact \\
-Medusa & heads per target & heads only & exact or typical \\
-Multi-token prediction & with the model & one module & exact \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-Lookup drafters cost nothing and win only where the output repeats its context
-(\Chref{speculative-decoding}). Model-based drafters win broadly but must be
-trained for each target and kept in step with it through every fine-tune.
-Multi-token-prediction modules shift that cost into pre-training, where the
-model's builder pays it once.
-
 \LedgerSection
-
-Drafting from the target's own features, heads or trained modules:
-
 \begin{ConstraintLedger}
-Latency & buys & Several accepted tokens per target pass: published speedups of 2.2 to 6.5 times at low concurrency. \\
-Compute & spends & Draft passes and verification of rejected tree branches; the saving shrinks as the batch fills (\Chref{when-speculation-loses}). \\
-Memory capacity & spends & Drafter weights or heads, and cache entries for every tree node verified. \\
-Correctness & risks & Exact with rejection sampling; not exact with typical acceptance. \\
+Memory bandwidth & trades & Target-feature reuse can avoid a separate full drafter; verification still reads target weights and KV for many nodes.\\
+Compute & spends & Draft heads/modules plus target evaluation of losing branches; width can grow work exponentially with depth.\\
+Memory capacity & spends & Drafter parameters/features and tentative KV/state for every live tree node.\\
+Latency & trades & Longer accepted paths reduce target iterations; serial drafting, feature movement or oversized trees can erase the gain.\\
+Correctness & risks & Sibling leakage, wrong positions, stale branch state and approximate acceptance can change semantics.\\
+Cost & trades & Fewer target iterations can improve economics, but training/serving model-specific drafters and reduced batch capacity add cost.\\
 \end{ConstraintLedger}
 
-\LabSection{a draft tree and its verification mask}
+\LabSection{flatten a tree without inventing a sequence}
 
-\LabIntent{In \texttt{code/labs/ch23-draft-tree/}, a Rust builder for draft
-trees of configurable depth and branching over the mini-engine's model, the
-flattened position layout and the tree attention mask, and a verifier that
-accepts the longest matching path. An oracle verifies each path separately with
-ordinary causal attention and must agree with the one-pass verification. The
-reader measures accepted tokens per pass for chains and trees on a small corpus
-and finds the branching factor beyond which verification costs more than it
-saves.}
+The Rust lab in \texttt{code/labs/ch23-draft-tree/} builds a parent-indexed proposal
+tree, assigns logical depth/position, constructs the exact ancestry visibility matrix,
+and compares every flattened row's visible token path against an independently walked
+parent-chain oracle. A deliberately wrong triangular mask fails on siblings.
 
-\HappenedSection{parallel drafting under load}
+The lab also performs deterministic best-first selection over a prebuilt tree,
+considering only roots and children whose parents have already been selected.
+This preserves ancestor closure under a node budget, making
+the difference between fixed branching and budgeted dynamic trees inspectable. It is a
+structural oracle, not a neural-model speed benchmark.
 
-P-EAGLE's release shows how a drafter's benefit depends on load. On NVIDIA
-B200 GPUs, with GPT-OSS and Qwen3-Coder models, parallel drafting beat EAGLE-3
-by 1.55 to 1.69 times at a concurrency of one --- and by only 1.05 to 1.23 times
-at a concurrency of 64 \cite{vllm2026peagle} (the developers' measurement).
-Nothing about the drafter changed between the two numbers. At concurrency one
-the GPU idles between tokens and every accepted token is time saved; at 64 the
-batch already keeps the GPU busy, and the extra drafted and verified tokens
-compete with other requests' work. The feature ships in vLLM from version 0.16
-as an option on the speculative configuration, and the numbers say when to turn
-it on --- the subject of \Chref{when-speculation-loses}.
+\HappenedSection{modern drafters entered serving engines}
 
-\FrontierSection{2026-09-24}
+The EAGLE family, Medusa and MTP moved speculative proposal generation from ``run a
+second generic LM'' toward target-coupled components
+\cite{li2024eagle,li2024eagle2,li2025eagle3,cai2024medusa,gloeckle2024mtp}.
+Their reported speedups should be read with model, GPU, batch and acceptance settings,
+not as universal constants.
 
-Model-based drafting is now built into the major engines --- EAGLE-3, MTP
-modules and parallel drafting in vLLM, EAGLE-2 and EAGLE-3 trees and MTP in
-SGLang \cite{vllm2026specdecode,sglang2026specdecode} --- and into models
-themselves: DeepSeek-V3 trains a multi-token-prediction module
-\cite{deepseek2024v3}, and Qwen3.5's published configuration declares one
-\cite{qwen2026qwen35config}. Research is removing the remaining sequential
-steps \cite{vllm2026peagle,kumar2026ssd}. llama.cpp, in the build measured
-for this part, declares an EAGLE-3 draft type whose drafting function is not
-yet implemented (\texttt{common/speculative.cpp} at commit \texttt{d006858}).
+Current source inspection reinforces the architectural trend. vLLM commit
+\texttt{155488d853a0bc42df227dbfc74005b3fd488e94} contains EAGLE documentation,
+EAGLE-3 model-executor code and parallel-draft configuration/documentation. SGLang
+commit \texttt{7a719e9a65e7f52b012ab37211b5f174e5d3d38d} contains speculative tree metadata
+and EAGLE-related integration. These are pinned source observations, not claims about
+all current backends.
+
+\FrontierSection{2026-10-05}
+
+The frontier is shifting from ``can speculative decoding work?'' to co-design among
+model training, draft architecture, tree construction, verification kernels and
+serving schedulers. EAGLE-3-style feature fusion, model-native MTP and parallel drafting
+reduce proposal cost or increase proposal quality; tree kernels and dynamic budgets try
+to convert that quality into accepted target work.
+
+The durable evaluation question is:
+\Callout{Evaluation question}{How many correct committed target tokens are
+delivered per unit of end-to-end serving resource?}
+Chapter~\ref{ch:when-speculation-loses} now asks the complementary question: when does
+all this extra machinery reduce, rather than improve, real serving performance?
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} Using equation~\eqref{eq:draft-speedup}, find the
-acceptance length $\tau$ at which a drafter costing $c = 0.15$ per token with
-$\gamma = 4$ breaks even, and compare it with $c = 0.02$.
-\item \emph{Prediction.} A draft tree has depth 3 and branching 2 at every
-node. How many tokens does its verification pass process, and how many can it
-accept at most?
-\item \emph{Implementation.} Add dynamic branching to the lab's tree builder:
-expand the most probable nodes until a budget of verified tokens is spent.
-\item \emph{Falsification.} Construct a distribution for which typical
-acceptance produces an output sequence the target model would never sample.
+\item \emph{Tree arithmetic.} Compute node count and maximum accepted draft length for
+full binary trees of depths 1 through 5. Explain why node count is not acceptance length.
+\item \emph{Mask construction.} For parent array $[-1,0,0,1,2]$, write the five-by-five
+draft visibility matrix and logical depth of every node.
+\item \emph{Differential test.} Explain the smallest tree that distinguishes ancestry
+masking from ordinary triangular masking.
+\item \emph{Budgeting.} Given frontier scores/costs $(.8,2),(.5,1),(.9,3),(.3,1)$,
+rank them by $\rho=p/c$. Explain one reason that greedy ranking may still be suboptimal.
+\item \emph{Implementation.} Extend the lab with per-branch grammar states. Sibling
+mutation must be isolated and losing branches must be retired.
+\item \emph{Falsification.} Construct a tree whose flattened triangular evaluation
+contains a token dependency absent from every legal root-to-node history.
 \end{enumerate}
+
+\input{worked/ch23-modern-speculation.tex}

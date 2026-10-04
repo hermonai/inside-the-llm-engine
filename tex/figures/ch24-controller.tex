@@ -1,0 +1,9 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=7mm and 10mm]
+\node[sysbox](o){observe\\commit/time/KV/SLO};
+\node[sysbox,right=of o](e){EWMA cost +\\goodput estimates};
+\node[sysdecision,right=of e](h){better by\\hysteresis margin?};
+\node[sysbox,below=of h](p){select budget\\$0,1,2,4,\ldots$};
+\draw[flow](o)--(e);\draw[flow](e)--(h);\draw[flow](h)--(p);
+\draw[flow](p.west)-|node[syslabel,pos=.25]{feedback}(o.south);
+\end{tikzpicture}

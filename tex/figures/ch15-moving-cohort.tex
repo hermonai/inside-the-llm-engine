@@ -1,0 +1,30 @@
+% diagram-kind: timeline
+\begin{tikzpicture}[font=\small,>=Stealth,x=1.15cm,y=0.72cm]
+  \node[anchor=east] at (-.2,3.5) {fixed};
+  \node[anchor=east] at (-.2,1.5) {continuous};
+  \foreach \x in {0,...,7} {
+    \draw[gray!35] (\x,-.1)--(\x,4.05);
+    \node[below,font=\scriptsize] at (\x,-.1) {\x};
+  }
+  \node[below] at (3.5,-.55) {scheduler tick};
+
+  % Fixed rows.
+  \draw[rounded corners,fill=blue!15] (0,3.15) rectangle (6,3.75);
+  \node at (3,3.45) {A};
+  \draw[rounded corners,fill=green!18] (0,2.35) rectangle (2,2.95);
+  \node at (1,2.65) {B};
+  \draw[dashed,rounded corners] (2,2.35) rectangle (6,2.95);
+  \node[font=\scriptsize] at (4,2.65) {reserved but empty};
+  \draw[rounded corners,fill=orange!20] (6,2.35) rectangle (7.8,2.95);
+  \node at (6.9,2.65) {C};
+
+  % Continuous rows.
+  \draw[rounded corners,fill=blue!15] (0,1.15) rectangle (6,1.75);
+  \node at (3,1.45) {A};
+  \draw[rounded corners,fill=green!18] (0,.35) rectangle (2,.95);
+  \node at (1,.65) {B};
+  \draw[rounded corners,fill=orange!20] (2,.35) rectangle (5,.95);
+  \node at (3.5,.65) {C};
+  \draw[very thick,->] (2,2.15) -- (2,1.05)
+    node[midway,right,font=\scriptsize,align=left]{safe retirement\\frees capacity};
+\end{tikzpicture}

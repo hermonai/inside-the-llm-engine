@@ -1,227 +1,523 @@
 % status: ZERO
-% Chapter 16 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part3.md (kvlayout).
+% Printed Chapter 33. Stable source/lab ID: ch16-paged-kv.
+% Preserves the historical measurement in research/measurements/2026-09-24-m1-part3.md.
 \chapter{Paged KV Memory}\label{ch:paged-kv}
 
 \begin{ChapterIntent}
-When every request reserves contiguous KV memory for its maximum length,
-most of the reservation is never used and capacity --- and with it batch size
-and throughput --- collapses. Paged KV memory borrows virtual memory's answer:
-fixed-size blocks, a per-request block table and a pool that allocates on
-demand. This chapter builds a block pool with reference counts and
-copy-on-write, rewrites attention to read through a block table, prices the
-indirection, and discusses block size, fragmentation and eviction.
+Continuous batching can admit a new request only if memory exists for its
+history. A contiguous KV reservation makes that capacity depend on the
+\emph{maximum} sequence length; paged KV memory makes it depend much more
+closely on the tokens that actually exist. This chapter follows logical token
+positions through a block table into physical KV addresses, derives exact
+fragmentation bounds, builds a reference-counted block pool with copy-on-write,
+and checks paged reads against an independent flat-cache oracle. Paging solves
+allocation and sharing. It does not solve scheduling, prefix selection or
+long-prompt interference by itself.
 \end{ChapterIntent}
 
-\OpeningSection{Most of the reservation, never used}
+\OpeningSection{Eight thousand free cells, and the request still did not fit}
 
-Give llama.cpp's server 8,192 cells of KV cache and ask for four request
-slots, and by default it cuts the cache into four private regions of 2,048
-cells, one per slot (the unified pool is the default only when the server
-chooses the slot count itself). On the M1, with Llama~3.2~3B and nothing else running, a request with a
-3,001-token prompt was refused with HTTP 400: \emph{request (3001 tokens)
-exceeds the available context size (2048 tokens)}. All 8,192 cells were
-allocated --- 896~MiB at 112~KiB per token --- and all of them were empty.
-Restarted with one unified pool that every slot can draw from, the same server
-accepted the same request and processed its prompt in 11.4 seconds (measured;
-record \texttt{2026-09-24-m1-part3}). Nothing about the memory changed. Only
-the rule for who may use which cell did.
+The recorded llama.cpp experiment behind this chapter is an allocation failure
+that looks impossible until ownership is included. The server had 8,192 KV
+cells and four request slots. In the measured per-slot configuration, each slot
+owned a 2,048-cell region. A 3,001-token prompt was rejected even though the
+other slot regions were empty. Restarting in the recorded unified-cache
+configuration allowed the same prompt to run; its prompt evaluation took
+11.4 seconds (measured on the recorded Apple M1 setup; see
+\texttt{research/measurements/2026-09-24-m1-part3.md}).
 
-The per-slot rule is contiguous reservation, and it is the rule every early
-serving system used: decide in advance how long a sequence may grow and set that
-much memory aside. The reservation must cover the worst case, because a
-sequence that outgrows its region cannot simply continue elsewhere. When the
-vLLM team measured the systems of 2022, only 20.4\% to 38.2\% of their KV-cache
-memory held actual token states; the rest was reservation and fragmentation
-\cite{kwon2023pagedattention}. Since the batch size is bounded by the cache
-(\Chref{kv-cache}), a cache two-thirds wasted is a batch a third of its
-possible size --- and, on the roofline, a third of the throughput.
+The machine had enough cells in aggregate. The request lacked a legal address
+range. That is the distinction this chapter is about.
 
-\Foundations{Logical order need not be physical order}{
-Attention needs keys in the correct logical positions; it does not require all their
-bytes to occupy one contiguous allocation. A block table maps a request's logical
-block number to a physical block. The offset within that block then selects a token.
-Sharing a full immutable block is different from allowing two requests to append into
-the same mutable tail. This distinction motivates reference counts and copy-on-write.
-Chapter~\ref{ch:kv-cache} supplies the append-only history model;
-Chapter~\ref{app:notation} gives the quotient-and-remainder arithmetic used by an
-address translation.
+Chapter~\ref{ch:continuous-batching} ended with a scheduler asking two
+questions before granting work: ``may this request run?'' and ``can its next
+positions be resident?'' A scheduler can answer the first question and still
+fail the second. If every request needs one maximum-length contiguous region,
+a short request reserves memory it may never touch, while a long request can
+be rejected beside unused regions belonging to other requests.
+
+Paged KV memory changes the unit of ownership. A request no longer owns one
+maximum-length region. It owns a small table whose entries point to fixed-size
+physical blocks acquired as logical positions become real.
+
+\Foundations{The KV cache is an addressable history}{
+For each Transformer layer, the KV cache stores key and value vectors for
+positions already computed. Attention requires the vectors associated with the
+correct request and logical token positions; it does not require those vectors
+to occupy one physically contiguous allocation. Chapter~\ref{ch:kv-cache}
+derived the bytes per cached token. Chapter~\ref{ch:decode-attention} showed
+that decode attention reads that history. This chapter changes only the
+address translation between a logical position and the bytes that hold its K
+and V vectors.
 }
 
-\NapkinSection{Napkin math: fragmentation under real length distributions}
+\NapkinSection{Napkin math: reservation, blocks and an exact waste bound}
 
-Suppose each request reserves room for $S_{\max}$ tokens but uses $S_i$, its
-prompt plus its output. The fraction of reserved memory that holds tokens is
+Let request $i$ currently contain $S_i>0$ cached token positions and let a
+contiguous scheme reserve $S_{\max}$ token positions per request. For $N$
+requests, exact token-capacity utilization is
 \begin{equation}
-u_{\text{reserve}} = \frac{\bar{S}}{S_{\max}}.
-\label{eq:reserve-utilization}
+u_{\mathrm{reserve}}
+ = \frac{\sum_{i=1}^{N}S_i}{N S_{\max}}.
+\label{eq:paged-reserve-util}
 \end{equation}
-An API that allows 32,768-token contexts but sees a mean of 2,000 tokens per
-request (illustrative) has $u = 0.06$: 94\% of the cache is reserved and empty.
-Now allocate in blocks of $b$ tokens on demand. A sequence wastes only the
-unused tail of its last block, about $b/2$ tokens on average, so
+If every request is allowed 32,768 positions but the illustrative mean live
+length is 2,000, then $u_{\mathrm{reserve}}\approx0.061$. That example is
+illustrative, not a measurement.
+
+Now allocate fixed blocks of $B$ token positions on demand. Request $i$ needs
+exactly
 \begin{equation}
-u_{\text{paged}} \approx \frac{\bar{S}}{\bar{S} + b/2},
-\label{eq:paged-utilization}
+n_i=\left\lceil\frac{S_i}{B}\right\rceil
+\label{eq:paged-block-count}
 \end{equation}
-which for $b = 16$ and $\bar{S} = 2{,}000$ is 0.996. The batch that fits in a
-fixed cache grows by $u_{\text{paged}}/u_{\text{reserve}}$ --- sixteenfold in
-this example --- until something else binds: compute, or the latency each
-sequence can tolerate (\Chref{continuous-batching}).
+blocks and therefore owns $Bn_i$ token positions of physical capacity. Its
+internal tail waste is exactly
+\begin{equation}
+w_i = B\left\lceil\frac{S_i}{B}\right\rceil-S_i,
+\qquad 0\le w_i < B.
+\label{eq:paged-tail-waste}
+\end{equation}
+Across the live set,
+\begin{equation}
+u_{\mathrm{paged}}
+ = \frac{\sum_i S_i}
+        {B\sum_i\left\lceil S_i/B\right\rceil}.
+\label{eq:paged-util}
+\end{equation}
+No distributional assumption is hidden in these equations.
 
-\section{Reservation and fragmentation}
+The familiar ``about half a block per request'' statement is an
+\emph{approximation}, not an identity. If the nonzero residues $S_i\bmod B$
+are approximately uniform, expected tail waste approaches $(B-1)/2$ token
+positions. A workload whose lengths are all exact multiples of $B$ wastes
+zero. A workload whose lengths are all one token past a block boundary wastes
+almost a full block per request.
 
-Contiguous allocation wastes memory three ways. \emph{Reservation} holds space
-for tokens a sequence may never produce. \emph{Internal fragmentation} is the
-unused end of a region once the sequence stops. \emph{External fragmentation}
-is free memory broken into pieces too small for the next request's region, even
-when their sum would suffice. The opening measurement is the purest case of the
-first: the cache was free, and the request still did not fit, because the free
-memory belonged to other slots.
+For the hand example $B=4$ and live lengths
+\[
+  (S_A,S_B,S_C)=(6,4,1),
+\]
+the requests need $(2,1,1)$ blocks. They own $16$ positions, store $11$ valid
+positions and waste $(2,0,3)$ positions, so
+\[
+u_{\mathrm{paged}}=11/16=0.6875.
+\]
+If those same three requests each reserved $S_{\max}=12$ positions,
+$u_{\mathrm{reserve}}=11/36\approx0.306$. Paging has not compressed one KV
+vector. It has stopped reserving most nonexistent vectors.
 
-\section{Blocks and block tables}
+\section{What ``paged'' means here}
 
-PagedAttention applied the operating system's answer to the KV cache
-\cite{kwon2023pagedattention}. The cache becomes a pool of fixed-size blocks,
-each holding the keys and values of $b$ consecutive tokens for every layer and
-KV head. A sequence owns a \emph{block table}: the list of physical blocks that
-hold its first $b$ tokens, its next $b$, and so on. Logical position $p$ lives
-in block $\lfloor p/b\rfloor$ of the table at offset $p \bmod b$. Blocks are
-allocated when a sequence crosses a block boundary, so no memory is reserved
-for tokens not yet generated and no sequence needs contiguous space. vLLM's
-default block size was 16 tokens.
+The operating-system analogy is useful if its boundary is explicit. A CPU
+process sees virtual pages and hardware translates virtual addresses through
+page tables. A PagedAttention-style engine instead maintains a software block
+table for each request and uses a cache-aware attention kernel to translate
+logical KV positions into physical blocks. The two ideas share
+non-contiguous physical allocation and fixed-size units; their translation
+mechanisms are not the same.
 
-Trace logical position four through each table. The offset within its block is zero for both requests, but A reaches physical block two and B reaches block nine. Sharing the prefix is safe because neither continuation writes into the other's tail.
+Let $B$ be the block size in token positions. For logical position $p\ge0$,
+\begin{align}
+  \ell &= \left\lfloor p/B\right\rfloor,\\
+  r &= p\bmod B.
+\end{align}
+Here $\ell$ is the logical block index and $r$ is the offset within the block.
+If request $A$ has block table
+\[
+  T_A=[7,2,11],
+\]
+then logical position $p=5$ with $B=4$ has $\ell=1$, $r=1$, and therefore
+resides in physical block $T_A[1]=2$, offset 1.
+
+This two-integer calculation is the heart of paging.
+
+\EngineFigure{ch16-address-translation}{Conceptual address translation for
+block size four. Logical position five selects logical block one and offset
+one; request A's table maps logical block one to physical block two. The
+figure stops at a token slot; the byte layout inside that slot is derived in
+the text.}{fig:ch16-address-translation}
+
+\section{From a token position to a byte address}
+
+The translation becomes engineering only when it reaches bytes.
+
+Assume one cache allocation for one layer with
+$H_{kv}$ KV heads, head width $d_h$, and $b_{kv}$ bytes per scalar. One token's
+K and V payload is
+\begin{equation}
+C_{\mathrm{token}}
+ = 2H_{kv}d_hb_{kv}\quad\text{bytes}.
+\label{eq:paged-token-bytes}
+\end{equation}
+A physical block of $B$ positions occupies
+\begin{equation}
+C_{\mathrm{block}}
+ = B C_{\mathrm{token}}
+\label{eq:paged-block-bytes}
+\end{equation}
+bytes per layer under this simplified packed layout.
+
+Suppose $H_{kv}=8$, $d_h=128$, $b_{kv}=2$ bytes (FP16/BF16-sized storage), and
+$B=16$. Then one layer uses
+\[
+C_{\mathrm{token}}=2\times8\times128\times2=4096\ \mathrm{bytes}
+\]
+per token, and one physical block uses
+$16\times4096=65{,}536$ bytes = 64 KiB per layer. Across $L=32$ layers the
+same 16 logical positions account for 2 MiB of KV payload. These are derived
+layout counts, not measured allocator footprints; padding, alignment, metadata
+and architecture-specific layouts can add bytes.
+
+For a packed conceptual layout whose base address for physical block $q$ is
+$A_q$, the token-slot byte address is
+\begin{equation}
+A(p)=A_{T[\lfloor p/B\rfloor]}
+ +(p\bmod B)C_{\mathrm{token}}.
+\label{eq:paged-address}
+\end{equation}
+Real kernels usually expose additional axes---layer, K/V plane, head and
+head dimension---and may choose a different physical stride order. The
+invariant is not a particular stride. It is that every logical position maps
+to the correct request-owned physical storage.
+
+\section{A block table is request state}
+
+A block table belongs to a request, not to the temporary batch row from
+Chapter~\ref{ch:continuous-batching}. If request $A$ moves from batch row 7 to
+batch row 2, $T_A$ does not become $T_2$. The batch carries a reference to
+$A$'s cache mapping.
+
+For our hand example, imagine four physical blocks:
+\[
+P_0,\ P_1,\ P_2,\ P_3.
+\]
+Request $A$ contains six positions and owns table $T_A=[2,0]$.
+Request $B$ contains four positions and owns $T_B=[3]$.
+Request $C$ contains one position and owns $T_C=[1]$.
+Physical order is therefore unrelated to request order:
+\[
+  P_0\leftarrow A[4{:}6],\quad
+  P_1\leftarrow C[0{:}1],\quad
+  P_2\leftarrow A[0{:}4],\quad
+  P_3\leftarrow B[0{:}4].
+\]
+Attention over $A$ still observes logical positions $0,1,\ldots,5$ in order
+because it walks $T_A$, not the physical pool numerically.
+
+\EngineFigure{ch16-pool-table}{Illustrative address mapping for three request
+tables pointing into a four-block pool. Physical order is deliberately
+scrambled. Valid-token counts distinguish live cells from unused tail
+capacity. Block IDs are chosen for this hand example, not copied from the
+lab's default trace.}{fig:ch16-pool-table}
+
+This is why a wrong block-table entry is a correctness and isolation bug, not
+merely a performance bug. If $T_A[1]$ accidentally points at $P_3$, attention
+can consume another request's KV state. The output may remain fluent while
+being semantically wrong. In a multi-tenant service, stale mappings can also
+become a data-isolation concern.
+
+\section{Allocation without contiguous search}
+
+Fixed-size blocks remove external fragmentation from the block pool itself.
+Any free physical block can satisfy the next block request; the allocator
+does not need a sufficiently long contiguous run.
+
+A minimal pool stores:
+
+\begin{itemize}
+\item a fixed array of physical blocks;
+\item a free-block queue or stack;
+\item for each block, an ownership/reference count and generation;
+\item for each request, an ordered block table and valid-token count.
+\end{itemize}
+
+Appending position $p$ has two cases. If $p\bmod B\ne0$, the request already
+has a tail block and writes the next free cell there, provided that block is
+writable. If $p\bmod B=0$, the request needs another block. The allocator
+removes one free block, increments its ownership generation, initializes its
+valid count and appends its physical ID to the request's table.
+
+Allocation can therefore be $O(1)$ for the pool operation. The full serving
+decision is not $O(1)$ in any useful sense: the scheduler must still decide
+whether enough future capacity exists, whether a cache hit can be reused,
+whether a victim may be preempted and whether distributed KV transfer is
+involved.
+
+\section{Reference counts: readable is not writable}
+
+Once two requests can point at the same physical block, ownership needs one
+more bit of meaning. A block with reference count one can be private. A block
+with reference count two is shared.
+
+Read sharing is safe when the bytes are immutable. Mutation is different.
+Suppose prompt $P$ occupies six positions with $B=4$:
+\[
+T_P=[5,9],
+\]
+where block 5 is full and block 9 contains only positions 4 and 5. Fork two
+continuations, $X$ and $Y$. Both can reference block 5. If both also reference
+the partly filled block 9 and $X$ appends position 6 into it, $Y$ would
+silently observe $X$'s continuation.
+
+A teaching allocator can solve this with copy-on-write (COW): before appending
+to a shared partial tail, allocate a private block, copy the valid tail cells,
+decrement the old reference count, and replace the final table entry. The
+write then lands in the private copy.
+
+\EngineFigure{ch16-cow}{Copy-on-write state transition for a shared partial
+tail. Full immutable block 5 remains shared. X's attempted append to shared
+block 9 allocates block 3, copies only valid cells, rewrites X's table, then
+writes the new position. Y continues to reference block 9.}{fig:ch16-cow}
+
+Production prefix caches can use different mutability rules and finer-grained
+metadata. The invariant is broader: a write must never mutate bytes that
+another logical owner expects to remain unchanged.
+
+\section{Freeing blocks is a lifecycle operation}
+
+Chapter~\ref{ch:request-lifecycle} separated terminal publication from safe
+retirement. Paged KV memory gives that distinction physical consequences.
+
+A request reaching EOS can become terminal while an asynchronous attention
+kernel still holds its block table. Returning those blocks immediately to the
+free queue permits another request to overwrite memory that the old kernel can
+still read. Reference counts alone do not solve this unless every outstanding
+reader is represented in the count.
+
+The allocator therefore needs a retirement boundary. Only when no worker,
+transfer, cache entry or request retains a legal reference may the block
+become allocatable. The lab models this with reference counts and block
+generations. A production GPU engine may also need stream/event ordering or
+epoch-based reclamation.
+
+The generation field catches ABA reuse. Physical block 7 can be free, allocated
+to A, freed, and allocated to B while still being ``block 7.'' A stale handle
+must contain generation $g$ as well as physical ID 7. If B owns $(7,g+1)$, a
+late handle for $(7,g)$ is invalid.
+
+\section{Out of memory is a scheduler event}
+
+Paging reduces waste; it does not make capacity infinite. Let the pool contain
+$M$ blocks. The hard invariant is
+\[
+ \sum_{q=0}^{M-1}\mathbf 1[\mathrm{refcnt}(q)>0]\le M.
+\]
+When no block is free and a request crosses a block boundary, the allocator
+cannot honor the append.
+
+The wrong response is to corrupt the table or partially publish a token whose
+KV state was never committed. The allocator returns ``no capacity'' to the
+scheduler. The scheduler can then stop admission, preempt a victim, recompute,
+offload, or reject work according to policy. Those choices belong principally
+to Chapter~\ref{ch:scheduling} and the later offloading chapters.
+
+This boundary is valuable: \emph{allocation reports physical truth; scheduling
+chooses service policy.}
+
+\section{Paging changes the attention read path}
+
+For a contiguous cache, a kernel can derive a position's address from one base
+pointer and strides. A software-paged kernel must additionally load a block
+table entry when the logical block changes.
+
+A straightforward decode loop for one request is conceptually:
+
+\begin{verbatim}
+for p in 0..context_len:
+    logical_block = p / B
+    offset        = p % B
+    physical      = table[logical_block]
+    k, v          = load(physical, offset)
+    update_online_attention(k, v)
+\end{verbatim}
+
+The lab implements a scalar analogue and compares it with an independent flat
+vector. Production kernels do not execute this literal scalar loop. They tile
+heads and positions across threads, coalesce physical reads, stage metadata
+and combine address translation with online softmax. Chapter
+\ref{ch:decode-attention} owns those kernel mechanics.
+
+The engineering cost is real: a custom physical layout becomes part of every
+kernel that consumes or produces KV state. That cost motivates the vAttention
+counter-design discussed later: retain contiguous \emph{virtual} addresses and
+map physical pages underneath them.
+
+\section{Block size is a three-way trade}
+
+Block size affects at least fragmentation, metadata/translation frequency and
+sharing granularity.
+
+From equation~\eqref{eq:paged-tail-waste}, worst-case live tail waste is
+$B-1$ positions per request. Smaller blocks reduce that bound. But a context
+of length $S$ needs $\lceil S/B\rceil$ table entries, so smaller blocks grow
+tables and increase the frequency with which the kernel crosses block
+boundaries.
+
+Sharing introduces another boundary. If cache reuse is recognized only at
+full physical blocks, a prefix of length $S_p$ can reuse only
+$B\lfloor S_p/B\rfloor$ positions, leaving up to $B-1$ positions outside the
+shareable full-block prefix. Current systems can decouple some of these
+granularities; that is one reason not to hard-code ``physical block size =
+prefix match unit'' into the conceptual model.
+
+No single block size is optimal for every model. Alignment constraints,
+attention kernels, hybrid state types and transfer granularity can dominate
+the simple tail-waste model.
+
+\section{What paging buys continuous batching}
+
+Return to Chapter 32's scheduler. It wants to admit request $R$ and grant
+$q_{R,k}$ positions in iteration $k$. With a paged allocator, it can ask how
+many new blocks those positions require:
+\begin{equation}
+\Delta n =
+\left\lceil\frac{S_R+q_{R,k}}{B}\right\rceil
+-\left\lceil\frac{S_R}{B}\right\rceil,
+\label{eq:paged-increment}
+\end{equation}
+with the $S_R=0$ case interpreted naturally as zero existing blocks.
+
+For $B=16$, a request at $S_R=31$ granted one position needs no new block:
+both 31 and 32 positions fit in two blocks. A request at $S_R=32$ granted one
+position needs a third block. Two requests that both ask for one decode token
+therefore impose different allocator work.
+
+This is the scheduler--allocator interface that later chapters need. Prefix
+caching may tell the scheduler that some blocks already exist. Chunked prefill
+may reduce $q_{R,k}$. Preemption may release blocks. The allocator still
+answers the same physical question: can the granted logical positions be
+backed safely?
 
 \EngineFigure{sys-paged-pool}{An illustrative paged-cache layout with four slots per block. A and B share a complete immutable prefix block, then diverge into separate tails. Arrows map table entries to physical blocks; unused tail slots are allocated capacity, not valid tokens.}{fig:sys-paged-pool}
 
-\section{The block pool and its allocator}
-
-With every block the same size, allocation needs no search: the pool keeps a
-free list and hands out its head. Freeing a finished sequence returns its
-blocks in constant time per block. The allocator's real decisions are
-elsewhere: how many blocks to hold back so running sequences can grow, and
-which cached blocks to evict first when the free list is empty. vLLM's V1 pool
-keeps freed blocks that still hold reusable content in a queue ordered by
-recency, so the same list serves allocation and least-recently-used eviction
-\cite{vllm2026prefixcaching} --- the bridge to \Chref{prefix-caching}.
-
-\section{Sharing: reference counts and copy-on-write}
-
-Once sequences reach their memory through tables, two tables can point at the
-same block. Parallel sampling --- several completions of one prompt --- needs
-the prompt's blocks once, not once per completion; beam search shares every
-prefix the beams have in common. Each block carries a reference count. A
-sequence that must write into a shared block --- the partly filled last block
-of a common prompt --- first copies it and points its own table at the copy.
-This is copy-on-write, borrowed from \texttt{fork}, and it is what makes sharing
-safe: no sequence can see another's tokens.
-
-\section{Attention through a block table}
-
-The price of paging is paid inside the attention kernel. Instead of reading a
-contiguous $S\times d_h$ key matrix, the kernel walks the block table, reading
-$b$ tokens at a time from wherever each block lives (\Chref{decode-attention}).
-The table is small and the lookups are cheap next to the bytes they locate,
-provided blocks are large enough to be read in efficient bursts. The larger
-cost is engineering: every attention kernel, and every kernel that touches the
-cache, must be written or rewritten for the paged layout. vAttention's authors
-argue that this burden is avoidable: they keep each sequence's cache
-contiguous in \emph{virtual} memory and map physical pages on demand through
-the GPU's virtual-memory interface, so unmodified kernels work, and they report
-up to 1.23 times the throughput of paged kernels in FlashAttention and
-FlashInfer \cite{prabhu2025vattention} (their measurement).
-
-\section{Choosing the block size}
-
-Small blocks waste less --- about $b/2$ tokens per sequence --- but lengthen
-block tables, add lookups and make each memory access smaller. Large blocks
-read efficiently and share less: two prompts that agree on 1,000 tokens share
-only whole blocks, so a 256-token block wastes up to 255 tokens of possible
-reuse at the boundary. Kernels also constrain the choice, because a block is
-the unit a thread group loads. Hybrid architectures complicate it further:
-vLLM's hybrid cache manager groups layers so that full-attention layers keep
-blocks for every token while sliding-window layers keep only the most recent
-window, with one page size across groups \cite{vllm2026hybridkv}.
-
-\section{Eviction and swapping at block granularity}
-
-When the pool runs dry, the scheduler must free blocks that running sequences
-still need. It can \emph{swap} a victim's blocks to host memory and bring them
-back later, paying bus bandwidth twice, or \emph{recompute}: drop the blocks,
-requeue the sequence, and rebuild its cache later by prefilling its prompt and
-the tokens it had generated. Recomputation costs compute instead of transfer
-and needs no host memory; vLLM's V1 engine preempts by recomputation by default
-\cite{vllm2026optimization}. \Chref{scheduling} takes up which sequence
-to evict.
-
 \LedgerSection
 
-Replacing contiguous per-sequence reservations with a paged block pool:
-
 \begin{ConstraintLedger}
-Memory capacity & buys & Utilization from $\bar{S}/S_{\max}$ to about $\bar{S}/(\bar{S}+b/2)$ (equations~\eqref{eq:reserve-utilization} and \eqref{eq:paged-utilization}); 20.4--38.2\% in 2022's systems. \\
-Compute & buys & Larger batches in the same memory, and shared prompt blocks computed once. \\
-Memory bandwidth & spends & Block-table lookups and smaller, scattered reads inside every attention kernel. \\
-Latency & risks & Preemption when the pool runs dry: a victim is swapped or recomputed. \\
-Correctness & risks & A wrong table entry reads another sequence's tokens; copy-on-write must be exact. \\
+Memory capacity & buys & On-demand blocks replace maximum-length reservation; exact live tail waste is less than one block per request before sharing/cache metadata. \\
+Memory bandwidth & spends & Software-paged attention reads block-table metadata and may access physically scattered KV blocks. \\
+Compute & moves & More resident requests can increase batch width; the resulting compute/bandwidth regime must be remeasured rather than inferred from memory savings. \\
+Latency & buys & Capacity released by short/finished requests can admit new work sooner instead of remaining trapped in private maximum-length regions. \\
+Latency & risks & Pool exhaustion can trigger preemption, recomputation, transfer or admission delay. \\
+Correctness & risks & Wrong or stale table entries, unsafe shared-tail writes and premature reuse can silently mix request histories. \\
+Cost & buys & Higher KV utilization can increase goodput per accelerator when the newly admitted work still meets service objectives. \\
 \end{ConstraintLedger}
 
-\LabSection{a block pool with copy-on-write, checked against a flat cache}
+\LabSection{a paged block pool checked against flat logical history}
 
-\LabIntent{In \texttt{code/labs/ch16-paged-kv/}, a Rust block pool with a free
-list, per-sequence block tables, reference counts and copy-on-write, and a
-decode-attention function that reads through the tables. A property test runs
-random interleavings of append, fork and free against a flat, contiguous cache
-per sequence and requires identical attention outputs. The reader measures
-utilization for recorded prompt-length distributions at block sizes 1 to 256.}
+The lab in \texttt{code/labs/ch16-paged-kv/} uses no external Rust crates. It
+stores one small scalar ``KV payload'' per logical token so the address and
+ownership rules remain visible.
 
-\HappenedSection{the paged path and its release gate}
+Predict first: with block size four, append values
+$[10,11,12,13,14,15]$ to A. The table must contain two physical blocks, and
+logical position five must read offset one of A's second block regardless of
+that block's physical ID.
 
-Hermon's default runtime keeps each sequence in one of a fixed number of
-llama.cpp slots (\Chref{continuous-batching}), with the slot limits that
-implies. Its developers built a paged alternative as a separate attention path
-that reads keys and values from its own block pool and calls llama.cpp only for
-the rest of the layer, keeping the vendored library unmodified (Hermon
-\texttt{docs/PHASE\_1D\_INTEGRATION.md}). The path is selected with
-\texttt{HERMON\_RUNTIME\_MODE=paged} and \texttt{HERMON\_PAGED\_GGUF=1}, and
-it refuses to run with a temperature above zero; the default remains the
-slot-based runtime (\texttt{crates/hermon-runtime/src/dispatch.rs} at commit
-\texttt{2a3fd52}; PREVIEW).
+Then run:
+\begin{verbatim}
+cd code/labs/ch16-paged-kv
+cargo test
+cargo run -- trace
+\end{verbatim}
 
-What keeps it a preview is a gate written before the code: the paged path
-becomes the default only when it produces bit-identical output to the
-slot-based path over a corpus of a thousand prompts at temperature zero. At
-that commit the path matched llama.cpp on a three-token greedy decode of the
-reference Llama~3.2 model and on a chat case; the thousand-prompt corpus had
-not been run.
-Paging changes where every token's keys live and how every attention kernel
-finds them, so its bugs are silent --- a wrong block entry produces fluent,
-wrong text. A gate stated in advance, and checked by bits rather than by
-reading outputs, is how such a change earns the default.
+The independent oracle is a flat \texttt{Vec<i32>} per sequence. Tests compare
+every paged read with the flat history after append and fork operations.
+Additional tests prove that a shared partial tail performs COW, OOM is reported
+without corrupting an existing table, freeing a fork decrements rather than
+destroys shared blocks, and a stale generation handle is rejected after
+physical-block reuse.
 
-\FrontierSection{2026-09-24}
+The lab is not a performance benchmark and does not implement GPU attention,
+prefix hashing, eviction policy, asynchronous CUDA reclamation or distributed
+KV transfer.
 
-Paging is the industry standard for GPU serving; the questions now are how far
-the abstraction stretches. vAttention revisits the trade between a paged layout
-and unmodified kernels \cite{prabhu2025vattention}. Hybrid models mix layers
-whose caches grow at different rates, and vLLM's hybrid manager allocates each
-group differently under one page size \cite{vllm2026hybridkv}. And blocks have
-become the unit of transfer between machines and storage tiers: prefix caches
-(\Chref{prefix-caching}), disaggregated prefill (\Chref{disaggregated-serving})
-and KV stores (\Chref{kv-storage-tier}) all move KV cache in blocks.
+\HappenedSection{PagedAttention turned allocator waste into an attention interface}
+
+PagedAttention and vLLM made the allocator problem explicit in 2023
+\cite{kwon2023pagedattention}. The paper reported that contemporary serving
+systems used only 20.4--38.2\% of KV-cache memory for actual token state in
+the workloads it studied, with the remainder lost to reservation and
+fragmentation. Its vLLM evaluation reported 2--4$\times$ throughput over the
+compared FasterTransformer and Orca systems at similar latency. These are the
+paper authors' measurements, not measurements reproduced for this chapter.
+
+The durable idea is not the exact speedup. It is the contract between logical
+sequence positions and non-contiguous physical storage. Once the cache is a
+block pool, memory can be allocated on demand and immutable prefixes can be
+shared by reference instead of duplicated.
+
+Current vLLM's documented V1 block pool still makes that ownership visible.
+The block object carries a physical block ID and reference count; the pool
+maintains free-block and cache mappings, and the documented
+\texttt{is\_block\_writable} path treats a block as writable only when it has
+one reference and is not cache-hashed. That is a production-strength version
+of the lab's central distinction: readable sharing is not writable ownership.
+
+The earlier Hermon paged-path notes preserved in this manuscript should remain
+classified PREVIEW unless source at a pinned Hermon revision proves that
+ordinary default requests traverse it. The historical draft describes a
+separate paged attention path and an output-equivalence gate. This chapter
+does not upgrade that claim: repository integration should re-check the
+referenced Hermon source and pin the exact revision before retaining detailed
+behavioral statements.
+
+\FrontierSection{2026-10-05}
+
+Two directions now matter.
+
+First, block management is becoming more general than one uniform
+Transformer cache. Current vLLM documentation describes KV cache groups for
+hybrid architectures and distinguishes physical group block sizes from a
+scheduler/hash granularity in configurations where divisibility permits it.
+Its cache configuration still documents a default physical block size of 16
+tokens, while newer prefix-match machinery can use a finer hash/match unit in
+some hybrid cases. The conceptual lesson is that allocation granularity,
+scheduler granularity and reuse granularity need not remain identical forever.
+
+Second, vAttention challenges the assumption that dynamic physical allocation
+requires a software-paged \emph{virtual} layout
+\cite{prabhu2025vattention}. It reserves contiguous virtual address ranges for
+a sequence and maps physical GPU pages on demand with CUDA virtual-memory
+mechanisms. The authors report up to 1.23$\times$ serving-throughput
+improvement over the PagedAttention-based FlashAttention/FlashInfer
+comparisons in their experiments. Again, that is their measurement. The
+architectural point is more transferable: dynamic physical allocation and
+contiguous kernel-visible addressing are separable design choices.
+
+These designs do not make paging obsolete. They sharpen the question:
+\emph{where should address translation live?} In the attention kernel, in the
+GPU virtual-memory layer, or across a hybrid cache manager? Later chapters on
+prefix caching, disaggregated serving and KV storage turn the same block
+identity into a reuse and transfer protocol.
 
 \ExercisesSection
 
 \begin{enumerate}
-\item \emph{Derivation.} For sequence lengths uniform on $[0, S_{\max}]$,
-derive $u_{\text{reserve}}$ and $u_{\text{paged}}$, and the ratio of batch
-sizes that fit in the same memory.
-\item \emph{Prediction.} Four slots share 8,192 cells in llama.cpp's per-slot
-mode. What is the longest prompt the server accepts, and how many 1,500-token
-requests can it serve at once? Repeat for the unified pool.
-\item \emph{Implementation.} Add parallel sampling ($n$ completions of one
-prompt) to the lab and count the blocks saved by sharing the prompt.
-\item \emph{Falsification.} Find a block size and workload for which paging
-uses \emph{more} memory than contiguous allocation.
+\item \emph{Prediction.} With $B=4$ and $T_A=[7,2,11]$, identify the physical
+block and in-block offset for logical positions 0, 3, 4, 5 and 10.
+
+\item \emph{Derivation.} For lengths $(1,4,5,8,9)$ and block size four,
+compute each $n_i$, each tail waste $w_i$, total paged utilization and the
+worst-case bound on total tail waste.
+
+\item \emph{Bytes.} For $L=32$, $H_{kv}=8$, $d_h=128$, $b_{kv}=2$ bytes and
+$B=16$, derive bytes per token, bytes per physical block across all layers,
+and payload bytes represented by a table with 100 blocks.
+
+\item \emph{Correctness.} Two requests share a partial tail with reference
+count two. Explain why incrementing the reference count alone does not make an
+append safe, and state the required COW transition.
+
+\item \emph{Implementation.} Extend the lab with an explicit ``pin'' count for
+in-flight readers. A block may return to the free list only when both request
+references and pins are zero. Add a test in which a request terminates before
+an in-flight read retires.
+
+\item \emph{Falsification.} Construct a workload for which a chosen paged
+block size consumes more physical token capacity than a tightly sized
+contiguous allocation. State exactly which benefit of paging your example
+does and does not falsify.
 \end{enumerate}
+
+\input{worked/ch16-paged-kv.tex}

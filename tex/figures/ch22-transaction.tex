@@ -1,0 +1,12 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=10mm and 14mm]
+\node[sysbox](d){Draft and target-verify\\proposed positions};
+\node[sysdecision,below=of d,text width=22mm](a){all drafts\\accepted?};
+\node[sysbox,below left=of a](r){First rejection:\\residual correction;\\discard later drafts};
+\node[sysbox,below right=of a](b){All accepted:\\sample target bonus};
+\node[sysbox,below=30mm of a,fill=BookGreen](c){Commit legal prefix\\reconcile auxiliary state};
+\draw[flow](d)--(a);
+\draw[flow](a)--node[syslabel]{no}(r);
+\draw[flow](a)--node[syslabel]{yes}(b);
+\draw[flow](r.south)|-(c.west);\draw[flow](b.south)|-(c.east);
+\end{tikzpicture}

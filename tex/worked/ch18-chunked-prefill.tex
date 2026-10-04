@@ -1,0 +1,44 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{SLO chunk bound}
+\textbf{Problem.} \emph{Derivation.} Given measured model
+$\hat t=a+b_dD+b_pc+b_acS$, solve for the largest integer chunk $c$ satisfying
+$\hat t\le\tau$ and $D+c\le T$.
+
+\textbf{Solution.} From $a+b_dD+b_pc+b_acS\le\tau$,
+\[
+c\le\frac{\tau-a-b_dD}{b_p+b_aS}.
+\]
+The scheduler also requires $c\le T-D$, so choose the nonnegative integer floor of
+the smaller bound.
+
+\Needspace{12\baselineskip}
+\subsection{Three-iteration trace}
+\textbf{Problem.} \emph{Trace.} A 10,240-token prompt has a 6,144-token verified prefix hit.
+With $T=1024$ and decode counts 64, 80, 32, trace the first three chunks, committed
+positions and additional 16-token KV blocks.
+
+\textbf{Solution.} The request begins at committed position 6,144. With decode counts 64, 80 and 32,
+the remaining token budgets are 960, 944 and 992. Successful commits advance to
+7,104, 8,048 and 9,040 tokens respectively. With 16-token KV blocks these chunks
+cross 60, 59 and 62 new block boundaries because all three chunk sizes are multiples
+of 16 in this trace.
+
+\Needspace{12\baselineskip}
+\subsection{Premature commit}
+\textbf{Problem.} \emph{Correctness.} Explain why advancing $S_c$ when work is scheduled rather
+than when execution commits can skip model computation after a worker failure.
+
+\textbf{Solution.} If progress advances at schedule time and the runner fails, the next iteration starts
+after tokens whose KV was never produced. Reserve/execute/commit prevents the hole.
+
+\Needspace{12\baselineskip}
+\subsection{Prefix-hit accounting}
+\textbf{Problem.} \emph{Prediction.} Explain how a 28K prefix-cache hit changes scheduling of a
+32K prompt but does not proportionally reduce active KV residency.
+
+\textbf{Solution.} A 32K logical prompt with a 28K verified hit has 4K prefill compute remaining, but
+the active request still references KV for the full 32K context as it reaches the end.
+Compute accounting and residency accounting therefore use different token counts.

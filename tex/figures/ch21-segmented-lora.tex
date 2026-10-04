@@ -1,0 +1,10 @@
+% diagram-kind: memory
+\begin{tikzpicture}[node distance=8mm and 11mm]
+\node[sysbox] (x) {batch rows\\$x_0,\ldots,x_n$};
+\node[sysbox,right=of x] (base) {shared base\\$XW^\top$};
+\node[sysbox,below=of x] (meta) {row adapter IDs\\A,A,C,base,\ldots};
+\node[sysbox,right=of meta] (seg) {segmented gather\\thin $A_a,B_a$};
+\node[sysbox,right=of base,fill=BookGreen] (sum) {row-wise sum\\$Y_{\rm base}+\Delta Y$};
+\draw[flow](x)--(base); \draw[flow](x)--(meta); \draw[flow](meta)--(seg);
+\draw[flow](base)--(sum); \draw[flow](seg)--(sum);
+\end{tikzpicture}

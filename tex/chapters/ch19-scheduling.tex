@@ -1,235 +1,468 @@
 % status: ZERO
-% Chapter 19 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part3.md (overload).
+% Printed Chapter 36 / stable source ch19. Rules: AUTHORING.md.
 \chapter{Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission}\label{ch:scheduling}
 
 \begin{ChapterIntent}
-Demand eventually exceeds memory. Then the scheduler must decide which
-requests run, which wait and which are evicted, and whether an evicted request
-is recomputed or swapped out. This chapter covers admission control,
-preemption by recomputation and by swapping, fairness between tenants,
-priorities and deadlines, and admission that is aware of service-level
-objectives, using a little queueing theory to explain why a system near
-saturation behaves so badly. Its target metric is goodput --- throughput that
-meets its latency objectives.
+A serving engine is easy to schedule while every runnable request fits. The real
+scheduler appears when token budget, KV capacity and latency objectives cannot all be
+satisfied. This chapter separates three decisions that are often conflated:
+\emph{admission} decides whether new work may enter; \emph{scheduling} divides each
+iteration among admitted work; and \emph{reclamation/preemption} takes resources back
+after optimistic assumptions fail. We derive overload behavior, compare recomputation
+with swapping, construct fair and priority-aware policies, and optimize for goodput
+rather than raw throughput.
 \end{ChapterIntent}
 
-\OpeningSection{Out of memory at the peak}
+\OpeningSection{One exhausted cache, four simultaneous failures}
 
-Give llama.cpp's server one shared cache of 4,096 cells and four request slots,
-and send it four requests at once, each with a 200-token prompt and asking for
-1,200 tokens. Together they need about 5,600 cells, so the cache must run out,
-and on the M1 it did: after each request had generated 824 tokens, the next
-step found no free cell. The server retried with smaller and smaller batches,
-down to a single token, and then sent the same error to every request in
-flight: \emph{Context size has been exceeded}. \textbf{All four failed at the
-same instant}, 73.5 seconds after they were sent, and none received the rest of
-its answer. With 8,192 cells, the same four requests all completed their 1,200
-tokens in 113 seconds (measured; record \texttt{2026-09-24-m1-part3}).
+The edition's M1 measurement record contains an unusually sharp overload experiment.
+llama.cpp's server was configured with one shared KV cache of 4,096 cells and four
+request slots. Four requests arrived together, each with roughly a 200-token prompt
+and permission to generate 1,200 tokens. Their eventual demand was about 5,600 cells.
+After each had generated 824 tokens, the next step could not find enough KV space.
+The server reduced the batch repeatedly, reached a one-token attempt, and then failed
+all four active requests together with a context-size error. They failed at the same
+pressure point, about 73.5 seconds after arrival (measured; record
+\texttt{research/measurements/2026-09-24-m1-part3.md}). With 8,192 cells, the four
+requests completed.
 
-The behavior is written down in the server's source. When a decode step fails
-for lack of cache space even at a batch of one, the loop sends an error to
-every slot that is processing and releases them all; the comment beside it
-reads, in part, \emph{try to terminate only the largest active slot}, a change
-not yet made (\texttt{tools/server/server-context.cpp} at commit
-\texttt{d006858}). vLLM's scheduler handles the same moment differently: it
-evicts one running request --- the most recently admitted, or the lowest
-priority --- frees its cache, and puts it back at the head of the queue to be
-recomputed later (\texttt{vllm/v1/core/sched/scheduler.py} at commit
-\texttt{bcdacfc}). At the peak, the policy decides whether one user waits or
-every user fails.
+The scarce resource was real. The correlated failure was policy.
 
-\Foundations{Arrival rate, service rate and overload}{
-A queue stores work that has arrived but cannot yet run. If offered work persistently
-exceeds sustainable service, waiting grows unless the system rejects, sheds or slows
-arrivals. Memory can fill before compute reaches its limit because each waiting or
-active request may retain state. Preemption interrupts admitted work; admission
-control decides whether to accept it in the first place. Neither guarantees fairness
-without a declared service policy. Chapter~\ref{ch:continuous-batching} supplies the
-execution unit. Chapter~\ref{app:reproducing} distinguishes open-loop arrivals from
-clients that reduce their offered load whenever the server slows.
+A scheduler with preemption could have selected one victim, reclaimed its state, and
+let the others progress. A stricter admission controller could have delayed or
+rejected work before all four accumulated expensive state. A reservation-based system
+could have guaranteed completion but admitted fewer requests. None removes scarcity.
+They decide who bears it, when, and how much useful work is destroyed.
+
+\Foundations{Three control planes, three different questions}{
+Admission asks ``may this request enter the resource domain?'' Scheduling asks ``which
+admitted work executes in the next iteration?'' Reclamation asks ``which resident
+state may be removed when earlier assumptions no longer fit?'' Chapter~\ref{ch:continuous-batching}
+defines the iteration, Chapter~\ref{ch:paged-kv} the physical KV blocks,
+Chapter~\ref{ch:chunked-prefill} the per-iteration work budget, and
+Chapter~\ref{ch:prefix-caching} the reusable-state contract. A queue does not create
+capacity. Preemption does not stabilize a persistently overloaded arrival stream.
+Priority does not by itself provide fairness.
 }
 
-\NapkinSection{Napkin math: utilization, queues and Little's law}
+\NapkinSection{Napkin math: why 95 percent can feel saturated}
 
-Two laws explain why serving systems degrade abruptly. Little's law says that
-the average number of requests in a system equals their arrival rate times
-their average time in it, $N = \lambda T$, for any stable system. And for a
-single server with random arrivals and service times, the classic M/M/1 model
-gives the mean time in system
+For a stable system, Little's law states
 \begin{equation}
-T = \frac{1/\mu}{1-\rho},\qquad \rho = \frac{\lambda}{\mu},
-\label{eq:mm1}
+N=\lambda T,
 \end{equation}
-where $\mu$ is the service rate and $\rho$ the utilization. At 50\%
-utilization a request spends twice its service time in the system; at 90\%, ten
-times; at 95\%, twenty (derived). An LLM server is not an M/M/1 queue ---
-continuous batching serves many requests at once, and service times depend on
-the batch --- but the shape survives: near saturation, small increases in load
-produce large increases in waiting, and by Little's law the number of requests
-held, each with its cache, grows with the waiting.
+where $N$ is the average number of requests in the system, $\lambda$ the completed
+arrival rate in requests/s, and $T$ mean time in system in seconds. It is an accounting
+identity under its stability assumptions.
 
-That is the second pressure. The cache a running request needs grows every
-step, and its final size depends on an output length nobody knows at admission.
-A scheduler can reserve for the worst case and waste memory
-(\Chref{paged-kv}), or admit optimistically and prepare to take memory back ---
-which is what preemption is.
+A deliberately simplified M/M/1 queue gives
+\begin{equation}
+T=\frac{1/\mu}{1-\rho},\qquad \rho=\frac{\lambda}{\mu},
+\label{eq:sched-mm1}
+\end{equation}
+with service rate $\mu$ and utilization $\rho$. At $\rho=0.8$, mean time is five
+service times; at $0.95$, twenty; at $0.98$, fifty. LLM serving is not M/M/1:
+continuous batching changes service rate with batch composition, prompt/output
+lengths are heavy-tailed, and memory is a second resource. The curve still teaches a
+durable lesson: operating with no slack makes queueing extremely sensitive to small
+load errors.
 
-\section{Admission: will this request fit?}
+Memory amplifies the effect. If an admitted request holds on average $m$ bytes of KV,
+Little's law suggests an average resident demand near $m\lambda T$ for a simplified
+steady workload. As queueing increases $T$, more state remains live for longer. A
+compute bottleneck can therefore turn into a memory crisis.
 
-Admission control decides whether a new request may start. A conservative
-policy admits a request only if its prompt and its maximum output fit; it never
-preempts and wastes the unused reservation. An optimistic policy admits a
-request if its prompt fits now, keeps a margin of free blocks for the running
-requests to grow, and preempts when the margin is exhausted. Engines choose the
-optimistic side because output lengths are skewed: most requests stop long
-before their limit. llama.cpp's server, in the opening, admits anything that
-fits a slot's context and has no preemption, so its optimism ends in failure
-rather than in waiting.
+\section{Draw the state machine before choosing a policy}
+
+A request moves through
+\[
+\textsc{New}\rightarrow\textsc{Queued}\rightarrow\textsc{Admitted}
+\rightarrow\textsc{Running}\rightarrow\textsc{Terminal}\rightarrow\textsc{Retired}.
+\]
+Preemption adds
+\[
+\textsc{Running}\rightarrow\textsc{Preempted}\rightarrow\textsc{Queued}.
+\]
+Rejection is different:
+\[
+\textsc{New/Queued}\rightarrow\textsc{Rejected}.
+\]
+A rejected request never owns execution state. A preempted request has already
+consumed service and may retain logical output even if its physical KV is reclaimed.
+
+The distinction matters operationally. A service can report immediate overload for a
+rejection. A preempted interactive request may exhibit a long mid-stream pause. A
+timed-out request that remains physically resident is neither proper rejection nor
+proper preemption; it is leaked work.
+
+\EngineFigure{ch19-state-machine}{Admission, execution, preemption and retirement are distinct transitions. Physical KV may be reclaimed only through an ownership-safe path; rejection occurs before expensive execution state is established.}{fig:sched-state}
+
+\section{Admission: promise, estimate, or gamble}
+
+Suppose request $r$ has prompt length $S_r$, maximum output $O_r^{\max}$ and KV cost
+$m_{kv}$ bytes/token. Worst-case reservation requires
+\[
+M_r^{\max}=(S_r+O_r^{\max})m_{kv}.
+\]
+Admit only if this fits and completion is memory-safe, but capacity can be wasted when
+most outputs terminate early.
+
+Optimistic admission reserves less. It may use current prompt KV plus a growth margin,
+an output-length predictor, a percentile of historical output length, or no future
+reservation at all. More requests start, but the system must have a recovery path
+when predictions are wrong.
+
+The useful design is not ``conservative versus optimistic.'' It is an explicit risk
+budget. State what quantity is reserved, what uncertainty remains, what pressure
+threshold triggers reclamation, and what user-visible outcome follows if the estimate
+fails.
+
+\section{Chunking makes admission easier to get wrong}
+
+Chapter~\ref{ch:chunked-prefill} showed that a long request can enter through a small
+first chunk. If admission considers only the next iteration, many long prompts can
+simultaneously appear affordable. Their KV grows later and the allocator discovers
+the debt after substantial compute has been spent.
+
+Therefore separate
+\[
+B_{\rm step}\quad\text{from}\quad B_{\rm resident}.
+\]
+The first is an execution budget; the second is a capacity/admission budget. Current
+vLLM exposes an option to reserve against full input length with chunked prefill to
+reduce this form of over-admission. The durable rule is engine-independent: temporal
+slicing does not erase future state growth.
+
+\section{Pressure is a signal, not yet a victim}
+
+Assume the allocator needs $\Delta b$ blocks for the next scheduled work and has only
+$f<\Delta b$ free. The scheduler now has choices:
+\begin{enumerate}
+\item shrink or defer the work quantum;
+\item evict unpinned prefix-cache entries;
+\item preempt one or more active requests;
+\item restore capacity from another tier or worker;
+\item reject/not admit additional work;
+\item fail if no legal recovery exists.
+\end{enumerate}
+These actions have different costs. Cached-but-inactive blocks are usually cheaper to
+evict than active state. A request one token from completion is often a poor
+recomputation victim. A low-priority batch request may be the correct victim even if
+it arrived earlier.
 
 \section{Preemption by recomputation}
 
-To preempt by recomputation, the scheduler frees a victim's cache blocks,
-keeps the tokens it has already generated, and returns it to the waiting queue.
-When it runs again, its prompt and its generated tokens are prefilled together
---- one pass of compute, at prefill efficiency --- and decoding continues where
-it stopped. The output is unaffected, because the recomputed cache is the same
-function of the same tokens. vLLM's V1 engine preempts this way by default,
-choosing recomputation over swapping because of its lower overhead in that
-engine \cite{vllm2026optimization}, and its implementation resets the victim's
-computed-token count to zero and prepends it to the queue so that it resumes
-first. A prefix cache (\Chref{prefix-caching}) can make the recomputation
-partly free, if the victim's blocks are still cached when it returns.
+Recomputation preemption preserves the request's logical token history, frees its
+physical KV, and later reconstructs the KV by running the known tokens through the
+model again. If the model execution is deterministic under the serving contract, the
+reconstructed state represents the same causal history.
+
+Let $C_r$ be the compute time required to rebuild the evicted prefix. A rough victim
+cost is
+\[
+C_r \approx \frac{F_{\rm prefill}(S_r^{\rm committed})}{\pi_{\rm eff}},
+\]
+reduced by any prefix-cache portion that remains valid. Reclaim benefit is the number
+of blocks actually made free, not the request's logical context length if blocks are
+shared.
+
+Recomputation spends accelerator compute but avoids host capacity and transfer
+bandwidth. It is attractive when prefill is efficient and the victim's reconstructible
+history is not enormous.
 
 \section{Preemption by swapping}
 
-The alternative moves the victim's blocks to host memory and back. Swapping
-spends interconnect bandwidth twice instead of compute once, and host memory
-instead of nothing. It wins when the cache is large relative to the compute
-that would rebuild it --- long contexts, cheap host transfers --- and loses when
-a short prompt could simply be prefilled again. The same arithmetic reappears
-when caches are deliberately kept in host memory or on disk
-(\Chref{kv-storage-tier}).
+Swap preemption moves KV to a lower memory tier and later restores it. For $M_r$ bytes
+and effective bidirectional transfer bandwidth $\beta$, a first-order round-trip cost
+is
+\[
+T_{\rm swap}\approx\frac{2M_r}{\beta}+T_{\rm setup}.
+\]
+This is derived and intentionally ignores overlap, topology contention, serialization
+and page granularity.
 
-\section{Fairness between tenants}
+Compare $T_{\rm swap}$ with recomputation time, but also price scarce host memory and
+interconnect bandwidth. Long contexts with expensive recomputation may favor restore;
+short contexts often favor recomputation. Chapters on KV storage and offloading treat
+the tiering mechanisms in depth.
 
-First come, first served lets one client's burst occupy every slot while
-another client's single request waits behind it. Counting requests does not
-fix this, because requests differ in cost by orders of magnitude. The Virtual
-Token Counter scheduler measures service in tokens --- a weighted count of
-input and output tokens processed for each client --- and always serves the
-backlogged client that has received the least \cite{sheng2024vtc}. Its authors
-proved that over any interval, however long, the service received by two
-backlogged clients differs by at most twice the larger of two quantities --- the
-weighted cost of the longest prompt and of the most tokens the running batch
-can hold --- and that the bound is tight, while the scheduler stays
-work-conserving: spare capacity is never withheld (their analysis).
+\section{A victim score should price damage, not age alone}
 
-\section{Priorities and deadlines}
+A conceptual victim score can be written
+\begin{equation}
+V_r =
+\frac{R_r}
+     {\epsilon+C_r+\alpha P_r+\beta U_r+\gamma D_r},
+\label{eq:victim-score}
+\end{equation}
+where $R_r$ is reclaimable bytes, $C_r$ estimated restore/recompute cost, $P_r$ a
+priority penalty, $U_r$ service already invested, and $D_r$ deadline urgency.
+Coefficients encode service policy; $\epsilon$ prevents division by zero. Larger
+$V_r$ means more capacity reclaimed per unit of damage.
 
-Some requests matter more: an interactive user ahead of a batch job, a paying
-tier ahead of a free one. vLLM offers a priority scheduling policy in which
-each request carries a priority value, and when it must preempt it picks the
-running request with the lowest priority, breaking ties by the latest arrival
-(\texttt{vllm/config/scheduler.py} and \texttt{vllm/v1/core/sched/scheduler.py}
-at commit \texttt{bcdacfc}). Deadlines are harder than priorities: a request
-whose deadline has passed is worth nothing, so continuing to serve it wastes
-the capacity that could rescue another.
+Equation~\ref{eq:victim-score} is illustrative, not a production recommendation.
+Simple policies such as latest-admitted or lowest-priority are easier to audit and can
+be more robust than a poorly calibrated multi-factor score. The important step is to
+name what the victim policy optimizes.
 
-\section{Admission that knows the objective}
+\section{Shared blocks make ``free this request'' nontrivial}
 
-The measure that captures this is goodput. DistServe defined it as the maximum
-request rate a system can serve while meeting both a time-to-first-token and a
-time-per-output-token objective for a stated fraction of requests
-\cite{zhong2024distserve}. Throughput counts every token; goodput counts only
-requests that met their objectives. An admission policy aimed at goodput
-rejects, early, requests it predicts will miss: a request refused in
-milliseconds costs its client a retry, while a request admitted, prefilled and
-then abandoned costs everyone the compute it consumed.
+With prefix caching, request $A$ may reference 100 blocks but uniquely own only 20.
+Preempting it cannot reclaim the 80 blocks still referenced by request $B$ or retained
+by cache policy. Victim selection therefore needs \emph{reclaimable physical bytes},
+not logical context bytes.
 
-\section{Overload: shedding and backpressure}
+The Chapter~\ref{ch:paged-kv} refcount/generation contract supplies the answer.
+Preemption releases the victim's references; only blocks whose reference/pin counts
+reach the reclaimable state enter the free pool. A scheduler that predicts 100 blocks
+of relief and receives 20 can immediately enter a preemption cascade.
 
-When demand stays above capacity, some work must be refused; the only choice
-is where. Refusing at the door --- an immediate error with a hint to retry
-later --- keeps the requests already admitted within their objectives.
-Accepting everything lets queues and caches grow until requests time out
-after consuming resources, or, as in the opening, fail together. Two further
-rules matter at scale: bound the queue, so that waiting time cannot grow
-without limit; and make retries back off, because clients that retry at once
-multiply the load that caused the refusal.
+\section{Avoid preemption cascades}
 
-Admission precedes expensive state allocation. Separate a valid request from one the service can presently support. The negative branch is a policy decision with a visible outcome, not an excuse for an unbounded queue.
+A cascade occurs when the scheduler repeatedly evicts requests but each victim frees
+too little, or when newly admitted work consumes the reclaimed blocks before the
+original pressure is resolved. This is a feedback failure.
+
+Make reclamation transactional. Compute a target free-watermark $W$. Select a victim
+set whose predicted unique reclaimable blocks reaches $W$, stop new admission while
+reclamation is in progress, release references, observe actual free capacity, and
+only then schedule the blocked allocation. If prediction was wrong, recompute the
+plan rather than blindly continuing the original victim list.
+
+\EngineFigure{ch19-pressure-loop}{Memory pressure enters a bounded recovery loop: evict cheap inactive cache first, select sufficient active victims only if necessary, observe actual reclaimed capacity, then resume admission.}{fig:sched-pressure-loop}
+
+\section{Fairness is measured in service, not request count}
+
+Two tenants can each have ten requests while one asks for 50 tokens/request and the
+other 5,000. Round-robin by request is not equal service. Fair schedulers need a cost
+unit.
+
+Virtual Token Counter (VTC) scheduling accounts weighted input/output token service
+per client and favors the backlogged client that has received less normalized service.
+Its authors derive bounded service difference while retaining work conservation. The
+important abstraction is a virtual service counter, not the exact formula: account
+what scarce work each principal has received, then schedule against that accounting.
+
+A production service may weight tenants by purchased capacity:
+\[
+\tilde s_i=\frac{s_i}{w_i},
+\]
+where $s_i$ is accumulated service and $w_i$ entitlement weight. Serving the smallest
+$\tilde s_i$ approximates weighted fairness. Reset/decay policy matters; otherwise a
+tenant that was idle for hours can accumulate an unrealistic credit advantage.
+
+\section{Priority is not fairness}
+
+Priority answers ``who should win when objectives conflict?'' Fairness answers ``how
+should comparable principals share service over time?'' A strict priority scheduler
+can starve low-priority work forever. A perfectly fair scheduler can violate an
+emergency request's deadline.
+
+Combine them explicitly. One approach chooses the highest eligible priority class,
+then applies fair scheduling within that class, with aging that eventually promotes
+old lower-priority work. Another reserves capacity shares by class. The policy must be
+documented because it changes user-visible latency even though model correctness is
+unchanged.
+
+\section{Deadlines introduce value decay}
+
+If a request's useful deadline is $d_r$ and predicted completion is later than
+$d_r$, continuing it may have zero service value. Define slack
+\[
+\sigma_r=d_r-t_{\rm now}-\widehat T_r.
+\]
+Negative slack means the predictor expects a miss. Earliest-deadline-first can help
+when work sizes are comparable, but a huge nearly-impossible request can monopolize
+the server. Admission should therefore consider both deadline and estimated remaining
+work.
+
+Rejecting an impossible request early can increase goodput because it preserves
+capacity for requests that can still meet their objectives.
+
+\section{Goodput: count useful completions}
+
+Raw throughput counts tokens regardless of latency. Goodput counts requests or tokens
+that satisfy a declared service objective. For request indicator
+\[
+g_r =
+\begin{cases}
+1,&\mathrm{TTFT}_r\le\tau_{\rm TTFT}\ \land\
+   \mathrm{TPOT}_r\le\tau_{\rm TPOT},\\
+0,&\text{otherwise},
+\end{cases}
+\]
+request goodput over interval $\Delta t$ is
+\[
+G=\frac{\sum_r g_r}{\Delta t}.
+\]
+The exact SLO may include percentile rather than per-request conditions; state it.
+
+Goodput changes optimization behavior. Admitting one more request can increase raw
+throughput while decreasing $G$ if it pushes many existing streams over their ITL
+limits. Capacity planning therefore needs a safe operating region, not merely a peak
+benchmark.
+
+\section{SLO-aware admission as a feasibility test}
+
+Before admission, estimate the marginal effect of request $r$ on memory and latency.
+A conceptual test is
+\[
+\widehat M_{\rm active}+M_r^{\rm reserve}\le M_{\rm budget}
+\]
+and
+\[
+\widehat{\mathrm{TTFT}}_r\le\tau_{\rm TTFT},\qquad
+\Delta\widehat{\mathrm{ITL}}_{\rm incumbents}\le\delta.
+\]
+If infeasible, defer within a bounded queue or reject immediately.
+
+Predictions need uncertainty margins. A point estimate of 90 ms under a 100 ms SLO is
+not safe when prediction error is $\pm40$ ms. Production admission can use calibrated
+quantiles or conservative headroom. The cost of a false accept is wasted compute plus
+damage to incumbents; the cost of a false reject is lost useful work.
+
+\section{Bound the queue}
+
+An unbounded queue converts overload into latency and memory. Even if queued requests
+hold no KV, they hold client expectations and may expire before service. Define a
+maximum queue length, maximum queue age, or both.
+
+When rejecting, expose a retryable overload outcome and use randomized/exponential
+backoff. Immediate synchronized retries can turn a small overload into a retry storm.
+The server and client form one feedback system.
+
+\section{Why feedback controllers oscillate}
+
+Mooncake's production study gives a useful example. In a disaggregated prefill/decode
+system, rejecting at the decode cluster after prefill wastes expensive work. Early
+rejection at arrival is better, but a controller reacting to \emph{current} decode
+load can oscillate because the request reaches decode only after prefill delay.
+
+The authors instead predict decode load at the future handoff time. Their trace replay
+of 23,000 requests at doubled speed reported fewer rejections with prediction-based
+early rejection than with the baseline or instantaneous early-rejection policy.
+Those are authors' measurements from their workload, not universal ratios.
+
+The control lesson generalizes: if an action has delayed effect, regulate against the
+state at the effect horizon, not only the state observed now.
+
+\section{Cache-aware scheduling can conflict with fairness}
+
+Chapter~\ref{ch:prefix-caching} made prefix locality valuable. SGLang exposes policies
+including longest-prefix matching because warm-prefix work can reduce prefill cost.
+But always serving the best cache hit can starve cold requests.
+
+Treat locality as one scheduling feature, not the entire policy. A fair scheduler can
+choose among eligible tenants first and then use prefix locality inside the chosen
+tenant. Alternatively, add bounded locality credit that cannot overwhelm queue age.
+This is an example of policy composition: optimize reuse subject to fairness, rather
+than optimize reuse and hope fairness emerges.
+
+\section{What current engines expose}
+
+Current vLLM configuration documents FCFS and priority scheduling policy options and
+contains modern machinery around deferred block release and scheduler accounting.
+Historical vLLM versions used recomputation as the normal preemption path when KV
+pressure made a running set infeasible. Because these internals evolve quickly, exact
+current preemption claims must be pinned to source before this chapter is promoted.
+
+Current SGLang source at snapshot
+\texttt{7a719e9a65e7f52b012ab37211b5f174e5d3d38d} contains explicit scheduling-policy
+logic, including cache-locality-oriented choices. This is useful evidence that
+scheduling policy is a first-class runtime component, but source inspection does not
+establish that every deployment uses the same policy.
+
+\section{Failure tests for the scheduler}
+
+A scheduler test suite needs adversarial traces, not only average throughput.
+Test a tenant burst against a single interactive request; a long request against many
+short requests; identical priority with different arrival order; cache-locality bias
+against a cold request; a request whose output estimate is badly wrong; and a victim
+whose blocks are mostly shared.
+
+Then test invariants. No terminal request may regain execution ownership. No
+preemption may free blocks still pinned elsewhere. Service counters must be monotone
+under their accounting epoch. Queue age must not reset on preemption. Admission
+failure must occur before expensive state allocation. A recomputed request must
+produce the same model state/output under the backend's numerical contract.
 
 \EngineFigure{sys-admission-flow}{Admission flowchart for a conceptual SLO-aware scheduler. An estimate is not a guarantee. Deferral must be bounded; rejecting work is different from silently timing it out.}{fig:sys-admission-flow}
 
 \LedgerSection
-
-Admitting optimistically and preempting under memory pressure, with fair and
-objective-aware admission:
-
 \begin{ConstraintLedger}
-Memory capacity & buys & More concurrent requests than worst-case reservation allows; memory is reclaimed from one victim instead of failing everyone. \\
-Compute & spends & Recomputation of each preempted request's prompt and generated tokens. \\
-Memory bandwidth & spends & Swapping, when used: each victim's cache crosses the interconnect twice. \\
-Latency & moves & From the requests that keep running to the victims and the rejected; goodput, not mean latency, is the target. \\
-Correctness & risks & A recomputed cache must equal the evicted one; fairness and priority change who waits, not what is computed. \\
+Memory capacity & buys & Optimistic admission plus bounded reclamation can run more requests than worst-case reservation while recovering from prediction error.\\
+Compute & spends & Recomputation destroys resident KV and later pays prefill again; cascades can turn overload into thrashing.\\
+Memory bandwidth & spends & Swap preemption moves KV across memory tiers and can contend with inference traffic.\\
+Latency & moves & Rejection protects incumbents; preemption transfers delay to victims; fairness and priority decide distribution.\\
+Correctness & risks & Shared-block reclamation, stale ownership, premature retirement or nondeterministic reconstruction can corrupt state.\\
+Cost & trades & SLO-aware admission can improve useful completions per accelerator-hour; overly conservative rejection strands capacity.\\
 \end{ConstraintLedger}
 
-\LabSection{a scheduler under a bursty load}
+\LabSection{a finite-capacity scheduler that can prove whom it harmed}
 
-\LabIntent{In \texttt{code/labs/ch19-scheduling/}, the batching simulator of
-\Chref{continuous-batching} gains a finite block pool, optimistic admission,
-preemption by recomputation or by swapping, a Virtual Token Counter policy and
-deadline-aware rejection. A bursty two-tenant trace is replayed under each
-policy; the report shows goodput, per-tenant service and the number of
-preemptions. An invariant check replays every preempted request without
-preemption and requires identical outputs.}
+The Rust lab in \texttt{code/labs/ch19-scheduling/} models two tenants, finite KV
+blocks, weighted service counters, bounded admission and recomputation preemption.
+Requests declare prompt blocks, remaining steps, priority and optional deadline. The
+simulator records admissions, service, preemptions, rejections and completions.
 
-\HappenedSection{early rejection in a production system}
+Its oracle is deliberately independent of policy: conservation checks that each
+completed request receives exactly its declared service units, and ownership checks
+that allocated blocks never exceed capacity. A deterministic burst demonstrates that
+rejecting one infeasible arrival can preserve completion of incumbents.
 
-Moonshot AI's Mooncake, which serves the Kimi assistant, separates prefill and
-decode onto different machines (\Chref{disaggregated-serving}), and its
-designers wrote down what overload did to it \cite{qin2024mooncake}. A request
-rejected by the decode cluster after its prefill had finished wasted the
-prefill's compute, so they rejected requests early, at arrival, when the decode
-cluster was predicted to be too busy. That created a new failure: the two
-clusters' loads began to oscillate in opposite phases. Rejections starved the
-prefill cluster of work; acceptance then overloaded decode; which triggered
-rejections again. Their fix was to base the decision on a prediction of the
-decode load at the time the request would arrive there, not on its current
-value.
+Broken-policy exercises are concrete: remove tenant normalization and the fairness
+test fails; free a victim's logical blocks instead of unique blocks and capacity
+accounting fails; reset queue age after preemption and the starvation test fails; let
+admission exceed capacity and the safety invariant fails.
 
-They measured the policies by replaying a trace of 23,000 requests at twice
-its original speed. The baseline rejected 4,183 requests; early rejection,
-3,771; prediction-based early rejection, 3,589 (the authors' measurement). The
-lesson generalizes beyond disaggregation: an admission controller is a feedback
-loop, and a feedback loop that reacts to the present value of a delayed quantity
-can oscillate.
+\HappenedSection{overload became an explicit product policy}
 
-\FrontierSection{2026-09-24}
+Early serving stacks often treated OOM as an exceptional condition. Modern engines
+turn resource pressure into scheduler state: block pools report capacity, queues are
+ordered by explicit policies, requests can be deferred or preempted, and production
+systems use admission to protect latency objectives.
 
-Recomputation has become the default preemption policy in vLLM's V1 engine,
-with priority scheduling as an option \cite{vllm2026optimization}; the
-research frontier is scheduling for goodput under service-level objectives ---
-fairness measured in tokens \cite{sheng2024vtc}, admission that predicts
-load \cite{qin2024mooncake}, and disaggregated deployments whose two pools
-are scheduled separately \cite{zhong2024distserve}. llama.cpp's server, in the
-measured build, still fails every in-flight request when its cache is
-exhausted, a limitation its own source records.
+The measured llama.cpp case remains valuable because it shows the opposite behavior
+in one pinned server revision: cache exhaustion propagated to every active slot.
+That is not a statement about all current llama.cpp configurations; it is a
+reproducible historical example of why failure policy belongs in the architecture.
+
+Mooncake adds the distributed version of the lesson. Rejecting only after prefill
+wastes upstream work; rejecting based on instantaneous downstream load can oscillate;
+prediction must account for the delay between decision and effect.
+
+\FrontierSection{2026-10-05}
+
+Scheduling research is shifting from maximizing token throughput toward multi-resource
+goodput: KV capacity, prefill/decode compute, cache locality, tenant fairness and SLO
+deadlines interact. VTC provides a formal token-service fairness model. DistServe and
+Mooncake make SLO-aware admission central in disaggregated serving. Current SGLang
+keeps scheduling policy explicit in source, while current vLLM exposes FCFS/priority
+policy and increasingly detailed KV/scheduler accounting.
+
+The frontier question is not one universal policy. It is whether a runtime can expose
+enough cost and ownership information to compose policies safely: locality subject to
+fairness, priority subject to starvation bounds, optimistic admission subject to a
+recovery budget, and throughput subject to latency goodput.
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} Using equation~\eqref{eq:mm1}, find the utilization
-at which the mean time in system is five times the service time, and the
-utilization at which it is fifty times.
-\item \emph{Prediction.} In the opening measurement, how many cells would the
-cache need for all four requests to finish, and after how many generated tokens
-would a 6,000-cell cache fail?
-\item \emph{Implementation.} Add preemption by recomputation to the lab and
-compare the total compute spent with that of conservative admission on a skewed
-trace.
-\item \emph{Falsification.} Construct a two-tenant workload for which the
-Virtual Token Counter gives one tenant less than half of its fair share over a
-short window. Does this contradict the bound?
+\item \emph{Derivation.} From equation~\eqref{eq:sched-mm1}, solve for utilization
+when mean system time is 5, 20 and 50 service times.
+\item \emph{Trace.} Four requests each need 200 prompt cells and up to 1,200 output
+cells. Compute worst-case total capacity. With 4,096 cells and equal progress, at
+approximately how many generated tokens/request is capacity exhausted?
+\item \emph{Victim selection.} Requests A and B reference 100 blocks each. A uniquely
+owns 20 and costs 5 ms to reconstruct; B uniquely owns 70 and costs 40 ms. Compare
+reclaimable-blocks-per-ms and explain what the ratio omits.
+\item \emph{Implementation.} Extend the lab with shared block refcounts. Acceptance:
+preemption frees only unique/unpinned blocks; actual reclaimed capacity is observed
+before new admission; no preemption cascade can exceed a configured victim bound.
+\item \emph{Fairness.} Construct a short trace where weighted fair service looks
+unfair over three iterations but converges over a longer backlogged interval.
+\item \emph{Falsification.} Construct a workload where strict SLO-aware rejection
+reduces goodput relative to optimistic admission. Identify which predictor error or
+burst structure makes the conservative policy lose.
 \end{enumerate}
+
+\input{worked/ch19-scheduling.tex}

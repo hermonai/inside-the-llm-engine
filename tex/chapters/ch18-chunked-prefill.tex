@@ -1,31 +1,338 @@
 % status: ZERO
-% Chapter 18 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part3.md (chunked).
+% Printed Chapter 35 / stable source ch18. Rules: AUTHORING.md.
 \chapter{Chunked Prefill and Phase Interference}\label{ch:chunked-prefill}
 
 \begin{ChapterIntent}
-When a long prompt joins a running batch, its prefill occupies the GPU for
-a whole step and every decoding request waits --- visible to users as a stall
-in the middle of a stream. Chunked prefill splits the prompt into
-token-budgeted pieces that share each step with the decodes. This chapter
-measures the interference, derives the token budget, shows how chunk size
-trades time to first token against inter-token latency, and marks where
-separating the phases entirely becomes the better answer.
+Continuous batching lets new work enter between decoding iterations, but a long prefill
+can still monopolize one iteration. Chunked prefill turns that monolith into resumable
+scheduling quanta. This chapter derives the scheduler contract that makes those quanta
+correct, follows one request through prefix-cache reuse, KV allocation, positional
+state and repeated chunks, models the TTFT--ITL trade, builds an SLO-aware simulator,
+and explains when colocating prefill and decode stops being the right architecture.
 \end{ChapterIntent}
 
-\OpeningSection{A stall in the middle of a stream}
+\OpeningSection{Sixteen seconds of work, delivered as two freezes or sixteen stalls}
 
-A user is reading a streamed answer from llama.cpp's server on the M1: a new
-token every 40~ms or so. Three seconds in, someone else submits a 4,000-token
-document. With the server's default logical batch of 2,048 tokens, the first
-user's stream froze twice, for \textbf{7.6 to 8.5 seconds} each time, while the
-document was prefilled in two pieces; the second user's first token arrived
-16.0 to 16.3 seconds after the document was sent. Cut the batch to 512 tokens
-and the freezes became eight pauses of 1.8 to 2.3 seconds; cut it to 256 and
-they became sixteen or seventeen pauses of about one second, while the second
-user's first token came 16.4 to 17.3 seconds after submission (measured; two
-runs each; record \texttt{2026-09-24-m1-part3};
-Figure~\ref{fig:ch18-stall-comb}).
+The edition's Apple M1 measurement record contains a clean interference experiment.
+A user was receiving a streamed answer at roughly one token every 40 ms. Three seconds
+later another request introduced a prompt of roughly 4,000 tokens. With a logical
+batch of 2,048 tokens, the stream paused twice for about 7.6--8.5 seconds. Reducing
+the logical batch to 512 tokens produced roughly eight pauses of 1.8--2.3 seconds.
+At 256 tokens the interference appeared as roughly sixteen or seventeen pauses around
+one second. Across the configurations the long request still required about sixteen
+seconds of prefill work (measured; two runs per configuration; record
+\texttt{research/measurements/2026-09-24-m1-part3.md}).
+
+Chunking did not remove the work. It changed when the scheduler regained control.
+
+That distinction is the chapter. A serving engine cannot promise responsive streams
+merely because it supports continuous batching. If one scheduling iteration contains
+an enormous prefill, every decode sharing that execution boundary waits. Conversely,
+making chunks tiny creates many opportunities to schedule but can lose hardware
+efficiency and increase the newcomer's TTFT. The scheduler needs a work quantum whose
+size is chosen from latency objectives and measured execution cost.
+
+\Foundations{A chunk is a scheduling boundary, not a new sequence}{
+A causal prompt of $S$ tokens remains one computation even when evaluated in pieces.
+Chunk $j$ begins at the exact logical position where chunk $j-1$ ended; it attends to
+the KV produced by all earlier positions and appends new KV to the same sequence.
+Chapter~\ref{ch:continuous-batching} supplies iteration-level scheduling,
+Chapter~\ref{ch:paged-kv} supplies incremental KV allocation, and
+Chapter~\ref{ch:prefix-caching} may eliminate an already-computed prefix before
+chunking begins. Chunking changes the unit of admission to one iteration. It must not
+reset positions, causal history, model state, or ownership.
+}
+
+\NapkinSection{Napkin math: tokens are a proxy for time}
+
+Let iteration $k$ contain $n_{d,k}$ decode tokens and $c_k$ newly computed prefill
+tokens. A first-order compute-bound estimate is
+\begin{equation}
+t_k \approx t_{\rm fixed} +
+ \frac{F_d(n_{d,k})+F_p(c_k,S_k)}{\pi_{\rm eff}},
+\label{eq:chunk-time}
+\end{equation}
+where $t_{\rm fixed}$ is per-iteration overhead, $\pi_{\rm eff}$ is achieved compute
+rate, $F_d$ is decode work, and $F_p$ is prefill work when the chunk begins after
+$S_k$ cached tokens. The dependence on $S_k$ matters: later queries attend over more
+history. A token budget is therefore a bounded \emph{work proxy}, not a theorem that
+all iterations take equal wall time.
+
+For a simple locally calibrated model
+\[
+t_k \approx a + b_d n_{d,k} + b_p c_k + b_a c_k S_k,
+\]
+$a$ has units seconds/iteration, $b_d$ and $b_p$ seconds/token, and $b_a$
+seconds/token$^2$. The coefficients are measured for one model, kernel set and
+hardware target. If the decode ITL objective is $\tau$, choose the largest $c_k$ for
+which the predicted $t_k\le\tau$, after reserving work for the decodes. This is more
+honest than declaring ``2,048 tokens is a 100 ms chunk.''
+
+The M1 measurement illustrates why. Its long prompt processed near hundreds rather
+than tens of thousands of tokens per second, so a 2,048-token quantum produced
+multi-second stalls. A large data-center GPU running an optimized model can tolerate
+a far larger token quantum. The budget belongs to a deployment, not to the algorithm.
+
+\section{Trace one request through the scheduler}
+
+Consider an illustrative request $R$ with 10,240 prompt tokens. Prefix caching proves
+that tokens $0\ldots6143$ are reusable. The scheduler therefore sees
+\[
+S_{\rm cached}=6144,\qquad
+S_{\rm remaining}=4096.
+\]
+With a per-iteration budget $T=1024$ and 64 decode tokens already owed to running
+requests, at most 960 prefill tokens fit in the first mixed iteration.
+
+Before iteration 1, $R$ owns block-table entries for its verified prefix. The
+scheduler pins those blocks, reserves capacity for the next chunk, and issues logical
+positions $6144\ldots7103$. The model runner must receive positions consistent with
+those logical indices, not positions starting at zero. Attention queries from the
+chunk read prefix KV and earlier positions within the chunk according to the causal
+mask. On successful completion, the new KV becomes part of $R$'s committed history.
+
+Iteration 2 repeats from position 7104. If 80 decoders are now active, only 944
+prefill tokens fit under the same token budget. Chunk size is therefore not
+necessarily a fixed property of $R$; it can be the remainder after higher-priority
+work consumes the budget.
+
+\EngineFigure{ch18-request-trace}{A partially prefetched request advances through repeated scheduler iterations. The committed KV boundary moves only after successful execution; prefix-cache hits reduce the work before chunking begins.}{fig:chunk-trace}
+
+\section{The commit boundary}
+
+A robust implementation distinguishes three counters: prompt length $S_p$, committed
+computed tokens $S_c$, and tokens scheduled for the current iteration $q_k$. Before
+the runner returns,
+\[
+S_c \le S_p,\qquad S_c+q_k\le S_p.
+\]
+The scheduler may reserve KV for $q_k$, but it must not advertise those tokens as
+computed until execution succeeds.
+
+This matters under cancellation, OOM, worker failure and preemption. If an iteration
+fails after scheduling 960 tokens, advancing $S_c$ anyway creates a hole: the next
+chunk starts from KV that was never produced. The same transactional principle from
+Chapter~\ref{ch:paged-kv} applies here: reserve, execute, commit; on failure, roll back
+the reservation and leave the logical boundary unchanged.
+
+\section{Decode-first is a policy, not a law of nature}
+
+A common policy schedules pending decode work first because every active stream is
+waiting for its next visible token. Let the iteration token budget be $T$. If $D_k$
+decode/speculative tokens are selected first, the nominal prefill allowance is
+\begin{equation}
+C_k=\max(0,T-D_k).
+\label{eq:remaining-budget}
+\end{equation}
+A waiting prefill receives at most $C_k$, possibly further capped by a long-prefill
+fairness threshold.
+
+This protects ITL but can starve a long prompt when decode load remains near $T$.
+Industrial schedulers therefore need fairness or admission rules in addition to
+priority. Current vLLM exposes a long-prefill token threshold and an adaptive option
+whose floor reflects a fair share of the token budget among queued and running
+requests. The precise implementation is moving frontier behavior and should be pinned
+to a source revision when integrated.
+
+\section{Chunking does not make over-admission safe}
+
+A dangerous scheduler can admit many enormous prompts because their \emph{first}
+chunks fit. Their future KV does not disappear. As they advance, all of them demand
+more blocks and can drive the system into repeated preemption or recomputation.
+
+This creates two different budgets:
+\begin{enumerate}
+\item an \emph{iteration work budget}, limiting what runs now;
+\item a \emph{residency/admission budget}, limiting future memory commitments.
+\end{enumerate}
+The first controls interference. The second prevents thrashing. Current vLLM exposes
+a full-input-length reservation option specifically to avoid over-admission with
+chunked prefill. The durable lesson is broader: temporal slicing of compute is not a
+substitute for capacity planning.
+
+\section{Prefix caching changes the numerator}
+
+Suppose a request contains 32,000 prompt tokens but Chapter~\ref{ch:prefix-caching}
+verifies 28,000 as resident. Only 4,000 tokens require prefill compute. Scheduling,
+TTFT prediction and fairness accounting should operate on the uncached work, while
+memory accounting still reflects every KV block the active request references.
+
+This gives a useful separation:
+\[
+S_{\rm logical}=S_{\rm hit}+S_{\rm new},\qquad
+W_{\rm prefill}\propto S_{\rm new},
+\]
+but
+\[
+M_{\rm active}\propto S_{\rm logical}
+\]
+for ordinary full-history KV attention. Prefix caching reduces compute without making
+the active context free.
+
+\section{Paged KV allocation at chunk boundaries}
+
+If physical KV blocks hold $B$ tokens, a chunk that crosses $m$ new block boundaries
+requires $m$ allocations. Allocation must happen before the runner writes the
+corresponding KV. The block table may already contain shared immutable prefix blocks;
+new tail blocks belong to the request.
+
+A scheduler that knows only tokens but not allocatable KV capacity can select a chunk
+that cannot execute. Conversely, reserving the request's entire maximum output defeats
+much of paging's utilization benefit. The allocator and scheduler therefore exchange
+a concrete requirement: ``to advance from $S_c$ by $q$, I need $\Delta n$ additional
+physical blocks,'' where
+\[
+\Delta n =
+\left\lceil\frac{S_c+q}{B}\right\rceil-
+\left\lceil\frac{S_c}{B}\right\rceil.
+\]
+This exact count belongs in the admission transaction.
+
+\section{Why later chunks can cost more}
+
+For dense causal attention, queries in a later chunk attend over a longer key history.
+Even when the feed-forward and projection work per new token is nearly constant, the
+attention component grows with context. A 512-token chunk at position 30,000 is not
+the same workload as a 512-token chunk at position 0.
+
+Kernel choice further complicates the picture. A prefill chunk has multiple queries
+per sequence and can exploit matrix-shaped work. Decode usually has one query per
+sequence against long KV. A mixed iteration may dispatch separate kernels, group
+requests by query length, or use ragged kernels. Consequently, ``number of scheduled
+tokens'' is intentionally a scheduler abstraction rather than a perfect cost metric.
+
+An advanced scheduler can replace token counting with predicted microseconds, but the
+prediction must be cheap, stable and calibrated. Token budgets remain popular because
+they are deterministic, understandable and reasonably correlated with work.
+
+\section{Chunk size as an SLO control loop}
+
+Let $\tau_{\rm ITL}$ be the maximum acceptable iteration time for active decoders.
+Given measured cost model $\hat t(D,c,S)$, choose
+\[
+c^*=\max\{c: \hat t(D,c,S)\le\tau_{\rm ITL},\;D+c\le T\}.
+\]
+If no positive $c$ satisfies the constraint, the scheduler faces a policy choice:
+delay prefill, violate ITL, move work elsewhere, or relax the SLO.
+
+Static chunk sizes are easy to reason about but ignore load and context. Adaptive
+chunks can grow when no decoders are present and shrink when many streams are active.
+Current vLLM's long-prefill controls similarly avoid applying the cap when a request
+is alone: there is nobody else to protect from starvation.
+
+\EngineFigure{ch18-budget-flow}{Decode-first scheduling spends an iteration budget, then admits a legal prefill chunk only if KV capacity and request state permit it. The token budget is a work proxy, not a time guarantee.}{fig:chunk-budget-flow}
+
+\section{TTFT, ITL and goodput form a three-way trade}
+
+Larger chunks generally reduce the number of scheduling iterations needed to finish a
+prompt and can improve TTFT and throughput. Smaller chunks return control sooner and
+protect ITL. Neither metric alone captures whether the service is useful.
+
+Define goodput as requests completed while meeting the service's latency constraints.
+A policy that maximizes raw tokens/s but causes most streams to violate ITL can have
+poor goodput. Likewise, a policy that protects every decoder by never scheduling a
+large prompt gives excellent ITL to existing users and infinite TTFT to the newcomer.
+
+This is why chunk size should be tuned against workload distributions, not a single
+microbenchmark. Measure prompt lengths, output lengths, concurrency, prefix-hit
+lengths, and arrival bursts together.
+
+\section{Fairness: the long prompt must eventually move}
+
+Decode-first scheduling has a starvation corner. Imagine $T=256$ and a persistent
+population of 256 decoders. Equation~\ref{eq:remaining-budget} leaves zero prefill
+capacity forever.
+
+Possible remedies include reserving a minimum prefill share, aging waiting requests,
+temporarily reducing decode admissions, or giving long-prefill requests a capped but
+nonzero quantum. Each spends something. A reserved prefill share increases decoder
+ITL; unlimited decode priority increases TTFT; preemption can waste work.
+
+Chapter~\ref{ch:scheduling} treats fairness formally. Here the invariant is narrower:
+chunking creates scheduling opportunities; policy must decide how those opportunities
+are divided.
+
+\section{Multimodal chunks expose hidden atomicity}
+
+A text token is a convenient scheduling unit. A multimodal item may expand into a
+large embedding span whose preprocessing, encoder cache, or model semantics make
+arbitrary splitting undesirable. Current vLLM therefore exposes behavior controlling
+whether a multimodal item may itself be partially scheduled.
+
+This is a reminder that ``token'' can be an overloaded accounting unit. The scheduler
+needs to know which boundaries are legal checkpoints for the model family it serves.
+Hybrid state-space models, recurrent state and multimodal encoders can impose
+different rules from a decoder-only transformer.
+
+\section{Cancellation and preemption between chunks}
+
+Chunk boundaries are natural cancellation points. If a client disconnects after
+chunk 3, the scheduler can retire the request before paying for chunk 4. Blocks pinned
+only by that request become reclaimable according to Chapter~\ref{ch:paged-kv}.
+
+Preemption is harder. If the engine evicts committed KV and later recomputes it, the
+apparent progress counter $S_c$ cannot by itself prove the state is resident. Logical
+progress and physical residency are different. A resumed request either restores its
+KV from another tier, reuses a valid prefix-cache entry, or recomputes from an earlier
+checkpoint.
+
+\section{Pipeline parallelism and regular work quanta}
+
+Chunking was also motivated by pipeline utilization. Highly unequal prefills and
+decodes create bubbles because pipeline stages finish microbatches at different times.
+SARATHI proposed equal-sized chunked prefills and decode-maximal batches so decodes
+could piggyback on compute-saturating prefill work. The earlier SARATHI paper reports
+substantial decode-throughput and pipeline-bubble improvements on its evaluated
+models/hardware; later Sarathi-Serve framed the method around serving capacity under
+latency targets.
+
+The transferable idea is regularization of work. Smaller, more uniform scheduling
+quanta make both single-GPU interference and multi-stage pipeline imbalance easier to
+control.
+
+\section{When mixing phases stops being attractive}
+
+Chunking mitigates interference on a shared worker; it cannot eliminate the fact that
+prefill and decode prefer different operating points. Prefill is often compute-heavy
+and benefits from large matrix work. Decode is often bandwidth-sensitive and latency
+critical. At scale, separating them onto different workers allows independent
+parallelism and resource provisioning.
+
+DistServe formalized this as prefill/decode disaggregation and optimized for TTFT and
+TPOT goodput. Its authors reported up to 7.4$\times$ more requests or 12.6$\times$
+tighter SLOs than their colocated baselines on evaluated workloads. The cost is KV
+transfer, routing, queue coordination and a larger failure surface.
+
+The frontier has moved beyond a binary choice. Newer systems investigate hybrid
+aggregation/disaggregation and dynamically choose where work should execute according
+to SLO pressure. Chapter~\ref{ch:disaggregated-serving} develops that architecture.
+
+\section{Observability for phase interference}
+
+Record more than average prefill throughput. Per iteration, log scheduled decode
+tokens, scheduled prefill tokens, uncached prefix tokens, committed prompt position,
+iteration wall time, KV blocks allocated, queue age and whether the step violated an
+ITL target. Per request, record TTFT, TPOT/ITL distribution, number of chunks, time
+waiting between chunks, preemption/recompute tokens and prefix-cache hit length.
+
+A ``chunked prefill enabled'' metric proves almost nothing. The diagnostic plot is
+iteration duration against composition and context position. If equal token counts
+produce very different durations, the scheduler's cost proxy needs refinement.
+
+\section{Failure tests that distinguish plausible wrong implementations}
+
+A chunking implementation can look functional while being wrong. Four tests are
+decisive.
+
+First, compare logits from monolithic prefill and chunked prefill at several chunk
+sizes. They should agree within the numerical contract of the backend. Second, start
+from a verified prefix hit and prove that the first new position is $S_{\rm hit}$,
+not zero. Third, inject a failed iteration and verify that committed progress and
+block-table ownership do not advance. Fourth, saturate decode work and verify the
+configured fairness rule eventually advances a waiting prefill.
+
+The lab models the scheduler/accounting layer. A production engine adds a numerical
+oracle at the model-runner boundary.
 
 \EngineFigure{ch18-stall-comb}{The gap before each token of a running stream
 while a 4,000-token prompt is prefilled beside it, for three chunk sizes, on
@@ -33,196 +340,91 @@ the M1 (measured). The dashed lines mark the second request's arrival and its
 first token. Chunking changes the shape of the interference, not its total:
 the pauses sum to about 16 seconds in every row. The picture holds while
 prefill is compute-bound; see the napkin math for where it changes.}{fig:ch18-stall-comb}
-
-In every configuration the pauses added up to about the same sixteen seconds:
-the time to prefill the document. On this machine chunking decided how the
-interference was delivered --- two long freezes or many short hiccups --- not
-how much there was. The mechanism is in the server's scheduling loop: each
-iteration first adds one token for every decoding sequence, then fills the
-batch with prompt tokens up to the logical batch size, and runs the whole
-batch before anyone gets a token (\texttt{tools/server/server-context.cpp} at
-commit \texttt{d006858}). A decoding user's next token waits for the prompt
-chunk it rode with.
-
-\Foundations{A scheduling slice is not a new prompt}{
-Chunking divides the evaluation of one prompt into scheduling units without resetting
-its history or positions. Later chunks still depend on keys and values from earlier
-chunks. The scheduler can interleave those units with decode work, reducing the time a
-decode waits behind one large invocation. It may also increase launch overhead and
-delay the long prompt's first output. Chapter~\ref{ch:prefill-decode} distinguishes
-the two workloads, and Chapter~\ref{ch:continuous-batching} explains iteration
-boundaries. A token budget controls work admitted to a step, not a universal bound on
-that step's duration.
-}
-
-\NapkinSection{Napkin math: a step's token budget}
-
-Let a step process $n$ tokens: $n_d$ decode tokens and a prompt chunk of $c$
-tokens. While prefill is compute-bound, the step time is roughly
-\begin{equation}
-t_{\text{step}} \approx t_0 + \frac{2P\,(n_d + c)}{\pi_{\text{eff}}},
-\label{eq:chunk-step}
-\end{equation}
-where $t_0$ is the time to read the weights and $\pi_{\text{eff}}$ is the
-achieved FLOP rate. Every decoding request's inter-token latency during the
-prefill is $t_{\text{step}}$, and the prefill finishes after $\lceil
-S_p/c\rceil$ such steps for a prompt of $S_p$ tokens. The token budget $n$
-therefore sets the worst inter-token latency directly.
-
-On the M1 the prefill ran at about 250 tokens per second, so a 2,048-token
-chunk costs about 8 seconds and a latency target of 100~ms would allow a chunk
-of about 25 tokens --- too small to keep the GPU efficient. On an H100 serving
-an 8-billion-parameter model at an effective 500~TFLOP/s, each prompt token
-costs about 33~$\mu$s, so a 2,048-token chunk adds about 70~ms to a step
-(derived). The same rule gives acceptable latency there and unacceptable
-latency here: the budget is a property of the hardware and model, not a
-constant. Chunking also costs time to first token: each extra step rereads
-the weights, $t_0$ per chunk, which is small while prefill is compute-bound
-and grows as chunks shrink toward the decode regime.
-
-\section{How prefill stalls decode}
-
-A step lasts as long as its largest piece of work. Decode tokens are cheap ---
-a few milliseconds of arithmetic on a data-center GPU --- but a decode token
-that shares a step with a long prompt waits for the prompt. Without chunking, a
-scheduler that admits a 32,000-token prompt into a running batch holds every
-decoding user for the entire prefill; with continuous batching
-(\Chref{continuous-batching}) this happens every time a long prompt arrives.
-Holding new prompts back instead protects the decoders and starves the
-newcomer, whose time to first token then includes the queue. Neither extreme is
-acceptable at scale.
-
-\section{Token budgets}
-
-The fix is to bound the work in a step. vLLM's scheduler takes a budget of
-tokens per step, schedules every pending decode first, and fills the rest with
-prompt tokens; its documentation recommends smaller budgets, such as 2,048, for
-inter-token latency and larger ones for time to first token and throughput
-\cite{vllm2026optimization}. llama.cpp's server does the same with its logical
-batch size, as the opening measured. The budget is a latency knob: it caps
-$t_{\text{step}}$ in equation~\eqref{eq:chunk-step} whatever arrives.
-
-\section{Chunking a prompt}
-
-A prompt processed in chunks is still one causal computation. Chunk $k$'s
-queries attend to the keys and values of every earlier chunk, which are already
-in the cache, and to their own; the result is identical to processing the whole
-prompt at once, up to floating-point order. The engine must therefore keep a
-partially prefilled sequence in the running set, with its cache growing chunk
-by chunk, and the attention kernel must handle queries over new tokens against
-cached ones --- the same kernel that serves prefix-cache hits
-(\Chref{prefix-caching}).
-
-\section{Stall-free batch composition}
-
-Sarathi-Serve made the construction explicit: split prompts into chunks of
-equal size, and compose every step as all the ongoing decodes plus as much
-prefill as fits the budget, so new requests are admitted without pausing the
-decodes \cite{agrawal2024sarathi}. Its authors called this stall-free
-scheduling and reported 2.6 to 5.6 times the serving capacity of their
-baselines under latency targets (their measurement). Equal-size chunks also
-make every step about equally long, which keeps inter-token latency steady ---
-the flat bottom of the lower rows of Figure~\ref{fig:ch18-stall-comb}.
-
-\section{Choosing the chunk size}
-
-Smaller chunks bound inter-token latency more tightly and cost time to first
-token, because the prompt takes more steps and each step rereads the weights.
-Larger chunks prefill faster and stall longer. On the M1 the cost was modest ---
-256-token chunks delayed the newcomer's first token by up to 6\% --- because
-every step there is compute-bound. On a GPU where a 256-token step is closer to
-the bandwidth-bound regime, the per-step weight read is a larger share and small
-chunks cost more. The choice follows from the service-level objectives:
-the largest chunk whose step time meets the inter-token target.
-
-\section{Chunks and attention kernels}
-
-A step that mixes decodes and prompt chunks runs two kinds of attention: one
-query per decoding sequence against a long cache, and many queries per prompt
-chunk against a shorter one. Kernels built for one shape handle the other
-poorly, so engines either launch separate kernels for the two groups or use
-kernels that accept a ragged mixture (\Chref{decode-attention}). Either way,
-the attention cost of a chunk grows with its position in the prompt: later
-chunks attend to more cached tokens, which is why the pauses in the opening
-measurement lengthened from 1.8 to 2.3 seconds across one prefill.
-
-\section{When to separate the phases instead}
-
-Chunking shares one machine between two workloads with opposite needs. At
-large scale it can be better to give them different machines: prefill on one
-pool of GPUs, decode on another, with the cache sent between them. DistServe
-defined the target as \emph{goodput} --- the request rate served within both a
-time-to-first-token and a time-per-output-token objective --- and reported
-7.4 times more requests or 12.6 times tighter objectives than colocated
-serving \cite{zhong2024distserve} (their measurement). Separation costs cache
-transfers and more complex deployment; \Chref{disaggregated-serving} weighs
-them.
-
-Chunking changes when the scheduler may make another decision. It does not make the prompt disappear. Follow the remaining budget after decodes are assigned, then observe how an unfinished prompt returns as work for a later iteration.
-
 \EngineFigure{sys-chunk-budget}{An illustrative decode-first token budget, not a universal scheduler policy. Chunking creates more scheduling opportunities. A token budget alone does not bound wall-clock latency.}{fig:sys-chunk-budget}
 
 \LedgerSection
-
-Splitting long prompts into token-budgeted chunks that share steps with decodes:
-
 \begin{ConstraintLedger}
-Latency & buys & Bounded inter-token latency: the longest pause fell from 8.5~s to about 1~s on the M1. \\
-Latency & spends & Time to first token for the chunked prompt: up to 6\% more at 256-token chunks on the M1. \\
-Memory bandwidth & spends & One more read of the weights for every extra step the prompt takes. \\
-Compute & moves & Prefill spread across many steps, each shared with decodes, instead of one monopolizing step. \\
+Latency & buys & More scheduling boundaries bound how long decoders wait behind one prefill quantum; smaller quanta usually improve ITL.\\
+Latency & spends & More chunks can increase TTFT through repeated iteration overhead, queueing and less efficient kernels.\\
+Compute & moves & Total prompt work remains; chunking redistributes it across mixed iterations and may change achieved efficiency.\\
+Memory bandwidth & moves & Repeated iterations incur fixed/weight traffic and later chunks read longer KV histories; mixed batches may improve overall utilization.\\
+Memory capacity & risks & First chunks can fit while future KV growth cannot; admission must consider residency, not only the current token budget.\\
+Correctness & risks & Wrong positions, premature progress commit, illegal chunk boundaries or stale KV residency silently change model state.\\
+Cost & trades & Better SLO goodput can reduce accelerator cost per useful request; excessive slicing can reduce throughput.\\
 \end{ConstraintLedger}
 
-\LabSection{chunking in the batching simulator}
+\LabSection{a token-budget chunk scheduler with rollback}
 
-\LabIntent{In \texttt{code/labs/ch18-chunked-prefill/}, the simulator of
-\Chref{continuous-batching} gains a per-step token budget and prompt chunking.
-Driven by a step-time table measured on the reader's machine, it replays a trace
-of long and short prompts and plots the distribution of inter-token gaps and
-time to first token for budgets from 64 to 8,192 tokens. An oracle run with an
-infinitely fast prefill checks the accounting. The reader predicts, before
-running it, the budget that meets a 100~ms inter-token target on their machine.}
+The self-contained Rust lab in \texttt{code/labs/ch18-chunked-prefill/} simulates
+decode-first mixed iterations. Each request carries prompt length, verified prefix-hit
+length, committed progress and queue age. The scheduler enforces a token budget,
+reserves a minimum prefill quantum to prevent starvation, and records each iteration.
+It does not implement a measured latency predictor or an SLO controller.
+Those mechanisms need the timing model derived above and remain an extension.
 
-\HappenedSection{chunked prefill becomes the default}
+An independent oracle checks conservation:
+\[
+\text{hit tokens}+\text{successfully committed new tokens}
+=\text{logical computed prefix}.
+\]
+A failed step is injected before commit; the oracle verifies that progress does not
+move. A second test compares nominal prompt length with uncached work and catches the
+common error of charging prefix-cache hits as prefill compute.
 
-Chunked prefill moved from a research result to a default in less than two
-years.
-Sarathi-Serve's stall-free scheduling appeared in 2024
-\cite{agrawal2024sarathi}. In vLLM's V1 engine, chunked prefill is enabled
-by default whenever possible and the scheduler batches every pending decode
-before scheduling prefill \cite{vllm2026optimization}; its V1 design treats a
-chunk, a decode and a speculative draft alike as a number of tokens contributed
-by a request to the next step \cite{vllm2025v1}. llama.cpp's server has
-the same structure --- decodes first, then prompt tokens up to the logical
-batch size --- and the opening measurement shows the latency consequence of
-its default budget of 2,048 tokens on a laptop.
+The teaching simulator deliberately does not claim GPU timing. Readers can replace its
+illustrative cost coefficients with measurements from their own engine and then sweep
+the token budget against TTFT/ITL objectives.
 
-What production schedulers learned is that the budget must be chosen, not
-inherited. vLLM's documentation states the trade-off in the budget's terms ---
-lower for inter-token latency, higher for time to first token --- and
-recommends budgets above 8,192 tokens for throughput with small models on large
-GPUs \cite{vllm2026optimization}: a setting that would freeze a laptop's stream
-for half a minute.
+\HappenedSection{chunking became scheduler infrastructure}
 
-\FrontierSection{2026-09-24}
+SARATHI introduced chunked prefills as a way to regularize prefill work and piggyback
+decodes. The technique moved into mainstream serving. Current vLLM V1 documentation
+states that chunked prefill is enabled whenever possible, pending decodes are batched
+before prefills, and a prefill that does not fit the remaining
+\texttt{max\_num\_batched\_tokens} budget is chunked.
 
-Mixed prefill--decode steps are the default in vLLM and in llama.cpp's server
-\cite{vllm2026optimization}; the frontier has moved to kernels that execute a
-mixed step efficiently and to deciding, per deployment, whether to mix the
-phases at all or to disaggregate them \cite{zhong2024distserve}
-(\Chref{disaggregated-serving}).
+The implementation has also accumulated the details that research diagrams omit:
+long-prefill thresholds, adaptive fairness controls, separate scheduled-token
+accounting for cases such as speculation, multimodal chunk constraints, active
+sequence limits, and admission controls intended to prevent KV thrashing. That
+evolution is evidence that chunked prefill is not one kernel switch. It is part of
+the scheduler's resource contract.
+
+The llama.cpp M1 measurement provides the complementary small-system lesson: a budget
+that is reasonable on one accelerator can be disastrous on another. Defaults are
+starting points, not latency guarantees.
+
+\FrontierSection{2026-10-05}
+
+Current vLLM documentation describes chunked prefill as default V1 behavior whenever
+possible and exposes both token-budget and long-prefill controls. Its disaggregated
+prefill feature remains documented as experimental and explicitly positions
+disaggregation as a way to tune TTFT and ITL separately and control tail ITL.
+
+Research is converging on SLO-adaptive placement rather than one permanent answer.
+DistServe represents the disaggregated design point. 2025 work such as TaiChi studies
+a unified aggregation/disaggregation architecture and reports that different TTFT and
+TPOT regimes favor different operating points. These are research results, not a
+reason to replace a well-tuned colocated scheduler blindly.
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} Using equation~\eqref{eq:chunk-step}, derive the
-chunk size that minimizes time to first token subject to an inter-token
-latency bound $\tau$. When is the constraint inactive?
-\item \emph{Prediction.} For the opening's 4,000-token prompt with 1,024-token
-chunks, predict the number and length of the pauses and the newcomer's time to
-first token.
-\item \emph{Implementation.} Add equal-size chunking to the lab and compare it
-with a policy that fills the remaining budget greedily.
-\item \emph{Falsification.} Find a hardware and model combination for which
-chunking a prompt makes its time to first token more than twice as long.
+\item \emph{Derivation.} Given measured model
+$\hat t=a+b_dD+b_pc+b_acS$, solve for the largest integer chunk $c$ satisfying
+$\hat t\le\tau$ and $D+c\le T$.
+\item \emph{Trace.} A 10,240-token prompt has a 6,144-token verified prefix hit.
+With $T=1024$ and decode counts 64, 80, 32, trace the first three chunks, committed
+positions and additional 16-token KV blocks.
+\item \emph{Correctness.} Explain why advancing $S_c$ when work is scheduled rather
+than when execution commits can skip model computation after a worker failure.
+\item \emph{Implementation.} Extend the lab with Chapter~\ref{ch:paged-kv} block
+capacity. Acceptance criteria: failed allocation is atomic; future KV pressure can
+reject admission even when the first chunk fits; cancellation releases reservations.
+\item \emph{Prediction.} Explain how a 28K prefix-cache hit changes scheduling of a
+32K prompt but does not proportionally reduce active KV residency.
+\item \emph{Falsification.} Construct a workload where smaller chunks worsen both
+TTFT and ITL. Identify the fixed overhead or kernel-efficiency effect required for
+that result.
 \end{enumerate}
+
+\input{worked/ch18-chunked-prefill.tex}

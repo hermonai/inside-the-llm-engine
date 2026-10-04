@@ -1,0 +1,9 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=8mm and 10mm]
+\node[sysbox](t){target step\\features};
+\node[sysbox,right=of t](d){lightweight\\draft transition};
+\node[sysbox,right=of d](p){proposal\\tree/tokens};
+\node[sysbox,below=of p](v){target\\verification};
+\node[sysbox,left=of v,fill=BookGreen](c){commit path};
+\draw[flow](t)--(d);\draw[flow](d)--(p);\draw[flow](p)--(v);\draw[flow](v)--(c);
+\end{tikzpicture}

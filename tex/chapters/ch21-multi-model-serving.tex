@@ -1,229 +1,506 @@
 % status: ZERO
-% Chapter 21 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part3.md (lora, ollama_switch).
+% Printed Chapter 38 / stable source ch21. Rules: AUTHORING.md.
 \chapter{One Server, Many Models: LoRA, Adapters and Routing}\label{ch:multi-model-serving}
 
 \begin{ChapterIntent}
-Fine-tuning produces thousands of model variants that differ from a base
-model by small low-rank adapters. Serving each on its own GPU wastes almost all
-of it. This chapter shows how one server batches requests that use different
-adapters --- gathering the right adapter weights per request inside the kernel
---- how adapters are paged in and out of accelerator memory, and how routing
-and model multiplexing let a fleet serve many models with little duplicated
-capacity.
+A fine-tuned model need not be another full copy of a base model. Low-rank adapters
+make the difference small enough to load, cache and batch dynamically---but only if
+the inference engine treats adapter identity as part of model identity. This chapter
+derives LoRA execution, follows one mixed-adapter batch through segmented kernels,
+builds a two-tier adapter cache, and connects routing decisions to KV correctness,
+continuous batching, scheduling and cold starts. The goal is not merely to ``support
+LoRA.'' It is to share every byte and operation that is genuinely common without ever
+sharing state whose semantics differ.
 \end{ChapterIntent}
 
-\OpeningSection{A thousand fine-tunes, one GPU}
+\OpeningSection{The weights are small; the scheduling boundary is not}
 
-A rank-16 LoRA adapter on every projection of Llama~3.2~3B holds 24.3 million
-parameters: 48.6~MB in 16-bit floats, less than 1\% of the model's 3.2 billion
-parameters (derived). A thousand such fine-tunes fit in 49~GB of host memory;
-a thousand fully fine-tuned copies would need 6.4~TB in BF16. On paper, one
-server can hold them all.
+For the Llama~3.2~3B configuration used by this edition's M1 experiments, adapting all
+seven major projections in each transformer layer at rank 16 produces about
+24.3 million LoRA parameters, or 48.6 MB in 16-bit storage (derived from the stated
+layer dimensions). That is less than one percent of the roughly 3.2-billion-parameter
+base. A thousand such adapters occupy about 48.6 GB rather than thousands of full base
+models.
 
-To see what serving them costs, we loaded three synthetic adapters into
-llama.cpp's server on the M1 --- two of rank 16, one of rank 64 --- and chose
-among them per request. Their $\mathbf{B}$ matrices were zero, so every output
-had to equal the base model's, and every output did, token for token, while the
-server still performed all the adapter arithmetic. One stream decoded at 41 to
-42~ms per token with no adapter, 45 to 51~ms with a rank-16 adapter and 49 to
-51~ms with rank 64 (measured, two runs each; record
-\texttt{2026-09-24-m1-part3}).
+The measurement record then exposes the systems problem. Three synthetic adapters
+were loaded into llama.cpp: two rank-16 and one rank-64. Their $B$ factors were zero,
+so mathematically every adapter update was zero. Outputs matched the base token for
+token, while the engine still executed the adapter path. A single stream decoded at
+roughly 41--42 ms/token without an adapter, 45--51 ms/token at rank 16, and
+49--51 ms/token at rank 64 (measured, two runs each;
+\texttt{research/measurements/2026-09-24-m1-part3.md}).
 
-Then two users arrived at once with two \emph{different} rank-16 adapters, and
-the server could not put them in the same step. One user's 128 tokens were
-complete after 6.7 seconds; the other's started only then and finished after
-13.1. With the \emph{same} adapter, the two shared every step and both finished
-after 11.8 seconds. The rule is in the server's source: two slots join the same
-batch only if their tasks are of the same type and their adapter settings are
-equal, and in each iteration the first decoding slot's settings decide
-(\texttt{can\_batch\_with} and \texttt{update\_slots} in
-\texttt{tools/server/server-context.cpp} at commit \texttt{d006858}). The
-server held three adapters and served one at a time. Holding a thousand
-fine-tunes is easy; this chapter is about serving them together.
+More revealingly, two simultaneous users selecting \emph{different} rank-16 adapters
+did not share the measured decode step. One 128-token response completed around
+6.7 seconds and the second around 13.1 seconds. When both selected the same adapter,
+they shared steps and both completed around 11.8 seconds. The pinned server path at
+llama.cpp commit \texttt{d006858} required compatible adapter settings for slots to
+batch together.
 
-\Foundations{A low-rank update is two smaller maps}{
-An adapter can represent a weight change as a product of two thin matrices rather than
-a full matrix. With row-vector convention,
-$\mathbf{x}(\mathbf{W}+\mathbf{A}\mathbf{B})=\mathbf{xW}+(\mathbf{xA})\mathbf{B}$. The
-inner width is the rank budget, not the model width. Requests may share the base
-weights while selecting different adapter parameters. Sharing the base therefore does
-not imply their cache entries are interchangeable. Chapter~\ref{ch:forward-pass}
-explains the linear map; Chapter~\ref{ch:prefix-caching} explains the identity a
-reusable prefix must carry.
+The base weights were shared in memory. The execution policy still serialized
+different effective models. Multi-adapter serving exists to remove that boundary
+without corrupting which model each request asked for.
+
+\Foundations{A model is more than a base checkpoint}{
+Let a request select base checkpoint $m$, adapter set $a$, adapter version $v$, and
+scales/composition $c$. The effective model is a function
+$F_{m,a,v,c}$, not merely ``model $m$.'' Any state computed by model weights---KV,
+prefix-cache entries, speculative state and sometimes compiled execution plans---must
+be namespaced by the effective-model identity required for correctness. A router may
+choose that identity, but once chosen it is request state. An adapter miss is not
+permission to run the base model. Recall the linear projections in
+Chapter~\ref{app:qkv}: changing a projection changes the hidden state from
+which later keys and values are computed. Even an adapter applied outside
+the first attention projection can therefore invalidate later-layer KV.
+The namespace must describe the computation that created the state,
+not merely the name printed in an API response.
 }
 
-\NapkinSection{Napkin math: an adapter's bytes and FLOPs}
+\NapkinSection{Napkin math: low rank is cheap until diversity multiplies bytes}
 
-A LoRA adapter replaces a weight matrix $\mathbf{W}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}$
-with $\mathbf{W} + \frac{\alpha}{r}\mathbf{B}\mathbf{A}$, where
-$\mathbf{A}\in\mathbb{R}^{r\times d_{\text{in}}}$ and
-$\mathbf{B}\in\mathbb{R}^{d_{\text{out}}\times r}$ \cite{hu2022lora}. Summed over
-the adapted matrices of $L$ layers it adds
+For a linear map with
+$W\in\mathbb{R}^{d_{\rm out}\times d_{\rm in}}$, LoRA applies
 \begin{equation}
-P_{\text{LoRA}} = r \, L \sum_{\text{matrices}} (d_{\text{in}} + d_{\text{out}})
-\label{eq:lora-params}
+W' = W + sBA,\qquad
+A\in\mathbb{R}^{r\times d_{\rm in}},\quad
+B\in\mathbb{R}^{d_{\rm out}\times r},
+\label{eq:lora-update}
 \end{equation}
-parameters, and $2P_{\text{LoRA}}$ FLOPs per token. For Llama~3.2~3B with all
-seven projections adapted, the sum over one layer is 54,272, so
-$P_{\text{LoRA}} = 1{,}519{,}616\,r$: 24.3 million at rank 16, 0.76\% of the
-model's FLOPs per token (derived).
+where $s$ commonly contains $\alpha/r$ \cite{hu2022lora}. One adapted matrix adds
+\[
+P_{\rm LoRA}=r(d_{\rm in}+d_{\rm out})
+\]
+parameters. Across matrices/layers, sum the dimensions before multiplying by rank.
 
-Bytes are a different story at decode. Each distinct adapter in a step must
-be read once, like the base weights, so a batch that mixes $k$ adapters reads
-the base model plus $k$ adapters. With the 2.01~GB quantized base of this book's
-M1 measurements, forty-one different rank-16 adapters in one batch would read
-as many adapter bytes as base-model bytes and roughly double the step time
-(derived). Multi-adapter batching is cheap in arithmetic and paid for in
-bandwidth, one adapter at a time.
+For row-vector $x$, evaluation can be written
+\[
+y=xW^\top+s(xA^\top)B^\top.
+\]
+The update costs approximately
+\[
+2r(d_{\rm in}+d_{\rm out})
+\]
+floating-point operations/token for multiply-add counting, plus launch/indexing costs.
 
-The opening's single-stream cost fits neither estimate. The arithmetic was
-under 1\% and the bytes 2.4\%, yet rank 16 added 2 to 10~ms per token. Each
-adapted matrix adds four small operations to llama.cpp's graph --- two thin
-matrix products, a scale and an addition (\texttt{build\_lora\_mm} in
-\texttt{src/llama-graph.cpp} at commit \texttt{d006858}) --- 784 per step for
-this model, and on this machine dispatching a small operation costs
-microseconds (\Chref{kernel-languages}). That is a hypothesis the lab can
-test; the measured cost is the number that matters.
+Now consider a decode iteration containing $K$ distinct resident adapters. The base
+weights are read once according to the base kernel's reuse pattern, but each distinct
+adapter needed by the batch contributes adapter traffic. A first-order byte model is
+\[
+M_{\rm step}\approx M_{\rm base}+ \sum_{a\in\mathcal A_{\rm step}}M_a.
+\]
+Thus adapter overhead scales with \emph{distinct adapter diversity}, not simply batch
+size. Sixty-four rows using one adapter are a different memory problem from sixty-four
+rows using sixty-four adapters.
 
-\section{Low-rank adapters}
+\section{Derive the update before optimizing it}
 
-LoRA freezes the base model and trains only the low-rank factors. Its authors
-reported ten thousand times fewer trainable parameters and a third of the GPU
-memory of full fine-tuning for GPT-3 175B, with quality on par or better
-\cite{hu2022lora}. For serving, the decisive property is that an adapter can be
-merged into the base weights, $\mathbf{W}' = \mathbf{W} + \frac{\alpha}{r}\mathbf{B}\mathbf{A}$,
-so that one fine-tune served alone costs nothing extra. Merging is exactly what
-a shared server cannot do: a batch that mixes users of different adapters must
-keep $\mathbf{W}$ shared and apply each adapter separately.
+Take $d_{\rm in}=4$, $d_{\rm out}=3$, rank $r=2$:
+\[
+A=\begin{bmatrix}1&0&1&0\\0&1&0&1\end{bmatrix},\quad
+B=\begin{bmatrix}1&0\\0&2\\1&-1\end{bmatrix}.
+\]
+For $x=[1,2,3,4]$, the low-dimensional activation is
+\[
+h=xA^\top=[4,6].
+\]
+Then
+\[
+hB^\top=[4,12,-2].
+\]
+With $s=1/2$, the adapter contributes $[2,6,-1]$ to the shared base result $xW^\top$.
+The important intermediate has width $r$, not model width. Every multi-LoRA kernel is
+an optimized way of performing these thin projections for rows that select different
+$(A,B,s)$.
 
-\section{Batching requests with different adapters}
+\section{Merged weights are the single-adapter baseline}
 
-With the base weights shared, a layer's output for a batch whose token $i$
-uses adapter $a_i$ is
+If every request uses the same immutable adapter, compute
+\[
+W_a=W+sB_aA_a
+\]
+once and run the ordinary dense kernel. This removes per-token LoRA operations and is
+an important baseline.
+
+But materializing $W_a$ for every tenant duplicates the base-sized matrix and destroys
+the memory advantage. It also creates a model-switching problem when demand moves
+between adapters. Dynamic serving therefore keeps $W$ shared and evaluates the update
+at runtime.
+
+A correct benchmark compares dynamic multi-LoRA not only with ``base model'' but with
+merged single-adapter execution, split-by-adapter batches, and the realistic cost of
+maintaining many merged copies.
+
+\section{Mixed-adapter batching}
+
+For batch row $i$ with adapter identity $a_i$,
 \begin{equation}
-\mathbf{y}_i = \mathbf{W}\mathbf{x}_i + \tfrac{\alpha}{r}\,\mathbf{B}_{a_i}\left(\mathbf{A}_{a_i}\mathbf{x}_i\right).
-\label{eq:multi-lora}
+y_i=x_iW^\top+s_{a_i}(x_iA_{a_i}^\top)B_{a_i}^\top.
+\label{eq:mixed-lora}
 \end{equation}
-The first term is one batched product for everyone, the lever of
-\Chref{continuous-batching}. The second is a different small product for each
-group of tokens that share an adapter. A server that cannot compute the second
-term for mixed adapters in one step must split the batch by adapter, as the
-opening measured; one that can keeps the whole batch together and pays only for
-the small products.
+The first term is shared across the entire batch. The second must select the factors
+belonging to that row.
 
-\section{Gather-and-multiply kernels}
+The naive implementation partitions rows by adapter, launches one LoRA computation
+per group, and scatters results back. It is numerically sound but launch-heavy and
+inefficient when many adapters have only one or two rows.
 
-Punica's answer is a kernel that performs equation~\eqref{eq:multi-lora}'s
-second term for a whole batch at once: tokens are grouped into segments by
-adapter, and each segment gathers its adapter's factors and multiplies them,
-all in one launch \cite{chen2024punica}. Its authors called it segmented
-gather matrix--vector multiplication and reported twelve times the throughput
-of serving systems of the time for multi-LoRA workloads, at a cost of about
-2~ms of latency per token (their measurement). S-LoRA extended the kernels to
-batches mixing adapters of different ranks \cite{sheng2024slora}.
+Punica introduced segmented gather matrix-vector multiplication (SGMV): row segments
+carry adapter indices so one specialized kernel can gather the corresponding LoRA
+weights and evaluate heterogeneous updates. Its authors reported 12$\times$ higher
+multi-LoRA throughput than their compared serving systems while adding about 2 ms/token
+in their evaluated setting. \cite{chen2024punica}
 
-\section{Adapter paging and caching}
+S-LoRA extends the serving problem to thousands of adapters, heterogeneous ranks,
+custom kernels and unified paging. Its authors report up to 4$\times$ throughput over
+their compared baselines and orders-of-magnitude more served adapters. These are
+authors' system measurements, not generic LoRA speedups. \cite{sheng2024slora}
 
-A thousand adapters need not all be in accelerator memory. S-LoRA stores them
-in host memory and fetches the ones the running requests use, and it manages
-adapter weights and KV cache in one paged pool so that adapters of different
-ranks and caches of different lengths share memory without fragmenting it;
-its authors reported up to four times the throughput of the systems they
-compared against and several orders of magnitude more adapters served
-\cite{sheng2024slora} (their measurement). vLLM exposes the same tiers as
-configuration: a number of adapters resident on the GPU, a maximum rank that
-sizes their memory, and a host-memory cache, with endpoints to load and unload
-adapters while the server runs \cite{vllm2026lora}.
+\EngineFigure{ch21-segmented-lora}{Rows share the base projection while adapter metadata selects low-rank factors for segmented correction. Adapter grouping is an execution optimization; request order and ownership remain explicit.}{fig:multi-lora-segmented}
 
-\section{Routing between models}
+\section{Metadata is part of the kernel interface}
 
-Many models behind one endpoint raise a second question: which model should
-answer? A router can send easy requests to a small model and hard ones to a
-large one. RouteLLM trained such routers on human preference data and reported
-cutting cost by more than half in some cases without reducing response quality
-\cite{ong2024routellm} (their measurement). Routing interacts with every
-cache in this part of the book: a request routed to a replica that does not
-hold its adapter pays a load, and one routed away from its prefix pays a
-prefill (\Chref{prefix-caching}).
+A mixed kernel needs more than tensors. For each row/token it needs an adapter slot or
+index, rank/offset metadata, scale, and the locations of $A$ and $B$. Variable-rank
+adapters need either padding to a maximum rank or rank-aware offsets/groups.
 
-\section{Multiplexing models and cold starts}
+The scheduler and model runner therefore share a contract:
+\[
+\text{row}\rightarrow
+(\text{request},\text{adapter slot},r,s,A\text{ offset},B\text{ offset}).
+\]
+If compaction changes batch-row order, this mapping must be compacted identically.
+An off-by-one adapter index produces a plausible tensor with the wrong effective
+model---a correctness failure more dangerous than a crash.
 
-When different base models share hardware, the cost of switching is loading
-weights. On the M1, Ollama answered an eight-token request in 0.28 seconds
-when the model was already loaded. Alternating between two 3-billion-parameter
-models, each request first had to load its model: 1.6 to 2.3 seconds of
-loading, and 2.2 to 3.0 seconds per request in all (measured; the files were
-likely in the operating system's cache, so this is close to the fastest a
-switch can be here). A switch cost about eight answers. ServerlessLLM attacked
-this cost with checkpoint formats and loaders
-built for the storage hierarchy of GPU servers, live migration and
-locality-aware placement, and reported 10 to 200 times lower latency than
-serverless baselines \cite{fu2024serverlessllm} (their measurement). Adapters
-are the extreme case of the same idea: make the part that differs between
-models small enough that switching costs almost nothing.
+\section{Adapter identity is a versioned content identity}
 
-Sharing base weights does not erase the identity of a fine-tuned model. The selected adapter controls which update is added, and that identity must follow the request through scheduling and cache lookup. An adapter miss is therefore not permission to serve the base result silently.
+Names such as \texttt{customer-42} are not enough. An adapter can be updated while
+requests using its previous version remain active. Define an immutable identity such
+as
+\[
+I_a=H(\text{base fingerprint},\text{adapter content/version},
+      \text{composition},\text{scale},\text{target modules}).
+\]
+The exact hash format is implementation-specific; the invariant is that two identities
+compare equal only when their model semantics are safe to share.
+
+A runtime update publishes a new identity. Existing requests keep leases on the old
+resident object until retirement. Reusing the same slot number for new bytes requires
+a generation/version check, just like paged KV physical blocks.
+
+\section{KV caches inherit effective-model identity}
+
+Attention KV at layer $\ell$ is produced by projections whose weights may be adapted.
+Even when only non-attention modules are adapted, later hidden states can differ and
+therefore future KV differs. The conservative correctness rule is simple:
+\[
+K_{\rm prefix}=
+H(I_{\rm effective\ model},\text{token prefix},\text{position/config namespace}).
+\]
+
+Two requests with identical prompt tokens but different LoRA identities must not share
+KV unless an engine proves that the particular adapter composition cannot affect the
+cached values. General-purpose serving should namespace first and specialize only with
+a proof.
+
+This extends Chapter~\ref{ch:prefix-caching}: adapter identity belongs in the prefix
+cache key. It also extends Chapter~\ref{ch:paged-kv}: shared physical blocks retain
+their effective-model namespace until every reference retires.
+
+\section{The adapter residency hierarchy}
+
+A practical server has at least three adapter states:
+\[
+\textsc{Catalogued}\rightarrow\textsc{HostResident}\rightarrow\textsc{DeviceResident}.
+\]
+The catalog records immutable identity and storage location. Host residency avoids
+disk/object-store fetch. Device residency is required by the execution kernel.
+
+If adapter size is $M_a$ and effective host-to-device bandwidth is $\beta$, a simple
+load lower bound is
+\[
+T_{\rm load}\gtrsim M_a/\beta+T_{\rm setup}.
+\]
+The transfer can overlap other work, but a request whose adapter is absent cannot
+execute correctly until residency is established.
+
+S-LoRA explicitly stores many adapters in main memory and fetches currently needed
+ones to GPU memory. Its unified paging design manages adapter weights and KV state
+within a common memory-management framework to reduce fragmentation. \cite{sheng2024slora}
+
+\section{A residency slot needs a lease}
+
+Suppose device slot 7 contains adapter A. Request $r$ is admitted and records
+``slot 7.'' While it waits, the residency manager evicts A and loads B into slot 7.
+If execution trusts only the integer slot, $r$ silently runs the wrong model.
+
+Use a handle
+\[
+h=(\text{slot},\text{generation},I_a).
+\]
+Execution validates the generation/identity, and active/in-flight kernels pin the
+resident object. Eviction may choose only unpinned entries. This is the same ABA
+problem already encountered in KV allocation.
+
+\section{LRU is a baseline, not a complete policy}
+
+Least-recently-used adapter eviction is simple, but adapter demand has burst structure.
+A large adapter used by one low-priority request can evict several small hot adapters.
+A router may know that twenty queued requests need an adapter that is currently cold.
+An SLO-aware residency score can consider:
+\[
+R_a=f(\text{queued demand},\text{recent demand},M_a,T_{\rm reload},
+      \text{priority},\text{pin count}).
+\]
+Do not overfit an opaque score before measuring workload reuse. The durable requirement
+is to expose load bytes, miss latency, queue demand and eviction reason.
+
+\EngineFigure{ch21-residency}{Adapter identities move through catalog, host cache and bounded device slots. Requests acquire generation-checked leases; eviction is legal only after pins retire.}{fig:adapter-residency}
+
+\section{Admission now has two resources}
+
+Chapter~\ref{ch:scheduling} admitted against KV and latency budgets. Multi-adapter
+serving adds adapter residency. A request can fit KV but require an adapter load that
+would violate TTFT, or it can force eviction of adapters needed by incumbents.
+
+Admission can therefore estimate:
+\[
+M_{\rm KV}+M_{\rm adapter}\le M_{\rm device\ budget}
+\]
+and
+\[
+\widehat{\mathrm{TTFT}}=
+T_{\rm queue}+T_{\rm adapter\ miss}+T_{\rm prefill}.
+\]
+Batching policy may also cap the number of distinct adapters in one step because
+adapter bandwidth and kernel metadata grow with diversity.
+
+\section{Fairness across hot and cold adapters}
+
+A locality-only scheduler repeatedly chooses requests whose adapters are resident.
+That improves throughput but can starve a tenant with a cold adapter. Conversely,
+strict FIFO can thrash residency by alternating adapters every request.
+
+Compose objectives: choose an eligible tenant/priority class using fairness and SLO
+rules, then use adapter locality as a bounded tie-breaker. Charge adapter-load cost to
+the request or tenant that causes it if that matches the service model. Keep queue age
+monotone across residency waits.
+
+This mirrors prefix-cache-aware scheduling: locality is valuable but should not become
+an unbounded starvation mechanism.
+
+\section{Routing is a decision before execution identity freezes}
+
+A model router chooses among base models/adapters based on quality, latency, cost,
+capability, policy or user selection. RouteLLM demonstrated learned routing between
+stronger and weaker models using preference data, reporting substantial cost savings
+at comparable quality in evaluated settings. \cite{ong2024routellm}
+
+At the engine boundary, routing should produce an immutable execution plan:
+\[
+P_r=(I_{\rm base},I_{\rm adapter},\text{backend},\text{sampling/policy namespace}).
+\]
+Changing that plan after prefill invalidates model-derived state unless the runtime
+explicitly restarts/recomputes it. A router is not allowed to ``fall back'' to another
+model mid-stream merely because an adapter was evicted.
+
+\section{Routing has locality and quality externalities}
+
+Assume replicas A and B both serve the same base model, but only A holds the requested
+adapter and a warm prompt prefix. Sending the request to B may balance queue length
+while paying both adapter load and prefill. A good fleet router estimates total
+completion cost:
+\[
+C_j=w_q Q_j+w_a A_j+w_p P_j+w_n N_j,
+\]
+where $Q_j$ is queue delay, $A_j$ adapter-miss cost, $P_j$ prefix-miss cost and $N_j$
+network/transfer cost. This equation is illustrative; coefficients are workload/SLO
+policy.
+
+The router should consume cache/residency summaries with bounded staleness. Perfect
+global state is expensive, and stale ``adapter present'' metadata can route a request
+to a replica that has already evicted it.
+
+\section{Whole-base-model multiplexing}
+
+Adapters are the favorable case because the differing state is small. When requests
+select different base checkpoints, sharing disappears for the base weights.
+
+The edition's M1 Ollama measurement answered a warm eight-token request in about
+0.28 seconds. Alternating between two roughly 3B models caused approximately
+1.6--2.3 seconds of model loading and 2.2--3.0 seconds total/request in the recorded
+runs. These are local measurements with likely OS page-cache effects, not storage
+hardware limits.
+
+ServerlessLLM attacks the same cold-start problem at data-center scale with checkpoint
+layout/loading, live migration and locality-aware scheduling; its authors report
+10--200$\times$ lower latency than their compared serverless baselines. \cite{fu2024serverlessllm}
+The common principle is to place requests where their expensive immutable state is
+already resident, unless queue/SLO pressure outweighs locality.
+
+\section{Adapter composition complicates identity}
+
+Some applications combine multiple adapters:
+\[
+W'=W+\sum_{j=1}^{k}s_jB_jA_j.
+\]
+The effective identity must include the ordered/canonicalized composition and scales.
+Kernel cost now depends on the total active ranks and whether factors can be fused or
+compressed. Cache reuse between composition $\{A,B\}$ and $\{A,C\}$ is not generally
+safe merely because one component matches.
+
+Joint-compression research explores shared bases across large adapter collections.
+Compress-then-Serve, for example, learns shared structure among adapters and reports
+maintaining about 80\% of single-LoRA throughput in experiments with more than a
+thousand adapters. \cite{bruelgabrielsson2024compress}
+This is a different trade: additional approximation/training complexity buys residency
+and bandwidth reduction.
+
+\section{Tensor parallelism changes where LoRA runs}
+
+When $W$ is tensor-parallel sharded, $A$ and $B$ must align with the base projection's
+partition or introduce communication. Depending on whether the input or output
+dimension is sharded, one LoRA factor can be replicated while another is partitioned.
+
+S-LoRA includes a tensor-parallel strategy for heterogeneous LoRA serving. Production
+engines similarly expose choices about fully sharding LoRA computation. Exact
+collective patterns depend on the base layer partition and kernel implementation;
+there is no universal ``LoRA adds no communication'' rule.
+
+\section{Quantized bases do not make LoRA free}
+
+A quantized base can be far smaller than BF16 while adapters remain FP16/BF16. Then
+the adapter/base byte ratio rises. The low-rank arithmetic may also require conversion
+or different kernels. A rank that was negligible beside a 16-bit base can become a
+visible bandwidth fraction beside a 4-bit base.
+
+Therefore report adapter overhead against the actual deployed base representation,
+not parameter count alone. The opening's roughly 2.01-GB quantized base makes this
+especially relevant.
+
+\section{Hot loading is a publication protocol}
+
+Runtime adapter loading has a security and correctness boundary:
+\begin{enumerate}
+\item fetch bytes into non-visible staging storage;
+\item authenticate/authorize source and request;
+\item validate format, shapes, target modules and base compatibility;
+\item compute immutable content identity;
+\item transfer/prepare device representation;
+\item atomically publish the new catalog/residency entry;
+\item only then admit requests that reference it.
+\end{enumerate}
+A partially loaded adapter must never become selectable. Unload marks the identity
+unavailable for new leases but waits for active pins before physical destruction.
+
+\section{Observability must name the effective model}
+
+At minimum record base identity, adapter identity/version, adapter rank, residency
+hit/miss, load latency, distinct adapters per batch, LoRA kernel time, bytes loaded,
+eviction reason, KV/prefix namespace and route decision.
+
+Aggregating metrics only by base model hides the entire phenomenon. A server can show
+healthy base-model throughput while one tenant's cold adapter repeatedly misses and
+violates TTFT.
+
+Cardinality is a concern: thousands of adapter IDs should not automatically become
+unbounded metrics labels. Keep detailed IDs in traces/logs and aggregate metrics into
+bounded dimensions such as rank bucket, residency status or tenant class.
+
+\section{Failure tests}
+
+Test two identical prompts under different zero/nonzero adapters and prove their KV
+namespaces differ. Test an adapter slot evicted and reused before an old request
+executes; generation validation must reject the stale handle. Test two adapter versions
+with the same display name. Test a missing adapter and prove the engine errors/queues
+rather than serving base output. Test cancellation while an adapter transfer is in
+flight and ensure publication/pins retire correctly.
+
+For mixed kernels, compare every row with an independent merged-weight oracle. Include
+different ranks, repeated adapter IDs, base-only rows, permuted row order and an
+adapter whose update is exactly zero. Numerical parity should be defined with a
+tolerance appropriate to the accumulation precision.
+
+\EngineFigure{ch21-routing}{Fleet routing freezes an effective-model identity before model-derived state is created. Replica choice can account for queue, adapter locality and prefix locality, but execution never silently changes identity after routing.}{fig:adapter-routing}
 
 \EngineFigure{sys-adapter-components}{Component layout of one adapter-aware linear operation. Routing chooses the adapter identity before evaluating its low-rank update. The shared base contribution and the selected update are added for the same token rows. This is not the entire decoder.}{fig:sys-adapter-components}
 
 \LedgerSection
-
-Serving many fine-tunes from one base model with batched low-rank adapters:
-
 \begin{ConstraintLedger}
-Memory capacity & buys & One base model for all variants: 48.6~MB per rank-16 adapter of Llama~3.2~3B instead of a 6.4~GB copy. \\
-Compute & spends & $2P_{\text{LoRA}}$ FLOPs per token, 0.76\% at rank 16, plus a few small operations per adapted matrix. \\
-Memory bandwidth & spends & Every distinct adapter in a step is read in full: 48.6~MB each at rank 16. \\
-Latency & risks & Without multi-adapter kernels, users of different adapters take turns: 13.1~s instead of 11.8~s for the second of two users on the M1. \\
+Memory capacity & buys & One shared base plus small adapters replaces many full fine-tuned checkpoints; host/device residency extends the working set.\\
+Memory bandwidth & spends & Each distinct adapter used by a step contributes factor traffic; quantized bases make the relative adapter traffic larger.\\
+Compute & spends & Two thin projections and accumulation per adapted matrix, plus segmentation/indexing/launch overhead.\\
+Latency & trades & Resident mixed-adapter kernels preserve batching; misses add transfer/cold-start delay and poor locality can thrash.\\
+Correctness & risks & Wrong adapter row mapping, stale residency slots, unsafe KV reuse, version aliasing and silent base fallback change model semantics.\\
+Cost & buys & High tenant density shares expensive base weights and GPUs; routing can trade quality against inference cost.\\
 \end{ConstraintLedger}
 
-\LabSection{a batched multi-adapter GEMM}
+\LabSection{mixed LoRA execution plus residency correctness}
 
-\LabIntent{In \texttt{code/labs/ch21-multi-lora/}, a Rust implementation of
-equation~\eqref{eq:multi-lora} three ways: merged weights per adapter, a loop
-that splits the batch by adapter, and a segmented gather-and-multiply that
-serves the whole batch in one pass. A float64 oracle checks all three. The
-reader measures throughput as the number of distinct adapters in a 64-token
-batch grows from 1 to 64, and finds where the gathered adapter bytes overtake
-the base weights.}
+The Rust lab in \texttt{code/labs/ch21-multi-lora/} uses small deterministic matrices.
+It computes each row three ways: (1) explicitly merged $W+sBA$, (2) shared base plus a
+per-row adapter update, and (3) a segmented mixed-adapter path. A separately written
+dense oracle materializes merged weights and checks numerical parity.
 
-\HappenedSection{multi-adapter serving in production}
+A second fixture models two device adapter slots with generation-checked handles.
+Loading a new adapter into a reclaimed slot increments its generation; an old request
+holding the previous handle is rejected rather than silently executing the replacement.
 
-Multi-adapter serving went from two research systems to a standard engine
-feature. Punica and S-LoRA, both published in late 2023, showed that batching
-across adapters needs its own kernels and its own memory management
-\cite{chen2024punica,sheng2024slora}. vLLM now serves adapter requests in
-the same batches as base-model requests, up to a configured number of
-distinct adapters, and loads adapters at run time \cite{vllm2026lora}.
-llama.cpp's server, in the build measured here, applies adapters per request
-but batches only requests with identical adapter settings; the opening
-measured what that means when two users differ. Neither design is wrong for its
-setting: a laptop serving one user rarely mixes adapters, and a hosted
-fine-tuning service does little else.
+The lab is a correctness/representation lesson, not a performance claim about Punica,
+S-LoRA, vLLM or SGLang.
 
-\FrontierSection{2026-09-24}
+\HappenedSection{multi-LoRA became a first-class serving mode}
 
-Batched multi-adapter serving is standard in data-center engines
-\cite{vllm2026lora}, with adapters paged between host and GPU memory
-\cite{sheng2024slora}. The frontier is at the fleet level: routing among many
-models and adapters by cost and quality \cite{ong2024routellm}, and loading
-models fast enough that multiplexing hardware between them is practical
-\cite{fu2024serverlessllm}.
+Punica showed that heterogeneous adapters need a heterogeneous kernel rather than
+separate base-model replicas. S-LoRA added a large adapter working set, unified paging,
+heterogeneous ranks and distributed execution. Modern engines expose LoRA capacity,
+rank and runtime-loading controls.
+
+Source inspection for this edition found vLLM LoRA configuration at commit
+\texttt{155488d853a0bc42df227dbfc74005b3fd488e94}, including explicit limits around
+resident LoRAs and rank. SGLang commit
+\texttt{7a719e9a65e7f52b012ab37211b5f174e5d3d38d} has a dedicated LoRA argument and
+runtime subsystem. These are source-pinned implementation observations, not claims that
+all deployments use identical defaults.
+
+The architectural shift is larger than a feature flag: adapter identity now crosses
+API routing, scheduler metadata, model kernels, memory residency and cache keys.
+
+\FrontierSection{2026-10-05}
+
+Punica and S-LoRA remain foundational designs for heterogeneous multi-adapter kernels
+and residency. Current engine source shows multi-LoRA as a normal serving concern
+rather than a research-only wrapper. Research is pushing beyond independent adapters:
+joint compression can share structure among many LoRAs; routing research treats model
+choice as a quality/cost allocation problem; and fleet schedulers increasingly need to
+co-optimize queue locality, prefix locality and adapter locality.
+
+The unresolved systems question is composability. An industrial runtime should support
+adapter versions, compositions, quantized bases, tensor parallelism and hot loading
+without multiplying bespoke cache/scheduler paths. The strongest design is an explicit
+effective-model identity plus generic leases, namespaces and cost signals reused by
+the rest of the engine.
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} Using equation~\eqref{eq:lora-params}, compute the
-size of a rank-8 adapter on only the query and value projections of
-Qwen3-8B, and the number of distinct such adapters a decode step can read
-before adapter bytes equal the BF16 base weights.
-\item \emph{Prediction.} In the opening's two-user experiment, predict the
-completion times if the second user had asked for 512 tokens instead of 128.
-\item \emph{Implementation.} In the lab, add adapters of different ranks to one
-batch and compare padding every adapter to the largest rank with grouping by
-rank.
-\item \emph{Falsification.} Find a batch composition for which merging each
-adapter into its own copy of the weights and running the groups one after
-another is faster than a gather-and-multiply kernel.
+\item \emph{Derivation.} For $d_{\rm in}=4096$, $d_{\rm out}=4096$, rank 16 and FP16
+factors, compute LoRA parameters, bytes and multiply-add FLOPs/token for one matrix.
+\item \emph{Trace.} A two-slot device cache contains A@gen4 and B@gen9. Request $r$
+holds A@gen4. A retires, C loads into the same physical slot at gen5, then $r$ reaches
+execution. State the required result and why checking only slot number is unsafe.
+\item \emph{Batching.} Compare adapter bytes for 64 rows using one 48.6-MB adapter
+versus 64 distinct adapters, assuming each distinct adapter's factors must be streamed
+once. What assumption makes this an upper-level bandwidth model rather than a kernel
+measurement?
+\item \emph{Implementation.} Extend the lab to heterogeneous ranks. Acceptance:
+merged-oracle parity for every row; no padding assumption leaks into semantics; stale
+slot handles fail; base-only rows remain unchanged.
+\item \emph{Caching.} Explain why identical tokens under two different adapters should
+normally produce different prefix-cache keys even if both adapters leave the first
+layer's K/V projections untouched.
+\item \emph{Falsification.} Construct a workload where splitting by adapter is faster
+than a heterogeneous gather kernel. Include group size, adapter diversity and launch/
+memory assumptions that make the result plausible.
 \end{enumerate}
+
+\input{worked/ch21-multi-model-serving.tex}

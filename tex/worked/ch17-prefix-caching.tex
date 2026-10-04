@@ -1,0 +1,44 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Expected value}
+\textbf{Problem.} \emph{Derivation.} A 2,048-token prefix has reuse probability 0.3. Derive
+expected FLOPs saved and retained bytes in terms of $P$ and $m_{kv}$. What additional
+quantity is needed to compare keeping it with admitting another request?
+
+\textbf{Solution.} For length $L=2048$ and reuse probability $h=0.3$,
+$E[F_{\rm saved}]=0.3(2P)(2048)=1228.8P$ FLOPs and
+$M_{\rm kept}=2048m_{kv}$ bytes. Admission comparison additionally needs the
+opportunity cost of those bytes: at minimum the active request's required KV capacity
+and service value/queueing consequence.
+
+\Needspace{12\baselineskip}
+\subsection{Block trace}
+\textbf{Problem.} \emph{Trace.} With block size four, trace requests
+$[1,2,3,4,5,6]$ and $[1,2,3,4,9]$. Mark reusable full blocks, the divergence, and
+which tail must be recomputed.
+
+\textbf{Solution.} At block size four, both requests have the immutable full block $[1,2,3,4]$.
+The first request's tail $[5,6]$ and the second request's tail $[9]$ diverge and are
+computed separately. A design publishing only full blocks reuses exactly four tokens.
+
+\Needspace{12\baselineskip}
+\subsection{Insufficient key}
+\textbf{Problem.} \emph{Correctness.} Give a counterexample showing why
+$(\text{token IDs},\text{model name})$ is an insufficient cache key.
+
+\textbf{Solution.} Two deployments may expose the same model name while one has a different LoRA adapter
+or weight revision. Equal token IDs then produce different KV. Model aliases are not
+immutable computation identities.
+
+\Needspace{12\baselineskip}
+\subsection{Falsification}
+\textbf{Problem.} \emph{Falsification.} Construct a workload where enabling a large prefix cache
+reduces goodput because retained blocks prevent admission. State the service objective
+under which disabling the cache wins.
+
+\textbf{Solution.} If retained cold prefixes consume the blocks required to admit high-value arrivals,
+queue delay and goodput can worsen despite a high historical hit rate. Under an SLO
+that rewards completed requests before deadlines, aggressive eviction or disabling
+the cache can win.

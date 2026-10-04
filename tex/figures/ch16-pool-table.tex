@@ -1,0 +1,15 @@
+% diagram-kind: memory
+\begin{tikzpicture}[font=\small\sffamily,x=1cm,y=1cm]
+\node[block,text width=35mm] (a) at (0,0) {A: 6 tokens\\$T_A=[2,0]$};
+\node[block,text width=35mm] (b) at (0,-2) {B: 4 tokens\\$T_B=[3]$};
+\node[block,text width=35mm] (c) at (0,-4) {C: 1 token\\$T_C=[1]$};
+\node[block,text width=48mm] (p0) at (8,0) {$P_0$: A positions 4,5\\two unused cells};
+\node[block,text width=48mm] (p1) at (8,-1.6) {$P_1$: C position 0\\three unused cells};
+\node[block,text width=48mm] (p2) at (8,-3.2) {$P_2$: A positions 0--3\\full block};
+\node[block,text width=48mm] (p3) at (8,-4.8) {$P_3$: B positions 0--3\\full block};
+\draw[flow](a.east)--node[syslabel]{entry 1}(p0.west);
+\draw[flow](a.south east)--(3,-.7)--(3,-3.2)--node[syslabel]{entry 0}(p2.west);
+\draw[flow](b.east)--(4,-2)--(4,-4.8)--node[syslabel]{entry 0}(p3.west);
+\draw[flow](c.east)--(5,-4)--node[syslabel,left]{entry 0}(5,-1.6)--(p1.west);
+\node[sysnote,anchor=north] at (4,-5.7) {Four cells per physical block. Logical histories follow table entries,\\not physical block-number order. Unused capacity is not valid KV.};
+\end{tikzpicture}

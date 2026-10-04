@@ -1,0 +1,11 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=8mm and 11mm]
+\node[sysbox] (api) {request};
+\node[sysbox,right=of api] (route) {model/router\\policy};
+\node[sysbox,right=of route,fill=BookGreen] (plan) {freeze effective\\model identity};
+\node[sysbox,below right=of plan] (a) {replica A\\adapter + prefix warm};
+\node[sysbox,below left=of plan] (b) {replica B\\queue shorter};
+\draw[flow](api)--(route); \draw[flow](route)--(plan);
+\draw[flow](plan)--node[syslabel]{cost/locality}(a);
+\draw[flow](plan)--node[syslabel]{cost/locality}(b);
+\end{tikzpicture}

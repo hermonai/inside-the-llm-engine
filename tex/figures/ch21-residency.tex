@@ -1,0 +1,12 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=8mm and 12mm]
+\node[sysbox] (cat) {catalog\\immutable IDs};
+\node[sysbox,right=of cat] (host) {host cache\\many adapters};
+\node[sysbox,right=of host,fill=BookGreen] (dev) {device slots\\bounded residency};
+\node[sysbox,below=of dev] (lease) {lease\\slot + generation + ID};
+\node[sysbox,left=of lease] (req) {request};
+\draw[flow](cat)--node[syslabel]{fetch}(host);
+\draw[flow](host)--node[syslabel]{load}(dev);
+\draw[flow](req)--(lease); \draw[flow](lease)--node[syslabel]{validate/pin}(dev);
+\draw[flow,bend right=25](dev) to node[syslabel]{evict unpinned} (host);
+\end{tikzpicture}

@@ -1,0 +1,12 @@
+% diagram-kind: state
+\begin{tikzpicture}[node distance=10mm and 12mm]
+\node[sysbox](c){Committed history};
+\node[sysbox,right=of c](d){Drafting};
+\node[sysbox,right=of d](e){Target evaluated};
+\node[sysbox,below=of e](v){Verify in order};
+\node[sysbox,left=of v,fill=BookGreen](k){Commit accepted prefix\\and correction / bonus};
+\node[sysbox,left=of k](r){Reconcile KV\\discard rejected suffix};
+\draw[flow](c)--(d);\draw[flow](d)--(e);\draw[flow](e)--(v);
+\draw[flow](v)--(k);\draw[flow](k)--(r);\draw[flow](r)--(c);
+\node[sysnote,below=12mm of k,anchor=north]{Publication exposes only committed tokens. The correction / bonus\\still needs its own target KV before it becomes cached history.};
+\end{tikzpicture}

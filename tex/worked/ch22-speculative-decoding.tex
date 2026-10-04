@@ -1,0 +1,59 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{A finite draft-budget sweep}
+\textbf{Problem.} Evaluate the simplified speedup model for
+$\alpha=0.7$, $c=0.04$, $v=1.3$ and draft lengths one through eight.
+
+\textbf{Solution.} Use
+$S(\gamma)=(1-\alpha^{\gamma+1})/[(1-\alpha)(c\gamma+v)]$.
+The derived speedups are approximately
+$(1.269,1.587,1.784,1.899,1.961,1.986,1.988,1.975)$.
+Length seven narrowly wins for these illustrative inputs. This is not a
+measured optimum: changing verification cost with shape, context or load
+can change the ordering.
+
+\Needspace{12\baselineskip}
+\subsection{Residual proof fixture}
+\textbf{Problem.} \emph{Proof.} For $p=(0.4,0.35,0.25)$ and $q=(0.2,0.5,0.3)$, compute
+$\beta$, the residual distribution and final emitted probability of every token.
+
+\textbf{Solution.} For $p=(0.4,0.35,0.25)$ and $q=(0.2,0.5,0.3)$,
+$\min(p,q)=(0.2,0.35,0.25)$ and $\beta=0.8$. The positive residual is
+$(0.2,0,0)$, so rejection emits token 1 with probability one. Final mass is
+$(0.2,0.35,0.25)+0.2(1,0,0)=p$.
+
+\Needspace{12\baselineskip}
+\subsection{Frontier trace}
+\textbf{Problem.} \emph{State trace.} Start at committed/evaluated frontier 80. Draft five
+positions, accept the first three, reject the fourth and emit a correction. State the
+legal committed and target-KV frontiers before the next iteration.
+
+\textbf{Solution.} From 80, five drafts evaluate through 85. If positions 81--83 are accepted and 84
+rejects, the speculative tail cannot survive. Commit 81--83, emit the correction for
+84, and ensure the next target state represents the correction rather than the rejected
+draft. The legal history is through 84; any evaluated state for rejected 84/85 must be
+discarded or overwritten according to the engine's cache convention.
+In this lab, committed history ends at 84 but valid target KV ends at 83.
+Feeding the correction at 84 extends that KV frontier; publishing its token
+does not itself perform that forward computation.
+
+\Needspace{12\baselineskip}
+\subsection{Concurrency}
+\textbf{Problem.} \emph{Concurrency.} Explain why maximizing one request's $\gamma$ can reduce
+server goodput at high concurrency even when its personal acceptance rate is high.
+
+\textbf{Solution.} A long speculative window consumes multiple verification-token budget units and more
+temporary KV. At high concurrency it can delay many one-token decode requests. Personal
+tokens/pass can rise while queueing and aggregate goodput worsen.
+
+\Needspace{12\baselineskip}
+\subsection{Wrong rejection sampler}
+\textbf{Problem.} \emph{Falsification.} Construct $p,q$ for which the incorrect ``sample from
+$p$ after rejection'' algorithm differs substantially from $p$, and demonstrate the
+difference analytically rather than with random sampling.
+
+\textbf{Solution.} For $p=(0.5,0.3,0.2)$, $q=(0.6,0.1,0.3)$, acceptance mass is
+$(0.5,0.1,0.2)$ and rejection probability 0.2. Resampling from $p$ incorrectly yields
+$(0.6,0.16,0.24)$ rather than $p$.

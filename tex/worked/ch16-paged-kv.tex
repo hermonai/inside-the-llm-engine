@@ -1,0 +1,64 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Prediction: address translation}
+\textbf{Problem.} \emph{Prediction.} With $B=4$ and $T_A=[7,2,11]$, identify the physical
+block and in-block offset for logical positions 0, 3, 4, 5 and 10.
+
+\textbf{Solution.} With $B=4$, logical positions 0 and 3 are in logical block 0, so they map to
+physical block 7 at offsets 0 and 3. Positions 4 and 5 are in logical block 1,
+so they map to physical block 2 at offsets 0 and 1. Position 10 is in logical
+block 2 at offset 2, so it maps to physical block 11, offset 2.
+
+\Needspace{12\baselineskip}
+\subsection{Derivation: exact fragmentation}
+\textbf{Problem.} \emph{Derivation.} For lengths $(1,4,5,8,9)$ and block size four,
+compute each $n_i$, each tail waste $w_i$, total paged utilization and the
+worst-case bound on total tail waste.
+
+\textbf{Solution.} For lengths $(1,4,5,8,9)$ and $B=4$, block counts are $(1,1,2,2,3)$ and tail
+wastes are $(3,0,3,0,3)$. Valid positions total 27; allocated positions total
+$9\times4=36$, so utilization is $27/36=0.75$. With five live nonempty
+requests the strict bound is total tail waste $<5B=20$ positions; the tighter
+integer bound is at most $5(B-1)=15$. Actual waste here is 9.
+
+\Needspace{12\baselineskip}
+\subsection{Bytes: from one KV scalar to a hundred blocks}
+\textbf{Problem.} \emph{Bytes.} For $L=32$, $H_{kv}=8$, $d_h=128$, $b_{kv}=2$ bytes and
+$B=16$, derive bytes per token, bytes per physical block across all layers,
+and payload bytes represented by a table with 100 blocks.
+
+\textbf{Solution.} One layer stores
+$2H_{kv}d_hb_{kv}=2(8)(128)(2)=4096$ bytes per token. Across 32 layers that is
+131,072 bytes = 128 KiB per token. A 16-token block therefore carries
+2,097,152 bytes = 2 MiB of KV payload across the model. One hundred such
+blocks represent 200 MiB of payload (209,715,200 bytes), excluding allocator
+metadata and alignment.
+
+\Needspace{12\baselineskip}
+\subsection{Correctness: shared partial tail}
+\textbf{Problem.} \emph{Correctness.} Two requests share a partial tail with reference
+count two. Explain why incrementing the reference count alone does not make an
+append safe, and state the required COW transition.
+
+\textbf{Solution.} A reference count proves that more than one owner can read the block; it does
+not isolate writes. Before X appends, X allocates a private block, copies the
+valid cells of the shared tail, changes its final table entry to the new
+block, decrements the old block's reference count, and writes only after the
+new block is private. Y continues to observe the old bytes.
+
+\Needspace{12\baselineskip}
+\subsection{Falsification: paging can lose on a chosen workload}
+\textbf{Problem.} \emph{Falsification.} Construct a workload for which a chosen paged
+block size consumes more physical token capacity than a tightly sized
+contiguous allocation. State exactly which benefit of paging your example
+does and does not falsify.
+
+\textbf{Solution.} Let every request have exactly five tokens and compare a tightly sized
+contiguous allocation of five positions per request with paging at $B=8$.
+Paging allocates eight positions per request and therefore consumes 60\% more
+token capacity. This falsifies ``paging always uses less memory than every
+contiguous layout.'' It does not falsify paging's advantage over
+maximum-length reservation or its ability to avoid external fragmentation and
+support non-contiguous growth.

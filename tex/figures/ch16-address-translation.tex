@@ -1,0 +1,10 @@
+% diagram-kind: memory
+\begin{tikzpicture}[node distance=15mm and 17mm]
+\node[sysbox] (p) {Logical position\\$p=5$, block size $B=4$};
+\node[sysbox,right=of p] (qr) {Logical block $\ell=1$\\within-block slot $r=1$};
+\node[sysbox,below=of qr] (tab) {Table $T_A=[7,2,11]$\\lookup $T_A[1]=2$};
+\node[sysbox,left=of tab,fill=BookGreen] (cell) {Physical block 2\\token slot 1};
+\draw[flow](p)--node[syslabel,above]{divide / remainder}(qr);
+\draw[flow](qr)--node[syslabel]{lookup}(tab);
+\draw[flow](tab)--node[syslabel,above]{translate}(cell);
+\end{tikzpicture}

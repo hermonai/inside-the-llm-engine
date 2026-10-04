@@ -1,0 +1,10 @@
+% diagram-kind: memory
+\begin{tikzpicture}[x=0.9cm,y=0.9cm]
+\draw[->] (0,0)--(12,0) node[right]{token position};
+\foreach \x in {1,...,11}\draw (\x,.12)--(\x,-.12);
+\draw[very thick] (0,1.8)--(5,1.8) node[right]{committed $C$};
+\draw[very thick] (0,1.2)--(10,1.2) node[right]{drafted $D$};
+\draw[very thick] (0,.6)--(10,.6) node[right]{evaluated $E$};
+\draw[very thick] (0,2.4)--(4,2.4) node[right]{published $P$};
+\draw[dashed] (7,.35)--(7,2.65) node[above]{first rejection};
+\end{tikzpicture}

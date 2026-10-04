@@ -1,0 +1,10 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=8mm and 11mm]
+\node[sysbox] (rows) {batch rows\\$r_0,r_1,r_2$};
+\node[sysbox,right=of rows] (states) {constraint handles\\$g_0,g_1,g_2$};
+\node[sysbox,right=of states] (masks) {per-row masks\\dense/sparse};
+\node[sysbox,below=of masks,fill=BookGreen] (gpu) {logits + mask\\sampling};
+\node[sysbox,left=of gpu] (commit) {commit selected\\tokens};
+\draw[flow](rows)--(states); \draw[flow](states)--(masks); \draw[flow](masks)--(gpu);
+\draw[flow](gpu)--(commit); \draw[flow](commit.north)--(states.south);
+\end{tikzpicture}

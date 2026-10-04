@@ -1,232 +1,475 @@
 % status: ZERO
-% Chapter 24 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part4.md (concurrent, draftmodel,
-% ngram at temperature 0.8, verify).
+% Measurement anchor: research/measurements/2026-09-24-m1-part4.md.
 \chapter{When Speculation Loses}\label{ch:when-speculation-loses}
 
 \begin{ChapterIntent}
-Speculation spends idle compute to buy latency. When there is no idle
-compute --- at large batch, on compute-bound hardware, or when acceptance is
-low because of temperature or domain --- the same technique makes a system
-slower. This chapter builds a break-even model from the roofline and the
-acceptance rate, measures cases on both sides of it, and covers the
-interactions with chunked prefill, structured output and sampling settings that
-production engines must handle.
+Speculative decoding is not a free acceleration layer. It exchanges extra proposal,
+verification, KV and scheduler work for fewer serial target iterations. This chapter
+derives the break-even condition, shows why acceptance rate alone is an unsafe control
+signal, connects speculation to the roofline, concurrency, context length, paged KV,
+continuous batching and SLO goodput, and builds a controller that is allowed to choose
+the most important speculative configuration: off.
 \end{ChapterIntent}
 
-\OpeningSection{Slower with speculation}
+\OpeningSection{The drafts were useful and the server still became slower}
 
-The drafter of \Chref{modern-speculation}'s opening --- a 3-billion-parameter
-model speculating for an 8-billion-parameter target on the M1 --- did more than
-disappoint. Without speculation, the target decoded at 9.8 to 10.6 tokens per
-second; with the drafter, at \textbf{4.3 to 5.6}. Speculation made decoding
-about twice as slow, with 46 to 47\% of the drafts accepted (measured, two runs
-of two workloads each, alternating with the baseline; record
-\texttt{2026-09-24-m1-part4}).
+On the book's Apple M1 measurement, an 8B target decoded at 9.84--10.57 tokens/s on
+the quote workload and 10.08--10.29 tokens/s on free writing. Pairing it with a
+quantized 3B drafter reduced those ranges to 5.23--5.35 and 4.34--5.57 tokens/s.
+The target accepted 98 of 208 drafts on quote and 106 of 231 on free writing:
+46--47 percent acceptance. A one-token drafter pass cost 53.4 ms versus 140.7 ms
+for the target, or 0.38 target steps
+(measured; \texttt{research/measurements/2026-09-24-m1-part4.md}).
 
-Even a drafter that is right every time pays less as the machine gets busier.
-Prompt lookup, repeating a passage for Llama~3.2~3B, accepted all 896 of its
-drafted tokens whether one request ran or four. For a single request it was
-4.1 times faster than decoding without speculation on the same servers; with
-four requests at once, 2.0 times, in three runs. The drafts had not changed. What
-changed was the verification pass: four sequences with 16 drafts each put 68
-tokens into every step instead of 4, on a machine whose arithmetic runs out at
-about a dozen.
+A second experiment removes proposal quality as the explanation. Prompt lookup on a
+quotation accepted every proposed token. One request improved by about 4.05 times on
+the paired server; four simultaneous requests improved by only 1.99--2.03 times.
+Acceptance remained 100 percent. What disappeared was idle execution capacity.
 
-Both results follow from one inequality: speculation pays while a verification
-pass costs less than the tokens it accepts. This chapter builds that inequality
-from the roofline, finds where each measured case sits on it, and lists the
-ways a production engine can end up on the wrong side.
+The production question is therefore not ``is the drafter accurate?'' It is
+\Callout{Production question}{Does speculative execution reduce resource-time
+per useful committed token under the current workload and SLO?}
 
-\Foundations{Saved iterations must pay for extra work}{
-Speculation's useful output is the number of committed tokens per verification cycle.
-Its cost includes drafting, verification, state management and any lost batching
-efficiency. A larger acceptance fraction is not sufficient if the draft or
-verification becomes much slower. Compare against the best ordinary decode
-configuration at the same workload and latency target. Chapter~\ref{ch:roofline}
-explains when spare compute exists; Chapter~\ref{ch:speculative-decoding} explains
-what can be accepted. Chapter~\ref{app:reproducing} keeps the denominator honest by
-counting only useful output, not discarded proposals.
+\Foundations{Saved target iterations must pay for all speculative work}{
+Count only committed output. Proposals, verified tree nodes and rolled-back KV are
+work, not progress. Compare against the best ordinary decode policy at the same
+request mix, output semantics and SLO. A speculative policy can improve one request's
+latency while reducing fleet goodput by consuming batch slots, KV capacity or compute
+that other requests could use. Chapter~\ref{ch:speculative-decoding}
+derives the accepted-token count; Chapter~\ref{ch:continuous-batching}
+explains why concurrent requests compete for iteration budgets. Put those
+two ideas together: the denominator is the time and capacity spent by
+the whole policy, not just the target verification kernel. Include the
+drafter, rejected positions and control work before claiming a speedup.
 }
 
-\NapkinSection{Napkin math: the break-even batch size}
+\NapkinSection{Napkin math: the general break-even inequality}
 
-Let a step that processes $n$ tokens take $t(n)$. Below the roofline's ridge
-(\Chref{roofline}) the step is bandwidth-bound and $t(n)$ barely grows with $n$;
-above it, $t(n)$ grows in proportion to $n$. Without speculation, a batch of
-$B$ sequences produces $B$ tokens per step of cost $t(B)$. With a free drafter,
-$\gamma$ drafts per sequence and $\tau$ accepted tokens per sequence per pass,
-it produces $B\tau$ tokens per pass of cost $t\bigl(B(\gamma+1)\bigr)$.
-Speculation pays while
+For an ordinary batch $B$, let target decode step time be $t_1(B,L)$ at representative
+context length $L$. Let a speculative iteration propose/verify $N$ extra nodes per
+request, commit $A+1$ tokens per request on average, spend draft time $t_d$, target
+verification time $t_v$, controller time $t_o$, and amortized interference cost $t_i$.
+Speculation wins on raw committed-token time when
 \begin{equation}
-\frac{t\bigl(B(\gamma+1)\bigr)}{t(B)} < \tau .
-\label{eq:spec-breakeven}
+\frac{t_d+t_v+t_o+t_i}{B(A+1)}
+<
+\frac{t_1(B,L)}{B}.
+\label{eq:general-break-even}
 \end{equation}
-While $B(\gamma+1)$ stays below the ridge's token count $n^{*}$ the left side is
-near one and any $\tau > 1$ wins. Once $B$ itself is above the ridge the left
-side approaches $\gamma+1$, which exceeds $\tau$ for any imperfect drafter:
-every rejected draft is arithmetic taken from another sequence. The break-even
-batch is therefore roughly $B_{\text{be}} \approx n^{*}/(\gamma+1)$.
-
-The ridge is where the hardware decides. For 16-bit weights, each token in a
-step does about one FLOP per byte of weights, so $n^{*}$ is about the ridge
-intensity itself: some 300 tokens on an H100 in BF16, which with $\gamma = 4$
-puts the break-even near 60 sequences (derived). On the M1, with a ridge of 38
-FLOP per byte and the 5.0-bit average weights of its quantized Llama~3.2~3B
-(\Chref{weight-quantization}), $n^{*}$ is about 12 tokens and the break-even
-is two or three sequences (derived). The measured cost of verifying
-on the M1 --- 2.3 single-token steps for 16 tokens of Llama~3.2~3B --- is this
-arithmetic showing through.
-
-\section{The break-even model}
-
-Equation~\eqref{eq:spec-breakeven} with a drafter's cost added becomes
+Equivalently,
 \begin{equation}
-\frac{\gamma\,c\,t(B) + t\bigl(B(\gamma+1)\bigr)}{t(B)} < \tau ,
+A+1 >
+\frac{t_d+t_v+t_o+t_i}{t_1(B,L)}.
+\label{eq:accepted-break-even}
 \end{equation}
-and every term moves with the workload. $\tau$ depends on the text and the
-sampling settings; $c$ on the drafter and the hardware; the ratio of step times
-on the batch and the context length. A speculation policy fixed at deployment
-is therefore wrong somewhere in every day's traffic, and the engines that
-handle it well measure acceptance and load continuously and adjust $\gamma$ ---
-down to zero --- as they change. TurboSpec, implemented in vLLM, closes this
-loop by predicting goodput for each speculation setting and choosing the best,
-after its authors found that speculation added without tuning could degrade
-serving \cite{liu2024turbospec}.
+The right-hand side is the \emph{cost ratio}. It is not constant: $t_v$ changes with
+batch, tree width and context; $t_i$ changes with queue pressure and KV occupancy.
 
-\section{Large batches: no idle compute}
+For a linear drafter of length $\gamma$, per-draft cost $c$ measured in ordinary target
+steps, and verification ratio
+\[
+v(B,L,\gamma)=\frac{t_v(B,L,\gamma)}{t_1(B,L)},
+\]
+a useful approximation is
+\begin{equation}
+S \approx \frac{\tau}{\gamma c+v+o+i},
+\qquad
+\text{win iff }\tau>\gamma c+v+o+i ,
+\label{eq:linear-break-even}
+\end{equation}
+where $\tau=A+1$ and $o,i$ are normalized overhead/interference.
 
-Continuous batching (\Chref{continuous-batching}) and speculation compete for
-the same idle arithmetic. At low concurrency the GPU waits on memory and
-speculation fills the wait with verification; at high concurrency the batch
-fills it with other sequences, and every drafted token that is rejected is work
-taken from a request that would have used it. P-EAGLE's measurements trace the
-curve: 1.55 to 1.69 times faster than EAGLE-3 at a concurrency of one, 1.05 to
-1.23 times at 64 \cite{vllm2026peagle}. Long contexts move the ridge. When each
-sequence reads a long cache, attention's bytes dominate the step and the step
-stays bandwidth-bound at larger batches; MagicDec used a drafter with a sparse
-cache to exploit this and reported up to 2.51 times at batch sizes from 32 to
-256 \cite{sadhukhan2024magicdec} (their measurement).
+\section{Acceptance is numerator quality, not profitability}
 
-\section{Low acceptance: temperature and domain}
+A controller that enables speculation when acceptance exceeds, say, 70 percent ignores
+the denominator. Consider $\gamma=4$ and an average $\tau=4$ committed tokens. If
+$c=.05$, $v=1.2$ and overhead is $.1$, normalized cost is $1.5$ and the speedup estimate
+is $2.67$. If $c=.4$, $v=2.5$ and overhead is $.2$, cost is $4.3$ and the same accepted
+work loses.
 
-Acceptance is a property of the text. Where the output copies its context,
-drafts from the context are almost always right; where the model composes new
-text, they are almost never proposed or almost always wrong. Temperature lowers
-acceptance for every drafter: the target's sample at each position must equal
-the draft, and a flatter distribution makes that less likely even when the
-draft is the most probable token. How much depends on how certain the model
-is. On the M1, raising the temperature from 0 to 0.8 barely moved prompt
-lookup's acceptance on copying tasks --- all 672 drafts accepted when
-repeating the passage, 571 of 624 against 579 of 624 when editing it ---
-because the next word of a quotation is nearly a certainty for the model. The
-losses come where the model is choosing: a separate drafter predicting a
-reasoning model's thoughts was accepted less than half the time even under
-greedy decoding.
+Conversely, modest acceptance can pay when proposals are nearly free and verification
+runs in otherwise idle arithmetic. The controller must estimate both accepted progress
+and marginal resource cost.
 
-\section{Draft cost and memory}
+\section{From roofline to break-even surface}
 
-A separate drafter costs time and memory. Its time is the $\gamma c$ term; its
-memory is its weights and its own cache, taken from the batch's cache budget
-(\Chref{kv-cache}). On the M1 the 3-billion-parameter drafter cost 0.38 of a
-target step per drafted token and added 1.9~GB of weights to the target's
-5.2~GB, 37\% more, plus its own cache; with up to 16 drafts per pass, a
-rejected draft chain can cost several target steps. A drafter is worth its
-memory only if the
-speculation it enables saves more than the batch that memory would otherwise
-have held.
+Autoregressive decode at small batch is commonly weight-memory-bandwidth dominated:
+one token cannot use all matrix arithmetic while model weights must still be streamed.
+Speculation increases tokens evaluated per target pass and can fill idle arithmetic.
 
-\section{Interactions with the rest of the engine}
+Let $t(n,L)$ be target step time for $n$ token positions at context $L$. Ignoring draft
+cost for a moment, linear speculation with $\gamma$ drafts wins when
+\begin{equation}
+\frac{t(B(\gamma+1),L)}{t(B,L)} < \tau.
+\label{eq:batch-break-even}
+\end{equation}
+If both points lie on a flat bandwidth-dominated region, the ratio approaches one.
+When verification crosses into compute saturation, it rises. Thus break-even is a
+surface over
+\[
+(B,L,\gamma,\tau,\text{model},\text{dtype},\text{kernel},\text{hardware}),
+\]
+not one magic batch size.
 
-Speculation touches every other mechanism in this part of the book. Drafted
-tokens count against the step's token budget, so they compete with prompt
-chunks (\Chref{chunked-prefill}). Constrained decoding must apply the grammar
-to every verified position and stop at the first invalid draft
-(\Chref{structured-output}); llama.cpp's verification samples each position
-through the full sampler chain, grammar included, for that reason
-(\texttt{common/sampling.cpp} at commit \texttt{d006858}). Repetition penalties
-and logit biases must see exactly the tokens they would have seen without
-speculation. Rolled-back cache entries must never be shared through a prefix
-cache (\Chref{prefix-caching}). And streaming changes shape: tokens arrive in
-bursts of up to $\gamma+1$, so time per output token improves while the gap
-before each burst grows, which matters to an interface that renders token by
-token.
+\EngineFigure{ch24-break-even-surface}{Decision view of the break-even condition, not a measured surface plot. Batch, context, draft cost and accepted path length jointly determine whether speculation adds useful goodput.}{fig:spec-break-even}
 
-\section{Measuring speculation honestly}
+\section{The M1 verification curve shows the ridge directly}
 
-A speedup from speculation is meaningful only with its conditions: the
-acceptance rate and draft length; the concurrency and the temperature; the
-workload's share of decode against prefill (\Chref{prefill-decode}); and a
-check that the outputs are the ones the target would have produced. Report the
-distribution of time per output token, not only its mean, because speculation
-makes it bimodal. Measure at the concurrency the service runs at, not at one.
-And compare like with like: two runs that produce different text are two
-different workloads (\Chref{benchmarking}).
+The measured 3B target needed 68.3 ms for one token and 157.5 ms for 16 tokens:
+16 positions cost only 2.30 single-token steps. The 8B target needed 140.7 ms for one
+and 379.6 ms for 16, a ratio of 2.70. At 32 positions, ratios were only 2.33 and 2.78.
 
-Compare committed output, not the number of candidates produced. Recheck the choice as batching and acceptance change. An adaptive controller needs stable measurement windows and a fallback, otherwise its switching can hide the cost being studied.
+Those are precisely the circumstances in which verifying several positions can be
+profitable: work grows much faster than elapsed time. But the curve is not flat.
+Speculation that assumes ``16 verified tokens cost one decode'' would overestimate
+speedup substantially on this machine.
+
+The non-monotonic small-$n$ measurements (for example 3 versus 4 positions) also warn
+against fitting a simplistic line to kernel dispatch. Measure the actual shapes the
+serving engine uses.
+
+\section{Concurrency spends the same idle arithmetic}
+
+Without speculation, continuous batching increases $B$ by adding independent requests.
+With speculation, intra-request parallelism increases target work by adding candidate
+positions. Both attempt to occupy the same hardware.
+
+At low arrival rate, spending spare compute on one request can sharply reduce ITL. At
+high arrival rate, those speculative positions compete with queued requests. The
+opportunity cost $t_i$ in equation~\eqref{eq:general-break-even} becomes real even if
+the speculative request itself finishes faster.
+
+The M1 quote experiment isolates this effect: 100-percent acceptance, same lookup
+mechanism, roughly 4.05 times faster for one request but about 2.0 times for four.
+The correct interpretation is not that speculation ``stops working'' at concurrency
+four. Its marginal value fell because ordinary batching became a better consumer of
+the machine.
+
+\section{Large batch is not universally hostile: context length changes the bottleneck}
+
+A simplistic rule ``disable speculation at large batch'' is also wrong. Long-context
+decode reads a large KV history. As context grows, attention/KV traffic can return the
+system to a memory-bound regime even at large batch. MagicDec analyzes this regime and
+uses a sparse-KV drafter to reduce draft cost; its authors report gains for large-batch,
+long-context serving \cite{sadhukhan2024magicdec}.
+
+The systems lesson is broader than that method: the ridge moves with $L$. A controller
+trained only on short-context profiling can make the wrong decision for long-context
+requests.
+
+\section{Draft cost has three parts}
+
+Do not model draft cost as parameter count alone:
+\[
+t_d=t_{\rm weights}+t_{\rm draftKV}+t_{\rm coordination}.
+\]
+A separate drafter reads weights, maintains its own KV and may require tokenizer
+translation or device communication. An EAGLE-style drafter may reduce weight cost but
+require target-feature movement. A parallel drafter may reduce serial steps but perform
+more one-shot computation.
+
+The M1 3B drafter had tensor bytes 0.37 of the 8B target and measured one-token time
+0.38 of the target. With several serial drafts, that term alone can exceed a target
+decode step before verification begins.
+
+\section{Memory capacity has an opportunity cost}
+
+Speculation consumes memory through drafter weights, drafter KV, tentative target KV,
+tree metadata and potentially larger workspace. Let ordinary serving fit $B_{\max}$
+requests but speculation reduce it to $B'_{\max}$. Then even a per-request latency
+win can lower fleet throughput if
+\[
+G_{\rm spec}(B'_{\max}) < G_{\rm base}(B_{\max}).
+\]
+
+For the measured 8B/3B pair, drafter tensor bytes were about 1.92 GB against 5.22 GB
+target tensor bytes---roughly 37 percent additional target-weight size before draft KV
+and runtime buffers. On capacity-constrained accelerators this can be more damaging
+than draft compute.
+
+\section{Tree speculation magnifies wasted verification}
+
+For a chain, rejected work after the first mismatch is easy to visualize. For a tree,
+many verified nodes are intentionally incompatible alternatives. Define
+\[
+\eta_{\rm tree}=\frac{A+1}{N_v},
+\]
+where $N_v$ is verified tree nodes. Width can increase accepted path length while
+lowering this efficiency.
+
+Under low load, a wide tree may be worthwhile because the target pass has unused
+parallel capacity. Under high load, those losing branches compete directly with other
+requests. Dynamic tree size should therefore be load-aware, not only confidence-aware.
+
+\section{KV pressure changes the scheduler before OOM}
+
+Suppose a speculative tree reserves $R_s$ tentative blocks and ordinary decode would
+reserve $R_b$. The relevant cost is not only whether $R_s$ fits. Extra reservations can
+force another request to wait, prevent admission, trigger preemption, or reduce prefix
+cache residency.
+
+Define a KV pressure ratio
+\[
+\rho_{\rm KV}=\frac{\text{allocated + reserved blocks}}{\text{usable blocks}}.
+\]
+As $\rho_{\rm KV}$ approaches a policy threshold, shrink tree/draft budgets before
+hard allocation failure. Speculation should be one of the first optional consumers to
+yield memory.
+
+\section{Chunked prefill and speculation share an iteration budget}
+
+A server may have queued prompt chunks, ordinary decodes and speculative verification
+at the same time. If the iteration budget is $T$, every speculative node can displace
+prefill progress.
+
+This creates an SLO trade: speculation may improve ITL for already-running requests
+while increasing TTFT for newcomers. A goodput controller must include both objectives
+or enforce separate budgets/reservations.
+
+One safe hierarchy is:
+\begin{enumerate}
+\item Meet mandatory decode and SLO work.
+\item Preserve minimum fair prefill progress.
+\item Spend remaining capacity on profitable speculative work.
+\end{enumerate}
+That ordering is policy, not a universal optimum, but it makes speculation explicitly
+preemptible by required service work.
+
+\section{Sampling changes proposal agreement}
+
+Higher temperature does not mechanically imply a fixed acceptance drop; it changes the
+target distribution and therefore proposal agreement according to the local entropy
+and exact speculative algorithm.
+
+The M1 prompt-lookup quote remained perfectly accepted at temperature 0.8 because
+copying the quotation was highly predictable. Edit acceptance changed only slightly.
+Free/summarize tasks produced no prompt-lookup drafts and showed ordinary run-to-run
+noise. The correct controller feature is observed accepted progress for the current
+workload, not temperature alone.
+
+\section{Structured output can help or hurt}
+
+A grammar can prune illegal draft branches early, raising useful proposal density.
+But grammar state must also be advanced for every candidate path that is actually
+verified. Complex branch-local state adds controller cost and memory.
+
+If constraints make the next token nearly deterministic, speculation may become
+excellent. If constraint checks dominate a tiny target, the opposite can happen.
+Measure the integrated sampler/grammar path rather than benchmarking raw target logits.
+
+\section{Streaming exposes burst latency}
+
+Speculation emits several committed tokens after one verification boundary. Average
+time per token can improve while users observe a longer gap followed by a burst.
+
+For interactive service track both:
+\[
+\mathrm{ITL}_{\rm commit}
+\quad\text{and}\quad
+\mathrm{gap}_{\rm verify}.
+\]
+A configuration that maximizes tokens/s can violate a maximum-gap SLO. The controller
+must be allowed to shorten $\gamma$ even when throughput would prefer a longer draft.
+
+\section{Goodput is the serving objective}
+
+Throughput counts all completed tokens. SLO goodput counts useful completions that meet
+the service contract. One form is
+\[
+G_{\rm SLO}=
+\frac{\sum_r y_r\,
+\mathbf{1}[\mathrm{TTFT}_r\le T_r^{\max}]
+\mathbf{1}[\mathrm{ITL}_{r,p}\le I_r^{\max}\ \forall p]}
+{\Delta t},
+\]
+where $y_r$ is committed output.
+
+The exact business metric may use percentiles rather than all-token constraints. The
+principle is stable: speculative work that increases raw throughput but causes more
+requests to miss latency objectives is not an optimization.
+
+\section{Counterfactual measurement is the hard part}
+
+When speculation is enabled, the engine observes speculative cost but not the baseline
+time the same batch would have taken at that instant. When disabled, it cannot directly
+observe current acceptance.
+
+A controller therefore needs a model, periodic exploration, paired profiling, or
+shadow estimates. TurboSpec is an example of treating speculation as a closed-loop
+goodput-control problem rather than a static flag \cite{liu2024turbospec}.
+
+Avoid an estimator trained only on successful speculative traffic: disabling
+speculation changes batching, which changes the very verification-cost curve being
+predicted.
+
+\section{A practical controller}
+
+Let configurations be
+\[
+\mathcal C=\{0,1,2,4,8,\ldots\},
+\]
+where zero disables speculation and positive values represent draft/tree budgets.
+For each configuration maintain exponentially weighted estimates of committed tokens,
+draft time, verification time, iteration time, KV reservations and SLO misses.
+
+For configuration $c$, predict
+\[
+\widehat G(c)=
+\frac{\widehat{\text{committed useful tokens}}}
+{\widehat{\text{resource time}}}
+-\lambda_{\rm SLO}\widehat P_{\rm miss}
+-\lambda_{\rm KV}\widehat R_{\rm KV}.
+\]
+Choose the best feasible $c$, but add hysteresis:
+\[
+\widehat G(c_{\rm new}) >
+(1+\epsilon)\widehat G(c_{\rm current})
+\]
+for $m$ windows before switching. Hysteresis prevents measurement noise from causing
+oscillation.
+
+\EngineFigure{ch24-controller}{The speculation controller observes committed progress, execution cost, queue/KV pressure and SLO misses; it selects a draft/tree budget, including zero, and uses hysteresis before switching.}{fig:spec-controller}
+
+\section{Control timescale matters}
+
+Changing draft length every token reacts to noise. Waiting minutes reacts too slowly to
+traffic shifts. A useful hierarchy has:
+\begin{itemize}
+\item per-iteration hard safety limits from token/KV budgets;
+\item short-window adaptation of draft/tree size;
+\item slower recalibration of cost models as hardware/load regimes change.
+\end{itemize}
+Request-level hints can initialize policy---for example long-context versus short---but
+observed performance should dominate.
+
+\section{Avoid positive feedback under overload}
+
+A dangerous controller sees falling acceptance, increases tree width to find more
+alternatives, lengthens iterations, grows the queue, and then widens again because
+per-request progress is poor.
+
+Overload logic must move the other direction. As queue delay, KV pressure or SLO misses
+rise, cap optional speculative work. Admission/scheduling pressure is a reason to
+become conservative even if isolated-request speculation would win.
+
+\section{Per-tenant and per-model control}
+
+Acceptance and cost differ by model, adapter, prompt domain, sampling settings and
+tenant workload. One global EWMA can average incompatible regimes.
+
+Key statistics by a stable configuration signature such as
+\[
+H(\text{target},\text{drafter},\text{adapter},\text{sampling class},
+\text{context bucket},\text{hardware/backend}).
+\]
+Do not include sensitive prompt text. Bucketing must have fallback priors so sparse
+classes do not overfit.
+
+\section{Benchmark the policy, not only the mechanism}
+
+An offline speculative benchmark with fixed batch and fixed $\gamma$ answers a kernel
+question. A serving benchmark must vary arrivals, contexts, output lengths and
+acceptance regimes.
+
+Report baseline and speculative TTFT, ITL, throughput, SLO goodput, acceptance/accepted
+length, verified nodes, draft/verify/controller time, KV high-water mark, preemptions,
+prefix-cache effects and configuration-switch count.
+
+Also report \emph{off-policy regret}: how often the controller chose speculation when
+the measured/estimated baseline would have been better, and vice versa.
+
+\section{Failure injection}
+
+A production controller should be tested against:
+\begin{enumerate}
+\item sudden shift from copying to creative generation;
+\item concurrency ramp from one to saturation;
+\item long-context burst that changes the memory/compute bottleneck;
+\item KV occupancy spike;
+\item drafter slowdown or device transfer regression;
+\item noisy timing samples;
+\item SLO tightening for a priority tenant.
+\end{enumerate}
+The safe failure mode is generally less speculation, not more.
 
 \EngineFigure{sys-speculation-choice}{A break-even flowchart for speculation. Compare time per committed token under the same quality, load and latency contract. Draft, verify, rollback and queue costs all belong in the measurement.}{fig:sys-speculation-choice}
 
 \LedgerSection
-
-Speculating at a given batch size, temperature and drafter:
-
 \begin{ConstraintLedger}
-Latency & buys & Tokens per pass above one, while the verification pass stays below the ridge (equation~\eqref{eq:spec-breakeven}). \\
-Compute & spends & Every rejected draft; at batch sizes past $n^{*}/(\gamma+1)$, arithmetic taken from other sequences. \\
-Memory capacity & spends & A drafter's weights and cache, taken from the batch. \\
-Latency & risks & Burstier streams, and slower requests when acceptance or idle compute falls. \\
+Memory bandwidth & trades & Speculation exploits otherwise idle arithmetic during bandwidth-bound target steps; long KV histories can restore this opportunity at large batch.\\
+Memory capacity & spends & Drafter weights/KV, tentative target KV, tree state and workspace can reduce batch capacity or prefix-cache residency.\\
+Compute & spends & Rejected chain suffixes and losing tree branches become direct opportunity cost once ordinary batching saturates arithmetic.\\
+Latency & trades & Fewer serial target iterations can reduce ITL, but verification bursts and queue interference can worsen tail gaps and TTFT.\\
+Correctness & requires & Compare equal decoding semantics; never count proposals as output and never publish losing speculative state.\\
+Cost & decides & Enable speculation only when committed SLO-goodput per resource improves over the counterfactual baseline.\\
 \end{ConstraintLedger}
 
-\LabSection{find your break-even point}
+\LabSection{a controller that is allowed to turn speculation off}
 
-\LabIntent{In \texttt{code/labs/ch24-break-even/}, a harness that measures the
-step time $t(n)$ of the reader's engine for $n$ from 1 to 512 tokens, fits the
-ridge, and predicts the break-even batch of
-equation~\eqref{eq:spec-breakeven} for several draft lengths and acceptance
-rates; a second part runs the lab of \Chref{speculative-decoding} at increasing
-concurrency and marks where the measured speedup crosses one. The prediction
-is checked against the measurement, and disagreements are the exercise.}
+The Rust lab in \texttt{code/labs/ch24-break-even/} is a deterministic trace simulator.
+Each observation supplies baseline step time, speculative draft/verify/overhead time,
+committed tokens, KV pressure and SLO miss state. It computes derived speedup,
+updates an EWMA score for each draft budget, and applies hysteresis before switching.
+The trace values are illustrative inputs, not timings measured by this lab.
+For positive scores the hysteresis margin is proportional to the current
+score; for negative penalized scores it uses the current score's magnitude
+so a small improvement still cannot trigger an immediate switch.
 
-\HappenedSection{a speedup that vanished outside its workload}
+The independent oracle evaluates the break-even inequality directly from raw trace
+fields. Tests cover a profitable low-load regime, an expensive-drafter loss, a
+100-percent-acceptance case whose value falls with concurrency, KV-pressure disabling,
+and hysteresis against oscillation. This lab does not claim to reproduce GPU timings.
 
-Hermon's prompt-lookup speculation gained 1.33 times on four concurrent quote
-requests on an Apple M3 Pro (\Chref{speculative-decoding}). Its developers then
-ran it on a Linux machine with two GPUs, Qwen2.5-1.5B quantized to four bits,
-eight concurrent requests, each asked to write a 250-word essay quoting a
-passage several times. The drafts were good: 1,443 of 2,624 accepted, 55\%. The
-run was \textbf{6\% slower}: 133.4 tokens per second against 141.3 without
-speculation (Hermon \texttt{docs/PERFORMANCE.md}, 2026-05-12; the developers'
-measurement). Their explanation is this chapter's napkin math. With eight
-sequences and five drafts each, a fully speculating step processed 48 tokens
-instead of 8; for a small model on fast GPUs each forward pass was cheap, so
-fattening it cost more than the accepted tokens saved. They wrote the rule down
---- turn speculation on for larger models at modest concurrency on text that
-quotes its context, and measure before turning it on elsewhere --- and left it
-off by default.
+\HappenedSection{the same technique crossed both sides of break-even}
 
-\FrontierSection{2026-09-24}
+The M1 record contains both outcomes. Prompt lookup on repeated text was strongly
+profitable, especially at one request. A mismatched 3B drafter on the 8B reasoning
+target was strongly unprofitable despite accepting nearly half its proposals. Four-way
+concurrency reduced the benefit of perfect prompt-lookup proposals without changing
+their acceptance.
 
-Engines are turning speculation from a flag into a controller: TurboSpec's
-closed loop in vLLM chooses the speculation setting by predicted goodput
-\cite{liu2024turbospec}; drafters that cost less per pass push the break-even
-batch outward \cite{vllm2026peagle}; and long-context serving, where the cache
-keeps steps bandwidth-bound, extends speculation to large batches
-\cite{sadhukhan2024magicdec}. The break-even arithmetic will keep moving as
-hardware ridges rise: each generation that raises arithmetic faster than
-bandwidth makes idle compute more plentiful, and speculation more valuable.
+Research systems have consequently moved toward workload-aware control. TurboSpec
+frames the problem as closed-loop goodput optimization \cite{liu2024turbospec}.
+MagicDec shows why long context can reopen a speculative opportunity at large batch:
+KV traffic changes the bottleneck and a sparse-KV drafter attacks draft cost
+\cite{sadhukhan2024magicdec}.
+
+\FrontierSection{2026-10-05}
+
+The frontier is no longer a binary argument over whether speculative decoding ``works.''
+It is control over a multi-dimensional operating region. Proposal architecture changes
+acceptance and draft cost; verification kernels change $v$; continuous batching changes
+opportunity cost; context changes the roofline; KV managers change capacity cost; SLOs
+change the objective.
+
+A mature inference engine should therefore expose speculation as a policy with
+observable economics:
+\[
+\boxed{
+\text{speculate only while marginal committed SLO-goodput exceeds marginal cost.}
+}
+\]
+The next chapters return to KV architecture, where context representation changes both
+ordinary decode cost and the break-even surface derived here.
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} With $t(n) = \max(t_0, a\,n)$, derive the break-even
-batch size as a function of $\gamma$, $\tau$, $t_0$ and $a$.
-\item \emph{Prediction.} For an H100 serving an 8-billion-parameter model in
-FP8, estimate $n^{*}$ and the break-even batch at $\gamma = 4$.
-\item \emph{Implementation.} Add an adaptive draft length to the lab of
-\Chref{speculative-decoding} that shrinks $\gamma$ when recent acceptance
-falls, and compare it with a fixed $\gamma$ across a workload that alternates
-between quoting and free writing.
-\item \emph{Falsification.} Find a concurrency at which speculation helps on
-your machine at temperature 0 but hurts at temperature 1.
+\item \emph{Derivation.} With $t(n)=\max(t_0,an)$, zero draft cost and linear draft
+length $\gamma$, derive the regions of $B$ for which equation~\eqref{eq:batch-break-even}
+is bandwidth-bound/bandwidth-bound, bandwidth-bound/compute-bound, or
+compute-bound/compute-bound.
+\item \emph{Measured arithmetic.} Using the M1 3B values 68.3 ms at one token and
+157.5 ms at 16, compute verification ratio $v$. What minimum $\tau$ is required if
+draft+controller cost is 0.5 target steps?
+\item \emph{Capacity.} A drafter reduces maximum resident batch from 64 to 48 but makes
+each resident request 1.25 times faster. Ignoring other effects, does aggregate capacity
+improve?
+\item \emph{Controller.} Add separate context-length buckets to the lab and construct a
+trace where one global estimator chooses the wrong policy.
+\item \emph{SLO.} Construct two policies with equal raw throughput but different TTFT
+and ITL distributions; show how SLO goodput reverses the ranking.
+\item \emph{Falsification.} Produce a deterministic trace with 100-percent acceptance
+where speculation loses. Identify the denominator term responsible.
 \end{enumerate}
+
+\input{worked/ch24-when-speculation-loses.tex}

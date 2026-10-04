@@ -1,229 +1,455 @@
 % status: ZERO
-% Chapter 20 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part3.md (structured).
+% Printed Chapter 37 / stable source ch20. Rules: AUTHORING.md.
 \chapter{Structured Output at Engine Speed}\label{ch:structured-output}
 
 \begin{ChapterIntent}
-Applications increasingly need output that parses: JSON that matches a
-schema, function calls, code in a grammar. Constrained decoding enforces this
-by masking tokens that would violate the grammar at every step, and the
-engineering problem is doing so over a vocabulary of hundreds of thousands of
-tokens faster than the step it gates. This chapter compiles grammars into
-token-level automata, precomputes masks for context-independent tokens,
-overlaps mask computation with the GPU, and covers jump-forward decoding and
-the ways masking can distort a model's distribution.
+Structured generation is not a better prompt. It is a second state machine attached
+to each decoding request. At every committed token the engine must intersect the
+model's distribution with the continuations accepted by a grammar, schema, regex or
+tool protocol, then advance constraint state exactly once. This chapter follows that
+state from schema compilation through tokenizer-aware automata, mask construction,
+sampling and commit; explains why a 16-KB mask can cost more than a model forward
+pass; and connects constrained decoding to batching, cancellation, prefix reuse and
+the speculative-decoding contract developed later.
 \end{ChapterIntent}
 
-\OpeningSection{A schema check slower than the model}
+\OpeningSection{When checking the format costs more than running the model}
 
-Ask Llama~3.2~3B, through llama.cpp's server on the M1, for a JSON record of a
-fictional book --- title, author, year, genres, rating --- twenty times at
-temperature 0.8. Unconstrained, 19 of the 20 answers parsed and matched the
-schema; the twentieth wrapped its JSON in a Markdown code fence. With the
-schema enforced by the server, all 20 were valid, and decoding cost 40.1~ms per
-token against 39.5 unconstrained: nothing measurable (measured; record
-\texttt{2026-09-24-m1-part3}).
+The edition's M1 measurement record asks Llama~3.2~3B for a fictional-book JSON
+record twenty times. Unconstrained, 19 of 20 responses parsed and matched the desired
+schema; one wrapped otherwise valid JSON in a Markdown fence. With the schema enforced
+by llama.cpp, 20 of 20 were valid. Median decode cost was 40.1 ms/token constrained
+versus 39.5 ms/token unconstrained---no meaningful overhead at that measurement scale.
 
-Then change one field. Make each genre one of 2,000 allowed strings,
-\texttt{genre-0000} to \texttt{genre-1999}. All 20 answers were still valid.
-But each token now cost \textbf{148~ms} at the median, 3.7 times as long: the
-grammar work added more than twice the time of the model's forward pass. And
-the answers showed a second cost. Forced to choose among labels it had no
-reason to prefer, the model wrote \texttt{genre-1351} three times in one
-record.
+Then one field changed. Each genre had to be one of 2,000 synthetic labels,
+\texttt{genre-0000} through \texttt{genre-1999}. Validity remained 20 of 20, but
+median decode cost rose to about 148 ms/token, 3.7 times the ordinary constrained run
+(measured; \texttt{research/measurements/2026-09-24-m1-part3.md}). The grammar had
+become more expensive than the model step it gated.
 
-Both results follow from how the server applies a grammar. It first samples a
-token without the grammar and checks only that token; only if it is invalid
-does it apply the grammar to the whole vocabulary --- 128,256 candidates ---
-and sample again (\texttt{common/sampling.cpp} at commit \texttt{d006858}).
-With the ordinary schema the model's own choices were almost always valid, so
-the expensive path rarely ran. Inside the enumeration its natural choices ---
-\emph{Drama}, \emph{Mystery} --- were invalid at many steps, and each time
-the whole vocabulary was checked against a grammar offering two thousand
-alternatives at that point.
-Constrained decoding is cheap when the model already agrees with the grammar,
-and its cost lands exactly where the grammar and the model disagree.
+The pinned llama.cpp sampling path explains the qualitative difference. It can first
+sample cheaply and test the selected token; when that candidate violates the grammar,
+it falls back to applying grammar constraints across the candidate set before
+resampling. With an ordinary JSON schema, the model already prefers punctuation and
+field structure that are often legal. With a large synthetic enumeration, its natural
+continuations disagree with the allowed language much more often.
 
-\Foundations{Validity is a language constraint}{
-A grammar describes which continuations are syntactically legal. It does not establish
-that a generated statement is true, useful or safe. Tokenization complicates grammar
-enforcement because one token can contain several characters or only part of a byte
-sequence. A mask must test how a token's entire contribution changes parser state,
-including whether a valid completion remains possible. Renormalizing after masking
-changes probabilities. Chapter~\ref{app:tokens} develops text and token boundaries; Chapter~\ref{app:sampling}
-develops sampling. Keep syntactic validity separate from semantic validation when
-deciding what the engine has guaranteed.
+Structured-output overhead is therefore not one constant. It depends on vocabulary
+size, parser state, constraint shape, model--grammar agreement, compilation reuse and
+where mask computation sits on the CPU/GPU critical path.
+
+\Foundations{Validity is a language property, not a truth property}{
+A constraint defines a language $L$ of permitted output strings. Constrained decoding
+guarantees that the committed output remains on a prefix that can lead to a member of
+$L$, and generation may terminate only in an accepting state. This can guarantee
+syntax such as JSON shape, an enumeration or a tool-call envelope. It does not prove
+that a year is historically correct, a URL is safe, a tool should be called, or an
+argument is authorized. Those are semantic/application policies above the grammar.
+Tokenization is part of the correctness boundary because the model chooses token IDs,
+not characters. Chapter~\ref{app:tokens} explains the byte/token boundary;
+Chapter~\ref{app:sampling} explains how a permitted set changes sampling.
 }
 
-\NapkinSection{Napkin math: a vocabulary per step}
+\NapkinSection{Napkin math: the mask is tiny; discovering it is expensive}
 
-A mask decides, for each of $V$ tokens, whether appending it keeps the output
-inside the grammar. Checked naively, a step costs $V$ grammar evaluations per
-sequence:
+Let vocabulary size be $V$, active constrained sequences $B$, and average cost to test
+one token against one parser state $t_c$. A naive implementation costs
 \begin{equation}
-t_{\text{mask}} \approx B\,V\,t_{\text{check}},
-\label{eq:mask-cost}
+T_{\rm check}\approx B V t_c.
+\label{eq:structured-naive}
 \end{equation}
-for $B$ sequences and a check time $t_{\text{check}}$ per token. With
-$V = 128{,}256$ and a microsecond per check, one sequence costs 128~ms of CPU
-per step --- three decode steps of this laptop, and sixteen of a data-center
-GPU's 8~ms step (illustrative check time). A batch of 64 constrained sequences
-would need 8 CPU-seconds per step. The mask itself is small: $V$ bits, 16~KB
-per sequence (derived). The whole problem is computing it; every technique in
-this chapter reduces $V\,t_{\text{check}}$ or hides it behind the GPU.
+For $V=128{,}256$, $B=64$ and $t_c=1\,\mu$s, this is 8.21 CPU-seconds of token checks
+per decode iteration (illustrative). Clearly those checks must be cached, vectorized,
+parallelized, avoided or overlapped.
 
-\section{Constrained decoding as masking}
+By contrast a dense validity bitset costs only
+\[
+M_{\rm mask}=\frac{V}{8}.
+\]
+At $V=128{,}256$, that is 16,032 bytes per sequence, or about 1.0 MiB for 64 sequences
+(derived). The dominant problem is usually constructing/updating the allowed set and
+moving/applying it at the right time, not storing the bits.
 
-At each step the model produces logits over the vocabulary. Constrained
-decoding sets the logit of every token that would violate the grammar to
-$-\infty$, so sampling renormalizes over the valid tokens, and advances the
-grammar's state with the chosen token. The output is valid by construction:
-not \emph{likely} to parse, but guaranteed to, provided the mask is computed
-correctly and generation ends only where the grammar allows. The model's
-weights and forward pass are untouched; everything happens between the logits
-and the sampler (Chapter~\ref{app:sampling}).
+If a compiled state has $C$ context-dependent candidates and the other $V-C$ token
+decisions are precomputed, the dynamic term becomes roughly
+\[
+T_{\rm dynamic}\approx B C t_c.
+\]
+The engineering goal is to make $C\ll V$ and hide the remaining work behind model
+execution without using stale constraint state.
 
-\section{From grammar to automaton}
+\section{The engine contract}
 
-A grammar is compiled once into an automaton whose state summarizes the output
-so far. Regular constraints --- a date, an enumeration of strings --- compile
-to finite automata. JSON with nested objects and arrays needs a context-free
-grammar, whose automaton carries a stack of the structures still open. A JSON
-schema is translated into such a grammar: property names, value types,
-required fields and enumerations become productions. The compiled automaton is
-cached per schema, because applications reuse schemas heavily.
+For request $r$, let $g_r$ denote constraint state and $z_r$ the model state/KV after
+the committed token prefix. One decode transaction is:
 
-\section{Tokens are not characters}
+\begin{enumerate}
+\item run the model from committed $z_r$ and obtain logits $\ell$;
+\item compute allowed token set $A(g_r)$;
+\item set $\ell_i=-\infty$ for $i\notin A(g_r)$;
+\item sample/select token $x$ from the remaining distribution;
+\item compute candidate next grammar state $g'_r=\delta(g_r,\mathrm{bytes}(x))$;
+\item commit token and $g'_r$ together, recording the valid model-state frontier;
+\item permit EOS only if the grammar is in an accepting configuration.
+\end{enumerate}
 
-The automaton reads characters; the model emits tokens, each a string of
-several characters that may straddle grammatical boundaries: one token can
-close a string, add a comma and open the next key. To decide whether a token is
-valid, the checker must run the token's whole character sequence through the
-automaton from the current state. And the same text can be tokenized in
-different ways, so a mask that admits only the grammar's preferred
-tokenization can push the model toward token sequences it rarely saw in
-training (\Appref{tokens}).
+The ordering is a correctness contract. Sampling from the previous state's mask and
+advancing the grammar afterward is not equivalent. Nor may a failed/cancelled model
+step advance $g_r$ while KV remains uncommitted. A sampled token's own KV
+usually does not exist yet: it is created when that token becomes an input
+to the next forward pass. The transaction aligns state with the legal
+history, not necessarily with identical numeric frontier counts. Track
+the most recent committed token separately from the most recent position
+whose target KV has actually been computed.
 
-\section{Precomputing masks}
+\EngineFigure{ch20-transaction}{Mask construction consumes the current grammar state. Only the selected committed token advances grammar state; the target-KV frontier is tracked separately until that token is fed into the model.}{fig:structured-transaction}
 
-Most of the work in equation~\eqref{eq:mask-cost} repeats. For a finite
-automaton, the set of valid tokens depends only on the state, so it can be
-computed once per state and looked up at each step. With a stack, validity can
-depend on what is beneath the top, but for most tokens it does not. XGrammar
-splits the vocabulary accordingly: tokens whose validity is determined by the
-current state alone are prechecked when the grammar is compiled, and only the
-remaining, context-dependent tokens are checked at run time
-\cite{dong2025xgrammar}. Its authors reported up to 100 times the speed of
-earlier implementations (their measurement).
+\section{Compile the specification before decoding}
 
-\section{The persistent stack}
+Applications usually provide JSON Schema, a regular expression, an EBNF-like grammar,
+or a tool/function schema. The runtime should not reinterpret the full high-level
+document at every token. It compiles the specification into a representation suited
+to incremental recognition.
 
-The context-dependent checks need the stack, and decoding needs to try
-alternatives: speculative drafts that may be rejected
-(\Chref{speculative-decoding}), jump-forward runs, rollbacks. Copying a deep
-stack for every alternative would cost more than the checks. XGrammar keeps a
-persistent stack, a structure in which versions share their common parts, so
-that branching and rollback cost little \cite{dong2025xgrammar}.
+Regular languages can use deterministic or nondeterministic finite automata. Nested
+JSON/CFG constructs need stack-bearing machinery such as a pushdown automaton or a
+parser representation with equivalent expressive power. The compiled object also
+contains tokenizer-specific acceleration data: token byte strings, state-dependent
+transition tables, precomputed masks or categories of tokens whose validity can be
+decided without consulting deep stack context.
 
-\section{Overlapping masks with the GPU}
+Compilation belongs in request admission/accounting because it consumes CPU time and
+memory before the first constrained token. A service with thousands of one-off schemas
+can be compilation-bound even if steady-state mask generation is fast.
 
-Even a fast mask is CPU work on the critical path: the sampler needs it at the
-end of every step. The fix is to compute the next step's mask on the CPU while
-the GPU runs the current step's forward pass. The mask for step $t+1$ depends
-on the token chosen at step $t$, so full overlap needs the grammar state after
-sampling; engines therefore overlap the mask computation with the part of the
-step that does not depend on it --- the forward pass --- and apply it at
-sampling time. XGrammar was designed with this co-scheduling in mind, and its
-authors reported near-zero overhead end to end in serving
-\cite{dong2025xgrammar}.
+\section{Bytes, Unicode and token IDs}
+
+The grammar's alphabet and the tokenizer's emitted representation must agree. Many
+tokenizers expose byte-level pieces internally; visible Unicode characters can span
+multiple UTF-8 bytes, and one model token can contain several characters or punctuation
+crossing grammar boundaries.
+
+Suppose the grammar expects JSON fragment \texttt{"x":}. A vocabulary token might
+encode \texttt{"x"} alone, another \texttt{":}, and another an even larger piece
+including the colon. Correctness requires feeding the entire token contribution
+through the recognizer from the current state. Testing only its first character admits
+tokens whose suffix violates the grammar; testing only whole visible characters can
+mishandle byte-fallback tokens.
+
+The safe abstraction is
+\[
+\delta^*(g,b_1b_2\ldots b_n),
+\]
+the parser state after consuming every byte/piece contributed by token $x$. The token
+is legal only if the transition exists and leaves a prefix from which acceptance is
+possible.
+
+\section{A hand-worked automaton}
+
+Consider the tiny language
+\[
+L=\{\texttt{\{"ok":true\}},\ \texttt{\{"ok":false\}}\}.
+\]
+After the fixed prefix \texttt{\{"ok":}, the parser is at state $q_v$. From $q_v$,
+the only valid textual branches are \texttt{true} and \texttt{false}. If the tokenizer
+contains tokens for \texttt{true}, \texttt{false}, \texttt{tr}, \texttt{fa},
+\texttt{true\}}, and \texttt{null}, then the first five can be legal depending on how
+their complete byte strings advance the state; \texttt{null} cannot.
+
+After choosing \texttt{tr}, the next state admits continuations that complete
+\texttt{true}. The mask is therefore a function of parser state, not merely of the
+schema. This tiny example is implemented in the chapter lab.
+
+\section{Context-free state and the persistent stack}
+
+JSON arrays and objects nest. A recognizer must remember which constructs remain open,
+which properties are legal, and what continuation is expected after each nested
+value. Copying a deep mutable stack for every candidate token or speculative branch is
+wasteful.
+
+XGrammar uses persistent stack structures so branches share unchanged history. This
+supports cheap trial transitions and rollback while retaining context required for CFG
+execution. Its other key optimization divides vocabulary work into
+context-independent decisions that can be prechecked and a much smaller dynamic set
+that needs runtime interpretation. The authors report up to 100$\times$ speedup over
+their compared structured-generation engines and near-zero serving overhead in
+evaluated integrations. Those are authors' measurements, not universal engine costs.
+\cite{dong2025xgrammar}
+
+\section{Mask representations}
+
+An allowed set can be represented as:
+\begin{itemize}
+\item a dense bitset of $V$ bits;
+\item a sparse vector of allowed token IDs;
+\item a sparse vector of forbidden IDs;
+\item ranges/classes plus exceptions;
+\item a device-resident mask updated from compact CPU deltas.
+\end{itemize}
+
+Which wins depends on mask density and sampling backend. If only 12 tokens are legal,
+shipping 12 IDs can be cheaper than writing a 25-KB mask for a 200K vocabulary. If
+190K are legal, a forbidden sparse list or dense bitset is better. The representation
+should be chosen from measured density and application cost, not aesthetic preference.
+
+\section{Apply the mask without serializing the GPU}
+
+A naive serving loop is:
+\[
+\text{GPU forward}\rightarrow\text{CPU mask}\rightarrow\text{copy mask}
+\rightarrow\text{GPU sample}\rightarrow\text{next forward}.
+\]
+Every arrow can become a synchronization point. Fast implementations precompute what
+they can, overlap CPU grammar work with accelerator execution, reuse device buffers,
+and fuse mask application with sampling when practical.
+
+The dependency cannot be wished away: the exact next grammar state depends on the
+committed token. Pipelining must preserve that dependency. Work for request $r$ may be
+prepared once $x_t$ is known while the accelerator performs independent work for other
+requests or the next model invocation where ordering permits.
+
+\section{Continuous batching means every row has different grammar state}
+
+In a continuous batch, row 0 may be inside a JSON string, row 1 choosing a property,
+row 2 unconstrained, and row 3 inside a 2,000-way enum. One global mask is incorrect.
+
+The scheduler therefore carries per-request constraint handles alongside KV/block
+tables and sampling parameters. A batch builder emits a mapping from model rows to
+constraint states and mask buffers. When a request finishes, cancels or is preempted,
+its grammar-state ownership follows the same lifecycle discipline as other request
+state.
+
+Constraint CPU cost can also affect scheduling. A batch containing many expensive
+dynamic grammars may leave the GPU waiting even though token/KV budgets look healthy.
+An industrial scheduler should observe grammar compilation and mask latency rather
+than treating constrained tokens as identical to unconstrained ones.
+
+\section{Prefix caching does not cache parser state automatically}
+
+Two requests can share an identical prompt prefix and therefore reuse KV while asking
+for different output schemas. The KV cache proves equality of model computation for
+the prefix; it says nothing about output-language state.
+
+For most API patterns the grammar begins at generation, so both requests initialize
+their independent grammar state after the prompt. If constrained generation itself is
+resumed from a cached generated prefix, reuse requires a compatible constraint
+namespace and a parser checkpoint corresponding to that exact output prefix. Never
+infer grammar-state equivalence from KV identity alone.
+
+\section{Cancellation and preemption}
+
+Constraint state is cheap compared with KV, but it still has ownership. Cancellation
+must retire it with the request. Recomputation preemption can rebuild model KV from
+tokens; grammar state can likewise be reconstructed by replaying committed output
+through the compiled recognizer, or preserved as a compact checkpoint.
+
+The invariant is:
+\[
+g_r=\delta^*(g_{0,r},\mathrm{committed\ output\ bytes}).
+\]
+A stored parser checkpoint is an optimization. The committed token sequence is the
+source of truth.
 
 \section{Jump-forward decoding}
 
-Sometimes the grammar allows exactly one continuation: after
-\texttt{\{"title":} only a quote can follow, and after a required key only its
-colon. Sampling such tokens one step at a time wastes whole forward passes.
-Jump-forward decoding appends the forced text directly and processes it in one
-prefill step, which the SGLang authors built on a compressed finite-state
-machine \cite{zheng2023sglang}. The subtlety is tokenization again: forced
-text must be tokenized the way the model would have tokenized it in context,
-or the model sees an unfamiliar split.
+A grammar sometimes has only one legal textual continuation for several characters.
+Running a full model decode step for each forced punctuation token spends compute on a
+choice that does not exist. Jump-forward techniques append a forced span and process
+it efficiently, often as prefill-like work.
 
-\section{Correctness: when masking distorts the distribution}
+The optimization has two hazards. First, a forced \emph{text} span must be tokenized
+compatibly with model context; an arbitrary retokenization can change the model's
+token history. Second, a supposedly deterministic grammar path may still admit
+multiple tokenizations even when it admits one byte string. The engine must reason
+about token-level legality, not merely print the characters.
 
-Masking guarantees validity, not faithfulness. Renormalizing over the valid
-tokens at each step is a greedy approximation: it does not sample from the
-model's distribution conditioned on the output being grammatical, because it
-cannot see that a locally likely token leads toward completions the grammar
-will later force into unlikely text. Park and colleagues formalized this
-distortion and proposed an adaptive sampler that converges to the conditioned
-distribution \cite{park2024gad}. The opening's repeated
-\texttt{genre-1351} is the everyday version: a constraint that forbids what
-the model wants to say produces valid output that says little. Constraints
-belong on format; content the model must reason about should stay in fields it
-can fill freely.
+SGLang's structured-generation work uses compressed finite-state machinery and
+jump-forward decoding as part of this optimization family.
 
-The grammar is state carried beside the model, not a second language model. The next mask depends on the prefix actually committed. Sampling from an old mask and updating the grammar afterward is not an equivalent ordering.
+\section{Sampling after masking}
+
+Given original probabilities $p(x)$ and legal set $A$, ordinary token masking samples
+\[
+p_{\rm local}(x)=\frac{p(x)\mathbf{1}[x\in A]}
+{\sum_{y\in A}p(y)}.
+\]
+This is locally normalized. It does not generally equal the distribution over complete
+strings obtained by conditioning the original model on eventual grammaticality.
+
+Grammar-Aligned Decoding formalizes this mismatch. A locally attractive legal token
+may lead into a region where all eventual grammatical completions have very low model
+probability; a different token with lower immediate probability may lead to much more
+probable valid futures. Park et al. propose an adaptive method targeting the
+conditioned distribution. \cite{park2024gad}
+
+This is not a reason to avoid constraints. It tells us what guarantee masking provides:
+validity, not distributional neutrality.
+
+\section{Use constraints for structure, not fabricated knowledge}
+
+The 2,000-genre experiment illustrates a product mistake. A large enum forces the
+model to choose one legal symbol even when none expresses what it believes. The result
+is syntactically perfect and semantically arbitrary.
+
+Good uses include JSON punctuation, required keys, tool names from an authorized
+registry, protocol envelopes and finite control codes. Riskier uses force substantive
+answers into arbitrary enumerations without an ``unknown''/free-text escape. Schema
+design is part of model-quality engineering.
+
+\section{Tool calls add a security boundary}
+
+A grammar can guarantee that
+\[
+\{\texttt{"tool":"transfer","amount":100}\}
+\]
+parses. It cannot authorize the transfer. Tool identity, argument types, permissions,
+limits and user confirmation remain application/policy checks after parsing.
+
+Structured generation narrows syntax; it must not collapse syntax validation and
+capability authorization into one layer. This distinction becomes critical for
+agentic systems whose structured output directly triggers side effects.
+
+\section{Dynamic schemas change the economics}
+
+Classic structured-generation optimization assumes a schema is reused enough to
+amortize compilation. Agent systems can construct tool menus and conditional grammars
+per turn. XGrammar 2 targets this workload with dynamic dispatch semantics, JIT
+compilation, cross-grammar caching and broader parser machinery; its authors report
+more than 6$\times$ faster grammar compilation than compared engines on
+evaluated dynamic workloads, not a sixfold end-to-end token-generation speedup.
+\cite{li2026xgrammar2}
+
+The architectural lesson is that compilation cache identity now matters. A compiled
+artifact should be keyed by canonical constraint semantics, tokenizer/version and
+backend options, not merely by an untrusted schema string pointer. Cache memory needs
+bounds and eviction just like prefix KV.
+
+\section{Structured output meets speculative decoding}
+
+Chapter~\ref{ch:speculative-decoding} will draft several candidate tokens before the
+target model verifies them. A grammar cannot simply advance through the entire draft
+and hope verification accepts it. Each drafted token must be legal along the candidate
+constraint-state path, and rejection must roll grammar state back to the last committed
+token.
+
+Persistent parser state makes this natural:
+\[
+g_0\rightarrow g_1\rightarrow\cdots\rightarrow g_k
+\]
+is a candidate branch. Verification commits a prefix of these states and discards the
+rest. This is the same transaction principle used for KV and chunked-prefill progress.
+
+\section{What to measure}
+
+For every structured request class record:
+\begin{itemize}
+\item schema/grammar compilation latency and cache-hit rate;
+\item dynamic mask-construction latency per token;
+\item allowed-set cardinality or density;
+\item CPU time waiting on grammar work;
+\item host-to-device mask bytes;
+\item decode step time constrained versus unconstrained;
+\item fallback/full-vocabulary check frequency where applicable;
+\item output validity and semantic task quality separately.
+\end{itemize}
+
+Report percentiles, not only means. One pathological parser state can dominate tail
+ITL. Also stratify by schema family: ``JSON schema'' covers everything from a fixed
+three-field object to thousands of enums and recursive structures.
+
+\section{Failure tests that distinguish real correctness}
+
+A useful suite includes a token whose prefix is legal but suffix is illegal; a UTF-8
+character split across byte-fallback tokens; deeply nested arrays/objects; EOS in a
+nonaccepting state; a schema with an empty legal set; two requests sharing KV but not
+grammar; cancellation after mask construction but before token commit; and a
+speculative branch that is partly rejected.
+
+Differentially compare the optimized mask builder with a brute-force oracle that feeds
+every token's complete bytes through an independent recognizer. Performance tests do
+not substitute for this oracle: a fast wrong mask silently changes the language.
+
+\EngineFigure{ch20-batch-pipeline}{A continuous batch carries per-request constraint state. Compilation is amortized where possible; mask work is overlapped, but each row samples against the mask derived from its own committed grammar state.}{fig:structured-batch}
 
 \EngineFigure{sys-grammar-sequence}{UML sequence view of grammar-constrained decoding (conceptual). Selection uses the intersection of the model distribution and the currently allowed set; the constraint state advances with the committed token. No particular CPU/GPU placement or parallel schedule is implied.}{fig:sys-grammar-sequence}
 
 \LedgerSection
-
-Masking invalid tokens against a compiled grammar at every step:
-
 \begin{ConstraintLedger}
-Correctness & buys & Valid output by construction: 20 of 20 answers against 19 of 20 unconstrained on the M1. \\
-Compute & spends & CPU work per step up to $B\,V\,t_{\text{check}}$ (equation~\eqref{eq:mask-cost}); precomputation and a persistent stack cut it to little. \\
-Latency & spends & Nothing measurable for an ordinary schema; 3.7 times the time per token when the grammar and the model disagreed. \\
-Correctness & risks & Masking distorts the distribution: valid output can be meaningless. \\
+Correctness & buys & Outputs remain inside the declared syntactic language and terminate only in accepting states.\\
+Compute & spends & Parser transitions and mask construction can approach $BV$ token checks without acceleration.\\
+Memory bandwidth & spends & Dense masks or mask deltas must be written and possibly transferred/applied each step.\\
+Latency & trades & Precomputation and overlap can make ordinary schemas nearly free; pathological dynamic constraints can dominate ITL.\\
+Capacity & spends & Compiled grammars, persistent stacks and cached masks consume bounded CPU/device memory.\\
+Correctness & risks & Token/byte mismatch, stale parser state, premature EOS, rollback bugs and local distribution distortion.\\
+Cost & trades & Valid-by-construction output removes retry/parsing waste; expensive one-off schemas can consume more CPU than expected.\\
 \end{ConstraintLedger}
 
-\LabSection{a JSON mask over a real vocabulary}
+\LabSection{token-aware masking with an independent oracle}
 
-\LabIntent{In \texttt{code/labs/ch20-structured-output/}, a Rust JSON-schema
-recognizer and a mask builder over the Llama~3 vocabulary read from a GGUF
-file. The naive builder checks all 128,256 tokens at every state; the
-precomputed builder caches masks for context-independent tokens. A brute-force
-oracle decodes each token's bytes through the recognizer. The reader measures
-microseconds per mask for both builders along a real JSON output, then adds an
-enumeration of 2,000 strings and watches the naive builder's cost grow.}
+The Rust lab in \texttt{code/labs/ch20-structured-output/} deliberately uses a tiny
+vocabulary so every transition can be inspected. It recognizes exactly
+\texttt{\{"ok":true\}} and \texttt{\{"ok":false\}}. Vocabulary pieces include complete
+values, partial values, punctuation-crossing pieces and an invalid \texttt{null}.
 
-\HappenedSection{structured output in production engines}
+The optimized mask builder memoizes allowed token IDs per parser state. The independent
+oracle does not consult that cache or its prefix-state transition table: it
+concatenates each token's bytes to the committed bytes and directly checks
+whether either of the two complete permitted strings starts with that result.
+Tests compare both masks at
+every reachable state, reject premature EOS, and verify rollback by deriving state
+again from committed bytes.
 
-Structured output moved in two years from libraries wrapped around generation
-to engine features with dedicated backends. XGrammar's authors built it to be
-integrated with inference engines \cite{dong2025xgrammar}; SGLang adopted it
-and its developers reported JSON decoding up to 10 times faster than other
-open-source solutions \cite{sglang2024v04}; vLLM supports XGrammar and
-guidance backends, among others, and picks one per request by default
-\cite{vllm2026structured}. llama.cpp's server took a different, cheaper-first
-path: speculative grammar checking, in which only the sampled token is checked
-and the full mask is computed on failure, with the llguidance library available
-as a build option (\texttt{common/sampling.cpp} at commit \texttt{d006858}).
-The opening measured both sides of that design: no cost when the model agrees
-with the grammar, and a forward pass's worth and more when it does not.
+The lab is intentionally not a benchmark of XGrammar, llama.cpp or GPU serving. It
+teaches the state/commit contract that an optimized backend must preserve.
 
-\FrontierSection{2026-09-24}
+\HappenedSection{grammar libraries moved inside the engine}
 
-Mask computation is approaching zero overhead in engines that precompute and
-overlap it \cite{dong2025xgrammar,vllm2026structured}. The open problems are
-elsewhere: sampling faithfully from the model's distribution restricted to a
-grammar \cite{park2024gad}, and the interaction between constraints and
-reasoning --- a model that must think before it answers needs somewhere
-unconstrained to think (\Chref{reasoning-workloads}).
+Structured output evolved from application-side retry loops into a serving primitive.
+llama.cpp has long supported grammar-constrained sampling; the pinned measurement
+shows both its cheap case and a large-enum slow path. SGLang developed structured
+generation and jump-forward techniques. XGrammar co-designed grammar execution with
+LLM serving using context-independent token prechecks, persistent stack state and
+overlap with GPU execution. Modern engines integrate specialized structured-output
+backends rather than interpreting JSON Schema from scratch after every token.
+
+The resulting architecture resembles the rest of this book: compile expensive static
+work once, keep a compact per-request state machine, batch the dynamic part, avoid
+synchronization, and make rollback/ownership explicit.
+
+\FrontierSection{2026-10-05}
+
+XGrammar remains an important reference for high-performance CFG execution; its paper
+reports up to 100$\times$ acceleration over compared structured-generation systems and
+near-zero overhead in integrated serving. Grammar-Aligned Decoding demonstrates that
+ordinary local masking can distort the model's distribution over valid complete
+outputs. JSONSchemaBench broadens evaluation from toy schemas to a 10K-schema corpus
+and emphasizes efficiency, coverage and output quality as separate axes.
+
+The 2026 frontier is dynamic agentic structure. XGrammar 2 introduces dynamic dispatch,
+JIT compilation and cross-grammar caching for tool-rich workloads, reporting more than
+6$\times$ faster grammar compilation than compared structured-generation
+engines in its evaluation.
+These are research-system measurements; production claims require pinned engine source
+and deployment measurements.
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} Using equation~\eqref{eq:mask-cost}, find the check
-time that keeps mask computation under 10\% of an 8~ms step for a batch of 64
-sequences with a 200,000-token vocabulary.
-\item \emph{Prediction.} Which tokens of the Llama~3 vocabulary are valid
-immediately after \texttt{\{"year":}? Estimate their number before counting
-them in the lab.
-\item \emph{Implementation.} Add jump-forward decoding to the lab and count the
-forward passes it saves on the opening's schema.
-\item \emph{Falsification.} Construct a grammar and prompt for which
-constrained decoding at temperature zero produces an output that the
-unconstrained model, at temperature zero, would assign lower probability than
-some other valid output.
+\item \emph{Derivation.} With $V=200{,}000$, $B=64$ and an 8-ms model step, what
+average $t_c$ would keep naive equation~\eqref{eq:structured-naive} below 10\% of the
+step? Explain why the answer motivates precomputation.
+\item \emph{Trace.} For the lab grammar, trace parser states after tokens
+\texttt{\{"ok":}, \texttt{tr}, \texttt{ue\}} and identify where EOS first becomes
+legal.
+\item \emph{Representation.} Compare bytes written by a dense bitset with a sparse
+list when 12 of 200,000 token IDs are legal. State the ID width you assume.
+\item \emph{Implementation.} Add speculative branches to the lab. Acceptance:
+candidate grammar states are persistent/cloneable; rejecting token $j$ restores the
+state after committed token $j-1$; oracle parity holds after every rollback.
+\item \emph{Security.} Give an example of a syntactically valid tool call that must
+still be rejected by authorization policy.
+\item \emph{Falsification.} Construct a grammar where locally normalized masking
+chooses a different highest-probability path than ranking complete valid strings by
+the original model probability.
 \end{enumerate}
+
+\input{worked/ch20-structured-output.tex}

@@ -1,0 +1,13 @@
+% diagram-kind: timeline
+\begin{tikzpicture}[node distance=10mm and 12mm]
+\node[sysbox] (hit) {Verified prefix\\0--6143};
+\node[sysbox,right=of hit] (q1) {Iteration 1\\schedule 960};
+\node[sysbox,right=of q1,fill=BookGreen] (c1) {Commit\\through 7103};
+\node[sysbox,below=16mm of c1] (q2) {Iteration 2\\schedule 944};
+\node[sysbox,left=of q2,fill=BookGreen] (c2) {Commit\\through 8047};
+\draw[flow](hit)--node[syslabel]{pin}(q1);
+\draw[flow](q1)--node[syslabel]{success}(c1);
+\draw[flow](c1)--(q2);
+\draw[flow](q2)--node[syslabel]{success}(c2);
+\node[sysnote,below=13mm of c2,anchor=north] {Positions are absolute and zero-based. A failed runner step leaves\\the committed boundary unchanged; scheduling is not commitment.};
+\end{tikzpicture}

@@ -1,0 +1,44 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{One 4096-by-4096 projection}
+\textbf{Problem.} \emph{Derivation.} For $d_{\rm in}=4096$, $d_{\rm out}=4096$, rank 16 and FP16
+factors, compute LoRA parameters, bytes and multiply-add FLOPs/token for one matrix.
+
+\textbf{Solution.} Rank 16 adds $16(4096+4096)=131{,}072$ parameters. FP16 factors occupy
+262,144 bytes = 256 KiB. The two thin products require approximately
+$2\times131{,}072=262{,}144$ FLOPs/token under the chapter's multiply-add convention.
+
+\Needspace{12\baselineskip}
+\subsection{Stale residency handle}
+\textbf{Problem.} \emph{Trace.} A two-slot device cache contains A@gen4 and B@gen9. Request $r$
+holds A@gen4. A retires, C loads into the same physical slot at gen5, then $r$ reaches
+execution. State the required result and why checking only slot number is unsafe.
+
+\textbf{Solution.} The request must not execute. Slot identity alone now names C, while the request
+leased A@gen4. Validation sees generation 5 rather than 4 and forces reload/rebind or
+a controlled wait/error. Executing C would silently change model semantics.
+
+\Needspace{12\baselineskip}
+\subsection{Adapter diversity}
+\textbf{Problem.} \emph{Batching.} Compare adapter bytes for 64 rows using one 48.6-MB adapter
+versus 64 distinct adapters, assuming each distinct adapter's factors must be streamed
+once. What assumption makes this an upper-level bandwidth model rather than a kernel
+measurement?
+
+\textbf{Solution.} If each distinct 48.6-MB adapter is streamed once, one-adapter diversity contributes
+48.6 MB while 64 distinct adapters contribute about 3.11 GB. This is a traffic model,
+not a measured kernel cost: caches, tiling, partial layer residency and overlap can
+change actual bytes/time.
+
+\Needspace{12\baselineskip}
+\subsection{KV namespace}
+\textbf{Problem.} \emph{Caching.} Explain why identical tokens under two different adapters should
+normally produce different prefix-cache keys even if both adapters leave the first
+layer's K/V projections untouched.
+
+\textbf{Solution.} Even if an adapter does not modify first-layer K/V directly, it can change hidden
+states through another projection; later layers then receive different activations and
+produce different KV. General cache reuse therefore needs effective-model identity
+unless a stronger layer-specific proof exists.

@@ -1,0 +1,10 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=8mm and 10mm]
+\node[sysbox](w){workload\\$B,L$, SLO};
+\node[sysbox,right=of w](c){draft cost\\accepted path};
+\node[sysdecision,right=of c](b){marginal\\goodput $>0$?};
+\node[sysbox,below left=of b,fill=BookGreen](on){speculate};
+\node[sysbox,below right=of b](off){ordinary decode};
+\draw[flow](w)--(c);\draw[flow](c)--(b);\draw[flow](b)--node[syslabel]{yes}(on);
+\draw[flow](b)--node[syslabel]{no}(off);
+\end{tikzpicture}

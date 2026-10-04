@@ -1,83 +1,413 @@
 % status: ZERO
-% Chapter 22 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part4.md (ngram, exact, verify).
+% Printed Chapter 39 / stable source ch22.
 \chapter{Speculative Decoding: The Draft--Verify Contract}\label{ch:speculative-decoding}
 
 \begin{ChapterIntent}
-Decode leaves compute idle, so verifying several guessed tokens in one
-forward pass costs about as much as generating one. Speculative decoding
-exploits this: a cheap drafter proposes tokens, the target model checks them in
-parallel, and a modified rejection rule accepts them so that the output
-distribution is exactly the target's. This chapter proves that exactness,
-derives the expected speedup from the acceptance rate and the draft cost, and
-builds drafting from n-grams, the prompt and a smaller model, including rolling
-back the KV cache after a rejection.
+Ordinary autoregressive decode pays one target-model step for one token. Speculative
+decoding proposes several tokens cheaply, verifies them together with the target, and
+commits only the prefix that the target accepts. The speed idea is simple; the
+correctness protocol is not. This chapter derives exact speculative sampling, proves
+its one-step distribution, traces tentative KV and grammar state through rejection,
+and turns proposal, verification, commitment and publication into explicit frontiers.
+The result is a reusable contract for n-gram, small-model and later tree-based drafters.
 \end{ChapterIntent}
 
-\OpeningSection{Several tokens for the price of one step}
+\OpeningSection{Eleven tokens checked; only one history survives}
 
-Ask Llama~3.2~3B, through llama.cpp's server on the M1, to repeat a
-218-word passage from its prompt. Without speculation it produced the 245
-tokens of its answer at 15 to 16 tokens per second, one forward pass per token.
-With prompt-lookup speculation --- drafts copied from the prompt wherever the
-last dozen tokens of output match it --- the drafter proposed 224 tokens and
-the model accepted every one. The answer took about 21 forward passes instead
-of 245, arrived at 60 to 65 tokens per second, \textbf{3.7 to 4.3 times faster},
-and was identical, character for character, to the answer without speculation
-in all three runs (measured; record \texttt{2026-09-24-m1-part4}).
+In this edition's M1 measurement, Llama~3.2~3B was asked to repeat a 218-word passage
+already present in its prompt. Ordinary generation produced a 245-token answer at
+roughly 15--16 tokens/s. Prompt-lookup speculation proposed 224 tokens; all were
+accepted. The answer required roughly 21 target forward passes instead of 245 and ran
+at about 60--65 tokens/s: 3.7--4.3$\times$ faster across the recorded runs
+(\texttt{research/measurements/2026-09-24-m1-part4.md}). The speculative and ordinary
+answers matched character-for-character in those runs.
 
-Change the task and the gain changes with it. Asked to rewrite the passage
-with one word replaced, the model accepted 193 of 208 drafts and ran 2.5 to 3.1
-times faster. Asked to summarize the passage, or to write a story, it produced
-no run of a dozen tokens that the prompt contained, the drafter proposed
-nothing, and the speed was unchanged. Across ten greedy prompts, the outputs
-with and without speculation were identical wherever both ran; the one
-difference was a speculative run that ended 45 characters early, as expected
-from a server that counts a pass's accepted drafts against the length limit
-before emitting them (\texttt{tools/server/server-context.cpp} at commit
-\texttt{d006858}).
+The gain was workload-dependent. Rewriting the passage with one word changed accepted
+193 of 208 proposals and measured 2.5--3.1$\times$ faster. Summarization and open-ended
+story generation found no useful repeated 12-token run, proposed nothing, and showed
+no gain. A length-limit edge case ended one speculative run early because accepted
+draft accounting interacted with the server's output limit.
 
-Eleven or twelve tokens per forward pass, then, but a four-fold speedup.
-The gap is the price of verification: each pass checked 17 tokens, which on
-this laptop costs about 2.3 ordinary steps. This chapter derives the contract
-that made those outputs identical, the arithmetic that predicts the speedup,
-and the drafters that make it possible.
+The measurement captures both sides of speculation. Predictable text lets one target
+pass validate many future positions. But those future positions are provisional until
+the controller decides which contiguous prefix becomes history.
 
-\Foundations{A proposal is not a commitment}{
-A draft model proposes tokens cheaply. The target model defines the distribution the
-algorithm promises to preserve. Accepting plausible drafts without correction changes
-that distribution; an exact method accounts for both acceptance and the replacement
-distribution after rejection. Agreement of greedy tokens is a narrower property than
-equality of sampling distributions. Cache entries for a rejected suffix are tentative
-work, not committed history. Chapter~\ref{app:sampling} establishes autoregressive sampling.
-Chapter~\ref{ch:request-lifecycle} supplies the ownership language needed to
-distinguish internal proposals from tokens already published to the user.
+\Foundations{Proposal, evaluation, commitment and publication are different events}{
+A drafter may create tokens the user will never see. The target may evaluate KV for
+positions that are later rejected. A verifier may accept several tokens before the
+transport publishes them. Correct engines therefore track multiple frontiers instead
+of one ``sequence length.'' Exact speculative sampling preserves the target
+distribution only when acceptance and rejection correction follow the proper rule.
+Chapter~\ref{app:sampling} defines autoregressive sampling; Chapters
+\ref{ch:paged-kv}, \ref{ch:structured-output} and \ref{ch:request-lifecycle} provide
+the ownership/state machinery that speculation must respect.
 }
 
-\NapkinSection{Napkin math: acceptance rate and expected speedup}
+\NapkinSection{Napkin math: useful tokens per expensive pass}
 
-Suppose a drafter proposes $\gamma$ tokens and the target accepts each one,
-independently, with probability $\alpha$, stopping at the first rejection.
-Every verification pass also yields one token from the target itself --- the
-correction after a rejection, or a bonus token after a full acceptance --- so
-the expected number of tokens per pass is
+Let the drafter propose $\gamma$ tokens. In the simplified independent-acceptance
+model, each draft is accepted with probability $\alpha$ until the first rejection.
+A target pass also yields one correction token after rejection or one bonus token when
+all drafts are accepted. The expected emitted tokens are
 \begin{equation}
-\mathbb{E}[\text{tokens per pass}] = \frac{1-\alpha^{\gamma+1}}{1-\alpha},
-\label{eq:spec-tokens}
+E[T]=1+\alpha+\alpha^2+\cdots+\alpha^\gamma
+=\frac{1-\alpha^{\gamma+1}}{1-\alpha}.
+\label{eq:spec-etokens}
 \end{equation}
-Leviathan and colleagues' equation \cite{leviathan2023speculative}. If a
-drafted token costs $c$ target steps and a verification pass costs $v$ target
-steps, the speedup over ordinary decoding is
+If each draft token costs $c$ ordinary target steps and verification costs $v$ target
+steps, an approximate speedup is
 \begin{equation}
-S = \frac{1-\alpha^{\gamma+1}}{(1-\alpha)\,(\gamma c + v)}.
-\label{eq:spec-speedup}
+S(\gamma)\approx
+\frac{1-\alpha^{\gamma+1}}
+{(1-\alpha)(\gamma c+v)}.
+\label{eq:spec-speed}
 \end{equation}
-With $v = 1$ this is their walltime improvement factor. That assumption ---
-verifying $\gamma+1$ tokens costs one step --- holds where decode leaves the
-arithmetic idle (\Chref{roofline}). On the M1 it does not quite: processing 16
-tokens at once cost 2.3 single-token steps for Llama~3.2~3B and 2.7 for an
-8-billion-parameter model (measured with \texttt{llama-bench}; record
-\texttt{2026-09-24-m1-part4}; Figure~\ref{fig:ch22-verify-cost}).
+These are planning equations, not a guarantee: real acceptances are correlated,
+verification cost depends on batch/context/hardware, and draft/target execution can
+overlap.
+
+The M1 record shows why $v$ matters. A multi-token verification pass did not cost one
+single-token decode step; around the measured sizes it cost materially more. A
+drafter can achieve excellent acceptance and still lose if verification and draft work
+consume the saved time.
+
+\section{Five frontiers, not one length}
+
+For one request define:
+\begin{description}
+\item[Committed frontier $C$:] tokens already accepted as target history.
+\item[Draft frontier $D$:] furthest proposal generated by the drafter.
+\item[Evaluated frontier $E$:] furthest position for which target forward state/KV was computed.
+\item[Published frontier $P$:] tokens irreversibly exposed to the client/application.
+\item[Auxiliary frontier $G$:] grammar/tool/recurrent state corresponding to committed history.
+\end{description}
+During ordinary decode these often move together. During speculation,
+\[
+C\le E,\qquad C\le D,
+\]
+and normally $P\le C$. A transport implementation may buffer several newly committed
+tokens before publishing them.
+
+The core invariant is:
+\[
+\boxed{\text{Only a contiguous verified prefix may advance }C.}
+\]
+Rejected suffix work may exist beyond $C$ in KV pages, draft-model state, grammar
+snapshots or temporary logits. It is garbage until explicitly reclaimed or restored.
+
+\EngineFigure{ch22-frontiers}{One speculative iteration has distinct committed, drafted, target-evaluated and published frontiers. Verification may run ahead; rejection collapses model-derived state back to the accepted boundary before the correction becomes the next history.}{fig:spec-frontiers}
+
+\section{The target defines truth; the drafter defines opportunity}
+
+At a position, let $q$ be the proposal distribution and $p$ the target distribution.
+The drafter is an optimization component. It may be an n-gram table, a small language
+model, a head attached to the target, or a tree generator. The target distribution is
+the semantic contract.
+
+A shortcut such as ``accept whenever the draft probability is high'' changes the
+output distribution. So does ``on rejection sample directly from $p$'' when the draft
+itself was sampled from $q$. Exact speculative sampling needs a correction for the
+probability mass already represented by accepted proposals.
+
+\section{Exact one-token speculative sampling}
+
+Draft $x\sim q$. Accept it with probability
+\begin{equation}
+a(x)=\min\left(1,\frac{p(x)}{q(x)}\right).
+\label{eq:spec-accept}
+\end{equation}
+If rejected, sample replacement $y$ from
+\begin{equation}
+r(y)=\frac{[p(y)-q(y)]_+}{\sum_z[p(z)-q(z)]_+},
+\qquad [u]_+=\max(0,u).
+\label{eq:spec-residual}
+\end{equation}
+Leviathan et al. and Chen et al. derive this exact correction
+\cite{leviathan2023speculative,chen2023speculative}.
+The replacement law is the normalized positive residual. Sampling from the
+unadjusted target at this point would not preserve the target distribution:
+the accepted branch has already supplied some of its probability mass.
+
+Why does it work? The probability of emitting $y$ through the accept branch is
+\[
+q(y)a(y)=\min(p(y),q(y)).
+\]
+Let
+\[
+\beta=\sum_z\min(p(z),q(z))
+\]
+be total acceptance probability. Since both $p$ and $q$ sum to one,
+\[
+1-\beta=\sum_z[p(z)-q(z)]_+.
+\]
+The rejection branch emits $y$ with probability
+\[
+(1-\beta)r(y)=p(y)-\min(p(y),q(y)).
+\]
+Adding the two branches gives exactly $p(y)$.
+
+This proof is stronger than observing matching samples. The lab enumerates a finite
+distribution and verifies conservation for every token.
+
+\section{A hand calculation}
+
+Let
+\[
+p=(0.50,0.30,0.20),\qquad q=(0.60,0.10,0.30).
+\]
+The accept-branch masses are
+\[
+\min(p,q)=(0.50,0.10,0.20),
+\]
+so $\beta=0.80$. Positive residual mass is
+\[
+[p-q]_+=(0,0.20,0),
+\]
+and rejection always emits token 2. Final mass becomes
+\[
+(0.50,0.10,0.20)+(0,0.20,0)=(0.50,0.30,0.20)=p.
+\]
+If an implementation instead sampled from unadjusted $p$ after rejection, the result
+would be $(0.60,0.16,0.24)$ for this example, not $p$. The bug can look statistically
+reasonable while being mathematically wrong.
+
+\section{Multiple drafts: verify in order}
+
+For drafts $x_1,\ldots,x_\gamma$, the target evaluates distributions for all proposal
+positions in one pass. Acceptance still proceeds \emph{sequentially}. At position
+$j$, the relevant $p_j$ and $q_j$ are conditioned on the history that includes all
+previous accepted drafts.
+
+Stop at the first rejection. Emit its residual correction and discard later proposals.
+If all $\gamma$ drafts are accepted, sample a bonus token from the target distribution
+at the next position. The target forward pass has therefore converted one expensive
+weight traversal into between one and $\gamma+1$ committed tokens.
+
+\EngineFigure{ch22-transaction}{Draft, verify and commit form a transaction. The verifier walks proposals in order; rejection commits only the accepted prefix plus correction and retires the tentative suffix. Full acceptance commits all drafts plus a target bonus.}{fig:spec-transaction}
+
+\section{Deterministic proposals need a different explanation}
+
+Prompt lookup often proposes deterministically rather than sampling from an explicit
+$q$. In greedy decoding, verification is straightforward: a proposed token survives
+when it equals the target's selected token. That preserves the target's greedy
+trajectory subject to ordinary numerical determinism.
+
+For stochastic decoding, do not casually substitute a deterministic guess into the
+sampled-$q$ proof above. Engines can implement deterministic proposal verification by
+sampling/accepting according to their own exact construction, but the probability
+contract must be stated explicitly. ``The draft looks right'' is not a proof.
+
+This distinction matters when reading source: an implementation can be correct without
+literally materializing a dense $q$ tensor, but its acceptance path must correspond to
+a justified target-preserving algorithm.
+
+\section{Why verification can be cheaper than $\gamma$ decode steps}
+
+Decode is often memory-bandwidth limited because every step streams a large fraction
+of model weights for a small amount of arithmetic. Verifying several adjacent
+positions resembles a short prefill: the same weights support more matrix work per
+load, raising arithmetic intensity.
+
+Verification is not free. Attention touches additional KV positions; temporary
+activations/logits grow; kernel shapes change; and large concurrent batches may
+already use the accelerator efficiently. Speculation monetizes unused compute only
+when the verification shape remains cheaper than the target steps it replaces.
+
+This is why throughput speedup, per-user latency speedup and target-forward-pass
+reduction must be reported separately.
+
+\section{Prompt and n-gram lookup}
+
+A model-free drafter searches existing tokens for a suffix matching the current
+history, then proposes tokens that followed the earlier occurrence. It is extremely
+cheap and excels at quotation, editing, templated output and code with repeated spans.
+
+The opening measurement is almost an ideal case: the answer copies prompt material.
+For summarization or creative writing, matching context may disappear and the drafter
+naturally proposes little or nothing.
+
+At vLLM commit \texttt{155488d853a0bc42df227dbfc74005b3fd488e94}, V1 contains
+\texttt{vllm/v1/spec\_decode/ngram\_proposer.py} and explicit rejection-sampling
+paths. SGLang commit \texttt{7a719e9a65e7f52b012ab37211b5f174e5d3d38d}
+contains an n-gram worker and separate speculative tree machinery. These are
+source-pinned examples, not claims about every release/default.
+
+\section{A smaller model as drafter}
+
+A small model can propose ordinary language beyond repeated spans. If its target-step
+cost ratio is $c$, then $\gamma c$ in equation~\eqref{eq:spec-speed} can dominate.
+The best drafter is not necessarily the most accurate: it maximizes accepted target
+work saved per unit of draft time and memory.
+
+A separate drafter also needs weights, KV/state, tokenizer compatibility and scheduler
+capacity. On a memory-constrained device, loading a drafter can reduce the target's KV
+capacity enough to lower concurrency. Include that opportunity cost.
+
+Tokenizer mismatch is not merely inconvenience. Draft positions must map to target
+token positions for verification. Text-mediated retokenization is possible in some
+systems, but it adds conversion complexity and can make one draft token correspond to
+multiple target tokens or vice versa.
+
+\section{Tentative KV is a transaction log}
+
+Suppose $C=100$ and the drafter proposes positions 101--104. The target evaluates all
+four and writes tentative KV through 104. Verification accepts 101 and 102, rejects
+103, and produces correction $z$ for position 103.
+
+KV for 104 is invalid. Depending on implementation, KV for the drafted token at 103
+may also not represent correction $z$ and must be recomputed/replaced. The safe state
+transition is:
+\[
+E:104\longrightarrow C:102\longrightarrow \text{commit correction }103.
+\]
+Paged KV makes truncation cheap when tentative blocks/tail slots are privately owned.
+Shared immutable prefix blocks before $C$ remain untouched.
+
+A production engine should not publish a speculative KV block into a shared prefix
+cache before its tokens are committed. Otherwise a rejected future can become visible
+to another request.
+
+\section{Rollback is representation-dependent}
+
+For token-indexed transformer KV, rollback can lower the valid sequence length and
+release tail pages. For recurrent or state-space layers, state at position $t+1$ is a
+compressed function of all previous tokens; there may be no per-token state to delete.
+The engine needs a checkpoint before speculation or a recomputation strategy.
+
+Thus the speculative controller should depend on a generic state transaction:
+\[
+\texttt{checkpoint}\rightarrow\texttt{evaluate tentative}
+\rightarrow\{\texttt{commit}(k),\texttt{restore}\}.
+\]
+Chapter~\ref{ch:hybrid-models} will revisit the representation cost.
+
+\section{Structured output adds another transactional state}
+
+A grammar state machine must advance only for committed tokens. One implementation can
+clone/checkpoint grammar state, consume proposed tokens tentatively during verification,
+then retain only the accepted prefix. Another can delay grammar-state mutation until
+the verifier commits.
+
+The verifier also has to mask target and/or proposal distributions consistently with
+the structured-output contract. A draft token forbidden by the grammar cannot become
+committed merely because the unconstrained target assigns it high probability.
+
+This is the same principle as Chapter~\ref{ch:structured-output}: model state and
+grammar state form one logical transaction even when stored separately.
+
+\section{Length limits and stop sequences are commit rules}
+
+A draft pass can accept several tokens at once. If only two output tokens remain under
+a request's maximum, the engine must not publish five simply because verification
+accepted them. Stop strings and EOS can occur inside the accepted run.
+
+Therefore acceptance and publication are not identical. After mathematical
+verification, apply request-level stopping semantics in order and commit/publish only
+the legal prefix. State beyond the terminal token is retired.
+
+The opening's early-ending edge case is valuable precisely because it reveals a
+boundary where pass accounting and user-visible length accounting can diverge.
+
+\section{Cancellation races with verification}
+
+Cancellation can arrive while the target is verifying a speculative block. Device
+work may be non-preemptible, but ownership still changes. Once cancellation is
+observed as terminal, no later accepted draft may become user-visible.
+
+Tentative KV and drafter state retire when outstanding work completes. The request
+lifecycle's rule still holds:
+\[
+\text{logical terminality}\ne\text{physical work retirement}.
+\]
+Speculation increases the amount of orphanable work per in-flight iteration, making
+the distinction more important.
+
+\section{Continuous batching makes $\gamma$ a scheduling decision}
+
+In a batch, requests can have different draft lengths and acceptance histories. A
+verification request consumes multiple token positions from the scheduler's token
+budget. Let request $i$ propose $\gamma_i$ tokens; a simple budget is
+\[
+\sum_i (1+\gamma_i)\le T_{\rm verify}.
+\]
+Giving one request a long speculative window can delay ordinary decode tokens for
+others. The scheduler can cap $\gamma$ under high load even if a single-user benchmark
+prefers a longer draft.
+
+Speculation therefore interacts with fairness, chunked prefill and SLO admission.
+Chapter~\ref{ch:when-speculation-loses} develops that load-dependent decision.
+
+\section{Adaptive draft length}
+
+The marginal value of draft $j$ is paid only when the first $j-1$ proposals survive.
+Under the simplified model, survival is approximately $\alpha^{j-1}$. Long windows
+make sense at high acceptance and cheap verification; they waste work after frequent
+early rejection.
+
+A controller can estimate recent acceptance, verification cost and draft cost, then
+choose $\gamma$ to maximize predicted useful tokens/time. Avoid adapting on acceptance
+alone: a large $\gamma$ can raise acceptance count while lowering wall-clock goodput.
+
+\section{Tree proposals generalize the same contract}
+
+A linear drafter proposes one future. Tree speculation proposes several alternatives
+at some depths so target verification has a better chance of containing the eventual
+accepted path. The target still defines valid committed history; only one root-to-leaf
+path can become the autoregressive sequence.
+
+Tree packing needs position/attention masks that prevent one branch from attending to
+siblings. KV ownership becomes branch-aware until verification collapses the tree.
+Those mechanisms lead directly to EAGLE and related methods in
+Chapter~\ref{ch:modern-speculation}; the transaction contract does not change.
+
+\section{Numerical exactness versus algorithmic exactness}
+
+The rejection proof says the \emph{algorithmic distribution} equals the target
+distribution under the same $p$ and sampling semantics. It does not promise that a
+different kernel shape computes bit-identical logits.
+
+Verification may batch several positions through GEMMs/attention kernels that use
+different reduction orders from one-token decode. Floating-point differences can move
+ties or near-ties. Greedy outputs can therefore diverge in rare cases even when the
+speculative algorithm is mathematically exact.
+
+A rigorous test suite separates:
+\begin{enumerate}
+\item probability-law correctness of acceptance/residual sampling;
+\item target-logit numerical parity within tolerance;
+\item greedy sequence parity under a specified deterministic execution mode;
+\item end-to-end service semantics such as limits, cancellation and grammar validity.
+\end{enumerate}
+
+\section{Failure injection}
+
+Deliberately implement these wrong variants:
+\begin{enumerate}
+\item on rejection sample from $p$ instead of normalized $[p-q]_+$;
+\item keep KV through the entire evaluated frontier after a rejection;
+\item advance grammar state for every draft before verification and never restore it;
+\item publish drafts before target acceptance;
+\item reuse a speculative tail as a prefix-cache entry before commitment.
+\end{enumerate}
+Each can produce plausible output. Each violates a distinct invariant.
+
+\section{Observability}
+
+Record proposed, accepted, rejected and bonus tokens; acceptance length distribution;
+draft and verify time; verification tokens; target passes avoided; tentative KV bytes;
+rollback bytes/blocks; draft method; chosen $\gamma$; and cancellation/terminal
+retirement.
+
+Useful ratios include
+\[
+A_{\rm token}=\frac{N_{\rm accepted}}{N_{\rm proposed}},
+\qquad
+Y_{\rm pass}=\frac{N_{\rm committed}}{N_{\rm target\ passes}},
+\]
+but neither is a speed metric. Always correlate them with TTFT, inter-token latency,
+throughput and goodput.
+
+\EngineFigure{ch22-state-machine}{Speculative request state distinguishes drafting, target evaluation, ordered verification, commit and rollback. Terminal request ownership can interrupt publication without pretending already-launched device work vanished.}{fig:spec-state-machine}
 
 \EngineFigure{ch22-verify-cost}{The time of one forward pass over $k$ tokens
 of one sequence, relative to a single token, on the M1 (measured). A
@@ -87,198 +417,77 @@ machine a multi-token pass runs different matrix kernels from a single-token
 one (\Chref{roofline}) and costs 1.4 to 3 single-token steps, with a staircase
 at small $k$; beyond about 12 tokens the curve is flat, so a 32-token pass costs
 what a 12-token pass does.}{fig:ch22-verify-cost}
-
-With $\alpha = 0.8$, $\gamma = 4$ and a free
-drafter, equation~\eqref{eq:spec-tokens} gives 3.4 tokens per pass; at $v = 1$
-that is a 3.4-fold speedup, and at $v = 1.6$, the M1's measured cost of a
-five-token pass for the 3B model, about 2.1 (derived).
-
-\section{Verification is cheap at decode}
-
-A decode step reads every weight to produce one token per sequence
-(\Chref{roofline}). Feeding the model $k$ tokens of the same sequence instead ---
-the last accepted token followed by $k-1$ guesses --- reads the same weights
-once and produces $k$ sets of logits, one per position, exactly as a short
-prefill does. Where decode is bandwidth-bound, the extra arithmetic fills
-capacity that was idle, and $k$ tokens cost nearly the same as one. The cache
-reads grow by the $k-1$ extra positions' attention, a small addition at short
-context. Verification is therefore nearly free on hardware with idle arithmetic
-and becomes expensive exactly when the arithmetic is already in use ---
-\Chref{when-speculation-loses}.
-
-\section{Draft, verify, accept}
-
-The loop has three steps. The drafter proposes $\gamma$ tokens
-$x_1,\dots,x_\gamma$ continuing the accepted text. The target runs once on the
-last accepted token and the $\gamma$ drafts, producing distributions
-$p_1,\dots,p_{\gamma+1}$ for every position. The engine then walks the drafts
-in order, accepting each by the rule of the next section; at the first
-rejection it samples a correction from the residual distribution defined
-below and discards the remaining drafts. Sampling directly from the
-unadjusted target at this point would not preserve its distribution.
-If every draft is accepted, $p_{\gamma+1}$ supplies one more
-token for free. Each pass therefore emits between one and $\gamma+1$ tokens, and
-never fewer than ordinary decoding would.
-
-Separate three frontiers: proposed tokens, verified tokens and evaluated cache positions. Only a contiguous accepted prefix survives verification. The correction or bonus token can be visible to the caller before either model has evaluated it; the next iteration must reconcile that boundary.
-
 \EngineFigure{sys-speculative-sequence}{UML sequence view of one speculative iteration. The controller tests drafts in order and stops at the first rejection. A rejection uses the normalized positive residual of target minus proposal; all accepted drafts permit a bonus sample from the target. Rollback removes tentative rejected state, not the committed prefix.}{fig:sys-speculative-sequence}
 
-\section{The acceptance rule that preserves the distribution}
-
-Let the drafter sample $x$ from its distribution $q$ and let the target's
-distribution at that position be $p$. Accept $x$ with probability
-$\min\!\bigl(1, p(x)/q(x)\bigr)$; on rejection, sample a replacement from the
-residual distribution
-\begin{equation}
-p'(y) = \frac{\max\bigl(0,\,p(y)-q(y)\bigr)}{\sum_{z}\max\bigl(0,\,p(z)-q(z)\bigr)}.
-\label{eq:residual}
-\end{equation}
-The emitted token then has exactly the distribution $p$
-\cite{leviathan2023speculative,chen2023speculative}. The proof is two lines.
-Let $\beta = \sum_y \min(p(y), q(y))$ be the probability of accepting. The
-emitted token is $y$ either because $y$ was drafted and accepted, with
-probability $q(y)\min(1, p(y)/q(y)) = \min(p(y), q(y))$, or because a
-rejection occurred and $y$ was resampled, with probability $(1-\beta)\,p'(y) =
-p(y) - \min(p(y), q(y))$. The two add to $p(y)$. Applied position by
-position, the whole output is distributed exactly as the target would have
-generated it, however poor the drafter: a bad drafter costs speed, never
-correctness.
-
-Two special cases matter in practice. Under greedy decoding, a draft is
-accepted if and only if it equals the target's most likely token. And when the
-drafter is deterministic --- a lookup table, or a small model taking its own
-most likely token --- $q$ puts all its mass on $x$, and the rule reduces to
-\emph{sample from $p$ and compare}: accept if the target's sample equals $x$.
-That is what llama.cpp's server does at every drafted position
-(\texttt{common\_sampler\_sample\_and\_accept\_n} in \texttt{common/sampling.cpp}
-at commit \texttt{d006858}); since its drafts are deterministic proposals, the
-rule is exact.
-
-\section{Expected speedup}
-
-Equation~\eqref{eq:spec-speedup} has three levers. Acceptance $\alpha$ depends
-on how well the drafter predicts the target on this text; it is high where the
-output is predictable and low where the model is choosing freely. Draft length
-$\gamma$ has an optimum: each extra draft adds cost $c$ and helps only if all
-drafts before it were accepted, so the marginal draft is worth $\alpha^{\gamma}$
-tokens. And the costs $c$ and $v$ belong to the hardware and the batch. Real
-acceptance is not independent from token to token: inside a quoted passage
-every draft is right, inside a fresh sentence most are wrong, and engines adapt
-$\gamma$ to the recent acceptance for that reason
-(\Chref{when-speculation-loses}).
-
-\section{Drafts from n-grams and the prompt}
-
-The cheapest drafter is the text already present. Prompt lookup searches the
-prompt and the output so far for the most recent earlier occurrence of the last
-few tokens and proposes what followed them. llama.cpp's simple n-gram drafter
-matches the last 12 tokens and proposes up to 48 that followed, capped by the
-server's draft limit of 16 (\texttt{common/ngram-map.cpp} and the server's
-\texttt{--spec-type} option at commit \texttt{d006858}); vLLM offers the same
-idea with configurable match lengths \cite{vllm2026specdecode}. Its cost is a
-search, $c \approx 0$, and its acceptance is high exactly when the output
-repeats the context: quoting, editing, code that reuses identifiers, structured
-data that echoes a schema. SuffixDecoding extends the table to earlier requests'
-outputs, which pays off in agent loops that repeat themselves; its authors
-reported up to 5.3 times on agentic benchmarks \cite{oliaro2025suffixdecoding}.
-Lookahead decoding needs no drafter at all: it generates n-grams from Jacobi
-iterations of the model itself and verifies them in the same pass, reporting up
-to 1.8 times on MT-bench \cite{fu2024lookahead} (their measurements).
-
-\section{Drafts from a smaller model}
-
-A smaller model of the same family, sharing the tokenizer, predicts the target
-well on ordinary text. Its cost $c$ is its step time over the target's: on the
-M1, a 3-billion-parameter draft for an 8-billion-parameter target measured
-0.38, close to the ratio of their bytes. That is expensive:
-equation~\eqref{eq:spec-speedup} with $c = 0.38$ and $\gamma = 4$ needs high
-acceptance just to break even. Drafters are therefore made much smaller than
-their targets, or built from the target itself (\Chref{modern-speculation}).
-llama.cpp adds two refinements. It stops drafting when the drafter's own
-probability for its next token falls below a threshold, 0.75 by default, so
-that uncertain drafts are not paid for; and it can pair a drafter and target
-whose vocabularies differ by translating tokens through text, at extra cost
-(server options at commit \texttt{d006858}).
-
-\section{Rolling back the cache}
-
-Verification writes the cache entries of every drafted position. After a
-rejection, the entries past the accepted prefix are wrong --- they encode tokens
-that will never be part of the output --- and must be discarded before the next
-pass. With a contiguous or paged cache this is a truncation of the sequence's
-length and costs nothing; llama.cpp's server keeps the accepted tokens and cuts
-the rest from the slot's token list before the next step
-(\texttt{tools/server/server-context.cpp} at commit \texttt{d006858}). The
-drafter's own cache must be rolled back the same way. Models whose state is not
-a list of per-token entries --- recurrent and state-space layers
-(\Chref{hybrid-models}) --- cannot truncate: they must checkpoint their state
-before a speculative pass and restore it after a rejection.
-
 \LedgerSection
-
-Drafting cheaply and verifying $\gamma$ tokens per target pass:
-
 \begin{ConstraintLedger}
-Latency & buys & Up to $\gamma+1$ tokens per target pass (equation~\eqref{eq:spec-tokens}); several-fold where the output is predictable. \\
-Compute & spends & The drafter's work, and the target's work on rejected drafts: $\gamma c + v$ steps per pass (equation~\eqref{eq:spec-speedup}). \\
-Memory capacity & spends & A drafter's weights and cache; cache entries for drafts that will be discarded. \\
-Correctness & risks & Exact by construction; batched verification changes floating-point order, so greedy outputs can differ in rare places. \\
+Memory bandwidth & buys & Multi-position verification amortizes target weight traffic when ordinary decode is bandwidth-bound.\\
+Compute & spends & Target evaluates rejected proposals and the drafter performs extra work; long windows can waste arithmetic.\\
+Memory capacity & spends & Drafter weights/state and tentative target KV consume capacity until commit or rollback.\\
+Latency & trades & High acceptance can emit several tokens per target pass; poor acceptance or costly verification increases ITL.\\
+Correctness & risks & Wrong residual sampling changes the distribution; stale tentative KV/grammar state corrupts future history.\\
+Cost & trades & Fewer target passes can lower serving cost, but reduced batch capacity or extra drafter GPUs can reverse the gain.\\
 \end{ConstraintLedger}
 
-\LabSection{speculative sampling with an exactness test}
+\LabSection{prove the sampler; then break the transaction}
 
-\LabIntent{In \texttt{code/labs/ch22-speculative/}, a Rust implementation of
-the draft--verify loop over the mini-engine's model, with a prompt-lookup
-drafter and a deliberately poor random drafter. The exactness test draws a
-hundred thousand samples with and without speculation from a small fixed
-context and compares their empirical distributions with a chi-squared test; a
-greedy test compares token sequences. The reader measures tokens per pass
-against equation~\eqref{eq:spec-tokens}, then breaks the rule --- accepting
-without the residual resample --- and watches the distribution test fail.}
+The Rust lab in \texttt{code/labs/ch22-speculative/} has two independent layers.
+First, it computes the exact finite probability mass of the accept branch and residual
+branch for a categorical $p,q$ pair and proves that their sum equals $p$ token by
+token. A deliberately wrong ``resample from $p$'' function fails that fixture.
 
-\HappenedSection{prompt lookup on retrieval workloads}
+Second, a small speculative-state object tracks committed, drafted, evaluated and
+published frontiers. Verification commits only a contiguous accepted prefix and
+truncates evaluated state after rejection. Tests reject keeping a stale tail and
+publishing beyond commitment. The lab is deterministic and does not claim hardware
+speed.
 
-Hermon added prompt-lookup speculation to its batched runtime and measured it
-where it should win: on an Apple M3 Pro, Llama-3-3B quantized to four bits,
-four concurrent requests asking the model to quote a passage from their
-prompts. Speculation cut the decode steps from 64 to 40 and raised aggregate
-throughput from 51.3 to 68.1 tokens per second, 1.33 times, with 96 of 160
-drafted tokens accepted (Hermon \texttt{docs/PERFORMANCE.md}, 2026-05-12; the
-developers' measurement). Their notes list where they expected it to win ---
-retrieval, code completion, summarization, tool calls that echo their inputs
---- and where not: open-ended writing, arithmetic, translation, whose tokens
-are new. The feature is off unless two environment variables set its n-gram
-and draft lengths (\texttt{crates/hermon-runtime/src/batched.rs} at commit
-\texttt{2a3fd52}; PREVIEW). Measured on a second machine and workload, the same
-feature gained only 1.09 times when prefill dominated (\Chref{prefill-decode})
-and lost 6\% at higher concurrency (\Chref{when-speculation-loses}): the
-technique was the same; the ledger was not.
+\HappenedSection{speculation became a serving subsystem}
 
-\FrontierSection{2026-09-24}
+The original speculative decoding/sampling papers established target-preserving
+draft-and-verify algorithms \cite{leviathan2023speculative,chen2023speculative}.
+Production engines subsequently added multiple proposer families and specialized
+verification/sampling paths.
 
-Speculative decoding is standard in every major engine, and the menu of
-drafters keeps growing: vLLM ships model-based drafters, n-gram and suffix
-lookup \cite{vllm2026specdecode}; SGLang ships tree-based EAGLE drafting and
-n-gram lookup \cite{sglang2026specdecode}; llama.cpp ships draft models and
-five kinds of n-gram lookup. Model-free drafting is being extended to the
-repetitive traffic of agents \cite{oliaro2025suffixdecoding}. The drafters
-built from the target itself are \Chref{modern-speculation}'s subject; when
-speculation stops paying is \Chref{when-speculation-loses}'s.
+For a source-pinned snapshot, vLLM commit
+\texttt{155488d853a0bc42df227dbfc74005b3fd488e94} contains a V1 n-gram proposer and
+rejection samplers under its speculative-decode/worker paths. SGLang commit
+\texttt{7a719e9a65e7f52b012ab37211b5f174e5d3d38d} contains n-gram and tree-oriented
+speculative machinery. The exact current defaults and supported combinations are
+moving implementation facts and should be pinned whenever benchmarked.
+
+The durable architecture is proposer $\rightarrow$ target verification $\rightarrow$
+ordered acceptance $\rightarrow$ state commit/rollback.
+
+\FrontierSection{2026-10-05}
+
+Linear draft models and n-gram lookup are now only the foundation. Current systems use
+target-derived draft heads, tree proposals, EAGLE-family methods, multi-token prediction
+and increasingly parallel drafting. Those mechanisms seek higher accepted tokens per
+verification without paying a second full autoregressive model.
+
+The next chapter treats those modern drafters. This chapter deliberately freezes the
+contract underneath them: regardless of how proposals are generated, target semantics,
+ordered verification, state transactions and service terminality remain authoritative.
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} Show that under greedy decoding the rule of
-equation~\eqref{eq:residual} accepts a draft exactly when it equals the
-target's most likely token, and find the probability of accepting when both
-distributions are uniform over $n$ tokens.
-\item \emph{Prediction.} Using equation~\eqref{eq:spec-speedup}, find the
-draft length $\gamma$ that maximizes speedup for $\alpha = 0.6$, $c = 0.05$ and
-$v = 1$, then for $v = 1 + 0.1\gamma$.
-\item \emph{Implementation.} Add a smaller-model drafter to the lab and measure
-its cost ratio $c$ on your machine.
-\item \emph{Falsification.} Find a drafter and text for which speculation with
-exact verification is slower than ordinary decoding on your machine. Which term
-of equation~\eqref{eq:spec-speedup} is responsible?
+\item \emph{Proof.} For $p=(0.4,0.35,0.25)$ and $q=(0.2,0.5,0.3)$, compute
+$\beta$, the residual distribution and final emitted probability of every token.
+\item \emph{Derivation.} Evaluate equation~\eqref{eq:spec-speed} for
+$\alpha=0.7$, $c=0.04$, $v=1.3$, and $\gamma=1,\ldots,8$. Which $\gamma$ wins under
+the simplified model?
+\item \emph{State trace.} Start at committed/evaluated frontier 80. Draft five
+positions, accept the first three, reject the fourth and emit a correction. State the
+legal committed and target-KV frontiers before the next iteration.
+\item \emph{Implementation.} Add a grammar frontier to the lab. Acceptance criteria:
+rejected drafts leave no grammar mutation; committed drafts advance grammar exactly
+once; cancellation prevents publication; rollback remains deterministic.
+\item \emph{Concurrency.} Explain why maximizing one request's $\gamma$ can reduce
+server goodput at high concurrency even when its personal acceptance rate is high.
+\item \emph{Falsification.} Construct $p,q$ for which the incorrect ``sample from
+$p$ after rejection'' algorithm differs substantially from $p$, and demonstrate the
+difference analytically rather than with random sampling.
 \end{enumerate}
+
+\input{worked/ch22-speculative-decoding.tex}

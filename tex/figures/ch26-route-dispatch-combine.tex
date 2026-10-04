@@ -1,0 +1,9 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=7mm and 9mm]
+\node[sysbox](r){router\\top-$k$ + gates};
+\node[sysbox,right=of r](a){assignments\\$(t,e,g)$};
+\node[sysbox,right=of a](d){dispatch\\group by expert};
+\node[sysbox,below=of d](x){grouped GEMM\\$f_e(X_e)$};
+\node[sysbox,left=of x](c){combine\\inverse map + gates};
+\draw[flow](r)--(a);\draw[flow](a)--(d);\draw[flow](d)--(x);\draw[flow](x)--(c);
+\end{tikzpicture}

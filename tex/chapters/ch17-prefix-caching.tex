@@ -1,242 +1,449 @@
 % status: ZERO
-% Chapter 17 of the second edition. Plan: docs/STRUCTURE.md. Rules: AUTHORING.md.
-% Measurements: research/measurements/2026-09-24-m1-part3.md (prefix).
+% Printed Chapter 34 / stable source ch17. Rules: AUTHORING.md.
 \chapter{Prefix Caching and RadixAttention}\label{ch:prefix-caching}
 
 \begin{ChapterIntent}
-System prompts, retrieved documents, conversation history and agent loops
-mean that many requests begin with tokens the engine has already processed.
-Prefix caching keeps their KV blocks and reuses them, skipping prefill compute
-and cutting time to first token. This chapter builds hash-chained block reuse
-and a radix tree over token sequences, prices retained memory against saved
-compute, covers eviction and cache-aware routing, and lists the subtle ways
-two prefixes that look identical are not.
+Paged KV memory gave cached state physical identity, generations, reference counts,
+immutable sharing, and safe retirement. Prefix caching adds a different problem:
+recognition. Given a new request, can the engine prove that some already-computed KV
+state is exactly the state this request would compute for its prefix? This chapter
+derives that proof obligation, implements hash-chain and radix-tree indexes, separates
+logical cache identity from physical block ownership, makes tenant isolation part of
+the key space, and treats eviction as an economic decision between retained bytes and
+avoided prefill. RadixAttention is presented correctly as a runtime reuse and
+scheduling architecture, not as an attention kernel.
 \end{ChapterIntent}
 
-\OpeningSection{The system prompt you paid for a million times}
+\OpeningSection{The computation you should not pay for twice}
 
-Send llama.cpp's server, on the M1, a 3,000-token document followed by a
-question. Its first token arrives after \textbf{11.5 seconds}: the time to
-prefill 3,016 tokens of Llama~3.2~3B on a laptop GPU. Send the same document
-with a different question and the first token arrives after \textbf{0.16
-seconds}. The server reported that it reused 3,004 cached tokens and processed
-only 12 (measured; record \texttt{2026-09-24-m1-part3}). The second request
-cost one seventy-second of the first.
+The measurement record used by this edition contains a useful experiment on an Apple
+M1 running llama.cpp with Llama~3.2~3B. A roughly 3,000-token document followed by a
+question required about 11.5 seconds before the first token on a cold request. A
+second request over the same document but a different suffix arrived in about
+0.16 seconds after the server reported reusing roughly 3,004 cached tokens and
+processing only the short new suffix. These are measured values from
+\texttt{research/measurements/2026-09-24-m1-part3.md}; they are not universal
+performance constants.
 
-Now make the smallest change a real application makes. Put a date line in
-front of the document --- \texttt{Date: 2026-09-24} --- and the server
-recomputes everything: 11.9 seconds. Change the date to the next day and it
-recomputes everything again, 12.2 seconds, reusing only the nine tokens before
-the digit that changed. The document after the date is identical, byte for
-byte; the cache cannot use it, because a token's keys and values depend on
-every token before it. A prefix cache reuses prefixes, and one differing token
-ends the prefix.
+The dramatic speedup is easy to misunderstand. The engine did not discover that two
+pieces of prose were semantically similar. It proved a much narrower fact: a long
+causal prefix of the second request had already executed under a compatible inference
+configuration, and the resulting KV state was still available. Change a token near
+the front and exact reuse stops at that divergence. Move the same document later in
+the prompt and its KV is generally different because its preceding context and
+positions changed.
 
-Evict the document by sending a different one, then return to it, and the
-first token arrives after 0.36 seconds instead of twelve. When the slot
-switched documents the server had copied the old one's cache, 331~MiB for
-3,023 tokens, into a host-memory prompt cache, taking about 150~ms; returning,
-it found the stored prefix and copied it back, taking about 190~ms. Prefix
-caching is a trade of memory for compute, and this chapter prices it.
+This makes prefix caching a systems problem with a crisp contract. The index may
+\emph{propose} a reusable prefix. The engine may consume it only if three independent
+conditions hold: the computation identity matches, the reuse boundary is legal, and
+the physical state named by the index is still live and protected from reuse. A fast
+hash lookup is not itself that proof.
 
-\Foundations{Reuse requires identical computation}{
-A cache hit asserts that stored state is the state this request would have computed.
-Equal visible text alone is insufficient: tokenization, preceding tokens, model
-weights, adapter selection and position conventions can change that state. For a
-causal model, an equal prefix can be reusable even when the future suffix differs. A
-similar passage appearing after different preceding text generally cannot.
-Chapter~\ref{ch:paged-kv} explains physical block sharing. When reading a prefix-cache
-key, ask which dependencies it represents and which isolation boundary it enforces,
-rather than treating a hash match as a proof by itself.
+\Foundations{A cache hit is a claim about computation, not text}{
+For a causal transformer, the KV state at logical position $p$ is determined by the
+model computation over positions $0\ldots p$. Equal rendered strings are insufficient.
+The token IDs, model and weight revision, adapter, positional convention, relevant
+multimodal inputs, KV representation, and any other state that changes the forward
+pass belong to the computation namespace. Sampling temperature does not normally
+belong there because it acts after logits are produced. Chapter~\ref{ch:paged-kv}
+supplies the physical contract: immutable shared blocks may be referenced by multiple
+requests, mutable tails require ownership or copy-on-write, and generations prevent a
+stale logical reference from silently naming a recycled physical block.
 }
 
-\NapkinSection{Napkin math: memory kept against compute saved}
+\NapkinSection{Napkin math: when are retained bytes worth it?}
 
-Prefill costs about $2P$ FLOPs per token (\Chref{prefill-decode}); keeping a
-token's cache costs $m_{kv}$ bytes (\Chref{kv-cache}). Every cached token
-therefore converts $m_{kv}$ bytes of retained memory into $2P$ FLOPs not
-spent:
+Let $L$ be the number of prefix tokens a request can reuse, $P$ the model parameter
+count, $m_{kv}$ the retained KV bytes per token across all layers, and $h$ the
+probability that the retained prefix is reused before eviction. Using the familiar
+first-order estimate of about $2P$ FLOPs per prefill token, the expected compute
+avoided by retaining the prefix is
 \begin{equation}
-\rho = \frac{2P}{m_{kv}}\quad[\text{FLOP saved per byte kept}].
-\label{eq:prefix-exchange}
+E[F_{\rm saved}] \approx h\,2PL .
 \end{equation}
-For Llama~3.2~3B, $\rho = 6.4\times10^{9}/114{,}688 \approx 56{,}000$; for
-Qwen3-8B, whose cache is 144~KiB per token in BF16, about 111,000 (derived).
-An H100 that holds 20~GB of cached prefixes for Qwen3-8B keeps about 136,000
-tokens ready, worth 2.2~PFLOP of prefill --- a few seconds of the whole GPU ---
-every time all of them are reused.
+The retained memory is
+\begin{equation}
+M_{\rm kept}=L\,m_{kv}.
+\end{equation}
+Their ratio is
+\begin{equation}
+\rho = \frac{E[F_{\rm saved}]}{M_{\rm kept}}
+      \approx h\frac{2P}{m_{kv}}
+      \quad [\mathrm{FLOP/byte}].
+\label{eq:prefix-value}
+\end{equation}
+This is a derived exchange rate, not a complete eviction policy. It omits the time
+until reuse, memory pressure, transfer cost between tiers, recomputation overlap,
+scheduler interference, and the fact that HBM capacity may be worth more during a
+burst than while the server is idle.
 
-The same arithmetic prices a commercial prompt cache. Anthropic charges 1.25
-times the input price to write a five-minute cache entry and 0.1 times to read
-one \cite{anthropic2026promptcaching}. Without caching, $k$ further uses of a
-prefix cost $k+1$ full prefills; with it, $1.25 + 0.1k$. Caching pays when
-$k > 0.28$: a single reuse, on average, repays the write (derived).
+A more operational score for cached object $j$ is
+\begin{equation}
+V_j = \frac{\hat p_j C_j - X_j}{M_j\,\Delta t_j},
+\label{eq:cache-value}
+\end{equation}
+where $\hat p_j$ is estimated reuse probability, $C_j$ is recomputation cost avoided,
+$X_j$ is expected restore/management cost, $M_j$ is resident bytes, and $\Delta t_j$
+is expected time until reuse. Equation~\ref{eq:cache-value} is illustrative: an
+industrial policy may approximate these terms with recency, frequency, prefix depth,
+tenant priority, or measured prefill time.
 
-\section{What can be reused}
+\section{The reuse theorem the runtime actually needs}
 
-A token's keys and values are a function of the model, of the adapter if any,
-of the token itself and of every token before it, including their positions.
-Two requests can therefore share cache for exactly the tokens up to their first
-difference, provided the model, adapter and any image or audio inputs in that
-span are the same. Sampling parameters do not matter: they act after the
-forward pass. Reusing the cache of text that appears later in a prompt ---
-a retrieved document at a different offset --- is not exact, because the
-positions and the preceding context differ; methods that approximate it are
-research. This chapter covers exact prefixes.
+Write the computation namespace as
+\[
+\mathcal N=(W,\tau,A,\Pi,Q,\mu,\kappa),
+\]
+where $W$ identifies model weights, $\tau$ the tokenizer contract, $A$ the active
+adapter set, $\Pi$ positional/attention semantics, $Q$ the KV representation and
+quantization contract, $\mu$ relevant multimodal content identity, and $\kappa$ the
+security namespace. The exact tuple is engine-specific; the engineering rule is not.
 
-\section{Hash-chained blocks}
+For token sequence $x_{0:n}$, let $K_{\mathcal N}(x_{0:n})$ denote the deterministic
+KV state produced for that prefix under namespace $\mathcal N$. Exact prefix reuse
+from cached request $a$ into request $b$ through position $r-1$ is valid when
+\[
+\mathcal N_a=\mathcal N_b,\qquad
+x^a_{0:r}=x^b_{0:r},
+\]
+the cache contains a legal checkpoint at $r$, and every physical object referenced by
+that checkpoint is still valid. This is the central invariant of the chapter.
 
-With a paged cache (\Chref{paged-kv}), prefixes can be shared block by block.
-vLLM gives every full block a hash computed from its parent block's hash, its
-own tokens and extra keys --- the adapter, multimodal inputs and an optional
-per-request salt --- so a block's hash identifies the whole prefix that ends
-with it \cite{vllm2026prefixcaching}. To admit a request, the scheduler hashes
-the request's full blocks from the left and looks each hash up until the first
-miss; every hit is a block of prefill skipped. Freed blocks keep their contents
-and hashes in a least-recently-used queue until they are reallocated, so a
-cache hit can revive a block that no request holds. Prefix caching is on by
-default in vLLM's V1 engine, whose developers reported under 1\% throughput
-loss when every lookup misses \cite{vllm2025v1} (their measurement).
+The security namespace $\kappa$ deserves emphasis. If two tenants use identical
+tokens but policy forbids cross-tenant reuse, they must inhabit different cache key
+spaces even though their mathematical transformer state would match. Correctness and
+authorization are separate dimensions of validity.
 
-\section{A radix tree over tokens}
+\section{Why a middle substring is not a prefix}
 
-SGLang's RadixAttention keeps cached prefixes in a radix tree whose edges are
-labeled with token sequences and whose nodes own the corresponding cache
-\cite{zheng2023sglang}. Inserting a finished request's tokens shares every
-prefix already in the tree; matching a new request walks down the tree as far
-as the tokens agree. The tree makes the structure of the workload visible ---
-a system prompt at the root, few-shot examples below it, conversations as
-branches --- and the scheduler can use it: running requests that share a long
-prefix together raises the hit rate. The SGLang authors reported up to 6.4
-times the throughput of other systems on workloads built from multiple
-generation calls (their measurement).
+Suppose requests are $A\|D$ and $B\|D$, where $D$ is the same retrieved document.
+The document bytes match, but the hidden states and hence keys and values for $D$
+depend on $A$ versus $B$. Reusing $D$ merely because its token subsequence matches
+would substitute a state computed under the wrong causal history.
 
-Read from the shared root until the token sequences diverge. A reference to a descendant relies on the prefix above it, so eviction cannot be based only on a leaf's byte count. The picture distinguishes cached content from content currently pinned by active computation.
+This explains a practical prompt-layout rule: place stable, frequently reused
+material before volatile material when application semantics permit. A timestamp,
+nonce, request ID, or reordered tool schema near the beginning destroys the long
+common prefix even when everything after it is identical. Prefix caching rewards
+structural prompt stability, not textual redundancy in arbitrary locations.
 
-\EngineFigure{sys-prefix-tree}{An illustrative compressed prefix tree for four requests. Intervals identify logical token spans, not equal token contents across different branches. Two active requests pin their paths; the other leaves have no active readers and are eviction candidates. Actual pin counters and eviction policies are implementation-specific.}{fig:sys-prefix-tree}
+\section{Hash-chained blocks: content addressing with ancestry}
 
-\section{Eviction over a tree}
+Paged KV naturally suggests block-level recognition. Let $t_i$ be the token IDs in
+logical block $i$, $e_i$ the extra computation/security dependencies that first
+become relevant there, and $H_{i-1}$ the identity of the preceding prefix. Define
+\begin{equation}
+H_i = H(H_{i-1}, t_i, e_i).
+\label{eq:hash-chain}
+\end{equation}
+Because ancestry participates in the key, identical block tokens reached through
+different prefixes do not alias.
 
-Cache memory is finite, so the tree is pruned. Leaves go first, in
-least-recently-used order, because evicting an interior node would orphan the
-branches below it, and a node that a running request is reading carries a
-reference count that pins it. Hash-chained blocks follow the same rule
-implicitly: a block is freed only when its reference count reaches zero, and
-the least recently used free blocks are reallocated first. Eviction interacts
-with scheduling: a cache that is too small to hold the working set of prefixes
-thrashes, and each thrash costs a full prefill.
+The index maps $H_i$ to one or more physical block handles. A lookup walks left to
+right until the first unavailable legal checkpoint. The index is metadata; the block
+pool remains the authority on physical liveness. A candidate handle carrying
+$(id,generation)$ must still validate before the scheduler pins it.
+
+Current vLLM uses this family of design: parent hash, block tokens, and extra hashes
+such as LoRA identity, multimodal hashes, and cache salt contribute to cache identity.
+Its current documentation also distinguishes the prefix matching unit from physical
+KV block size for configurations where a finer legal match boundary is supported.
+Those are current implementation facts and must be pinned to an exact upstream commit
+when this chapter is integrated.
+
+\section{Hash collisions are a correctness boundary}
+
+A non-cryptographic hash is not equality. If an implementation maps a digest directly
+to KV without collision verification, a collision can turn a performance mechanism
+into silent wrong-model-state reuse. There are three defensible patterns: use a
+cryptographically strong digest with an explicit risk budget; retain sufficient
+canonical key material to verify equality after the hash lookup; or combine both.
+
+The lab takes the pedagogically strongest route: a deliberately weak hash narrows the
+candidate set, but exact namespace and token-prefix equality are checked before a hit
+is accepted. A broken variant skips verification; the tests manufacture a collision
+and demonstrate false reuse.
+
+\EngineFigure{ch17-hash-proof}{A hash lookup proposes a candidate; namespace equality, exact prefix equality, legal checkpoint, and live generation collectively authorize reuse.}{fig:prefix-hash-proof}
+
+\section{Radix trees: represent the prefix relation directly}
+
+A radix tree is a compressed trie. Edges carry token spans rather than one token each.
+A common system prompt occupies a path near the root; tool schemas, few-shot examples,
+retrieved contexts, and conversation turns create branches. Matching a new request
+walks the tree until the first token divergence. Insertion may split an edge at the
+longest common prefix.
+
+This representation exposes workload structure that a flat hash table hides. The
+runtime can ask not only ``is block hash $h$ resident?'' but ``which active or cached
+request shares the deepest prefix with this arrival?'' That information can influence
+scheduling and routing.
+
+SGLang's RadixAttention is built around this observation. The name is easy to
+misread: it is not a replacement for scaled dot-product attention. It is a runtime
+architecture for reusing KV state across shared prefixes and coordinating execution
+around the radix structure. The original SGLang paper reports up to 6.4$\times$
+throughput on its evaluated structured workloads; that is an authors' measurement,
+not a universal multiplier.
+
+\EngineFigure{ch17-radix-tree}{A compressed radix tree makes common causal ancestry explicit. Active paths are pinned; unpinned leaves are natural eviction candidates.}{fig:prefix-radix}
+
+\section{Hash table or radix tree?}
+
+The two structures solve overlapping but not identical problems. Hash chains are
+compact and align naturally with fixed-size paged blocks. They provide direct lookup
+for a known checkpoint key and distribute well. A radix tree preserves prefix
+topology, supports longest-prefix matching directly, and exposes locality useful to a
+scheduler.
+
+Production systems can combine ideas. Physical storage can remain paged while a radix
+index names spans; a radix node can point to block handles; hashes can protect or
+accelerate edge identity. The false dichotomy ``hash caching versus RadixAttention''
+is therefore less useful than asking which layer owns identity, topology, storage,
+pinning, and eviction.
+
+\section{The partial-block boundary}
+
+Chapter~\ref{ch:paged-kv} established that a shared mutable tail is dangerous. Prefix
+caching inherits the rule. The simplest design publishes only full immutable blocks.
+If physical blocks hold $B$ tokens, a 19-token common prefix with $B=16$ reuses 16
+tokens and recomputes three.
+
+More advanced engines may support a match granularity finer than physical storage.
+That does not abolish the proof obligation: the resumed state must correspond to a
+checkpoint the model/cache architecture can legally restore. Hybrid attention,
+sliding-window state, recurrent state-space layers, and multimodal models can make
+``checkpoint at every token'' false or expensive. Logical match granularity and
+physical allocation granularity must therefore be modeled separately.
+
+\section{From candidate to pinned lease}
+
+A robust hit path is transactional:
+\begin{enumerate}
+\item tokenize and construct the computation/security namespace;
+\item find the longest candidate prefix in the hash/radix index;
+\item verify exact identity and a legal checkpoint;
+\item validate every physical handle generation;
+\item increment references/pins, removing newly active blocks from eviction eligibility;
+\item attach the handles to the request block table;
+\item only then report the tokens as computed to the scheduler.
+\end{enumerate}
+
+If any validation fails, the request falls back to a shorter valid prefix or cold
+prefill. The index must never be able to resurrect a block merely because an old
+digest remains in a map.
+
+\section{Eviction is admission control for future work}
+
+Cached KV competes with active KV for the same scarce memory. Keeping everything
+maximizes theoretical hit rate and eventually prevents new work from being admitted.
+Evicting everything maximizes free capacity and destroys reuse. The allocator and
+cache therefore need a boundary: active or pinned blocks are not eviction candidates;
+unreferenced cached blocks are.
+
+LRU is attractive because it approximates temporal locality with tiny metadata.
+Radix trees add a structural constraint: removing an interior representation may
+affect descendants, so implementations often reason about evictable leaves or
+account for shared ancestry. Cost-aware policies can prefer a long expensive prefix
+over a short cheap one even when the short prefix is more recent.
+
+A useful metric is not hit count but \emph{prefill work avoided}. Ten hits on
+16-token prefixes can be less valuable than one hit on a 4,000-token system prompt.
+Record hit tokens, avoided prefill time, bytes retained, eviction churn, and the
+effect on admission failures.
+
+\section{A worked cache-pressure example}
+
+Assume 12 physical blocks are available and active requests pin seven. Five blocks
+remain as the cache budget. Prefix $A$ occupies three blocks and costs 30 ms per block
+to recompute; prefix $B$ occupies two and costs 8 ms per block. If $A$ has estimated
+reuse probability 0.4 and $B$ 0.8, their expected avoided compute is respectively
+$0.4(90)=36$ ms and $0.8(16)=12.8$ ms. Per block, $A$ still has higher expected
+compute value: 12 ms/block versus 6.4 ms/block. An LRU policy might make the opposite
+choice if $B$ was touched more recently.
+
+Neither policy is ``correct'' without a service objective. If retaining $A$ causes a
+high-priority request to queue for lack of blocks, the opportunity cost can dominate
+both estimates. Cache policy is subordinate to scheduler policy.
 
 \section{Cache-aware scheduling and routing}
 
-Within one server, the scheduler can favor requests with the longest cached
-prefix. Across servers, the router decides whether a hit is possible at all:
-two requests with the same system prompt sent to different replicas each pay
-the prefill. SGLang's cache-aware load balancer keeps an approximate radix tree
-per worker and routes each request to the worker with the longest match; its
-developers reported the cache hit rate rising from 20\% to 75\% and throughput
-by 1.9 times on their benchmark \cite{sglang2024v04}. OpenAI documents that it
-routes requests by a hash of the prompt's initial tokens for the same reason
-\cite{openai2026promptcaching}.
+Once prefix locality is observable, the scheduler can exploit it. Among otherwise
+similar queued requests, executing one whose prefix is already resident can reduce
+prefill tokens and TTFT. Across replicas, routing a request to a worker with a warm
+prefix avoids paying the prefill again elsewhere.
 
-\section{When the same prefix is not the same prefix}
+But locality is not the only objective. Always choosing the warmest worker can create
+load imbalance and tail-latency spikes. A router should compare affinity benefit with
+queueing cost:
+\[
+S(w,r)=\alpha\,L_{\rm hit}(w,r)-\beta\,Q(w)-\gamma\,R(w),
+\]
+where $L_{\rm hit}$ is reusable tokens, $Q$ estimates queue delay, and $R$ represents
+resource pressure. This score is illustrative. Real routers need stale-state handling,
+bounded coordination overhead, and fairness.
 
-The opening's date line is the common failure: a value that changes between
-requests, placed before content that does not. Timestamps, request
-identifiers, reordered tool definitions, a template that renders whitespace
-differently, a document inserted before the instructions instead of after ---
-each ends the shared prefix at its first changed token. The fix is layout:
-stable content first, variable content last. A subtler failure is sharing the
-cache when it should not be shared. A hit is faster than a miss, so response
-time reveals whether someone else sent the same prefix recently. Gu and
-colleagues audited API providers with timing tests in 2025 and detected cache
-sharing across users at seven of them \cite{gu2025promptcaching}; vLLM's
-per-request salt confines reuse to requests that agree on it
-\cite{vllm2026prefixcaching}.
+\section{Multi-tenant isolation and timing side channels}
 
-\section{Agents and multi-turn sessions}
+A cache hit changes latency; therefore cache membership can become observable. If
+untrusted tenants share a global key space, an attacker can probe candidate prefixes
+and statistically infer whether another user recently caused them to be cached.
+Published audits have demonstrated this class of leakage in real API systems.
 
-A conversation resends its whole history every turn, and an agent resends its
-instructions, tool definitions and every tool result at every step. Without
-prefix caching each turn repays the prefill of everything before it, so the
-cost of a session grows with the square of its length; with it, each turn
-prefills only what is new. The cache must survive between turns, which is a
-question of retention: a user who pauses longer than the cache's lifetime pays
-the full prefill again. That is why engines add tiers below GPU memory ---
-llama.cpp's server keeps evicted prompts in host memory, 8~GiB by default in
-the measured build, which is how the opening's evicted document came back in
-0.36 seconds --- and why prompt-caching products state a time to live
-(\Chref{kv-storage-tier}).
+The clean architectural defense is namespace separation. Derive a cache namespace
+from the sharing principal---tenant, organization, workspace, or another explicit
+trust group---and incorporate it at the root of the identity chain. Requests may
+share only when policy deliberately gives them the same namespace.
+
+A raw tenant ID is often not the best external salt. A service can derive
+$\kappa=\mathrm{HMAC}_{K_{\rm service}}(\mathrm{principal})$ so internal cache keys
+do not expose account identifiers and cannot be chosen adversarially. Key rotation,
+model rollout, and cache flush semantics then become explicit operational concerns.
+
+\EngineFigure{ch17-tenant-namespace}{The same token prefix in two security namespaces produces disjoint cache identities; sharing is an authorization decision before it is an optimization.}{fig:prefix-tenants}
+
+\section{Invalidation: model identity is larger than a model name}
+
+A cache created by ``model-x'' yesterday is not automatically compatible with
+``model-x'' today. A rollout can change weights, tokenizer files, RoPE scaling,
+attention implementation, KV dtype, quantization parameters, adapter weights, or
+multimodal preprocessing. Cache identity should use immutable revision/configuration
+identifiers, not a mutable marketing alias.
+
+This suggests a practical epoch mechanism. Construct a model-cache epoch from the
+artifacts that affect KV semantics. A rollout publishes a new epoch; new requests
+cannot hit old entries. Old entries can drain naturally or be reclaimed eagerly.
+This turns a subtle invalidation problem into ordinary namespace versioning.
+
+\section{Agents amplify both the benefit and the failure modes}
+
+Agent loops repeatedly send system instructions, tool definitions, conversation
+history, and tool results. Without reuse, turn $k$ prefills much of turns
+$0\ldots k-1$ again. With exact prefix reuse, the engine computes primarily the newly
+appended suffix.
+
+Agents also mutate prompts aggressively. Tool lists may reorder, timestamps may be
+injected, retrieval results may be placed before stable instructions, and per-step
+IDs may appear near the root. These choices can erase reuse. Prompt architecture and
+serving architecture therefore meet at the prefix boundary: stable instructions and
+schemas should be canonicalized and placed early when semantics allow, while volatile
+data should be appended late.
+
+\section{Observability: prove the cache is helping}
+
+A production dashboard should distinguish lookup activity from useful work avoided.
+At minimum record cache-lookup requests, hit tokens, hit-prefix distribution, cold
+prefill tokens, recomputed tokens after partial hits, retained bytes, pinned bytes,
+eviction count, eviction age, collision-verification failures, stale-handle failures,
+and hits partitioned by model epoch and security namespace.
+
+Correlate these with TTFT, queue delay, throughput, and admission failures. A rising
+hit rate accompanied by worse p99 latency can indicate that cached blocks are
+crowding out active work. A high lookup hit rate with few saved tokens can indicate
+pathological tiny prefixes. Metrics need causal interpretation, not celebration.
+
+\section{Failure boundaries}
+
+Four failures deserve explicit tests. First, \emph{false identity}: a collision or
+missing namespace field reuses wrong state. Second, \emph{stale identity}: the key is
+right but the physical block has been recycled; generation validation must fail.
+Third, \emph{unsafe mutability}: two requests share a tail and one appends without
+copy-on-write. Fourth, \emph{unauthorized identity}: transformer state would match,
+but policy forbids cross-tenant reuse.
+
+The cache should fail closed. A suspicious entry costs recomputation; accepting it can
+corrupt model output or leak information.
+
+\EngineFigure{sys-prefix-tree}{An illustrative compressed prefix tree for four requests. Intervals identify logical token spans, not equal token contents across different branches. Two active requests pin their paths; the other leaves have no active readers and are eviction candidates. Actual pin counters and eviction policies are implementation-specific.}{fig:sys-prefix-tree}
 
 \LedgerSection
-
-Keeping the KV cache of processed prefixes and reusing it:
-
 \begin{ConstraintLedger}
-Compute & buys & Prefill skipped for every cached token: $2P$ FLOPs per token, about 56,000 FLOPs per byte kept for Llama~3.2~3B (equation~\eqref{eq:prefix-exchange}). \\
-Latency & buys & Time to first token: 11.5~s to 0.16~s for a 3,000-token document on the M1. \\
-Memory capacity & spends & The cache of every retained prefix: 331~MiB for 3,023 tokens, in GPU or host memory. \\
-Memory bandwidth & spends & Copies between tiers: about 150~ms to save and 190~ms to restore that prefix from host memory. \\
-Correctness & risks & Reuse must be exact and isolated; a shared cache leaks timing across users. \\
+Memory capacity & spends & Retained KV consumes blocks that could admit active requests; only unpinned cache state is reclaimable.\\
+Memory bandwidth & trades & Reuse avoids prefill reads/compute but tiered caches may add restore traffic; metadata traversal also touches CPU memory.\\
+Compute & buys & A hit avoids forward-pass work for the verified prefix; value scales with reusable tokens and model cost.\\
+Latency & trades & Warm prefixes reduce TTFT, while locality-biased scheduling can increase queueing or tail latency.\\
+Correctness & risks & Missing dependencies, hash collisions, illegal checkpoints, stale generations, and mutable-tail sharing can all produce wrong state.\\
+Cost & trades & More cache memory and coordination can reduce accelerator compute; the optimum depends on workload reuse and admission pressure.\\
 \end{ConstraintLedger}
 
-\LabSection{a radix cache with an exactness test}
+\LabSection{build a prefix cache that can reject its own hits}
 
-\LabIntent{In \texttt{code/labs/ch17-prefix-caching/}, a Rust radix tree over
-token sequences, attached to the mini-engine's KV cache, with LRU leaf eviction
-and reference counts. The exactness test compares every cached continuation
-with a recomputation from scratch, bit for bit. The reader replays a synthetic
-agent trace and measures the hit rate and saved FLOPs as the cache size shrinks,
-then breaks the cache by inserting a timestamp at the start of every prompt.}
+The lab in \texttt{code/labs/ch17-prefix-caching/} implements a flat resident-entry
+prefix cache with explicit namespaces and a separate prefix-enumeration oracle.
+It is not a radix-tree implementation. The tree figures explain the production
+representation; this smaller lab isolates equality, isolation and eviction.
+It is intentionally
+dependency-free. Every lookup verifies exact token ancestry even though the teaching
+hash is deliberately weak, making collision behavior testable rather than
+astronomically unlikely.
 
-\HappenedSection{warm against cold}
+The CLI trace performs insertion, same-tenant reuse and cross-tenant denial.
+The tests additionally cover a divergent
+suffix, cross-tenant denial, eviction under a block budget, and a manufactured hash
+collision, including an exact match hidden behind a colliding candidate.
+Tests compare the cache's claimed reusable length against prefix enumeration
+over authorized resident entries.
 
-Hermon's first prefix cache was not the design in this chapter, because the
-library under it would not allow that design. The textbook approach copies a
-matched prefix from a cache region into a fresh sequence. At the commit Hermon
-vendors, llama.cpp's sequence-copy primitive can share a range of positions
-between sequences that live in the same stream of the cache, but between
-separate streams --- the layout Hermon's slots used --- it asserts that only a
-whole buffer can be copied (\texttt{src/llama-kv-cache.cpp} line 456 at commit
-\texttt{389ff61d}). Hermon's developers therefore stopped
-moving caches at all: each slot keeps its last prompt's cache warm, and the
-scheduler routes a new request to the slot whose cached tokens match its prompt
-longest, erasing only the divergent suffix (\texttt{crates/hermon-runtime/src/batched.rs}
-at commit \texttt{2a3fd52}; DEFAULT).
+The exercise's implementation contract is concrete: add generation-bearing physical
+block handles from Chapter~\ref{ch:paged-kv}; a hit may be committed only if every
+handle validates and is pinned. Tests must show that recycled generations are
+rejected, pinned blocks cannot be evicted, failed pinning is atomic, and releasing the
+last pin makes the block eligible but does not itself require immediate eviction.
 
-They measured it on an Apple M3 Pro with four concurrent requests. On an
-agent-shaped workload --- a shared prefix of about 97 tokens and 32-token
-answers --- the measured batch took 2.86 seconds instead of 4.89, 1.71 times
-faster; on a chat workload with 128-token answers, where decode dominates, the
-gain was 11\% (Hermon \texttt{docs/PERFORMANCE.md}, 2026-05-12; the developers'
-measurements). Slot affinity works when conversations stay on their slots and
-fails when more prefixes are hot than there are slots. That limit is one of the
-reasons Hermon began the paged engine of \Chref{paged-kv}.
+\HappenedSection{two industrial shapes, one invariant}
 
-\FrontierSection{2026-09-24}
+Two influential implementation shapes illustrate the design space. vLLM's current
+automatic prefix caching uses hash-derived block identities over ancestry, block
+tokens, and extra dependencies. Its documentation describes cache salt for
+multi-tenant isolation and cryptographic hash options; current behavior should be
+cited to an exact source commit before this chapter is promoted.
 
-Prefix caching is on by default in the major engines
-\cite{vllm2025v1,zheng2023sglang} and has become a product with a price list:
-Anthropic's cache writes cost 1.25 or 2 times the input price for five-minute or
-one-hour lifetimes and reads 0.1 times or less, with caches isolated per
-organization and workspace \cite{anthropic2026promptcaching}; OpenAI caches
-prompts automatically --- from 1,024 tokens on its newest models, which pay 0.1
-times the input price for cached tokens --- and states that caches are not
-shared across organizations \cite{openai2026promptcaching}. The 2025 audit of
-cross-user sharing \cite{gu2025promptcaching} shows why that sentence is now in
-the documentation. Caches are moving down the memory hierarchy to host memory
-and disk, and across machines (\Chref{kv-storage-tier}).
+SGLang represents prefix topology directly through radix-cache implementations. The
+original RadixAttention work couples reuse with the structure of language-model
+programs and scheduling opportunities. These systems differ in metadata shape, but
+both exploit the same causal fact: only a verified common prefix can reuse exact KV
+state.
+
+The historical Hermon claims in the ZERO draft are deliberately not promoted here.
+They should be restored only after the exact Hermon source commit and measurement
+record are independently rechecked. A textbook should prefer an explicit evidence gap
+over a polished but unverified implementation story.
+
+\FrontierSection{2026-10-05}
+
+The original SGLang paper remains the foundational RadixAttention source and reports
+up to 6.4$\times$ throughput on its evaluated structured workloads. Current vLLM
+documentation shows automatic prefix caching has evolved beyond the early
+``one hash per physical block'' simplification: cache identity includes ancestry and
+extra dependencies, cryptographic hashing is available/default in current docs, and
+matching granularity can be distinct from physical block size in supported
+configurations.
+
+Security has also moved from caveat to design constraint. The 2025 paper
+\emph{Auditing Prompt Caching in Language Model APIs} demonstrates that cache-dependent
+timing can reveal cross-user sharing. The engineering implication is durable even as
+individual providers change policy: shared cache namespaces require an explicit trust
+decision and threat model.
 
 \ExercisesSection
-
 \begin{enumerate}
-\item \emph{Derivation.} Using equation~\eqref{eq:prefix-exchange}, compute
-$\rho$ for a model with multi-head latent attention (\Chref{shrinking-kv}).
-Does a smaller cache make prefix caching more or less attractive?
-\item \emph{Prediction.} A chat session has ten turns of 200 new tokens each
-after a 2,000-token system prompt. How many prompt tokens are prefilled with and
-without a prefix cache?
-\item \emph{Implementation.} Add a per-tenant salt to the lab's radix tree and
-show that tenants no longer share nodes.
-\item \emph{Falsification.} Construct a workload for which a prefix cache
-lowers throughput.
+\item \emph{Derivation.} A 2,048-token prefix has reuse probability 0.3. Derive
+expected FLOPs saved and retained bytes in terms of $P$ and $m_{kv}$. What additional
+quantity is needed to compare keeping it with admitting another request?
+\item \emph{Trace.} With block size four, trace requests
+$[1,2,3,4,5,6]$ and $[1,2,3,4,9]$. Mark reusable full blocks, the divergence, and
+which tail must be recomputed.
+\item \emph{Correctness.} Give a counterexample showing why
+$(\text{token IDs},\text{model name})$ is an insufficient cache key.
+\item \emph{Implementation.} Add Chapter~\ref{ch:paged-kv} generation handles to the
+lab. Acceptance criteria: stale generations never hit; pin acquisition is atomic;
+pinned entries survive eviction pressure; after the final unpin they become eligible.
+\item \emph{Security.} Modify the lab so namespaces are derived from a keyed digest
+rather than supplied directly. Demonstrate that equal prompts in different principals
+cannot share.
+\item \emph{Falsification.} Construct a workload where enabling a large prefix cache
+reduces goodput because retained blocks prevent admission. State the service objective
+under which disabling the cache wins.
 \end{enumerate}
+
+\input{worked/ch17-prefix-caching.tex}

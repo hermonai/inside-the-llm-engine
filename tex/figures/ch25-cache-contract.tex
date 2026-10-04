@@ -1,0 +1,9 @@
+% diagram-kind: component
+\begin{tikzpicture}[node distance=7mm and 9mm]
+\node[sysbox](a){model architecture\\retained-state contract};
+\node[sysbox,right=of a](n){numeric format\\FP16/FP8/etc.};
+\node[sysbox,right=of n](p){pager\\physical blocks};
+\node[sysbox,below=of p](k){attention backend\\execution path};
+\draw[flow](a)--(n);\draw[flow](n)--(p);\draw[flow](p)--(k);
+\draw[flow](a.south)-| (k.west);
+\end{tikzpicture}

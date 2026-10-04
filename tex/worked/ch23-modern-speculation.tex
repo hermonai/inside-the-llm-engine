@@ -1,0 +1,40 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Binary trees}
+\textbf{Problem.} \emph{Tree arithmetic.} Compute node count and maximum accepted draft length for
+full binary trees of depths 1 through 5. Explain why node count is not acceptance length.
+
+\textbf{Solution.} A full binary tree of depth $d$ contains
+$N=2^{d+1}-2$ draft nodes when the committed root is excluded, but one accepted path
+contains at most $d$ draft tokens. For $d=1,\ldots,5$, $N=2,6,14,30,62$.
+
+\Needspace{12\baselineskip}
+\subsection{Parent array}
+\textbf{Problem.} \emph{Mask construction.} For parent array $[-1,0,0,1,2]$, write the five-by-five
+draft visibility matrix and logical depth of every node.
+
+\textbf{Solution.} For $[-1,0,0,1,2]$, depths are $(1,2,2,3,3)$ if node 0 is
+the first draft after the committed prefix. Visibility sets are
+$A:\{A\}$, $B:\{A,B\}$, $C:\{A,C\}$, $D:\{A,B,D\}$, $E:\{A,C,E\}$.
+The rows for C and E expose why a triangular mask is wrong.
+
+\Needspace{12\baselineskip}
+\subsection{Smallest distinguishing tree}
+\textbf{Problem.} \emph{Differential test.} Explain the smallest tree that distinguishes ancestry
+masking from ordinary triangular masking.
+
+\textbf{Solution.} One parent with two children suffices.
+Flatten $[A,B,C]$ with both B and C children of A. A triangular mask lets C see B;
+ancestry masking does not.
+
+\Needspace{12\baselineskip}
+\subsection{Budget priority}
+\textbf{Problem.} \emph{Budgeting.} Given frontier scores/costs $(.8,2),(.5,1),(.9,3),(.3,1)$,
+rank them by $\rho=p/c$. Explain one reason that greedy ranking may still be suboptimal.
+
+\textbf{Solution.} Scores $p/c$ are $.4,.5,.3,.3$, so the second item ranks
+first, then first, then the tied remainder. Greedy density can be suboptimal because
+expanding one node reveals valuable descendants and because verification cost is not
+strictly additive across GPU shapes.

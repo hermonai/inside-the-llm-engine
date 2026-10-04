@@ -1,0 +1,41 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Piecewise ridge}
+\textbf{Problem.} \emph{Derivation.} With $t(n)=\max(t_0,an)$, zero draft cost and linear draft
+length $\gamma$, derive the regions of $B$ for which equation~\eqref{eq:batch-break-even}
+is bandwidth-bound/bandwidth-bound, bandwidth-bound/compute-bound, or
+compute-bound/compute-bound.
+
+\textbf{Solution.} With $t(n)=\max(t_0,an)$, let $n^*=t_0/a$.
+If $B(\gamma+1)\le n^*$, verification and baseline are both flat and the ratio is 1.
+If $B<n^*<B(\gamma+1)$, the ratio is $aB(\gamma+1)/t_0$.
+If $B\ge n^*$, the ratio is $\gamma+1$. Compare each with $\tau$.
+
+\Needspace{12\baselineskip}
+\subsection{M1}
+\textbf{Problem.} \emph{Measured arithmetic.} Using the M1 3B values 68.3 ms at one token and
+157.5 ms at 16, compute verification ratio $v$. What minimum $\tau$ is required if
+draft+controller cost is 0.5 target steps?
+
+\textbf{Solution.} $v=157.5/68.3\approx2.31$. With another 0.5 normalized step of
+draft/controller work, break-even requires $\tau>2.81$ committed tokens per iteration.
+
+\Needspace{12\baselineskip}
+\subsection{Capacity}
+\textbf{Problem.} \emph{Capacity.} A drafter reduces maximum resident batch from 64 to 48 but makes
+each resident request 1.25 times faster. Ignoring other effects, does aggregate capacity
+improve?
+
+\textbf{Solution.} Aggregate relative capacity is $(48/64)\times1.25=0.9375$.
+Under the stated simplification, it falls by 6.25 percent.
+
+\Needspace{12\baselineskip}
+\subsection{Perfect acceptance can lose}
+\textbf{Problem.} \emph{Falsification.} Produce a deterministic trace with 100-percent acceptance
+where speculation loses. Identify the denominator term responsible.
+
+\textbf{Solution.} Let $\gamma=4$, $\tau=5$, draft cost be 2.0
+target steps and verification cost 3.5 steps. Normalized total is 5.5, so
+$S=5/5.5<1$ despite perfect acceptance.

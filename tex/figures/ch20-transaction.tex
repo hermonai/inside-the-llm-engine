@@ -1,0 +1,10 @@
+% diagram-kind: activity
+\begin{tikzpicture}[node distance=8mm and 10mm]
+\node[sysbox] (g) {committed grammar\\state $g_t$};
+\node[sysbox,right=of g] (mask) {build allowed\\token set};
+\node[sysbox,right=of mask] (sample) {mask logits\\and sample $x_t$};
+\node[sysbox,below=of sample] (trial) {trial transition\\$g'=\delta(g_t,x_t)$};
+\node[sysbox,left=of trial,fill=BookGreen] (commit) {commit token\\and grammar state};
+\draw[flow](g)--(mask); \draw[flow](mask)--(sample); \draw[flow](sample)--(trial);
+\draw[flow](trial)--(commit); \draw[flow](commit)-|(g);
+\end{tikzpicture}

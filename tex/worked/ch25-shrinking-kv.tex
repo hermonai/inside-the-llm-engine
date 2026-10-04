@@ -1,0 +1,34 @@
+\Needspace{18\baselineskip}
+\section{Worked problems}
+
+\Needspace{12\baselineskip}
+\subsection{Bytes}
+\textbf{Problem.} \emph{Bytes.} Derive cache bytes/token for $L=80$, $H_q=64$, $H_{kv}=8$,
+$d_h=128$ in BF16. Repeat for hypothetical MHA.
+
+\textbf{Solution.} $2(80)(8)(128)(2)=327{,}680$ bytes = 320 KiB/token. Hypothetical
+MHA with 64 K/V heads is eight times larger: 2.5 MiB/token.
+
+\Needspace{12\baselineskip}
+\subsection{Mapping}
+\textbf{Problem.} \emph{Mapping.} For $H_q=12,H_{kv}=3$, list the K/V head used by every query head.
+
+\textbf{Solution.} $g=12/3=4$. Query heads 0--3 use K/V 0, 4--7 use 1, and 8--11
+use 2.
+
+\Needspace{12\baselineskip}
+\subsection{Crossover}
+\textbf{Problem.} \emph{Crossover.} A model has 20 GB of weights and 160 KiB/token of cache. At what
+context does batch-one KV traffic equal weight traffic?
+
+\textbf{Solution.} $20\times10^9/(160\times1024)\approx122{,}070$ tokens under the
+stated decimal-weight/binary-cache convention.
+
+\Needspace{12\baselineskip}
+\subsection{Absorption}
+\textbf{Problem.} \emph{Absorption.} Prove
+$\sum_s\alpha_sWc_s=W\sum_s\alpha_sc_s$ and state exactly which assumption permits it.
+
+\textbf{Solution.} Linearity gives
+$\sum_s\alpha_sWc_s=W(\sum_s\alpha_sc_s)$ because the same fixed linear map $W$
+applies to every $s$. If $W$ depends on $s$, it cannot be factored outside the sum.
