@@ -560,3 +560,247 @@ are original teaching designs, not features attributed to those engines.
 The CPU-thread replay is a mechanism experiment; its millisecond values
 are not GPU model-serving performance. See
 [the separate lifecycle record](measurements/2026-10-03-request-lifecycle.md).
+
+
+<!-- integrated:FRONTIER-ch32-addition.md -->
+
+## Continuous-batching refresh (checked 2026-10-05)
+
+| Topic | Scope checked | Primary source | Maturity | Printed chapter |
+| --- | --- | --- | --- | --- |
+| Iteration-level scheduling and selective batching | Scheduler invokes one model iteration for a mutable batch; selective batching handles Transformer operations with different batching constraints; paper reports 36.9x throughput over its FasterTransformer comparison at matched latency on GPT-3 175B | Yu et al., OSDI 2022, https://www.usenix.org/conference/osdi22/presentation/yu | published system design; historical production-style research | 32 |
+| vLLM V1 token scheduler | Current source comment models requests by `num_computed_tokens` catching up to required tokens; per-step output is a request-to-scheduled-token-count map; inspected scheduler has a per-iteration token budget | https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/sched/scheduler.py | shipped source; exact deployment/default depends on release/config | 32 |
+| vLLM scheduler capacity controls | Scheduler config distinguishes maximum batched tokens, maximum sequences, optional maximum active sequences, queue/backlog controls, long-prefill controls and async scheduling | https://github.com/vllm-project/vllm/blob/main/vllm/config/scheduler.py | shipped/configurable source; deployment-specific | 32 |
+| SGLang-family scheduler separation | Scheduler documentation/source separates waiting/running request management, batch construction, KV management and overlap execution; continuous batching is one responsibility rather than the entire policy | https://github.com/sgl-project/sglang-jax/blob/main/docs/architecture/03-scheduler.md | implementation documentation; backend-specific behavior must be source-checked before stronger claims | 32 |
+
+Do not convert current-main URLs above into permanent source claims without
+pinning the exact upstream commits during repository integration.
+
+
+
+<!-- integrated:FRONTIER-ch33-addition.md -->
+
+## Paged KV memory refresh (checked 2026-10-05)
+
+| Topic | Scope checked | Primary source | Maturity | Printed chapter |
+| --- | --- | --- | --- | --- |
+| PagedAttention / vLLM | Software block tables and on-demand KV allocation; paper reports 20.4--38.2% effective KV use in compared prior systems and 2--4x throughput for vLLM in its evaluated comparisons | Kwon et al., SOSP 2023 / arXiv 2309.06180, https://arxiv.org/abs/2309.06180 | published system; design is foundational | 33 |
+| vLLM V1 block pool | Current docs expose physical block IDs, ref counts, free-block queue/cache mappings and `is_block_writable`; mutability requires sole ownership and no cache hash | https://docs.vllm.ai/en/latest/api/vllm/v1/core/block_pool/ | shipped source/documentation; exact behavior must be pinned to a commit for permanent claims | 33 |
+| vLLM cache granularity | Current cache config documents default physical block size 16; newer hybrid/prefix machinery can distinguish physical group block size from a finer hash/prefix-match unit subject to divisibility constraints | https://docs.vllm.ai/en/latest/api/vllm/config/ and https://docs.vllm.ai/en/latest/design/hybrid_kv_cache_manager/ | shipped/configurable; model/backend dependent | 33 |
+| vAttention | Reserves contiguous virtual KV address space and maps physical GPU pages on demand instead of requiring paged kernel-visible layout; authors report up to 1.23x serving throughput over their PagedAttention-kernel comparisons | Prabhu et al., arXiv 2405.04437, https://arxiv.org/abs/2405.04437 | research system | 33 |
+
+Repository integration must replace moving documentation URLs with commit-pinned
+source URLs where a source-level DEFAULT/PREVIEW/LIBRARY claim is retained.
+
+
+
+<!-- integrated:FRONTIER-ch34-addition.md -->
+
+## 2026-10-05 — Chapter 34: Prefix Caching and RadixAttention
+
+- **SGLang / RadixAttention** — Zheng et al., *SGLang: Efficient Execution of
+  Structured Language Model Programs*, arXiv:2312.07104. Foundational research
+  source. RadixAttention is a runtime KV-reuse architecture; authors report up to
+  6.4x throughput on evaluated structured workloads.
+- **vLLM Automatic Prefix Caching** — current docs checked 2026-10-05. Current
+  design documents parent hash + block tokens + extra dependencies including LoRA,
+  multimodal hashes, and cache salt. Current docs describe SHA-256 as default and
+  distinguish prefix-match granularity from physical block size in supported
+  configurations. **Integration gate:** pin claims to exact upstream commit
+  `b0eb87fe4943316781913d99a8ef8413e425decb` and source files before FULL.
+- **SGLang source snapshot** — current code search resolved default snapshot
+  `7a719e9a65e7f52b012ab37211b5f174e5d3d38d`, including radix-cache implementations
+  under `python/sglang/srt/mem_cache/`. Pin exact files/lines during integration.
+- **Security** — Gu et al., *Auditing Prompt Caching in Language Model APIs*,
+  arXiv:2502.07776 (2025). Demonstrates timing-side-channel risk from cross-user
+  prompt-cache sharing. Treat namespace isolation as a security invariant.
+
+
+
+<!-- integrated:FRONTIER-ch35-addition.md -->
+
+## 2026-10-05 — Chapter 35: Chunked Prefill and Phase Interference
+
+- **vLLM V1 chunked prefill** — official optimization/configuration docs checked
+  2026-10-05. V1 enables chunked prefill whenever possible; pending decodes are
+  scheduled before prefills; prefills consume remaining `max_num_batched_tokens`.
+  Current configuration also exposes long-prefill thresholds, adaptive fairness,
+  multimodal chunk controls and scheduled-token accounting. Maturity: shipped.
+  Integration gate: pin exact source commit/files before FULL.
+- **SARATHI** — Agrawal et al., arXiv:2308.16369. Chunked prefills plus
+  decode-maximal batching; foundational research.
+- **DistServe** — Zhong et al., arXiv:2401.09670. Disaggregates prefill and decode;
+  authors report up to 7.4x request capacity or 12.6x tighter SLOs on evaluated
+  workloads. Maturity: research; Chapter 35 boundary and Chapter 50 deep treatment.
+- **TaiChi** — Wang et al., arXiv:2508.01989 (2025). Studies unified aggregated /
+  disaggregated serving and SLO-dependent operating points. Maturity: research.
+
+
+
+<!-- integrated:FRONTIER-ch36-addition.md -->
+
+## 2026-10-05 — Chapter 36: Scheduling Under Pressure
+
+- **vLLM scheduler** — current repository snapshot
+  `b0eb87fe4943316781913d99a8ef8413e425decb`; configuration exposes FCFS and
+  priority scheduling and current V1 code/tests include deferred KV-block release.
+  Exact preemption behavior must be source-pinned before FULL. Maturity: shipped.
+- **SGLang scheduling policy** — source snapshot
+  `7a719e9a65e7f52b012ab37211b5f174e5d3d38d`,
+  `python/sglang/srt/managers/schedule_policy.py`. Explicit policy layer includes
+  cache-locality-oriented scheduling. Maturity: shipped source.
+- **Virtual Token Counter** — Sheng et al., *Fairness in Serving Large Language
+  Models*, arXiv:2401.00588. Token-service fairness with theoretical bounds.
+  Maturity: research.
+- **DistServe** — Zhong et al., arXiv:2401.09670. Goodput under TTFT/TPOT SLOs.
+  Maturity: research.
+- **Mooncake** — Qin et al., arXiv:2407.00079. Production-oriented disaggregated
+  serving; admission/rejection control demonstrates delayed-feedback effects.
+  Maturity: research/system report.
+
+
+
+<!-- integrated:FRONTIER-ch37-addition.md -->
+
+## 2026-10-05 — Chapter 37: Structured Output at Engine Speed
+
+- **XGrammar** — Dong et al., arXiv:2411.15100. Context-independent token
+  prechecking, persistent stack and inference-engine co-design; authors report up to
+  100x speedup over compared systems and near-zero integrated overhead. Research /
+  production-integrated library.
+- **Grammar-Aligned Decoding** — Park et al., arXiv:2405.21047. Shows ordinary local
+  grammar masking can distort the model distribution over complete valid outputs and
+  proposes ASAp. Research.
+- **JSONSchemaBench** — Geng et al., arXiv:2501.10868. 10K real-world schemas;
+  evaluates efficiency, coverage and quality separately. Research benchmark.
+- **XGrammar 2** — Li et al., arXiv:2601.04426. Dynamic dispatch, JIT compilation,
+  cross-grammar caching and Earley-parser-oriented machinery for agentic dynamic
+  constraints; authors report >6x faster grammar compilation than compared
+  engines, not >6x end-to-end generation throughput. 2026 research.
+- **llama.cpp historical measurement/source** — retain the pinned
+  `d006858` sampling-path discussion and 2026-09-24 M1 measurement; do not silently
+  generalize it to current head.
+
+
+
+<!-- integrated:FRONTIER-ch38-addition.md -->
+
+## 2026-10-05 — Chapter 38: One Server, Many Models
+
+- **Punica** — Chen et al., arXiv:2310.18547. Segmented gather matrix-vector
+  multiplication for heterogeneous LoRA batches; authors report 12x throughput over
+  compared systems and about 2 ms/token added latency. Research system / open source.
+- **S-LoRA** — Sheng et al., arXiv:2311.03285. Host-resident adapter working set,
+  unified paging for adapter/KV memory, heterogeneous batching and tensor parallelism;
+  authors report up to 4x throughput and orders-of-magnitude more adapters than
+  compared baselines. Research system / open source.
+- **Compress then Serve** — Brüel-Gabrielsson et al., arXiv:2407.00066. Joint
+  compression/shared bases across LoRA collections; experiments up to 1000+ adapters
+  report about 80% of single-LoRA throughput in stated settings. Research.
+- **vLLM current source inspection** — commit
+  `155488d853a0bc42df227dbfc74005b3fd488e94`; `vllm/config/lora.py` exposes LoRA
+  capacity/rank configuration. Source-pinned; exact defaults/deployment behavior must
+  be checked before stronger claims.
+- **SGLang current source inspection** — commit
+  `7a719e9a65e7f52b012ab37211b5f174e5d3d38d`; dedicated LoRA argument/runtime
+  subsystem including residency/draining paths. Source-pinned.
+
+
+
+<!-- integrated:FRONTIER-ch39-addition.md -->
+
+## 2026-10-05 — Chapter 39: Speculative Decoding
+
+- **Fast Inference from Transformers via Speculative Decoding** — Leviathan, Kalman,
+  Matias, ICML 2023 / arXiv:2211.17192. Draft/verify algorithm; expected-token and
+  exact target-distribution result. Foundational.
+- **Accelerating Large Language Model Decoding with Speculative Sampling** — Chen et
+  al., arXiv:2302.01318. Modified rejection sampling preserving target distribution.
+  Foundational.
+- **vLLM source snapshot** — commit
+  `155488d853a0bc42df227dbfc74005b3fd488e94`; V1 includes
+  `vllm/v1/spec_decode/ngram_proposer.py` and rejection-sampler implementations under
+  V1 sample/GPU worker paths. Shipped source; exact supported combinations/defaults
+  must be pinned when benchmarking.
+- **SGLang source snapshot** — commit
+  `7a719e9a65e7f52b012ab37211b5f174e5d3d38d`; includes
+  `python/sglang/srt/speculative/ngram_worker.py` and tree speculative kernels.
+  Shipped source; EAGLE/tree details belong to Chapter 40.
+
+
+
+<!-- integrated:FRONTIER-ch40-addition.md -->
+
+## 2026-10-05 — Chapter 40: Modern Speculation
+- EAGLE — target-feature autoregressive drafting. Primary paper; foundational modern drafter.
+- EAGLE-2 — context-aware dynamic draft trees. Primary paper.
+- EAGLE-3 — direct token prediction with multi-layer target feature fusion. Primary paper, arXiv:2503.01840.
+- Medusa — multiple future-token heads and tree verification. Primary paper.
+- Multi-token prediction — future-token auxiliary heads/modules; model-native drafting route.
+- vLLM source snapshot `155488d853a0bc42df227dbfc74005b3fd488e94`: EAGLE docs, DeepSeek EAGLE-3 model executor, speculative config and parallel-draft docs. Shipped source; backend/model support must be pinned per benchmark.
+- SGLang source snapshot `7a719e9a65e7f52b012ab37211b5f174e5d3d38d`: speculative tree metadata/EAGLE integration. Shipped source.
+
+
+
+<!-- integrated:FRONTIER-ch41-addition.md -->
+
+## 2026-10-05 — Chapter 41: When Speculation Loses
+- TurboSpec, arXiv:2406.14066, rechecked 2026-10-05: closed-loop speculation control; predicts goodput and adjusts intra-request parallelism. Research implementation on vLLM; use as a control-system reference, not an engine default.
+- MagicDec, ICLR 2025 / arXiv:2408.11049, rechecked 2026-10-05: analyzes large-batch long-context bottleneck shifts and sparse-KV drafting. Authors report up to 2.51x for Llama-3.1-8B across batch sizes 32--256 on tested hardware/tasks. Research result; not a universal speedup.
+- Book measurement `2026-09-24-m1-part4.md`: Apple M1 paired experiments show separate 3B drafter slowing 8B target at ~46--47% draft acceptance; prompt lookup remains 100% accepted while gain falls from ~4.05x one request to ~2.0x four requests.
+
+
+
+<!-- integrated:FRONTIER-ch42-addition.md -->
+
+## 2026-10-05 — Chapter 42: Shrinking the KV Cache
+- Preserve measured evidence from `research/measurements/2026-09-24-m1-part5.md`: Llama 3.2 3B 112 KiB/token and Qwen2.5-Coder 3B 36 KiB/token allocations; context-depth decode measurements are paired historical observations.
+- Multi-Query Attention (Shazeer 2019): architectural K/V sharing; primary paper.
+- Grouped-Query Attention (Ainslie et al. 2023): intermediate sharing and uptraining from MHA; primary paper.
+- DeepSeek-V2 MLA: low-rank latent K/V representation, projection absorption and decoupled RoPE; primary technical report/paper. Recheck exact dimensions/claims before FULL.
+- Current-engine MLA backend/source claims should be repinned against the integration-time vLLM/SGLang commits; do not carry the ZERO draft's older `bcdacfc` snapshot forward as current without source inspection.
+
+
+
+<!-- integrated:FRONTIER-ch43-addition.md -->
+
+## 2026-10-05 — Chapter 43: Mixture of Experts
+- Preserve the measured kernel record in `research/measurements/2026-09-24-m1-part5.md`.
+  It measures llama.cpp `MUL_MAT_ID` at commit `d006858316d4650bb4da0c6923294ccd741caefd`
+  with Qwen3-30B-A3B-like expert projection shape; it is a layer-kernel experiment, not
+  an end-to-end model benchmark.
+- Foundational primary sources already represented in the book bibliography: sparsely
+  gated MoE (Shazeer et al.), GShard, Switch Transformer, Mixtral, DeepSeekMoE,
+  MegaBlocks, DeepSeek-V3.
+- Before FULL, re-pin current grouped-MoE behavior in vLLM/SGLang/DeepGEMM/DeepEP at
+  integration-time source commits. Classify current implementation statements as
+  DEFAULT/PREVIEW/LIBRARY/DESIGN.
+- Keep the distinction between author-reported training/model results and this book's
+  measured inference-kernel results.
+- Current frontier should emphasize the execution contract route -> assignments ->
+  placement/dispatch -> grouped GEMM -> return/combine, with expert parallelism and
+  expert streaming treated as later physical realizations of the same logical graph.
+
+## Integration verification — 2026-10-05
+
+This pass fetched the exact public source snapshots supplied with the packages.
+The pins below resolve to real source files. This is source inspection, not a
+GPU deployment test; it does not establish performance, every supported model,
+or that an optional path is enabled on ordinary traffic. Earlier package notes
+remain above as provenance; these narrower checks supersede their unqualified
+"current" or "source-pinned" wording.
+
+| Technique | Exact primary source inspected | Finding and classification | Chapters |
+| --- | --- | --- | --- |
+| Iteration scheduling | [vLLM scheduler](https://github.com/vllm-project/vllm/blob/b0eb87fe4943316781913d99a8ef8413e425decb/vllm/v1/core/sched/scheduler.py), [configuration](https://github.com/vllm-project/vllm/blob/b0eb87fe4943316781913d99a8ef8413e425decb/vllm/config/scheduler.py) | DEFAULT scheduling interface accounts for computed and scheduled tokens; configuration offers FCFS/priority. Chunking defaults true but can be disabled; adaptive long-prefill threshold defaults false (configurable, not a universal default). | 32, 35, 36 |
+| Paged ownership and prefix identity | [block pool](https://github.com/vllm-project/vllm/blob/b0eb87fe4943316781913d99a8ef8413e425decb/vllm/v1/core/block_pool.py), [cache utilities](https://github.com/vllm-project/vllm/blob/b0eb87fe4943316781913d99a8ef8413e425decb/vllm/v1/core/kv_cache_utils.py), [cache configuration](https://github.com/vllm-project/vllm/blob/b0eb87fe4943316781913d99a8ef8413e425decb/vllm/config/cache.py) | Source has reference-bearing blocks, separate physical/hash granularities and extra hash inputs including LoRA, multimodal inputs and salt. SHA-256 is the configured default hash when prefix caching runs; hash choice is not an authorization guarantee. | 33, 34 |
+| Explicit scheduling policy | [SGLang policy](https://github.com/sgl-project/sglang/blob/7a719e9a65e7f52b012ab37211b5f174e5d3d38d/python/sglang/srt/managers/schedule_policy.py) | Policy layer includes priority and locality logic. DESIGN comparison of interfaces; policy presence does not establish every policy as DEFAULT. | 32, 34, 36 |
+| Adapter configuration and residency | [vLLM configuration](https://github.com/vllm-project/vllm/blob/155488d853a0bc42df227dbfc74005b3fd488e94/vllm/config/lora.py), [SGLang manager](https://github.com/sgl-project/sglang/blob/7a719e9a65e7f52b012ab37211b5f174e5d3d38d/python/sglang/srt/lora/lora_manager.py) | Opt-in adapter paths expose per-batch limits and pinned residency; not evidence that plain requests activate LoRA. PREVIEW/configurable implementation; no serving benchmark added. | 38 |
+| N-gram and tree proposal interfaces | [vLLM proposer](https://github.com/vllm-project/vllm/blob/155488d853a0bc42df227dbfc74005b3fd488e94/vllm/v1/spec_decode/ngram_proposer.py), [SGLang n-gram worker](https://github.com/sgl-project/sglang/blob/7a719e9a65e7f52b012ab37211b5f174e5d3d38d/python/sglang/srt/speculative/ngram_worker.py), [tree metadata](https://github.com/sgl-project/sglang/blob/7a719e9a65e7f52b012ab37211b5f174e5d3d38d/python/sglang/srt/speculative/eagle_info.py), [vLLM EAGLE-3 executor](https://github.com/vllm-project/vllm/blob/155488d853a0bc42df227dbfc74005b3fd488e94/vllm/model_executor/models/deepseek_eagle3.py) | PREVIEW/configurable draft interfaces exist. Model/backend support and exact acceptance paths require a deployment-specific test; no speculative GPU run made here. | 39, 40 |
+| Dynamic grammar compilation | [XGrammar-2 v4](https://arxiv.org/abs/2601.04426v4), abstract | Research: reported greater-than-sixfold improvement concerns grammar compilation. Corrected Chapter 37 and the package note; no sixfold end-to-end generation claim. | 37 |
+| Joint adapter compression | [Compress then Serve v4](https://arxiv.org/abs/2407.00066v4), abstract | Research: shared-basis compression and evaluated adapter collections. Corrected bibliography title; author-reported throughput is not reproduced by the teaching lab. | 38 |
+
+The integrated deterministic CPU labs are mechanism fixtures, not implementations
+of these GPU engines. Source and mathematical checks are distinct from measured
+production performance. Chapters 33--43 remain ZERO pending the full-depth
+authoring gate and further technical review; no chapter is VERIFIED by this pass.

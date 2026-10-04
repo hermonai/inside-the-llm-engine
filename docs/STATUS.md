@@ -1,6 +1,6 @@
 # Status
 
-## Current reading path — 2026-10-03
+## Current reading path — 2026-10-05
 
 The author requested that all former appendices become the main learning path.
 The book now has **59 chapters in ten parts**, with no appendix detour:
@@ -32,7 +32,7 @@ The first 14 systems chapter introductions now explain their question and
 offer a first-reading route before the measurements. This is an entry-point
 clarity pass, not a claim that every paragraph of the systems manuscript has
 been rewritten. Existing measured results and dated frontier claims remain.
-The book contains 182 native figures and 122 worked problems. Every one of
+The book now contains 215 native figures and 175 worked problems. Every one of
 the 42 systems chapters has a native mechanism diagram. The author merged
 the second-edition work into main at `2c0474d`; this pass follows that checkout.
 
@@ -139,7 +139,7 @@ race qualify the boundary of the teaching model. Completion of the host
 protocol does not prove device interruption, network delivery, admission
 cleanup or shared-cache reference accounting.
 
-## Validation of this revision
+## Validation of the preceding lifecycle revision — 2026-10-03
 
 The 712-page PDF builds with XeLaTeX/biber: no overfull boxes, missing glyphs
 or unresolved references. All 712 pages rendered and passed the visible
@@ -182,14 +182,54 @@ historical model measurements. Chapter 31 is now FULL, not VERIFIED.
 The previous accounting pass's small Python experiment remains in its dated
 record; no accelerator or model performance measurement is claimed.
 
+## Chapters 32–43 integration — 2026-10-05
+
+Twelve supplied chapter packages are integrated with twelve runnable Rust labs,
+33 new native TikZ figures and twelve worked-answer files. Sixteen existing
+measured/mechanism figures remain in the chapters. The pass repairs package
+syntax, missing references, bibliography aliases, tensor coordinates and
+several ownership/control bugs rather than merely copying the drafts.
+
+Chapter 32, Continuous Batching, is now FULL at about 5,400 prose words. Its
+worked request trace connects admission, token budgets, physical slot order,
+cancellation, unique completion tickets and retirement. Chapters 33–43 are
+substantially expanded ZERO drafts, not FULL or VERIFIED. The book has 32 FULL
+and 27 ZERO chapters; no chapter has received independent VERIFIED review.
+
+All twelve mechanism CLIs reproduce their stdout across two runs. Their 71
+tests cover cancellation/ticket identity, paged address translation, colliding
+prefix hashes, chunk budgets, recovery policy, an independent byte-prefix
+grammar oracle, adapter generations, speculative KV reconciliation,
+ancestor-closed draft trees, negative-score hysteresis and expert combine order.
+Illustrative controller inputs and derived counts are not GPU benchmarks.
+Pinned upstream snapshots and primary papers qualify the frontier sections;
+XGrammar-2's compilation result is not claimed as generation speedup.
+
+The 793-page XeLaTeX/biber PDF builds without overfull boxes, missing glyphs,
+unresolved references or citations. Rendered-page review covered the integrated
+figures and sampled worked solutions, contents and bibliography. It corrected
+overlapping labels, routes through boxes, detached worked headings and split
+first problems. Repaired mechanism pages were also inspected in grayscale.
+This is author QA of changed material, not independent review or a fresh visual
+inspection of every unchanged page.
+
+Local textbook/diagram/foundation/parity checks, both Rust workspaces'
+format/tests/clippy checks, relative links and preservation/secrets guards pass.
+The portable C/NEON fixture passes 516 cases without instrumentation. The
+combined AddressSanitizer/UndefinedBehaviorSanitizer executable stalled during
+startup on this Mac, so that result remains unverified; the unchanged Linux CI
+sanitizer step is not replaced by an assumed pass. Raw outputs, package hashes,
+PDF fingerprint and review scope are recorded in
+`research/measurements/2026-10-05-ch32-ch43-integration.md`.
+
 ## Next
 
-1. Deepen Chapter 32, Continuous Batching, then Chapter 33, Paged KV Memory.
+1. Deepen Chapter 33, Paged KV Memory, then Chapters 34–43.
    Carry Chapter 31's ownership and retirement rules into scheduling and
    allocation, using executable examples and distinct failure tests.
    Keep the runnable reading route established in Chapters 9--17.
 2. Continue the straightforward, concrete-first edit through the bodies of
-   systems chapters, then deepen the remaining 28 ZERO chapters. Keep
+   systems chapters, then deepen the remaining 27 ZERO chapters. Keep
    the original measurements and failure cases; explain them more gradually.
 3. Resolve the five remaining hardware-measurement TODOs when the required
    machines are available. Do not replace missing measurements with predictions.
@@ -243,18 +283,18 @@ from the current printed chapter numbers. Prose word counts are approximate.
 | 29 | Quantizing the KV Cache | ch12-kv-quantization | FULL | 5,185 | 0 |
 | 30 | How Kernels Are Written Now: CUDA, Triton, Tile DSLs and Graph Capture | ch13-kernel-languages | FULL | 6,323 | 0 |
 | 31 | The Request Lifecycle: Streaming, Cancellation and Terminal Ownership | ch14-request-lifecycle | FULL | 6,602 | 0 |
-| 32 | Continuous Batching | ch15-continuous-batching | ZERO | 2,124 | 0 |
-| 33 | Paged KV Memory | ch16-paged-kv | ZERO | 1,946 | 0 |
-| 34 | Prefix Caching and RadixAttention | ch17-prefix-caching | ZERO | 2,173 | 0 |
-| 35 | Chunked Prefill and Phase Interference | ch18-chunked-prefill | ZERO | 1,958 | 0 |
-| 36 | Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission | ch19-scheduling | ZERO | 2,004 | 0 |
-| 37 | Structured Output at Engine Speed | ch20-structured-output | ZERO | 1,893 | 0 |
-| 38 | One Server, Many Models: LoRA, Adapters and Routing | ch21-multi-model-serving | ZERO | 1,941 | 0 |
-| 39 | Speculative Decoding: The Draft–Verify Contract | ch22-speculative-decoding | ZERO | 2,384 | 0 |
-| 40 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ch23-modern-speculation | ZERO | 2,100 | 0 |
-| 41 | When Speculation Loses | ch24-when-speculation-loses | ZERO | 1,928 | 0 |
-| 42 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | ch25-shrinking-kv | ZERO | 3,323 | 0 |
-| 43 | Mixture of Experts | ch26-mixture-of-experts | ZERO | 3,064 | 0 |
+| 32 | Continuous Batching | ch15-continuous-batching | FULL | 5,380 | 0 |
+| 33 | Paged KV Memory | ch16-paged-kv | ZERO | 3,372 | 0 |
+| 34 | Prefix Caching and RadixAttention | ch17-prefix-caching | ZERO | 3,508 | 0 |
+| 35 | Chunked Prefill and Phase Interference | ch18-chunked-prefill | ZERO | 3,277 | 0 |
+| 36 | Scheduling Under Pressure: Preemption, Fairness and SLO-Aware Admission | ch19-scheduling | ZERO | 3,242 | 0 |
+| 37 | Structured Output at Engine Speed | ch20-structured-output | ZERO | 3,302 | 0 |
+| 38 | One Server, Many Models: LoRA, Adapters and Routing | ch21-multi-model-serving | ZERO | 3,499 | 0 |
+| 39 | Speculative Decoding: The Draft–Verify Contract | ch22-speculative-decoding | ZERO | 3,248 | 0 |
+| 40 | Modern Speculation: The EAGLE Family, Medusa and Multi-Token Prediction | ch23-modern-speculation | ZERO | 3,203 | 0 |
+| 41 | When Speculation Loses | ch24-when-speculation-loses | ZERO | 3,062 | 0 |
+| 42 | Shrinking the KV Cache: MQA, GQA and Multi-Head Latent Attention | ch25-shrinking-kv | ZERO | 3,063 | 0 |
+| 43 | Mixture of Experts | ch26-mixture-of-experts | ZERO | 3,754 | 0 |
 | 44 | Hybrid Models: State Spaces and Linear Attention | ch27-hybrid-models | ZERO | 2,837 | 0 |
 | 45 | Long Context: Windows, Sinks and Sparse Attention | ch28-long-context | ZERO | 2,711 | 0 |
 | 46 | Reasoning Models and Test-Time Compute | ch29-reasoning-workloads | ZERO | 2,223 | 0 |
