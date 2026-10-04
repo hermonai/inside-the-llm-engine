@@ -80,5 +80,53 @@ name = "ch14-request-lifecycle"
 version = "0.1.0"
 
 [[package]]
+name = "ch17-prefix-caching"
+version = "0.1.0"
+
+[[package]]
+name = "ch18-chunked-prefill"
+version = "0.1.0"
+
+[[package]]
+name = "ch19-scheduling"
+version = "0.1.0"
+
+[[package]]
+name = "ch20-structured-output"
+version = "0.1.0"
+
+[[package]]
+name = "ch21-multi-lora"
+version = "0.1.0"
+
+[[package]]
+name = "ch22-speculative"
+version = "0.1.0"
+
+[[package]]
+name = "ch23-draft-tree"
+version = "0.1.0"
+
+[[package]]
+name = "ch24-break-even"
+version = "0.1.0"
+
+[[package]]
+name = "ch25-shrinking-kv"
+version = "0.1.0"
+
+[[package]]
+name = "ch26-mixture-of-experts"
+version = "0.1.0"
+
+[[package]]
+name = "continuous-batching-lab"
+version = "0.1.0"
+
+[[package]]
 name = "engine0"
+version = "0.1.0"
+
+[[package]]
+name = "paged-kv-lab"
 version = "0.1.0"

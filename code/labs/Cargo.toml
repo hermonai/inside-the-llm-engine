@@ -1,5 +1,30 @@
 [workspace]
-members = ["ch01-fake-model", "ch03-roofline", "ch04-prefill-decode", "ch05-kv-cache", "ch07-gemm", "ch08-flashattention", "ch09-decode-attention", "ch10-weight-quant", "ch11-block-formats", "ch12-kv-quant", "ch13-launch", "ch14-request-lifecycle"]
+members = [
+    "ch01-fake-model",
+    "ch03-roofline",
+    "ch04-prefill-decode",
+    "ch05-kv-cache",
+    "ch07-gemm",
+    "ch08-flashattention",
+    "ch09-decode-attention",
+    "ch10-weight-quant",
+    "ch11-block-formats",
+    "ch12-kv-quant",
+    "ch13-launch",
+    "ch14-request-lifecycle",
+    "ch15-continuous-batching",
+    "ch16-paged-kv",
+    "ch17-prefix-caching",
+    "ch18-chunked-prefill",
+    "ch19-scheduling",
+    "ch20-structured-output",
+    "ch21-multi-lora",
+    "ch22-speculative",
+    "ch23-draft-tree",
+    "ch24-break-even",
+    "ch25-shrinking-kv",
+    "ch26-mixture-of-experts",
+]
 resolver = "2"
 
 [workspace.package]
